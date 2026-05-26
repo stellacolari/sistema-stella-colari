@@ -1,8 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { mkdir, writeFile, unlink } from "fs/promises";
-import path from "path";
+import { unlink } from "fs/promises";
+import { put, del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -317,51 +317,56 @@ async function calcularPrecoVendaFinal({
   return arredondarMoeda(custo * margem + custoAdicionais);
 }
 
-async function salvarImagemBase64(
-  imagemBase64: string | null,
+async function salvarImagemProduto(
+  arquivo: File,
   codigoInterno: string,
-  sufixo = "galeria"
-): Promise<string | null> {
-  if (!isImagemNovaBase64(imagemBase64)) {
-    return null;
-  }
+  sufixo: string
+): Promise<string> {
+  const extensaoOriginal = arquivo.name.split(".").pop()?.toLowerCase();
+  const extensaoSegura =
+    extensaoOriginal && ["jpg", "jpeg", "png", "webp"].includes(extensaoOriginal)
+      ? extensaoOriginal
+      : "jpg";
 
-  const pastaUploads = path.join(process.cwd(), "public", "uploads", "produtos");
-  await mkdir(pastaUploads, { recursive: true });
+  const codigoSeguro = codigoInterno
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
-  const matches = imagemBase64!.match(
-    /^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/
-  );
+  const sufixoSeguro = sufixo
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
-  if (!matches) {
-    throw new Error("Formato da imagem inválido.");
-  }
+  const nomeArquivo = `produtos/${codigoSeguro}-${sufixoSeguro}-${Date.now()}.${extensaoSegura}`;
 
-  const extensao =
-    matches[1] === "png" ? "png" : matches[1] === "webp" ? "webp" : "jpg";
+  const blob = await put(nomeArquivo, arquivo, {
+    access: "public",
+    addRandomSuffix: true,
+  });
 
-  const base64Data = matches[2];
-  const nomeArquivo = nomeSeguroArquivo(
-    `${codigoInterno}-${sufixo}-${Date.now()}.${extensao}`
-  );
-  const caminhoCompleto = path.join(pastaUploads, nomeArquivo);
-
-  const buffer = Buffer.from(base64Data, "base64");
-  await writeFile(caminhoCompleto, buffer);
-
-  return `/uploads/produtos/${nomeArquivo}`;
+  return blob.url;
 }
 
-async function removerImagemAntiga(imagemUrl: string | null) {
-  if (!imagemUrl) return;
-
-  const caminhoRelativo = imagemUrl.replace(/^\/+/, "");
-  const caminhoCompleto = path.join(process.cwd(), "public", caminhoRelativo);
+async function removerImagemProduto(imagemUrl?: string | null) {
+  if (!imagemUrl) {
+    return;
+  }
 
   try {
-    await unlink(caminhoCompleto);
-  } catch {
-    // ignora se não encontrar
+    if (imagemUrl.includes("blob.vercel-storage.com")) {
+      await del(imagemUrl);
+      return;
+    }
+
+    if (imagemUrl.startsWith("/uploads/")) {
+      const caminhoLocal = `${process.cwd()}/public${imagemUrl}`;
+      await unlink(caminhoLocal).catch(() => {});
+    }
+  } catch (error) {
+    console.warn("Não foi possível remover a imagem do produto:", error);
   }
 }
 
