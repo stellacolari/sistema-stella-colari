@@ -1,38 +1,62 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-function limparTexto(value: FormDataEntryValue | null) {
-  return String(value ?? "").trim();
+function textoOpcional(valor: FormDataEntryValue | null) {
+  const texto = String(valor ?? "").trim();
+  return texto || null;
 }
 
-function limparBoolean(value: FormDataEntryValue | null) {
-  return String(value ?? "true") === "true";
+function numeroFormulario(valor: FormDataEntryValue | null, fallback = 0) {
+  const numero = Number(String(valor ?? "").replace(",", "."));
+  return Number.isFinite(numero) ? numero : fallback;
 }
 
-function limparNumero(value: FormDataEntryValue | null) {
-  const numero = Number(value ?? 0);
+function booleanFormulario(valor: FormDataEntryValue | null) {
+  return valor === "true" || valor === "on" || valor === "1";
+}
 
-  if (Number.isNaN(numero)) {
-    return 0;
+function gerarNomeSeguro(nomeOriginal: string) {
+  const extensao = nomeOriginal.split(".").pop()?.toLowerCase() || "jpg";
+
+  const extensaoSegura = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(
+    extensao
+  )
+    ? extensao
+    : "jpg";
+
+  const nomeBase = nomeOriginal
+    .replace(/\.[^/.]+$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `loja/banners/${Date.now()}-${nomeBase || "banner"}.${extensaoSegura}`;
+}
+
+async function uploadImagemSeEnviada(
+  formData: FormData,
+  nomeCampo: string
+): Promise<string | null> {
+  const arquivo = formData.get(nomeCampo);
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return null;
   }
 
-  return numero;
-}
-
-function getExtensaoArquivo(nome: string) {
-  const extensao = path.extname(nome).toLowerCase();
-
-  if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(extensao)) {
-    return extensao;
+  if (!arquivo.type.startsWith("image/")) {
+    throw new Error("O arquivo enviado precisa ser uma imagem.");
   }
 
-  return ".jpg";
+  const blob = await put(gerarNomeSeguro(arquivo.name), arquivo, {
+    access: "public",
+    addRandomSuffix: true,
+  });
+
+  return blob.url;
 }
 
 export async function GET() {
@@ -46,71 +70,60 @@ export async function GET() {
     console.error("Erro ao listar banners da loja:", error);
 
     return NextResponse.json(
-      { error: "Erro ao listar banners da loja." },
+      { erro: "Erro ao listar banners da loja." },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
-    const titulo = limparTexto(formData.get("titulo"));
-    const subtitulo = limparTexto(formData.get("subtitulo"));
-    const linkUrl = limparTexto(formData.get("linkUrl"));
-    const ordem = limparNumero(formData.get("ordem"));
-    const ativo = limparBoolean(formData.get("ativo"));
-    const imagem = formData.get("imagem");
+    const titulo = textoOpcional(formData.get("titulo"));
+    const subtitulo = textoOpcional(formData.get("subtitulo"));
+    const linkUrl = textoOpcional(formData.get("linkUrl"));
+    const ordem = numeroFormulario(formData.get("ordem"), 0);
+    const ativo = booleanFormulario(formData.get("ativo"));
 
-    if (!(imagem instanceof File)) {
+    const imagemUpload =
+      (await uploadImagemSeEnviada(formData, "imagem")) ||
+      (await uploadImagemSeEnviada(formData, "imagemUrl")) ||
+      (await uploadImagemSeEnviada(formData, "arquivo")) ||
+      (await uploadImagemSeEnviada(formData, "file"));
+
+    const imagemUrl =
+      imagemUpload || textoOpcional(formData.get("imagemUrl"));
+
+    if (!imagemUrl) {
       return NextResponse.json(
-        { error: "Imagem do banner não enviada." },
+        { erro: "Informe a imagem do banner." },
         { status: 400 }
       );
     }
-
-    if (imagem.size <= 0) {
-      return NextResponse.json(
-        { error: "Arquivo de imagem inválido." },
-        { status: 400 }
-      );
-    }
-
-    const extensao = getExtensaoArquivo(imagem.name);
-    const nomeArquivo = `${randomUUID()}${extensao}`;
-
-    const pastaUploads = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "banners"
-    );
-
-    await mkdir(pastaUploads, { recursive: true });
-
-    const bytes = await imagem.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    await writeFile(path.join(pastaUploads, nomeArquivo), buffer);
 
     const banner = await prisma.bannerLoja.create({
       data: {
-        titulo: titulo || null,
-        subtitulo: subtitulo || null,
-        imagemUrl: `/uploads/banners/${nomeArquivo}`,
-        linkUrl: linkUrl || null,
+        titulo,
+        subtitulo,
+        imagemUrl,
+        linkUrl,
         ordem,
         ativo,
       },
     });
 
-    return NextResponse.json({ banner }, { status: 201 });
+    return NextResponse.json({ banner });
   } catch (error) {
     console.error("Erro ao criar banner da loja:", error);
 
     return NextResponse.json(
-      { error: "Erro ao criar banner da loja." },
+      {
+        erro:
+          error instanceof Error
+            ? error.message
+            : "Erro ao criar banner da loja.",
+      },
       { status: 500 }
     );
   }
