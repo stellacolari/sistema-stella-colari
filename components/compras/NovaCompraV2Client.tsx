@@ -36,8 +36,15 @@ function normalizarTexto(value: string) {
     .trim();
 }
 
-function produtoEhAnel(item: { tipo: string; categoria: string }) {
-  return item.tipo === "produto" && normalizarTexto(item.categoria) === "anel";
+function produtoEhAnel(item: { categoria: string }) {
+  const categoria = normalizarTexto(item.categoria || "");
+
+  return (
+    categoria === "anel" ||
+    categoria === "aneis" ||
+    categoria.includes("anel") ||
+    categoria.includes("aneis")
+  );
 }
 
 function normalizarTamanhoAnel(tamanho: string) {
