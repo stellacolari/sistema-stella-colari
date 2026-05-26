@@ -1,0 +1,35 @@
+import type { Metadata } from "next";
+import CategoriasLojaClient from "@/components/configuracoes/loja/CategoriasLojaClient";
+import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = {
+  title: "Categorias da Loja | Sistema Stella",
+};
+
+export default async function CategoriasLojaPage() {
+  const categorias = await prisma.categoriaProduto.findMany({
+    where: {
+      ativo: true,
+    },
+    orderBy: [
+      {
+        ordemMenu: "asc",
+      },
+      {
+        nome: "asc",
+      },
+    ],
+    select: {
+      id: true,
+      nome: true,
+      slug: true,
+      categoriaMaeId: true,
+      descricao: true,
+      imagemUrl: true,
+      exibirNoMenu: true,
+      ordemMenu: true,
+    },
+  });
+
+  return <CategoriasLojaClient categoriasIniciais={categorias} />;
+}

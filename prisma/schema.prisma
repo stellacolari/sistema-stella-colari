@@ -1,0 +1,846 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Produto {
+  id                 String                 @id @default(cuid())
+  codigoInterno      String                 @unique
+  codigoFornecedor   String?
+  nome               String
+  imagemUrl          String?
+  imagemHoverUrl     String?
+  linkCompra         String?
+  custoBase          Float
+  margemAplicada     Float
+  precoVenda         Float
+  descontoAtivo      Boolean                @default(false)
+  precoPromocional   Float?
+  categoria          String
+  fornecedorPadrao   String
+  ativo              Boolean                @default(true)
+  status             String                 @default("ATIVO")
+  statusAntesLixeira String?
+  observacoes        String?
+  criadoEm           DateTime               @default(now())
+  atualizadoEm       DateTime               @updatedAt
+  estoque            EstoqueProduto[]
+  vendasItens        VendaItem[]
+  imagens            ProdutoImagem[]
+  descricaoLoja      String?
+  tipoProduto        String                 @default("UNITARIO")
+  componentesDoKit   ProdutoKitComponente[] @relation("KitProduto")
+  usadoEmKits        ProdutoKitComponente[] @relation("ComponenteProduto")
+  categoriasProduto  ProdutoCategoria[]
+  canaisVenda        ProdutoCanal[]
+  compraItens        CompraItem[]
+}
+
+model ProdutoImagem {
+  id        String   @id @default(cuid())
+  produtoId String
+  produto   Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  imagemUrl String
+  ordem     Int      @default(0)
+  criadoEm  DateTime @default(now())
+
+  @@index([produtoId])
+  @@index([ordem])
+}
+
+model ProdutoCanal {
+  id String @id @default(cuid())
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  canal String
+
+  skuExterno        String?
+  produtoExternoId  String?
+  variacaoExternaId String?
+  tituloExterno     String?
+
+  precoCanal       Float?
+  estoqueAnunciado Int?
+
+  sincronizarEstoque Boolean @default(true)
+  sincronizarPreco   Boolean @default(false)
+
+  ativo Boolean @default(true)
+
+  ultimaSincronizacaoEm DateTime?
+  criadoEm              DateTime  @default(now())
+  atualizadoEm          DateTime  @updatedAt
+
+  @@unique([canal, skuExterno])
+  @@index([produtoId])
+  @@index([canal])
+  @@index([skuExterno])
+  @@index([produtoExternoId])
+  @@index([variacaoExternaId])
+  @@index([ativo])
+}
+
+model ItemAdicional {
+  id                 String            @id @default(cuid())
+  codigoInterno      String            @unique
+  codigoFornecedor   String?
+  nome               String
+  imagemUrl          String?
+  linkCompra         String?
+  custoBase          Float
+  fornecedorPadrao   String
+  ativo              Boolean           @default(true)
+  status             String            @default("ATIVO")
+  statusAntesLixeira String?
+  observacoes        String?
+  criadoEm           DateTime          @default(now())
+  atualizadoEm       DateTime          @updatedAt
+  regrasCategoria    RegraCategoria[]
+  estoque            EstoqueAdicional?
+
+  opcoesComoPadraoSubstituido   CategoriaOpcaoAdicional[]   @relation("CategoriaOpcaoItemPadraoSubstituido")
+  opcoesComoAdicionalConsumido  CategoriaOpcaoAdicional[]   @relation("CategoriaOpcaoItemAdicionalConsumido")
+  pedidosComoPadraoSubstituido  PedidoOnlineItemAdicional[] @relation("PedidoItemPadraoSubstituido")
+  pedidosComoAdicionalConsumido PedidoOnlineItemAdicional[] @relation("PedidoItemAdicionalConsumido")
+  compraItens                   CompraItem[]
+}
+
+model RegraCategoria {
+  id              String        @id @default(cuid())
+  categoria       String
+  quantidade      Int           @default(1)
+  itemAdicionalId String
+  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+}
+
+model Cliente {
+  id                    String                        @id @default(cuid())
+  codigo                String                        @unique
+  nome                  String
+  telefone              String                        @unique
+  email                 String?                       @unique
+  documento             String                        @unique
+  cep                   String?
+  rua                   String?
+  numero                String?
+  complemento           String?
+  bairro                String?
+  cidade                String?
+  estado                String?
+  tipoCliente           String
+  status                String                        @default("NOVO")
+  statusAntesLixeira    String?
+  observacoes           String?
+  senhaHash             String?
+  cashbackSaldo         Float                         @default(0)
+  origemCadastro        String?
+  criadoEm              DateTime                      @default(now())
+  atualizadoEm          DateTime                      @updatedAt
+  vendas                Venda[]
+  pedidosOnline         PedidoOnline[]
+  cashbackMovimentacoes ClienteCashbackMovimentacao[]
+}
+
+model Compra {
+  id                     String       @id @default(cuid())
+  codigo                 String       @unique
+  fornecedor             String
+  descontoPercentual     Float        @default(0)
+  frete                  Float        @default(0)
+  valorTotalBruto        Float        @default(0)
+  valorTotalFinal        Float        @default(0)
+  observacoes            String?
+  status                 String       @default("ATIVA")
+  statusAntesLixeira     String?
+  cancelamentoMotivo     String?
+  cancelamentoObservacao String?
+  canceladoEm            DateTime?
+  criadoEm               DateTime     @default(now())
+  atualizadoEm           DateTime     @updatedAt
+  itens                  CompraItem[]
+}
+
+model CompraItem {
+  id                 String         @id @default(cuid())
+  compraId           String
+  compra             Compra         @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  tipoItem           String
+  codigoDigitado     String
+  descricao          String
+  quantidade         Int
+  tamanhoAnel        String?
+  valorUnitarioBase  Float
+  valorUnitarioFinal Float
+  valorTotalBase     Float
+  valorTotalFinal    Float
+  parcelaFrete       Float          @default(0)
+  valorTotalComFrete Float          @default(0)
+  produtoId          String?
+  produto            Produto?       @relation(fields: [produtoId], references: [id])
+  itemAdicionalId    String?
+  itemAdicional      ItemAdicional? @relation(fields: [itemAdicionalId], references: [id])
+  criadoEm           DateTime       @default(now())
+  atualizadoEm       DateTime       @updatedAt
+
+  @@index([compraId])
+  @@index([produtoId])
+  @@index([itemAdicionalId])
+}
+
+model EstoqueProduto {
+  id              String   @id @default(cuid())
+  produtoId       String
+  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  tamanhoAnel     String   @default("UNICO")
+  quantidadeAtual Int      @default(0)
+  valorAcumulado  Float    @default(0)
+  custoMedio      Float    @default(0)
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  @@unique([produtoId, tamanhoAnel])
+  @@index([produtoId])
+  @@index([tamanhoAnel])
+}
+
+model EstoqueAdicional {
+  id              String        @id @default(cuid())
+  itemAdicionalId String        @unique
+  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
+  quantidadeAtual Int           @default(0)
+  valorAcumulado  Float         @default(0)
+  custoMedio      Float         @default(0)
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+}
+
+model Movimentacao {
+  id                    String   @id @default(cuid())
+  codigoMovimentacao    String   @unique
+  tipoMovimentacao      String
+  origemTipo            String
+  origemId              String
+  codigoItem            String
+  itemTipo              String
+  quantidade            Int
+  tamanhoAnel           String?
+  custo                 Float    @default(0)
+  faturamento           Float    @default(0)
+  documentoCliente      String?
+  status                String
+  relacionadoA          String?
+  gastoProdutoPrincipal Float    @default(0)
+  gastoAdd1             Float    @default(0)
+  gastoAdd2             Float    @default(0)
+  gastoAdd3             Float    @default(0)
+  criadoEm              DateTime @default(now())
+  atualizadoEm          DateTime @updatedAt
+
+  adicionaisConsumidos MovimentacaoAdicional[]
+}
+
+model Venda {
+  id                     String      @id @default(cuid())
+  codigo                 String      @unique
+  clienteId              String
+  cliente                Cliente     @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  meioVenda              String
+  descontoPercentual     Float       @default(0)
+  valorTotal             Float       @default(0)
+  gastoTotal             Float       @default(0)
+  lucroTotal             Float       @default(0)
+  status                 String      @default("VENDA_FINALIZADA")
+  statusAntesLixeira     String?
+  observacoes            String?
+  cancelamentoMotivo     String?
+  cancelamentoObservacao String?
+  canceladoEm            DateTime?
+  criadoEm               DateTime    @default(now())
+  atualizadoEm           DateTime    @updatedAt
+  itens                  VendaItem[]
+}
+
+model VendaItem {
+  id                 String   @id @default(cuid())
+  vendaId            String
+  venda              Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produtoId          String
+  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  codigoDigitado     String
+  descricao          String
+  quantidade         Int
+  tamanhoAnel        String?
+  valorUnitarioBase  Float
+  valorUnitarioFinal Float
+  valorTotal         Float
+  gastoProduto       Float    @default(0)
+  gastoAdicionais    Float    @default(0)
+  lucroTotal         Float    @default(0)
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
+}
+
+model MovimentacaoAdicional {
+  id             String       @id @default(cuid())
+  movimentacaoId String
+  movimentacao   Movimentacao @relation(fields: [movimentacaoId], references: [id], onDelete: Cascade)
+  codigoItem     String
+  nomeItem       String
+  quantidade     Float
+  custoUnitario  Float
+  custoTotal     Float
+  criadoEm       DateTime     @default(now())
+
+  @@index([movimentacaoId])
+  @@index([codigoItem])
+}
+
+model BannerLoja {
+  id           String   @id @default(cuid())
+  titulo       String?
+  subtitulo    String?
+  imagemUrl    String
+  linkUrl      String?
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model MenuLoja {
+  id                     String    @id @default(cuid())
+  nome                   String
+  slug                   String    @unique
+  tipo                   String
+  linkUrl                String?
+  categoria              String?
+  paginaEspecial         String?
+  categoriasSelecionadas String?
+  destaque               Boolean   @default(false)
+  corDestaque            String?
+  ativo                  Boolean   @default(true)
+  ordem                  Int       @default(0)
+  dataInicio             DateTime?
+  dataFim                DateTime?
+  criadoEm               DateTime  @default(now())
+  atualizadoEm           DateTime  @updatedAt
+}
+
+model LojaCategoriaHome {
+  id           String   @id @default(cuid())
+  titulo       String
+  categoria    String
+  imagemUrl    String
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([categoria])
+  @@index([ordem])
+}
+
+model LojaSecaoHome {
+  id           String   @id @default(cuid())
+  titulo       String
+  categorias   String
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([ordem])
+}
+
+model LojaBlocoHome {
+  id           String   @id @default(cuid())
+  titulo       String
+  texto        String
+  imagemUrl    String?
+  textoBotao   String?
+  linkBotao    String?
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model LojaTextoInstitucional {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  titulo       String
+  conteudo     String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model PedidoOnline {
+  id     String @id @default(cuid())
+  codigo String @unique
+
+  origemCanal           String   @default("LOJA_STELLA")
+  codigoPedidoExterno   String?
+  statusExterno         String?
+  substatusExterno      String?
+  dadosOriginaisJson    Json?
+  clienteId             String?
+  cliente               Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  clienteCriadoCheckout Boolean  @default(false)
+
+  nomeCliente     String
+  telefoneCliente String
+  emailCliente    String?
+  documento       String?
+
+  cep         String?
+  rua         String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
+
+  subtotal Float @default(0)
+  frete    Float @default(0)
+  total    Float @default(0)
+
+  cashbackBaseValor          Float     @default(0)
+  cashbackPrevistoValor      Float     @default(0)
+  cashbackCreditadoValor     Float     @default(0)
+  cashbackCreditadoEm        DateTime?
+  cashbackStatus             String    @default("NAO_APLICAVEL")
+  cashbackPercentualAplicado Float     @default(0)
+  cashbackBloqueadoMotivo    String?
+  cashbackUsadoValor         Float     @default(0)
+
+  cupomId            String?
+  cupom              CupomLoja? @relation(fields: [cupomId], references: [id], onDelete: SetNull)
+  cupomCodigo        String?
+  cupomDescontoValor Float      @default(0)
+
+  statusPagamento     String    @default("AGUARDANDO_PAGAMENTO")
+  metodoPagamento     String?
+  gatewayPagamento    String?
+  gatewayPedidoId     String?
+  gatewayPagamentoId  String?
+  pagoEm              DateTime?
+  valorPago           Float     @default(0)
+  pagamentoObservacao String?
+
+  status       String   @default("AGUARDANDO_PAGAMENTO")
+  observacoes  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  itens           PedidoOnlineItem[]
+  envio           PedidoEnvio?
+  statusHistorico PedidoStatusHistorico[]
+  adicionais      PedidoOnlineItemAdicional[]
+
+  @@index([clienteId])
+  @@index([codigo])
+  @@index([status])
+  @@index([cashbackStatus])
+  @@index([statusPagamento])
+  @@index([gatewayPedidoId])
+  @@index([gatewayPagamentoId])
+  @@index([pagoEm])
+  @@index([origemCanal])
+  @@index([codigoPedidoExterno])
+  @@index([origemCanal, codigoPedidoExterno])
+  @@index([cupomId])
+  @@index([cupomCodigo])
+}
+
+model PedidoOnlineItem {
+  id             String       @id @default(cuid())
+  pedidoOnlineId String
+  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+
+  produtoId          String?
+  codigoInterno      String
+  nomeProduto        String
+  imagemUrl          String?
+  categoria          String
+  tamanhoAnel        String?
+  quantidade         Int
+  precoUnitario      Float
+  precoOriginal      Float?
+  descontoPercentual Float?
+  geraCashback       Boolean  @default(false)
+  cashbackBaseValor  Float    @default(0)
+  total              Float
+  criadoEm           DateTime @default(now())
+
+  adicionais PedidoOnlineItemAdicional[]
+
+  @@index([pedidoOnlineId])
+  @@index([produtoId])
+  @@index([codigoInterno])
+}
+
+model ClienteCashbackMovimentacao {
+  id        String  @id @default(cuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  tipo       String
+  status     String   @default("EFETIVADO")
+  origemTipo String
+  origemId   String
+  valor      Float
+  observacao String?
+  criadoEm   DateTime @default(now())
+
+  @@index([clienteId])
+  @@index([origemId])
+}
+
+model LojaPagina {
+  id     String  @id @default(cuid())
+  titulo String
+  slug   String  @unique
+  tipo   String  @default("GERAL")
+  ativo  Boolean @default(true)
+
+  categoriaId String?
+  categoria   CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  statusPublicacao       String  @default("PUBLICADA")
+  usarComoTemplatePadrao Boolean @default(false)
+
+  seoTitle       String?
+  seoDescription String?
+  publicadoEm    DateTime?
+
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+  blocos       LojaPaginaBloco[]
+
+  @@index([slug])
+  @@index([tipo])
+  @@index([ativo])
+  @@index([categoriaId])
+  @@index([statusPublicacao])
+  @@index([usarComoTemplatePadrao])
+}
+
+model LojaPaginaBloco {
+  id           String     @id @default(cuid())
+  paginaId     String
+  pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
+  tipo         String
+  titulo       String?
+  ativo        Boolean    @default(true)
+  ordem        Int        @default(0)
+  configJson   Json
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+
+  @@index([paginaId])
+  @@index([ordem])
+  @@index([tipo])
+  @@index([ativo])
+}
+
+model CategoriaProduto {
+  id           String  @id @default(cuid())
+  nome         String
+  slug         String  @unique
+  descricao    String?
+  imagemUrl    String?
+  ativo        Boolean @default(true)
+  exibirNoMenu Boolean @default(true)
+  ordem        Int     @default(0)
+  ordemMenu    Int     @default(0)
+
+  categoriaMaeId String?
+  categoriaMae   CategoriaProduto?  @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id], onDelete: SetNull)
+  subcategorias  CategoriaProduto[] @relation("CategoriaHierarquia")
+
+  produtos         ProdutoCategoria[]
+  paginasBuilder   LojaPagina[]              @relation("LojaPaginaCategoria")
+  opcoesAdicionais CategoriaOpcaoAdicional[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([categoriaMaeId])
+  @@index([slug])
+  @@index([ativo])
+  @@index([ordem])
+  @@index([exibirNoMenu])
+  @@index([ordemMenu])
+}
+
+model ProdutoCategoria {
+  id String @id @default(cuid())
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  categoriaId String
+  categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  principal Boolean @default(false)
+
+  criadoEm DateTime @default(now())
+
+  @@unique([produtoId, categoriaId])
+  @@index([produtoId])
+  @@index([categoriaId])
+  @@index([principal])
+}
+
+model ProdutoKitComponente {
+  id String @id @default(cuid())
+
+  kitProdutoId String
+  kitProduto   Produto @relation("KitProduto", fields: [kitProdutoId], references: [id], onDelete: Cascade)
+
+  componenteProdutoId String
+  componenteProduto   Produto @relation("ComponenteProduto", fields: [componenteProdutoId], references: [id], onDelete: Restrict)
+
+  quantidade Int @default(1)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([kitProdutoId, componenteProdutoId])
+  @@index([kitProdutoId])
+  @@index([componenteProdutoId])
+}
+
+model PedidoEnvio {
+  id String @id @default(cuid())
+
+  pedidoOnlineId String       @unique
+  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+
+  tipoEntrega    String  @default("ENTREGA")
+  transportadora String?
+  servico        String?
+  statusEnvio    String  @default("PENDENTE")
+
+  cepOrigem  String?
+  cepDestino String?
+
+  pesoGramas    Float?
+  alturaCm      Float?
+  larguraCm     Float?
+  comprimentoCm Float?
+
+  valorFrete Float @default(0)
+  prazoDias  Int?
+
+  codigoRastreio        String?
+  etiquetaUrl           String?
+  etiquetaPdfUrl        String?
+  declaracaoConteudoUrl String?
+
+  gatewayLogistico String?
+  gatewayEnvioId   String?
+
+  postadoEm  DateTime?
+  entregueEm DateTime?
+
+  observacoes String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([pedidoOnlineId])
+  @@index([tipoEntrega])
+  @@index([statusEnvio])
+  @@index([codigoRastreio])
+  @@index([transportadora])
+}
+
+model PedidoStatusHistorico {
+  id String @id @default(cuid())
+
+  pedidoOnlineId String
+  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+
+  statusAnterior String?
+  statusNovo     String
+
+  tipoEvento  String  @default("MANUAL")
+  origem      String  @default("SISTEMA")
+  usuarioNome String?
+  observacao  String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([pedidoOnlineId])
+  @@index([statusNovo])
+  @@index([tipoEvento])
+  @@index([criadoEm])
+}
+
+model LojaFormularioResposta {
+  id String @id @default(cuid())
+
+  paginaId     String?
+  paginaTitulo String?
+  paginaSlug   String?
+  paginaTipo   String?
+
+  blocoId     String?
+  blocoTipo   String?
+  blocoTitulo String?
+
+  nome     String?
+  telefone String?
+  email    String?
+  cidade   String?
+  mensagem String?
+
+  aceiteTermos    Boolean @default(false)
+  aceitaMarketing Boolean @default(false)
+
+  status            String  @default("NOVO")
+  origemUrl         String?
+  userAgent         String?
+  observacaoInterna String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([paginaId])
+  @@index([blocoId])
+  @@index([status])
+  @@index([email])
+  @@index([telefone])
+  @@index([criadoEm])
+}
+
+model CategoriaOpcaoAdicional {
+  id String @id @default(cuid())
+
+  categoriaId String
+  categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  nome      String
+  descricao String?
+
+  itemPadraoSubstituidoId String?
+  itemPadraoSubstituido   ItemAdicional? @relation("CategoriaOpcaoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id], onDelete: SetNull)
+
+  itemAdicionalConsumidoId String
+  itemAdicionalConsumido   ItemAdicional @relation("CategoriaOpcaoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id], onDelete: Restrict)
+
+  valorVenda Float @default(0)
+
+  ativo Boolean @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  pedidosItensAdicionais PedidoOnlineItemAdicional[]
+
+  @@index([categoriaId])
+  @@index([itemPadraoSubstituidoId])
+  @@index([itemAdicionalConsumidoId])
+  @@index([ativo])
+}
+
+model PedidoOnlineItemAdicional {
+  id String @id @default(cuid())
+
+  pedidoOnlineItemId String
+  pedidoOnlineItem   PedidoOnlineItem @relation(fields: [pedidoOnlineItemId], references: [id], onDelete: Cascade)
+
+  pedidoOnlineId String?
+  pedidoOnline   PedidoOnline? @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+
+  opcaoAdicionalId String?
+  opcaoAdicional   CategoriaOpcaoAdicional? @relation(fields: [opcaoAdicionalId], references: [id], onDelete: SetNull)
+
+  nome String
+
+  itemPadraoSubstituidoId String?
+  itemPadraoSubstituido   ItemAdicional? @relation("PedidoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id], onDelete: SetNull)
+
+  itemAdicionalConsumidoId String?
+  itemAdicionalConsumido   ItemAdicional? @relation("PedidoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id], onDelete: SetNull)
+
+  quantidade Int @default(1)
+
+  custoUnitario      Float @default(0)
+  valorVendaUnitario Float @default(0)
+
+  custoTotal      Float @default(0)
+  valorVendaTotal Float @default(0)
+  lucroTotal      Float @default(0)
+
+  criadoEm DateTime @default(now())
+
+  @@index([pedidoOnlineItemId])
+  @@index([pedidoOnlineId])
+  @@index([opcaoAdicionalId])
+  @@index([itemPadraoSubstituidoId])
+  @@index([itemAdicionalConsumidoId])
+}
+
+model LojaCashbackConfiguracao {
+  id String @id @default(cuid())
+
+  chave String @unique @default("PADRAO")
+
+  ativo Boolean @default(true)
+
+  percentualPrimeiraCompra   Float @default(10)
+  percentualCompraRecorrente Float @default(5)
+
+  somenteClienteCadastrado   Boolean @default(true)
+  permitirComCupom           Boolean @default(false)
+  permitirProdutoComDesconto Boolean @default(true)
+
+  diasValidade Int?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model CupomLoja {
+  id String @id @default(cuid())
+
+  codigo String  @unique
+  nome   String?
+
+  tipo  String
+  valor Float
+
+  valorMinimoPedido Float @default(0)
+
+  ativo Boolean @default(true)
+
+  dataInicio DateTime?
+  dataFim    DateTime?
+
+  limiteUsoTotal      Int?
+  limiteUsoPorCliente Int?
+
+  quantidadeUsada Int @default(0)
+
+  bloqueiaCashback Boolean @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  pedidos PedidoOnline[]
+
+  @@index([codigo])
+  @@index([ativo])
+  @@index([dataInicio])
+  @@index([dataFim])
+  @@index([bloqueiaCashback])
+}

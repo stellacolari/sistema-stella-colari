@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --brand-blue: #2e7b99;
+  --brand-blue-dark: #245f76;
+  --brand-blue-soft: #e7f2f6;
+  --brand-blue-border: #b8d8e4;
+
+  --font-primary: var(--font-outfit), Arial, Helvetica, sans-serif;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-primary);
+}
+
+::selection {
+  background: var(--brand-blue);
+  color: #ffffff;
+}
+
+/* Utilitários globais da marca */
+.brand-text {
+  color: var(--brand-blue);
+}
+
+.brand-bg {
+  background: var(--brand-blue);
+  color: #ffffff;
+}
+
+.brand-bg-soft {
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue-dark);
+}
+
+.brand-border {
+  border-color: var(--brand-blue-border);
+}
+
+.brand-ring {
+  --tw-ring-color: var(--brand-blue-border);
+}
+
+.brand-button {
+  background: var(--brand-blue);
+  color: #ffffff;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.brand-button:hover {
+  background: var(--brand-blue-dark);
+}
+
+.brand-button-outline {
+  border: 1px solid var(--brand-blue-border);
+  color: var(--brand-blue-dark);
+  background: #ffffff;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.brand-button-outline:hover {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue-dark);
+}
+
+.brand-badge {
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue-dark);
+  border: 1px solid var(--brand-blue-border);
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: var(--font-primary);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--brand-blue) !important;
+}
+/* Ajustes de peso visual para a loja pública */
+.loja-publica h2 {
+  font-weight: 600;
+}
+
+.loja-publica header nav a,
+.loja-publica footer nav a {
+  font-weight: 600;
+}
+
+.loja-publica .brand-button,
+.loja-publica .brand-button-outline {
+  font-weight: 600;
+}
+
+.loja-publica .text-3xl.font-light,
+.loja-publica .text-2xl.font-light,
+.loja-publica .text-xl.font-light {
+  font-weight: 600;
+}
+
+.loja-publica .text-sm.font-light.tracking-wide,
+.loja-publica .text-sm.font-light.text-slate-600,
+.loja-publica .text-sm.font-light.text-slate-700 {
+  font-weight: 500;
+}
+
+.loja-publica .line-through {
+  font-weight: 400;
+}
+/* Menu público da loja */
+.loja-publica header nav a {
+  text-transform: none !important;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+.loja-publica header nav a.uppercase {
+  text-transform: none !important;
+}
+.loja-publica h2 {
+  font-family: var(--font-primary);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+/* Espaçamento de letras na loja pública */
+.loja-publica h1,
+.loja-publica h2 {
+  letter-spacing: 0.05em;
+}
+
+.loja-publica header nav a {
+  letter-spacing: 0.18em !important;
+}
+
+.loja-publica .brand-button,
+.loja-publica .brand-button-outline,
+.loja-publica .brand-badge {
+  letter-spacing: 0.05em;
+}
