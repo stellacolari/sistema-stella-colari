@@ -22,14 +22,6 @@ function gerarCodigoInterno(numero: number) {
   return `S${String(numero).padStart(6, "0")}`;
 }
 
-function nomeSeguroArquivo(nome: string) {
-  return nome
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9.-]/g, "-")
-    .toLowerCase();
-}
-
 function numeroFormulario(value: FormDataEntryValue | string | null) {
   const texto = String(value ?? "")
     .trim()
@@ -317,16 +309,32 @@ async function calcularPrecoVendaFinal({
   return arredondarMoeda(custo * margem + custoAdicionais);
 }
 
-async function salvarImagemProduto(
-  arquivo: File,
+async function salvarImagemBase64(
+  dataUrl: string,
   codigoInterno: string,
   sufixo: string
 ): Promise<string> {
-  const extensaoOriginal = arquivo.name.split(".").pop()?.toLowerCase();
-  const extensaoSegura =
-    extensaoOriginal && ["jpg", "jpeg", "png", "webp"].includes(extensaoOriginal)
-      ? extensaoOriginal
-      : "jpg";
+  if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+    throw new Error("Imagem inválida.");
+  }
+
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+  if (!match) {
+    throw new Error("Formato da imagem inválido.");
+  }
+
+  const mimeType = match[1];
+  const base64 = match[2];
+
+  const extensaoPorMime: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+
+  const extensao = extensaoPorMime[mimeType] || "jpg";
 
   const codigoSeguro = codigoInterno
     .toLowerCase()
@@ -340,17 +348,20 @@ async function salvarImagemProduto(
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  const nomeArquivo = `produtos/${codigoSeguro}-${sufixoSeguro}-${Date.now()}.${extensaoSegura}`;
+  const nomeArquivo = `produtos/${codigoSeguro}-${sufixoSeguro}-${Date.now()}.${extensao}`;
 
-  const blob = await put(nomeArquivo, arquivo, {
+  const buffer = Buffer.from(base64, "base64");
+
+  const blob = await put(nomeArquivo, buffer, {
     access: "public",
+    contentType: mimeType,
     addRandomSuffix: true,
   });
 
   return blob.url;
 }
 
-async function removerImagemProduto(imagemUrl?: string | null) {
+async function removerImagemAntiga(imagemUrl?: string | null) {
   if (!imagemUrl) {
     return;
   }
@@ -421,28 +432,26 @@ async function sincronizarGaleriaProduto({
 
     if (isImagemNovaBase64(item.dataUrl)) {
       const imagemUrl = await salvarImagemBase64(
-        item.dataUrl || null,
+        item.dataUrl!,
         codigoInterno,
         `galeria-${index + 1}`
       );
 
-      if (imagemUrl) {
-        const criada = await prisma.produtoImagem.create({
-          data: {
-            produtoId,
-            imagemUrl,
-            ordem: index,
-          },
-        });
+      const criada = await prisma.produtoImagem.create({
+        data: {
+          produtoId,
+          imagemUrl,
+          ordem: index,
+        },
+      });
 
-        idsMantidos.add(criada.id);
+      idsMantidos.add(criada.id);
 
-        imagensFinais.push({
-          id: criada.id,
-          imagemUrl: criada.imagemUrl,
-          ordem: criada.ordem,
-        });
-      }
+      imagensFinais.push({
+        id: criada.id,
+        imagemUrl: criada.imagemUrl,
+        ordem: criada.ordem,
+      });
 
       continue;
     }
