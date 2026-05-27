@@ -43,6 +43,20 @@ export type ProdutoLojaOpcaoAdicional = {
   custoUnitario: number;
 };
 
+export type ProdutoLojaVariacao = {
+  id: string;
+  nome: string;
+  obrigatoria: boolean;
+  opcoes: {
+    id: string;
+    nome: string;
+    imagemUrl?: string | null;
+    precoAdicional?: number;
+    custoAdicional?: number;
+    quantidadeAtual: number;
+  }[];
+};
+
 export type ProdutoLojaDetalhe = {
   id: string;
   codigoInterno: string;
@@ -61,19 +75,7 @@ export type ProdutoLojaDetalhe = {
     tamanhoAnel: string;
     quantidadeAtual: number;
   }[];
-  variacoes?: {
-    id: string;
-    nome: string;
-    obrigatoria: boolean;
-    opcoes: {
-      id: string;
-      nome: string;
-      imagemUrl?: string | null;
-      precoAdicional?: number;
-      custoAdicional?: number;
-      quantidadeAtual: number;
-    }[];
-  }[];
+  variacoes?: ProdutoLojaVariacao[];
   garantia: {
     titulo: string;
     conteudo: string;
@@ -171,6 +173,19 @@ function percentualDesconto(produto: {
   );
 }
 
+function getVariacaoPrincipalProduto(produto: ProdutoLojaDetalhe) {
+  return (
+    produto.variacoes?.find(
+      (variacao) =>
+        Array.isArray(variacao.opcoes) && variacao.opcoes.length > 0
+    ) || null
+  );
+}
+
+function produtoTemVariacao(produto: ProdutoLojaDetalhe) {
+  return Boolean(getVariacaoPrincipalProduto(produto));
+}
+
 function getCarrinhoAtual(): CarrinhoItem[] {
   if (typeof window === "undefined") {
     return [];
@@ -198,17 +213,7 @@ function getCarrinhoAtual(): CarrinhoItem[] {
 function salvarCarrinho(itens: CarrinhoItem[]) {
   window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(itens));
 }
-function getVariacaoPrincipalProduto(produto: ProdutoLojaDetalhe) {
-  return (
-    produto.variacoes?.find(
-      (variacao) => Array.isArray(variacao.opcoes) && variacao.opcoes.length > 0
-    ) || null
-  );
-}
 
-function produtoTemVariacao(produto: ProdutoLojaDetalhe) {
-  return Boolean(getVariacaoPrincipalProduto(produto));
-}
 function getItemKey(item: {
   produtoId: string;
   tamanhoAnel: string | null;
@@ -428,6 +433,8 @@ export default function ProdutoLojaClient({
 }) {
   const router = useRouter();
   const opcoesAdicionais = produto.opcoesAdicionais || [];
+  const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
+  const temVariacao = produtoTemVariacao(produto);
 
   const galeriaExibicao = useMemo(() => {
     const imagens = (produto.imagens || []).filter(Boolean);
@@ -447,15 +454,14 @@ export default function ProdutoLojaClient({
 
   const [indiceImagemSelecionada, setIndiceImagemSelecionada] = useState(0);
   const [imagemVariacaoSelecionada, setImagemVariacaoSelecionada] =
-  useState<string>("");
-const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
-
-const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
-  variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)?.nome ??
-    produto.tamanhosDisponiveis.find((tamanho) => tamanho.quantidadeAtual > 0)
-      ?.tamanhoAnel ??
-    ""
-);
+    useState("");
+  const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
+    variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
+      ?.nome ??
+      produto.tamanhosDisponiveis.find((tamanho) => tamanho.quantidadeAtual > 0)
+        ?.tamanhoAnel ??
+      ""
+  );
   const [quantidade, setQuantidade] = useState(1);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
@@ -467,18 +473,18 @@ const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
   const [opcaoAdicionalSelecionadaId, setOpcaoAdicionalSelecionadaId] =
     useState<string>("");
 
-const temVariacao = produtoTemVariacao(produto);
-const produtoTemTamanho = temVariacao || produto.tamanhosDisponiveis.length > 0;
-const semEstoque = produto.estoqueTotal <= 0;
+  const produtoTemTamanho =
+    temVariacao || produto.tamanhosDisponiveis.length > 0;
+  const semEstoque = produto.estoqueTotal <= 0;
   const temDesconto = produtoTemDesconto(produto);
   const desconto = percentualDesconto(produto);
   const precoFinal = precoFinalProduto(produto);
 
-const imagemSelecionada =
-  imagemVariacaoSelecionada ||
-  galeriaExibicao[indiceImagemSelecionada] ||
-  galeriaExibicao[0] ||
-  "";
+  const imagemSelecionada =
+    imagemVariacaoSelecionada ||
+    galeriaExibicao[indiceImagemSelecionada] ||
+    galeriaExibicao[0] ||
+    "";
 
   const opcaoAdicionalSelecionada = useMemo(() => {
     if (!opcaoAdicionalSelecionadaId) {
@@ -501,32 +507,32 @@ const imagemSelecionada =
   const totalComAdicional = totalProdutoSelecionado + totalAdicionalSelecionado;
   const cashbackValor = totalComAdicional * CASHBACK_PERCENTUAL;
 
-const estoqueDisponivel = useMemo(() => {
-  if (temVariacao) {
+  const estoqueDisponivel = useMemo(() => {
+    if (temVariacao) {
+      return (
+        variacaoPrincipal?.opcoes.find(
+          (opcao) => opcao.nome === tamanhoSelecionado
+        )?.quantidadeAtual ?? 0
+      );
+    }
+
+    if (!produtoTemTamanho) {
+      return produto.estoqueTotal;
+    }
+
     return (
-      variacaoPrincipal?.opcoes.find(
-        (opcao) => opcao.nome === tamanhoSelecionado
+      produto.tamanhosDisponiveis.find(
+        (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado
       )?.quantidadeAtual ?? 0
     );
-  }
-
-  if (!produtoTemTamanho) {
-    return produto.estoqueTotal;
-  }
-
-  return (
-    produto.tamanhosDisponiveis.find(
-      (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado
-    )?.quantidadeAtual ?? 0
-  );
-}, [
-  produto.estoqueTotal,
-  produto.tamanhosDisponiveis,
-  produtoTemTamanho,
-  tamanhoSelecionado,
-  temVariacao,
-  variacaoPrincipal,
-]);
+  }, [
+    produto.estoqueTotal,
+    produto.tamanhosDisponiveis,
+    produtoTemTamanho,
+    tamanhoSelecionado,
+    temVariacao,
+    variacaoPrincipal,
+  ]);
 
   const menusPublicos: MenuPublicoItem[] = useMemo(
     () =>
@@ -587,6 +593,7 @@ const estoqueDisponivel = useMemo(() => {
       return;
     }
 
+    setImagemVariacaoSelecionada("");
     setIndiceImagemSelecionada(index);
   }
 
@@ -595,6 +602,7 @@ const estoqueDisponivel = useMemo(() => {
       return;
     }
 
+    setImagemVariacaoSelecionada("");
     setIndiceImagemSelecionada((atual) =>
       atual === 0 ? galeriaExibicao.length - 1 : atual - 1
     );
@@ -605,6 +613,7 @@ const estoqueDisponivel = useMemo(() => {
       return;
     }
 
+    setImagemVariacaoSelecionada("");
     setIndiceImagemSelecionada((atual) =>
       atual === galeriaExibicao.length - 1 ? 0 : atual + 1
     );
@@ -652,14 +661,14 @@ const estoqueDisponivel = useMemo(() => {
       return;
     }
 
-if (produtoTemTamanho && !tamanhoSelecionado) {
-  setErro(
-    temVariacao
-      ? `Selecione ${variacaoPrincipal?.nome.toLowerCase() || "a variação"}.`
-      : "Selecione uma opção."
-  );
-  return;
-}
+    if (produtoTemTamanho && !tamanhoSelecionado) {
+      setErro(
+        temVariacao
+          ? `Selecione ${variacaoPrincipal?.nome.toLowerCase() || "a variação"}.`
+          : "Selecione uma opção."
+      );
+      return;
+    }
 
     if (quantidade <= 0) {
       setErro("Informe uma quantidade válida.");
@@ -789,6 +798,7 @@ if (produtoTemTamanho && !tamanhoSelecionado) {
                       type="button"
                       onClick={() => irParaImagem(index)}
                       className={`h-[84px] w-[84px] overflow-hidden bg-[#f7f7f7] transition ${
+                        !imagemVariacaoSelecionada &&
                         indiceImagemSelecionada === index
                           ? "ring-1 ring-slate-900"
                           : "ring-1 ring-slate-200 hover:ring-slate-400"
@@ -806,10 +816,10 @@ if (produtoTemTamanho && !tamanhoSelecionado) {
             )}
 
             <div className="overflow-hidden bg-[#f7f7f7]">
-              {galeriaExibicao.length > 0 ? (
+              {imagemSelecionada ? (
                 <>
                   <div className="relative aspect-square overflow-hidden">
-                    {possuiMaisDeUmaImagem ? (
+                    {possuiMaisDeUmaImagem && !imagemVariacaoSelecionada ? (
                       <>
                         <div
                           className="flex h-full transition-transform duration-500 ease-out"
@@ -888,6 +898,7 @@ if (produtoTemTamanho && !tamanhoSelecionado) {
                           type="button"
                           onClick={() => irParaImagem(index)}
                           className={`aspect-square overflow-hidden bg-white transition ${
+                            !imagemVariacaoSelecionada &&
                             indiceImagemSelecionada === index
                               ? "ring-1 ring-slate-900"
                               : "ring-1 ring-slate-200"
@@ -983,91 +994,159 @@ if (produtoTemTamanho && !tamanhoSelecionado) {
             <div className="mt-5 border-t border-slate-200 pt-4">
               {produtoTemTamanho ? (
                 <div>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-950">
-                      Tamanho
-                    </p>
+                  {temVariacao && variacaoPrincipal ? (
+                    <div>
+                      <div className="mb-4 flex items-end justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">
+                            Escolha {variacaoPrincipal.nome.toLowerCase()}
+                          </p>
 
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 text-xs font-medium text-slate-500 underline underline-offset-4 hover:text-slate-950"
-                    >
-                      <Ruler className="h-4 w-4" />
-                      Guia de medida
-                    </button>
-                  </div>
+                          <p className="mt-1 text-xs font-light text-slate-500">
+                            Selecione uma opção disponível para continuar.
+                          </p>
+                        </div>
 
-                  <div className="grid grid-cols-4 gap-2">
-{temVariacao && variacaoPrincipal ? (
-  <>
-    <p className="mb-3 text-sm font-light text-slate-600">
-      Escolha {variacaoPrincipal.nome.toLowerCase()}:
-    </p>
+                        {variacaoPrincipal.opcoes.length > 4 ? (
+                          <p className="hidden text-xs font-light text-slate-400 sm:block">
+                            Arraste para ver mais
+                          </p>
+                        ) : null}
+                      </div>
 
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {variacaoPrincipal.opcoes.map((opcao) => {
-        const selecionado = tamanhoSelecionado === opcao.nome;
-        const semSaldo = opcao.quantidadeAtual <= 0;
+                      <div className="-mx-1 overflow-x-auto pb-3 [scrollbar-width:thin]">
+                        <div className="flex min-w-max gap-3 px-1">
+                          {variacaoPrincipal.opcoes.map((opcao) => {
+                            const selecionado =
+                              tamanhoSelecionado === opcao.nome;
+                            const semSaldo = opcao.quantidadeAtual <= 0;
 
-        return (
-          <button
-            key={opcao.id}
-            type="button"
-            disabled={semSaldo}
-            onClick={() => {
-              setTamanhoSelecionado(opcao.nome);
-              setErro("");
+                            return (
+                              <button
+                                key={opcao.id}
+                                type="button"
+                                disabled={semSaldo}
+                                onClick={() => {
+                                  setTamanhoSelecionado(opcao.nome);
+                                  setQuantidade(1);
+                                  setErro("");
+                                  setMensagem("");
 
-              if (opcao.imagemUrl) {
-                setImagemVariacaoSelecionada(opcao.imagemUrl);
-              } else {
-                setImagemVariacaoSelecionada("");
-              }
-            }}
-            className={`border px-3 py-3 text-sm font-medium transition ${
-              selecionado
-                ? "brand-border brand-bg-soft brand-text"
-                : "border-slate-300 text-slate-700 hover:border-[var(--brand-blue)]"
-            } ${semSaldo ? "cursor-not-allowed opacity-40" : ""}`}
-          >
-            {opcao.nome}
-          </button>
-        );
-      })}
-    </div>
-  </>
-) : (
-  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-    {produto.tamanhosDisponiveis.map((tamanho) => {
-      const selecionado = tamanhoSelecionado === tamanho.tamanhoAnel;
-      const semSaldo = tamanho.quantidadeAtual <= 0;
+                                  if (opcao.imagemUrl) {
+                                    setImagemVariacaoSelecionada(
+                                      opcao.imagemUrl
+                                    );
+                                  } else {
+                                    setImagemVariacaoSelecionada("");
+                                  }
+                                }}
+                                className={`group w-24 shrink-0 text-center transition ${
+                                  semSaldo
+                                    ? "cursor-not-allowed opacity-40"
+                                    : ""
+                                }`}
+                              >
+                                <div
+                                  className={`relative flex h-24 w-24 items-center justify-center overflow-hidden border bg-white transition ${
+                                    selecionado
+                                      ? "brand-border ring-2 ring-[var(--brand-blue)] ring-offset-2"
+                                      : "border-slate-200 group-hover:border-[var(--brand-blue)]"
+                                  }`}
+                                >
+                                  {opcao.imagemUrl ? (
+                                    <img
+                                      src={opcao.imagemUrl}
+                                      alt={opcao.nome}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-lg font-medium text-slate-400">
+                                      {opcao.nome.slice(0, 2)}
+                                    </span>
+                                  )}
 
-      return (
-        <button
-          key={tamanho.tamanhoAnel}
-          type="button"
-          disabled={semSaldo}
-          onClick={() => {
-            setTamanhoSelecionado(tamanho.tamanhoAnel);
-            setErro("");
-          }}
-          className={`border px-3 py-3 text-sm font-medium transition ${
-            selecionado
-              ? "brand-border brand-bg-soft brand-text"
-              : "border-slate-300 text-slate-700 hover:border-[var(--brand-blue)]"
-          } ${semSaldo ? "cursor-not-allowed opacity-40" : ""}`}
-        >
-          {tamanho.tamanhoAnel}
-        </button>
-      );
-    })}
-  </div>
-)}
-                  </div>
+                                  {semSaldo ? (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 px-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                                      Indisp.
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                <span
+                                  className={`mt-2 block truncate text-xs ${
+                                    selecionado
+                                      ? "font-semibold brand-text"
+                                      : "text-slate-600"
+                                  }`}
+                                  title={opcao.nome}
+                                >
+                                  {opcao.nome}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-slate-950">
+                          Tamanho
+                        </p>
+
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 text-xs font-medium text-slate-500 underline underline-offset-4 hover:text-slate-950"
+                        >
+                          <Ruler className="h-4 w-4" />
+                          Guia de medida
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        {produto.tamanhosDisponiveis.map((tamanho) => {
+                          const habilitado = tamanho.quantidadeAtual > 0;
+                          const selecionado =
+                            tamanhoSelecionado === tamanho.tamanhoAnel;
+
+                          return (
+                            <button
+                              key={tamanho.tamanhoAnel}
+                              type="button"
+                              disabled={!habilitado}
+                              onClick={() => {
+                                setTamanhoSelecionado(tamanho.tamanhoAnel);
+                                setQuantidade(1);
+                                setErro("");
+                                setMensagem("");
+                                setImagemVariacaoSelecionada("");
+                              }}
+                              className={`relative flex h-12 items-center justify-center border text-sm font-medium transition ${
+                                selecionado
+                                  ? "border-slate-950 bg-white text-slate-950"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-800"
+                              } ${
+                                !habilitado
+                                  ? "cursor-not-allowed bg-slate-50 text-slate-300 hover:border-slate-200"
+                                  : ""
+                              }`}
+                            >
+                              {tamanho.tamanhoAnel}
+
+                              {!habilitado && (
+                                <span className="absolute left-1/2 top-1/2 h-px w-[135%] -translate-x-1/2 -translate-y-1/2 rotate-[28deg] bg-slate-300" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-light text-slate-600">
-                  Produto sem variação de tamanho.
+                  Produto sem variação.
                 </div>
               )}
             </div>
@@ -1076,7 +1155,8 @@ if (produtoTemTamanho && !tamanhoSelecionado) {
               <div className="mt-5 border-t border-slate-200 pt-4">
                 <div className="space-y-2">
                   {opcoesAdicionais.map((opcao) => {
-                    const selecionada = opcaoAdicionalSelecionadaId === opcao.id;
+                    const selecionada =
+                      opcaoAdicionalSelecionadaId === opcao.id;
 
                     return (
                       <label
