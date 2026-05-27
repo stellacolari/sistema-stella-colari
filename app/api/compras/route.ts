@@ -94,7 +94,9 @@ function calcularRateioKit(produto: ProdutoComKit, valorTotalFinalItem: number) 
   const componentes = produto.componentesDoKit;
 
   const pesos = componentes.map((componente) => {
-    const custoBaseComponente = Number(componente.componenteProduto.custoBase || 0);
+    const custoBaseComponente = Number(
+      componente.componenteProduto.custoBase || 0
+    );
 
     return {
       componente,
@@ -120,7 +122,8 @@ function calcularRateioKit(produto: ProdutoComKit, valorTotalFinalItem: number) 
     componente,
     valorRateado:
       quantidadeTotalComponentes > 0
-        ? valorTotalFinalItem * (componente.quantidade / quantidadeTotalComponentes)
+        ? valorTotalFinalItem *
+          (componente.quantidade / quantidadeTotalComponentes)
         : 0,
   }));
 }

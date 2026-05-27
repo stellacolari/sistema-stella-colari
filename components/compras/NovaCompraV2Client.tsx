@@ -46,14 +46,6 @@ function moeda(valor: number) {
   }).format(valor);
 }
 
-function normalizarTexto(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function getVariacaoPrincipal(item: { variacoes?: ProdutoVariacaoCompra[] }) {
   return (
     item.variacoes?.find(
@@ -73,8 +65,8 @@ function normalizarOpcaoVariacao(valor: string) {
   return valor.trim();
 }
 
-function gerarItemKey(item: ItemBusca, tamanhoAnel = "") {
-  return `${item.tipo}-${item.id}-${tamanhoAnel || "UNICO"}-${Date.now()}-${Math.random()
+function gerarItemKey(item: ItemBusca, variacaoOpcao = "") {
+  return `${item.tipo}-${item.id}-${variacaoOpcao || "UNICO"}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
 }
@@ -128,9 +120,7 @@ export default function NovaCompraV2Client({
       const bateTipo = filtroTipo === "todos" ? true : item.tipo === filtroTipo;
 
       const bateFornecedor =
-        fornecedor.trim() === ""
-          ? true
-          : item.fornecedorPadrao === fornecedor;
+        fornecedor.trim() === "" ? true : item.fornecedorPadrao === fornecedor;
 
       const bateBusca =
         termo === ""
@@ -207,9 +197,9 @@ export default function NovaCompraV2Client({
       setFornecedor(fornecedorItem);
     }
 
-    const ehAnel = produtoTemVariacao(item);
+    const temVariacao = produtoTemVariacao(item);
 
-    if (ehAnel) {
+    if (temVariacao) {
       setItensPedido((atual) => [
         ...atual,
         {
@@ -261,7 +251,7 @@ export default function NovaCompraV2Client({
     );
   }
 
-  function alterarTamanhoAnel(itemKey: string, tamanho: string) {
+  function alterarVariacao(itemKey: string, opcao: string) {
     setErro("");
 
     setItensPedido((atual) =>
@@ -269,7 +259,7 @@ export default function NovaCompraV2Client({
         item.itemKey === itemKey
           ? {
               ...item,
-              tamanhoAnel: tamanho,
+              tamanhoAnel: opcao,
             }
           : item
       )
@@ -321,13 +311,16 @@ export default function NovaCompraV2Client({
         return;
       }
 
-      const anelSemTamanho = itensPedido.find(
+      const itemSemVariacao = itensPedido.find(
         (item) => produtoTemVariacao(item) && !normalizarOpcaoVariacao(item.tamanhoAnel)
       );
 
-      if (anelSemTamanho) {
+      if (itemSemVariacao) {
+        const nomeVariacao =
+          getVariacaoPrincipal(itemSemVariacao)?.nome || "variação";
+
         setErro(
-          `Informe a variação para o produto ${anelSemTamanho.nome}.`
+          `Informe ${nomeVariacao} para o produto ${itemSemVariacao.nome}.`
         );
         return;
       }
@@ -588,7 +581,8 @@ export default function NovaCompraV2Client({
                     {itensPedido.map((item) => {
                       const unitFinal = valorUnitarioFinal(item);
                       const totalLinha = unitFinal * item.quantidade;
-                      const ehAnel = produtoTemVariacao(item);
+                      const temVariacao = produtoTemVariacao(item);
+                      const variacaoPrincipal = getVariacaoPrincipal(item);
 
                       return (
                         <tr key={item.itemKey} className="text-sm text-slate-700">
@@ -606,33 +600,45 @@ export default function NovaCompraV2Client({
                               </span>
                             </div>
                           </td>
+
                           <td className="px-6 py-4">
-                            {ehAnel ? (
+                            {temVariacao ? (
                               <div className="min-w-[180px]">
                                 <select
                                   value={item.tamanhoAnel}
                                   onChange={(event) =>
-                                    alterarTamanhoAnel(item.itemKey, event.target.value)
+                                    alterarVariacao(
+                                      item.itemKey,
+                                      event.target.value
+                                    )
                                   }
                                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                                 >
                                   <option value="">
-                                    Selecione {getVariacaoPrincipal(item)?.nome || "a opção"}
+                                    Selecione{" "}
+                                    {variacaoPrincipal?.nome || "a opção"}
                                   </option>
 
-                                  {(getVariacaoPrincipal(item)?.opcoes || []).map((opcao) => (
-                                    <option key={opcao.id} value={opcao.nome}>
-                                      {opcao.nome}
-                                    </option>
-                                  ))}
+                                  {(variacaoPrincipal?.opcoes || []).map(
+                                    (opcao) => (
+                                      <option
+                                        key={opcao.id}
+                                        value={opcao.nome}
+                                      >
+                                        {opcao.nome}
+                                      </option>
+                                    )
+                                  )}
                                 </select>
 
                                 <p className="mt-1 text-[11px] text-slate-400">
-                                  {getVariacaoPrincipal(item)?.nome || "Variação"}
+                                  {variacaoPrincipal?.nome || "Variação"}
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-slate-400">Sem variação</span>
+                              <span className="text-slate-400">
+                                Sem variação
+                              </span>
                             )}
                           </td>
 
