@@ -46,7 +46,7 @@ export default async function EditarProdutoPage({
               criadoEm: "asc",
             },
           },
-                    variacoes: {
+          variacoes: {
             orderBy: {
               ordem: "asc",
             },
@@ -161,6 +161,7 @@ export default async function EditarProdutoPage({
     componenteProdutoId: componente.componenteProdutoId,
     quantidade: componente.quantidade,
   }));
+
   const variacoesIniciais = produto.variacoes.map((variacao) => ({
     id: variacao.id,
     nome: variacao.nome,
@@ -175,6 +176,7 @@ export default async function EditarProdutoPage({
       ordem: Number(opcao.ordem || 0),
     })),
   }));
+
   const produtosKitSerializados = produtosDisponiveisKit.map((produtoKit) => ({
     ...produtoKit,
     custoBase: Number(produtoKit.custoBase || 0),

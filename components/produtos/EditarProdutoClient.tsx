@@ -671,14 +671,20 @@ export default function EditarProdutoClient({
           </AccordionSection>
 
           <AccordionSection
-            title="Imagens do produto"
-            description="A imagem 1 será a principal e a imagem 2 será usada no hover."
-            defaultOpen
+            title="Variações do produto"
+            description="Configure opções como tamanho, material, cor ou modelo."
           >
             <VariacoesProdutoInput
               name="variacoesProduto"
               variacoesIniciais={variacoesIniciais}
             />
+          </AccordionSection>
+
+          <AccordionSection
+            title="Imagens do produto"
+            description="A imagem 1 será a principal e a imagem 2 será usada no hover."
+            defaultOpen
+          >
             <ProdutoGaleriaInput
               name="galeriaProduto"
               imagensIniciais={imagensIniciais}
