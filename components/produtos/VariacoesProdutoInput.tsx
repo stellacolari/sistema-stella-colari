@@ -303,11 +303,11 @@ export default function VariacoesProdutoInput({
                 const enviandoImagem = uploadingIndex === index;
 
                 return (
-                  <div key={index} className="grid gap-4 px-4 py-4">
-                    <div className="grid gap-4 xl:grid-cols-[minmax(260px,1.5fr)_160px_130px_130px_44px]">
+                  <div key={index} className="space-y-4 px-4 py-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(280px,1fr)_150px_150px_44px]">
                       <div>
                         <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                        Nome da opção
+                          Opção
                         </label>
 
                         <input
@@ -315,49 +315,9 @@ export default function VariacoesProdutoInput({
                           onChange={(event) =>
                             atualizarOpcao(index, "nome", event.target.value)
                           }
-                          placeholder="Ex: 16, Prata, Azul, Grande"
+                          placeholder="Ex: 16, Prata, Azul, Bolsa Grande"
                           className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                         />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                          Imagem
-                        </label>
-
-                        <input
-                          ref={(element) => {
-                            fileInputRefs.current[index] = element;
-                          }}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(event) =>
-                            enviarImagemOpcao(
-                              index,
-                              event.target.files?.[0] || null
-                            )
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => fileInputRefs.current[index]?.click()}
-                          disabled={enviandoImagem}
-                          className="flex h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {enviandoImagem ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Enviando
-                            </>
-                          ) : (
-                            <>
-                              <ImagePlus className="h-4 w-4" />
-                              {possuiImagem ? "Trocar" : "Adicionar"}
-                            </>
-                          )}
-                        </button>
                       </div>
 
                       <div>
@@ -410,39 +370,92 @@ export default function VariacoesProdutoInput({
                       </div>
                     </div>
 
-                    {possuiImagem ? (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <div className="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                          {possuiImagem ? (
                             <ImageBox
                               src={opcao.imagemUrl}
                               alt={opcao.nome || "Imagem da opção"}
                             />
-                          </div>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-slate-300">
+                              <ImagePlus className="h-7 w-7" />
+                            </div>
+                          )}
+                        </div>
 
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                              Imagem vinculada
-                            </p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">
+                            Imagem da opção
+                          </p>
 
-                            <p className="mt-1 truncate text-xs text-slate-500">
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            Opcional. Use quando a opção muda visualmente o
+                            produto, como cor, material ou acabamento.
+                          </p>
+
+                          {possuiImagem ? (
+                            <p className="mt-2 truncate text-xs text-slate-400">
                               {opcao.imagemUrl}
                             </p>
-                          </div>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 md:justify-end">
+                          <input
+                            ref={(element) => {
+                              fileInputRefs.current[index] = element;
+                            }}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) =>
+                              enviarImagemOpcao(
+                                index,
+                                event.target.files?.[0] || null
+                              )
+                            }
+                          />
 
                           <button
                             type="button"
                             onClick={() =>
-                              atualizarOpcao(index, "imagemUrl", "")
+                              fileInputRefs.current[index]?.click()
                             }
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                            disabled={enviandoImagem}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            <X className="h-3.5 w-3.5" />
-                            Remover imagem
+                            {enviandoImagem ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Enviando
+                              </>
+                            ) : (
+                              <>
+                                <ImagePlus className="h-4 w-4" />
+                                {possuiImagem
+                                  ? "Trocar imagem"
+                                  : "Adicionar imagem"}
+                              </>
+                            )}
                           </button>
+
+                          {possuiImagem ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                atualizarOpcao(index, "imagemUrl", "")
+                              }
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+                            >
+                              <X className="h-4 w-4" />
+                              Remover
+                            </button>
+                          ) : null}
                         </div>
                       </div>
-                    ) : null}
+                    </div>
                   </div>
                 );
               })}
