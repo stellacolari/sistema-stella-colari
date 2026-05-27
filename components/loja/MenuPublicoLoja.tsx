@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
 import {
   ChevronRight,
-  MessageCircle,
   Menu,
   Search,
   ShoppingBag,
@@ -66,7 +65,9 @@ function normalizarTexto(value: string | null | undefined) {
     .trim();
 }
 
-function ordenarCategorias(items: CategoriaMenuComFilhos[]): CategoriaMenuComFilhos[] {
+function ordenarCategorias(
+  items: CategoriaMenuComFilhos[]
+): CategoriaMenuComFilhos[] {
   return [...items]
     .sort((a, b) => {
       const ordemA = Number(a.ordemMenu ?? 0);
@@ -116,18 +117,22 @@ function LogoLoja() {
   const [logoErro, setLogoErro] = useState(false);
 
   return (
-    <Link href="/loja" className="flex shrink-0 items-center">
+    <Link
+      href="/loja"
+      className="flex min-w-0 max-w-[118px] shrink items-center justify-center sm:max-w-[150px] md:max-w-[180px]"
+      aria-label="Ir para a loja"
+    >
       {!logoErro && (
         <img
           src={LOGO_URL}
           alt="Stella"
           onError={() => setLogoErro(true)}
-          className="h-12 w-auto object-contain sm:h-9"
+          className="block h-8 max-h-8 w-auto max-w-full object-contain sm:h-9 sm:max-h-9"
         />
       )}
 
       {logoErro && (
-        <div className="flex h-12 items-center brand-bg px-5 text-base font-semibold tracking-[0.22em] sm:h-9">
+        <div className="flex h-8 max-w-full items-center truncate brand-bg px-3 text-xs font-semibold tracking-[0.18em] text-white sm:h-9 sm:px-4 sm:text-sm">
           STELLA
         </div>
       )}
@@ -293,17 +298,17 @@ export default function MenuPublicoLoja({
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-        <div className="brand-bg px-4 py-1.5 text-center text-[13px] font-semibold uppercase tracking-[0.28em] text-white">
+        <div className="brand-bg px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white sm:text-[13px] sm:tracking-[0.28em]">
           10% de cashback na primeira compra
         </div>
 
-        <div className="relative mx-auto flex max-w-7xl items-center justify-center px-5 py-4 sm:px-6 lg:px-8">
-          <div className="absolute left-5 flex items-center gap-2 sm:left-6 lg:left-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-[88px_minmax(0,1fr)_88px] items-center gap-2 px-4 py-3 sm:grid-cols-[160px_minmax(0,1fr)_160px] sm:px-6 sm:py-4 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-8">
+          <div className="flex min-w-0 items-center justify-start gap-1 sm:gap-2">
             <button
               type="button"
               onClick={abrirMenu}
               aria-label="Abrir menu"
-              className="inline-flex h-11 items-center justify-center gap-2 bg-white px-0 text-xs font-light uppercase tracking-[0.14em] text-slate-900 transition hover:text-[var(--brand-blue)]"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 bg-white text-xs font-light uppercase tracking-[0.14em] text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11"
             >
               <Menu className="h-5 w-5" />
               <span className="hidden sm:inline">Menu</span>
@@ -314,7 +319,7 @@ export default function MenuPublicoLoja({
                 type="button"
                 onClick={buscaAberta ? fecharBusca : abrirBusca}
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
-                className="inline-flex h-11 w-11 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)]"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-11"
               >
                 {buscaAberta ? (
                   <X className="h-5 w-5" />
@@ -325,9 +330,11 @@ export default function MenuPublicoLoja({
             )}
           </div>
 
-          <LogoLoja />
+          <div className="flex min-w-0 items-center justify-center overflow-hidden">
+            <LogoLoja />
+          </div>
 
-          <div className="absolute right-5 flex items-center justify-end gap-3 sm:right-6 lg:right-8">
+          <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
             <Link
               href={CONTATO_URL}
               className="hidden h-11 items-center justify-center gap-2 bg-white text-xs font-light text-slate-900 transition hover:text-[var(--brand-blue)] md:inline-flex"
@@ -335,15 +342,13 @@ export default function MenuPublicoLoja({
               Fale Conosco
             </Link>
 
-              {mostrarPerfil && (
-                <PerfilClienteLink className="h-10 w-10" />
-              )}
+            {mostrarPerfil && <PerfilClienteLink className="h-10 w-10" />}
 
             {mostrarCarrinho && (
               <Link
                 href="/loja/carrinho"
                 aria-label="Carrinho"
-                className="inline-flex h-11 w-11 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)]"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-11"
               >
                 <ShoppingBag className="h-5 w-5" />
               </Link>
@@ -518,23 +523,23 @@ export default function MenuPublicoLoja({
                 </div>
 
                 <div className="px-10 pb-10 pt-8">
-                <div className="border-t border-slate-200 pt-6">
+                  <div className="border-t border-slate-200 pt-6">
                     {categoriaSelecionada.filhos.length > 0 ? (
-                    <div className="space-y-1">
+                      <div className="space-y-1">
                         {categoriaSelecionada.filhos.map((filho) => (
-                        <CategoriaSubLink
+                          <CategoriaSubLink
                             key={filho.id}
                             categoria={filho}
                             onNavigate={fecharMenu}
-                        />
+                          />
                         ))}
-                    </div>
+                      </div>
                     ) : (
-                    <p className="text-sm text-slate-500">
+                      <p className="text-sm text-slate-500">
                         Nenhuma subcategoria cadastrada.
-                    </p>
+                      </p>
                     )}
-                </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -582,23 +587,23 @@ export default function MenuPublicoLoja({
 
               <div className="px-6 pb-6 pt-5">
                 <div className="border-t border-slate-200 pt-5">
-                    {categoriaSelecionada.filhos.length > 0 ? (
+                  {categoriaSelecionada.filhos.length > 0 ? (
                     <div className="space-y-1">
-                        {categoriaSelecionada.filhos.map((filho) => (
+                      {categoriaSelecionada.filhos.map((filho) => (
                         <CategoriaSubLink
-                            key={filho.id}
-                            categoria={filho}
-                            onNavigate={fecharMenu}
+                          key={filho.id}
+                          categoria={filho}
+                          onNavigate={fecharMenu}
                         />
-                        ))}
+                      ))}
                     </div>
-                    ) : (
+                  ) : (
                     <p className="text-sm text-slate-500">
-                        Nenhuma subcategoria cadastrada.
+                      Nenhuma subcategoria cadastrada.
                     </p>
-                    )}
+                  )}
                 </div>
-                </div>
+              </div>
             </section>
           )}
         </div>

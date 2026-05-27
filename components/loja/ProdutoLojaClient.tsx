@@ -321,17 +321,67 @@ function ProdutosRelacionadosSection({
   titulo: string;
   produtos: LojaProdutoRelacionado[];
 }) {
-  const [paginaAtual, setPaginaAtual] = useState(0);
-  const itensPorPagina = 4;
-  const totalPaginas = Math.max(1, Math.ceil(produtos.length / itensPorPagina));
-
-  const produtosPagina = useMemo(() => {
-    const inicio = paginaAtual * itensPorPagina;
-    return produtos.slice(inicio, inicio + itensPorPagina);
-  }, [paginaAtual, produtos]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [arrastando, setArrastando] = useState(false);
+  const dragRef = useRef({
+    ativo: false,
+    inicioX: 0,
+    scrollInicial: 0,
+  });
 
   if (produtos.length === 0) {
     return null;
+  }
+
+  function rolar(direcao: "esquerda" | "direita") {
+    const container = scrollRef.current;
+
+    if (!container) return;
+
+    container.scrollBy({
+      left: direcao === "esquerda" ? -360 : 360,
+      behavior: "smooth",
+    });
+  }
+
+  function iniciarArraste(event: React.PointerEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+
+    if (!container) return;
+
+    dragRef.current = {
+      ativo: true,
+      inicioX: event.clientX,
+      scrollInicial: container.scrollLeft,
+    };
+
+    setArrastando(true);
+    container.setPointerCapture(event.pointerId);
+  }
+
+  function moverArraste(event: React.PointerEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+
+    if (!container || !dragRef.current.ativo) return;
+
+    const deslocamento = event.clientX - dragRef.current.inicioX;
+    container.scrollLeft = dragRef.current.scrollInicial - deslocamento;
+  }
+
+  function finalizarArraste(event: React.PointerEvent<HTMLDivElement>) {
+    const container = scrollRef.current;
+
+    if (container) {
+      try {
+        container.releasePointerCapture(event.pointerId);
+      } catch {}
+    }
+
+    dragRef.current.ativo = false;
+
+    window.setTimeout(() => {
+      setArrastando(false);
+    }, 80);
   }
 
   return (
@@ -341,15 +391,12 @@ function ProdutosRelacionadosSection({
           {titulo}
         </h2>
 
-        {totalPaginas > 1 && (
+        {produtos.length > 1 && (
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() =>
-                setPaginaAtual((current) => Math.max(current - 1, 0))
-              }
-              disabled={paginaAtual === 0}
-              className="flex h-11 w-11 items-center justify-center border brand-border bg-white brand-text transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)] disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => rolar("esquerda")}
+              className="flex h-11 w-11 items-center justify-center border brand-border bg-white brand-text transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)]"
               aria-label="Produtos anteriores"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -357,13 +404,8 @@ function ProdutosRelacionadosSection({
 
             <button
               type="button"
-              onClick={() =>
-                setPaginaAtual((current) =>
-                  Math.min(current + 1, totalPaginas - 1)
-                )
-              }
-              disabled={paginaAtual >= totalPaginas - 1}
-              className="flex h-11 w-11 items-center justify-center border brand-border bg-white brand-text transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)] disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => rolar("direita")}
+              className="flex h-11 w-11 items-center justify-center border brand-border bg-white brand-text transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)]"
               aria-label="Próximos produtos"
             >
               <ChevronRight className="h-5 w-5" />
@@ -372,9 +414,28 @@ function ProdutosRelacionadosSection({
         )}
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {produtosPagina.map((produto) => (
-          <ProdutoRelacionadoCard key={produto.id} produto={produto} />
+      <div
+        ref={scrollRef}
+        onPointerDown={iniciarArraste}
+        onPointerMove={moverArraste}
+        onPointerUp={finalizarArraste}
+        onPointerCancel={finalizarArraste}
+        className={`-mx-5 flex gap-6 overflow-x-auto px-5 pb-4 [scrollbar-width:thin] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 ${
+          arrastando ? "cursor-grabbing select-none" : "cursor-grab"
+        }`}
+      >
+        {produtos.map((produto) => (
+          <div
+            key={produto.id}
+            className="w-[230px] shrink-0 sm:w-[260px] lg:w-[280px]"
+            onClick={(event) => {
+              if (arrastando) {
+                event.preventDefault();
+              }
+            }}
+          >
+            <ProdutoRelacionadoCard produto={produto} />
+          </div>
         ))}
       </div>
     </section>
