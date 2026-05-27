@@ -17,7 +17,21 @@ type KitComponentePayloadItem = {
   componenteProdutoId?: string;
   quantidade?: number;
 };
+type ProdutoVariacaoPayload = {
+  nome?: string;
+  obrigatoria?: boolean;
+  opcoes?: ProdutoVariacaoOpcaoPayload[];
+};
 
+type ProdutoVariacaoOpcaoPayload = {
+  id?: string;
+  nome?: string;
+  imagemUrl?: string | null;
+  precoAdicional?: number;
+  custoAdicional?: number;
+  ativo?: boolean;
+  ordem?: number;
+};
 function gerarCodigoInterno(numero: number) {
   return `S${String(numero).padStart(6, "0")}`;
 }
@@ -141,7 +155,50 @@ function lerCategoriasIds(formData: FormData) {
     categoriasIds: Array.from(ids),
   };
 }
+function lerVariacoesProduto(formData: FormData): ProdutoVariacaoPayload[] {
+  const raw = String(formData.get("variacoesProduto") || "[]");
 
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((variacao): ProdutoVariacaoPayload => {
+        const nome = String(variacao?.nome || "").trim();
+
+        const opcoes = Array.isArray(variacao?.opcoes)
+          ? variacao.opcoes
+              .map((opcao: ProdutoVariacaoOpcaoPayload, index: number) => ({
+                id: typeof opcao.id === "string" ? opcao.id : undefined,
+                nome: String(opcao.nome || "").trim(),
+                imagemUrl:
+                  typeof opcao.imagemUrl === "string" && opcao.imagemUrl.trim()
+                    ? opcao.imagemUrl.trim()
+                    : null,
+                precoAdicional: Number(opcao.precoAdicional || 0),
+                custoAdicional: Number(opcao.custoAdicional || 0),
+                ativo: opcao.ativo !== false,
+                ordem: Number.isFinite(Number(opcao.ordem))
+                  ? Number(opcao.ordem)
+                  : index,
+              }))
+              .filter((opcao) => opcao.nome)
+          : [];
+
+        return {
+          nome,
+          obrigatoria: variacao?.obrigatoria !== false,
+          opcoes,
+        };
+      })
+      .filter((variacao) => variacao.nome && variacao.opcoes?.length);
+  } catch {
+    return [];
+  }
+}
 function lerKitComponentes(formData: FormData) {
   const raw = String(formData.get("kitComponentes") || "[]");
 
@@ -563,7 +620,53 @@ async function sincronizarCategoriasProduto({
 
   return categoriaPrincipal.nome;
 }
+async function sincronizarVariacoesProduto({
+  produtoId,
+  variacoes,
+}: {
+  produtoId: string;
+  variacoes: ProdutoVariacaoPayload[];
+}) {
+  await prisma.produtoVariacao.deleteMany({
+    where: {
+      produtoId,
+    },
+  });
 
+  if (variacoes.length === 0) {
+    return;
+  }
+
+  for (const [index, variacao] of variacoes.entries()) {
+    const variacaoCriada = await prisma.produtoVariacao.create({
+      data: {
+        produtoId,
+        nome: variacao.nome as string,
+        obrigatoria: variacao.obrigatoria !== false,
+        ativo: true,
+        ordem: index,
+      },
+    });
+
+    const opcoes = variacao.opcoes || [];
+
+    if (opcoes.length > 0) {
+      await prisma.produtoVariacaoOpcao.createMany({
+        data: opcoes.map((opcao, opcaoIndex) => ({
+          variacaoId: variacaoCriada.id,
+          nome: opcao.nome as string,
+          imagemUrl: opcao.imagemUrl || null,
+          precoAdicional: Number(opcao.precoAdicional || 0),
+          custoAdicional: Number(opcao.custoAdicional || 0),
+          ativo: opcao.ativo !== false,
+          ordem: Number.isFinite(Number(opcao.ordem))
+            ? Number(opcao.ordem)
+            : opcaoIndex,
+        })),
+      });
+    }
+  }
+}
 async function sincronizarComponentesKit({
   produtoId,
   tipoProduto,
@@ -636,6 +739,7 @@ export async function criarProduto(formData: FormData) {
   const descricaoLoja = String(formData.get("descricaoLoja") || "").trim();
   const observacoes = String(formData.get("observacoes") || "").trim();
   const galeriaProduto = lerGaleriaProduto(formData);
+  const variacoesProduto = lerVariacoesProduto(formData);
   const { categoriaPrincipalId, categoriasIds } = lerCategoriasIds(formData);
   const tipoProduto = String(formData.get("tipoProduto") || "UNITARIO").trim();
   const tipoProdutoFinal = tipoProduto === "KIT" ? "KIT" : "UNITARIO";
@@ -725,11 +829,15 @@ export async function criarProduto(formData: FormData) {
     categoriaPrincipalId,
     categoriasIds,
   });
-
   await sincronizarComponentesKit({
     produtoId: produto.id,
     tipoProduto: tipoProdutoFinal,
     componentes: kitComponentes,
+  });
+
+  await sincronizarVariacoesProduto({
+    produtoId: produto.id,
+    variacoes: variacoesProduto,
   });
 
   await sincronizarGaleriaProduto({
@@ -754,6 +862,7 @@ export async function atualizarProduto(id: string, formData: FormData) {
   const descricaoLoja = String(formData.get("descricaoLoja") || "").trim();
   const observacoes = String(formData.get("observacoes") || "").trim();
   const galeriaProduto = lerGaleriaProduto(formData);
+  const variacoesProduto = lerVariacoesProduto(formData);
   const { categoriaPrincipalId, categoriasIds } = lerCategoriasIds(formData);
   const tipoProduto = String(formData.get("tipoProduto") || "UNITARIO").trim();
   const tipoProdutoFinal = tipoProduto === "KIT" ? "KIT" : "UNITARIO";
@@ -836,11 +945,15 @@ export async function atualizarProduto(id: string, formData: FormData) {
     categoriaPrincipalId,
     categoriasIds,
   });
-
   await sincronizarComponentesKit({
     produtoId: id,
     tipoProduto: tipoProdutoFinal,
     componentes: kitComponentes,
+  });
+
+  await sincronizarVariacoesProduto({
+    produtoId: id,
+    variacoes: variacoesProduto,
   });
 
   await sincronizarGaleriaProduto({

@@ -7,6 +7,9 @@ import { ChevronDown } from "lucide-react";
 import ProdutoGaleriaInput from "@/components/produtos/ProdutoGaleriaInput";
 import CategoriasProdutoInput from "@/components/produtos/CategoriasProdutoInput";
 import ComposicaoKitInput from "@/components/produtos/ComposicaoKitInput";
+import VariacoesProdutoInput, {
+  type ProdutoVariacaoInput,
+} from "@/components/produtos/VariacoesProdutoInput";
 
 type CategoriaProduto = {
   id: string;
@@ -77,6 +80,7 @@ type EditarProdutoClientProps = {
   categoriaPrincipalInicialId: string;
   categoriasSelecionadasIniciaisIds: string[];
   componentesKitIniciais: ComponenteKitInicial[];
+  variacoesIniciais: ProdutoVariacaoInput[];
   atualizarProdutoAction: (formData: FormData) => void | Promise<void>;
 };
 
@@ -239,6 +243,7 @@ export default function EditarProdutoClient({
   categoriaPrincipalInicialId,
   categoriasSelecionadasIniciaisIds,
   componentesKitIniciais,
+  variacoesIniciais,
   atualizarProdutoAction,
 }: EditarProdutoClientProps) {
   const [custoBase, setCustoBase] = useState(String(produto.custoBase || ""));
@@ -670,6 +675,10 @@ export default function EditarProdutoClient({
             description="A imagem 1 será a principal e a imagem 2 será usada no hover."
             defaultOpen
           >
+            <VariacoesProdutoInput
+              name="variacoesProduto"
+              variacoesIniciais={variacoesIniciais}
+            />
             <ProdutoGaleriaInput
               name="galeriaProduto"
               imagensIniciais={imagensIniciais}

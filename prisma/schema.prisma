@@ -38,6 +38,7 @@ model Produto {
   categoriasProduto  ProdutoCategoria[]
   canaisVenda        ProdutoCanal[]
   compraItens        CompraItem[]
+  variacoes          ProdutoVariacao[]
 }
 
 model ProdutoImagem {
@@ -49,6 +50,46 @@ model ProdutoImagem {
   criadoEm  DateTime @default(now())
 
   @@index([produtoId])
+  @@index([ordem])
+}
+
+model ProdutoVariacao {
+  id        String  @id @default(cuid())
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  nome        String
+  obrigatoria Boolean @default(true)
+  ativo       Boolean @default(true)
+  ordem       Int     @default(0)
+
+  opcoes ProdutoVariacaoOpcao[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([produtoId])
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model ProdutoVariacaoOpcao {
+  id         String          @id @default(cuid())
+  variacaoId String
+  variacao   ProdutoVariacao @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
+
+  nome           String
+  imagemUrl      String?
+  precoAdicional Float   @default(0)
+  custoAdicional Float   @default(0)
+  ativo          Boolean @default(true)
+  ordem          Int     @default(0)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([variacaoId])
+  @@index([ativo])
   @@index([ordem])
 }
 

@@ -7,6 +7,7 @@ import { ChevronDown } from "lucide-react";
 import ProdutoGaleriaInput from "@/components/produtos/ProdutoGaleriaInput";
 import CategoriasProdutoInput from "@/components/produtos/CategoriasProdutoInput";
 import ComposicaoKitInput from "@/components/produtos/ComposicaoKitInput";
+import VariacoesProdutoInput from "@/components/produtos/VariacoesProdutoInput";
 
 type CategoriaProduto = {
   id: string;
@@ -615,6 +616,7 @@ export default function NovoProdutoClient({
             description="A imagem 1 será a principal e a imagem 2 será usada no hover."
             defaultOpen
           >
+            <VariacoesProdutoInput name="variacoesProduto" />
             <ProdutoGaleriaInput name="galeriaProduto" />
           </AccordionSection>
 

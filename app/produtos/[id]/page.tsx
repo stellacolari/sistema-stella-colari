@@ -46,6 +46,18 @@ export default async function EditarProdutoPage({
               criadoEm: "asc",
             },
           },
+                    variacoes: {
+            orderBy: {
+              ordem: "asc",
+            },
+            include: {
+              opcoes: {
+                orderBy: {
+                  ordem: "asc",
+                },
+              },
+            },
+          },
         },
       }),
 
@@ -149,7 +161,20 @@ export default async function EditarProdutoPage({
     componenteProdutoId: componente.componenteProdutoId,
     quantidade: componente.quantidade,
   }));
-
+  const variacoesIniciais = produto.variacoes.map((variacao) => ({
+    id: variacao.id,
+    nome: variacao.nome,
+    obrigatoria: variacao.obrigatoria,
+    opcoes: variacao.opcoes.map((opcao) => ({
+      id: opcao.id,
+      nome: opcao.nome,
+      imagemUrl: opcao.imagemUrl,
+      precoAdicional: Number(opcao.precoAdicional || 0),
+      custoAdicional: Number(opcao.custoAdicional || 0),
+      ativo: Boolean(opcao.ativo),
+      ordem: Number(opcao.ordem || 0),
+    })),
+  }));
   const produtosKitSerializados = produtosDisponiveisKit.map((produtoKit) => ({
     ...produtoKit,
     custoBase: Number(produtoKit.custoBase || 0),
@@ -199,6 +224,7 @@ export default async function EditarProdutoPage({
       categoriaPrincipalInicialId={categoriaPrincipalInicialId}
       categoriasSelecionadasIniciaisIds={categoriasSelecionadasIniciaisIds}
       componentesKitIniciais={componentesKitIniciais}
+      variacoesIniciais={variacoesIniciais}
       atualizarProdutoAction={actionAtualizar}
     />
   );
