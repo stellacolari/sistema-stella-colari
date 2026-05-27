@@ -21,6 +21,11 @@ type ProdutoComKit = Prisma.ProdutoGetPayload<{
         componenteProduto: true;
       };
     };
+    variacoes: {
+      include: {
+        opcoes: true;
+      };
+    };
   };
 }>;
 
@@ -36,20 +41,53 @@ function calcularCustoMedio(valorAcumulado: number, quantidadeAtual: number) {
   return valorAcumulado / quantidadeAtual;
 }
 
-function normalizarCategoria(categoria: string) {
-  return categoria
+function normalizarTexto(value: string | null | undefined) {
+  return String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }
 
-function produtoExigeTamanhoAnel(categoria: string) {
-  return normalizarCategoria(categoria) === "anel";
+function getVariacaoPrincipalProduto(produto: ProdutoComKit) {
+  return (
+    produto.variacoes.find(
+      (variacao) =>
+        variacao.ativo &&
+        variacao.obrigatoria !== false &&
+        variacao.opcoes.some((opcao) => opcao.ativo)
+    ) || null
+  );
 }
 
-function normalizarTamanhoAnel(tamanho: string | null | undefined) {
-  return String(tamanho ?? "").trim().toUpperCase();
+function produtoExigeVariacao(produto: ProdutoComKit) {
+  return Boolean(getVariacaoPrincipalProduto(produto));
+}
+
+function normalizarOpcaoVariacao(valor: string | null | undefined) {
+  return String(valor ?? "").trim();
+}
+
+function validarOpcaoVariacaoProduto({
+  produto,
+  opcaoInformada,
+}: {
+  produto: ProdutoComKit;
+  opcaoInformada: string;
+}) {
+  const variacao = getVariacaoPrincipalProduto(produto);
+
+  if (!variacao) {
+    return null;
+  }
+
+  const opcaoNormalizada = normalizarTexto(opcaoInformada);
+
+  const opcaoEncontrada = variacao.opcoes.find(
+    (opcao) => opcao.ativo && normalizarTexto(opcao.nome) === opcaoNormalizada
+  );
+
+  return opcaoEncontrada?.nome || null;
 }
 
 function calcularRateioKit(produto: ProdutoComKit, valorTotalFinalItem: number) {
@@ -310,6 +348,24 @@ export async function POST(req: Request) {
                     componenteProduto: true,
                   },
                 },
+                variacoes: {
+                  where: {
+                    ativo: true,
+                  },
+                  orderBy: {
+                    ordem: "asc",
+                  },
+                  include: {
+                    opcoes: {
+                      where: {
+                        ativo: true,
+                      },
+                      orderBy: {
+                        ordem: "asc",
+                      },
+                    },
+                  },
+                },
               },
             });
 
@@ -325,19 +381,33 @@ export async function POST(req: Request) {
               );
             }
 
-            const exigeTamanho = !produtoEhKit && produtoExigeTamanhoAnel(produto.categoria);
-            const tamanhoAnel = exigeTamanho
-              ? normalizarTamanhoAnel(item.tamanhoAnel)
+            const exigeVariacao = !produtoEhKit && produtoExigeVariacao(produto);
+
+            const opcaoVariacaoInformada = exigeVariacao
+              ? normalizarOpcaoVariacao(item.tamanhoAnel)
               : null;
 
-            if (exigeTamanho && !tamanhoAnel) {
+            const opcaoVariacaoValida =
+              exigeVariacao && opcaoVariacaoInformada
+                ? validarOpcaoVariacaoProduto({
+                    produto,
+                    opcaoInformada: opcaoVariacaoInformada,
+                  })
+                : null;
+
+            if (exigeVariacao && !opcaoVariacaoValida) {
+              const nomeVariacao =
+                getVariacaoPrincipalProduto(produto)?.nome || "variação";
+
               throw new Error(
-                `Informe o tamanho do anel para o produto: ${produto.nome}`
+                `Informe uma opção válida de ${nomeVariacao} para o produto: ${produto.nome}`
               );
             }
 
-            const tamanhoEstoque: string = exigeTamanho
-              ? tamanhoAnel || "UNICO"
+            const tamanhoAnel = exigeVariacao ? opcaoVariacaoValida : null;
+
+            const tamanhoEstoque: string = exigeVariacao
+              ? opcaoVariacaoValida || "UNICO"
               : "UNICO";
 
             const compraItem = await tx.compraItem.create({

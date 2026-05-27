@@ -4,6 +4,23 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
+type ProdutoVariacaoOpcaoCompra = {
+  id: string;
+  nome: string;
+  imagemUrl?: string | null;
+  precoAdicional?: number;
+  custoAdicional?: number;
+  ativo?: boolean;
+  ordem?: number;
+};
+
+type ProdutoVariacaoCompra = {
+  id: string;
+  nome: string;
+  obrigatoria: boolean;
+  opcoes: ProdutoVariacaoOpcaoCompra[];
+};
+
 type ItemBusca = {
   id: string;
   tipo: "produto" | "adicional";
@@ -13,6 +30,7 @@ type ItemBusca = {
   custoBase: number;
   fornecedorPadrao: string;
   categoria: string;
+  variacoes: ProdutoVariacaoCompra[];
 };
 
 type ItemPedido = ItemBusca & {
@@ -36,19 +54,23 @@ function normalizarTexto(value: string) {
     .trim();
 }
 
-function produtoEhAnel(item: { categoria: string }) {
-  const categoria = normalizarTexto(item.categoria || "");
-
+function getVariacaoPrincipal(item: { variacoes?: ProdutoVariacaoCompra[] }) {
   return (
-    categoria === "anel" ||
-    categoria === "aneis" ||
-    categoria.includes("anel") ||
-    categoria.includes("aneis")
+    item.variacoes?.find(
+      (variacao) =>
+        variacao.obrigatoria !== false &&
+        Array.isArray(variacao.opcoes) &&
+        variacao.opcoes.length > 0
+    ) || null
   );
 }
 
-function normalizarTamanhoAnel(tamanho: string) {
-  return tamanho.trim().toUpperCase();
+function produtoTemVariacao(item: { variacoes?: ProdutoVariacaoCompra[] }) {
+  return Boolean(getVariacaoPrincipal(item));
+}
+
+function normalizarOpcaoVariacao(valor: string) {
+  return valor.trim();
 }
 
 function gerarItemKey(item: ItemBusca, tamanhoAnel = "") {
@@ -185,7 +207,7 @@ export default function NovaCompraV2Client({
       setFornecedor(fornecedorItem);
     }
 
-    const ehAnel = produtoEhAnel(item);
+    const ehAnel = produtoTemVariacao(item);
 
     if (ehAnel) {
       setItensPedido((atual) => [
@@ -206,7 +228,7 @@ export default function NovaCompraV2Client({
         (pedidoItem) =>
           pedidoItem.id === item.id &&
           pedidoItem.tipo === item.tipo &&
-          !produtoEhAnel(pedidoItem)
+          !produtoTemVariacao(pedidoItem)
       );
 
       if (existente) {
@@ -300,12 +322,12 @@ export default function NovaCompraV2Client({
       }
 
       const anelSemTamanho = itensPedido.find(
-        (item) => produtoEhAnel(item) && !normalizarTamanhoAnel(item.tamanhoAnel)
+        (item) => produtoTemVariacao(item) && !normalizarOpcaoVariacao(item.tamanhoAnel)
       );
 
       if (anelSemTamanho) {
         setErro(
-          `Informe o tamanho do anel para o produto ${anelSemTamanho.nome}.`
+          `Informe a variação para o produto ${anelSemTamanho.nome}.`
         );
         return;
       }
@@ -330,8 +352,8 @@ export default function NovaCompraV2Client({
             custoBase: item.custoBase,
             fornecedorPadrao: item.fornecedorPadrao,
             quantidade: item.quantidade,
-            tamanhoAnel: produtoEhAnel(item)
-              ? normalizarTamanhoAnel(item.tamanhoAnel)
+            tamanhoAnel: produtoTemVariacao(item)
+              ? normalizarOpcaoVariacao(item.tamanhoAnel)
               : null,
           })),
         }),
@@ -550,7 +572,7 @@ export default function NovaCompraV2Client({
                     <tr className="text-sm text-slate-600">
                       <th className="px-6 py-4 font-semibold">Código</th>
                       <th className="px-6 py-4 font-semibold">Descrição</th>
-                      <th className="px-6 py-4 font-semibold">Tamanho</th>
+                      <th className="px-6 py-4 font-semibold">Variação</th>
                       <th className="px-6 py-4 font-semibold">Qtd</th>
                       <th className="px-6 py-4 font-semibold">Unit. base</th>
                       <th className="px-6 py-4 font-semibold">Desc.</th>
@@ -566,7 +588,7 @@ export default function NovaCompraV2Client({
                     {itensPedido.map((item) => {
                       const unitFinal = valorUnitarioFinal(item);
                       const totalLinha = unitFinal * item.quantidade;
-                      const ehAnel = produtoEhAnel(item);
+                      const ehAnel = produtoTemVariacao(item);
 
                       return (
                         <tr key={item.itemKey} className="text-sm text-slate-700">
@@ -584,22 +606,33 @@ export default function NovaCompraV2Client({
                               </span>
                             </div>
                           </td>
-
                           <td className="px-6 py-4">
                             {ehAnel ? (
-                              <input
-                                value={item.tamanhoAnel}
-                                onChange={(event) =>
-                                  alterarTamanhoAnel(
-                                    item.itemKey,
-                                    event.target.value
-                                  )
-                                }
-                                placeholder="Ex: 16"
-                                className="w-24 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                              />
+                              <div className="min-w-[180px]">
+                                <select
+                                  value={item.tamanhoAnel}
+                                  onChange={(event) =>
+                                    alterarTamanhoAnel(item.itemKey, event.target.value)
+                                  }
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                                >
+                                  <option value="">
+                                    Selecione {getVariacaoPrincipal(item)?.nome || "a opção"}
+                                  </option>
+
+                                  {(getVariacaoPrincipal(item)?.opcoes || []).map((opcao) => (
+                                    <option key={opcao.id} value={opcao.nome}>
+                                      {opcao.nome}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <p className="mt-1 text-[11px] text-slate-400">
+                                  {getVariacaoPrincipal(item)?.nome || "Variação"}
+                                </p>
+                              </div>
                             ) : (
-                              <span className="text-slate-400">-</span>
+                              <span className="text-slate-400">Sem variação</span>
                             )}
                           </td>
 

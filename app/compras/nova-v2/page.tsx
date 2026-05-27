@@ -11,6 +11,26 @@ export default async function NovaCompraV2Page() {
         not: "NA_LIXEIRA",
       },
     },
+    include: {
+      variacoes: {
+        where: {
+          ativo: true,
+        },
+        orderBy: {
+          ordem: "asc",
+        },
+        include: {
+          opcoes: {
+            where: {
+              ativo: true,
+            },
+            orderBy: {
+              ordem: "asc",
+            },
+          },
+        },
+      },
+    },
     orderBy: { nome: "asc" },
   });
 
@@ -34,7 +54,22 @@ export default async function NovaCompraV2Page() {
       custoBase: Number(produto.custoBase),
       fornecedorPadrao: produto.fornecedorPadrao,
       categoria: produto.categoria,
+      variacoes: produto.variacoes.map((variacao) => ({
+        id: variacao.id,
+        nome: variacao.nome,
+        obrigatoria: Boolean(variacao.obrigatoria),
+        opcoes: variacao.opcoes.map((opcao) => ({
+          id: opcao.id,
+          nome: opcao.nome,
+          imagemUrl: opcao.imagemUrl,
+          precoAdicional: Number(opcao.precoAdicional || 0),
+          custoAdicional: Number(opcao.custoAdicional || 0),
+          ativo: Boolean(opcao.ativo),
+          ordem: Number(opcao.ordem || 0),
+        })),
+      })),
     })),
+
     ...itensAdicionais.map((item) => ({
       id: item.id,
       tipo: "adicional" as const,
@@ -44,6 +79,7 @@ export default async function NovaCompraV2Page() {
       custoBase: Number(item.custoBase),
       fornecedorPadrao: item.fornecedorPadrao,
       categoria: "",
+      variacoes: [],
     })),
   ];
 
