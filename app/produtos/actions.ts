@@ -159,42 +159,66 @@ function lerVariacoesProduto(formData: FormData): ProdutoVariacaoPayload[] {
   const raw = String(formData.get("variacoesProduto") || "[]");
 
   try {
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
 
     if (!Array.isArray(parsed)) {
       return [];
     }
 
     return parsed
-      .map((variacao): ProdutoVariacaoPayload => {
-        const nome = String(variacao?.nome || "").trim();
+      .map((variacaoRaw): ProdutoVariacaoPayload => {
+        const variacao = variacaoRaw as {
+          nome?: unknown;
+          obrigatoria?: unknown;
+          opcoes?: unknown;
+        };
 
-        const opcoes = Array.isArray(variacao?.opcoes)
+        const nome = String(variacao.nome ?? "").trim();
+
+        const opcoesRaw: unknown[] = Array.isArray(variacao.opcoes)
           ? variacao.opcoes
-              .map((opcao: ProdutoVariacaoOpcaoPayload, index: number) => ({
-                id: typeof opcao.id === "string" ? opcao.id : undefined,
-                nome: String(opcao.nome || "").trim(),
-                imagemUrl:
-                  typeof opcao.imagemUrl === "string" && opcao.imagemUrl.trim()
-                    ? opcao.imagemUrl.trim()
-                    : null,
-                precoAdicional: Number(opcao.precoAdicional || 0),
-                custoAdicional: Number(opcao.custoAdicional || 0),
-                ativo: opcao.ativo !== false,
-                ordem: Number.isFinite(Number(opcao.ordem))
-                  ? Number(opcao.ordem)
-                  : index,
-              }))
-              .filter((opcao) => opcao.nome)
           : [];
+
+        const opcoes = opcoesRaw
+          .map((opcaoRaw, index): ProdutoVariacaoOpcaoPayload => {
+            const opcao = opcaoRaw as {
+              id?: unknown;
+              nome?: unknown;
+              imagemUrl?: unknown;
+              precoAdicional?: unknown;
+              custoAdicional?: unknown;
+              ativo?: unknown;
+              ordem?: unknown;
+            };
+
+            return {
+              id: typeof opcao.id === "string" ? opcao.id : undefined,
+              nome: String(opcao.nome ?? "").trim(),
+              imagemUrl:
+                typeof opcao.imagemUrl === "string" && opcao.imagemUrl.trim()
+                  ? opcao.imagemUrl.trim()
+                  : null,
+              precoAdicional: Number(opcao.precoAdicional || 0),
+              custoAdicional: Number(opcao.custoAdicional || 0),
+              ativo: opcao.ativo !== false,
+              ordem: Number.isFinite(Number(opcao.ordem))
+                ? Number(opcao.ordem)
+                : index,
+            };
+          })
+          .filter((opcao): opcao is ProdutoVariacaoOpcaoPayload => {
+            return Boolean(opcao.nome);
+          });
 
         return {
           nome,
-          obrigatoria: variacao?.obrigatoria !== false,
+          obrigatoria: variacao.obrigatoria !== false,
           opcoes,
         };
       })
-      .filter((variacao) => variacao.nome && variacao.opcoes?.length);
+      .filter((variacao): variacao is ProdutoVariacaoPayload => {
+        return Boolean(variacao.nome && variacao.opcoes?.length);
+      });
   } catch {
     return [];
   }
