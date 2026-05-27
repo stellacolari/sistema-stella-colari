@@ -585,12 +585,14 @@ export default function NovoProdutoClient({
                 setProdutoEhKit(ehKit);
               }}
               kitContent={
-              <ComposicaoKitInput
-                produtosDisponiveis={produtosDisponiveisKit.map((produto) => ({
-                  ...produto,
-                  categoria: produto.categoria ?? "",
-                }))}
-              />
+                <ComposicaoKitInput
+                  produtosDisponiveis={produtosDisponiveisKit.map(
+                    (produto) => ({
+                      ...produto,
+                      categoria: produto.categoria ?? "",
+                    })
+                  )}
+                />
               }
             />
           </AccordionSection>
@@ -610,13 +612,20 @@ export default function NovoProdutoClient({
               </Field>
             </div>
           </AccordionSection>
+
+          <AccordionSection
+            title="Variações do produto"
+            description="Configure opções como tamanho, material, cor ou modelo."
+          >
             <VariacoesProdutoInput name="variacoesProduto" />
+          </AccordionSection>
+
           <AccordionSection
             title="Imagens do produto"
             description="A imagem 1 será a principal e a imagem 2 será usada no hover."
             defaultOpen
           >
-             <ProdutoGaleriaInput name="galeriaProduto" />
+            <ProdutoGaleriaInput name="galeriaProduto" />
           </AccordionSection>
 
           <AccordionSection
