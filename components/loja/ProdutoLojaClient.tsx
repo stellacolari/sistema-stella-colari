@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Gift,
   Package,
   Ruler,
@@ -432,6 +434,8 @@ export default function ProdutoLojaClient({
   descontos: LojaProdutoRelacionado[];
 }) {
   const router = useRouter();
+  const thumbsRef = useRef<HTMLDivElement | null>(null);
+
   const opcoesAdicionais = produto.opcoesAdicionais || [];
   const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
   const temVariacao = produtoTemVariacao(produto);
@@ -451,6 +455,7 @@ export default function ProdutoLojaClient({
   }, [produto.imagemUrl, produto.imagens]);
 
   const possuiMaisDeUmaImagem = galeriaExibicao.length > 1;
+  const mostrarSetasMiniaturas = galeriaExibicao.length > 6;
 
   const [indiceImagemSelecionada, setIndiceImagemSelecionada] = useState(0);
   const [imagemVariacaoSelecionada, setImagemVariacaoSelecionada] =
@@ -597,26 +602,17 @@ export default function ProdutoLojaClient({
     setIndiceImagemSelecionada(index);
   }
 
-  function irParaImagemAnterior() {
-    if (galeriaExibicao.length <= 1) {
+  function rolarMiniaturas(direcao: "cima" | "baixo") {
+    const container = thumbsRef.current;
+
+    if (!container) {
       return;
     }
 
-    setImagemVariacaoSelecionada("");
-    setIndiceImagemSelecionada((atual) =>
-      atual === 0 ? galeriaExibicao.length - 1 : atual - 1
-    );
-  }
-
-  function irParaProximaImagem() {
-    if (galeriaExibicao.length <= 1) {
-      return;
-    }
-
-    setImagemVariacaoSelecionada("");
-    setIndiceImagemSelecionada((atual) =>
-      atual === galeriaExibicao.length - 1 ? 0 : atual + 1
-    );
+    container.scrollBy({
+      top: direcao === "cima" ? -180 : 180,
+      behavior: "smooth",
+    });
   }
 
   function alterarQuantidade(value: number) {
@@ -791,26 +787,53 @@ export default function ProdutoLojaClient({
           >
             {possuiMaisDeUmaImagem && (
               <div className="hidden self-start lg:block">
-                <div className="max-h-[560px] w-[84px] space-y-3 overflow-y-auto pr-1">
-                  {galeriaExibicao.map((imagem, index) => (
+                <div className="flex w-[84px] flex-col items-center gap-2">
+                  {mostrarSetasMiniaturas && (
                     <button
-                      key={`${imagem}-${index}`}
                       type="button"
-                      onClick={() => irParaImagem(index)}
-                      className={`h-[84px] w-[84px] overflow-hidden bg-[#f7f7f7] transition ${
-                        !imagemVariacaoSelecionada &&
-                        indiceImagemSelecionada === index
-                          ? "ring-1 ring-slate-900"
-                          : "ring-1 ring-slate-200 hover:ring-slate-400"
-                      }`}
+                      onClick={() => rolarMiniaturas("cima")}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
+                      aria-label="Subir miniaturas"
                     >
-                      <img
-                        src={imagem}
-                        alt={`${produto.nome} ${index + 1}`}
-                        className="h-full w-full object-cover object-center"
-                      />
+                      <ChevronUp className="h-4 w-4" />
                     </button>
-                  ))}
+                  )}
+
+                  <div
+                    ref={thumbsRef}
+                    className="max-h-[560px] w-[84px] space-y-3 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    {galeriaExibicao.map((imagem, index) => (
+                      <button
+                        key={`${imagem}-${index}`}
+                        type="button"
+                        onClick={() => irParaImagem(index)}
+                        className={`h-[84px] w-[84px] overflow-hidden bg-[#f7f7f7] transition ${
+                          !imagemVariacaoSelecionada &&
+                          indiceImagemSelecionada === index
+                            ? "ring-1 ring-slate-900"
+                            : "ring-1 ring-slate-200 hover:ring-slate-400"
+                        }`}
+                      >
+                        <img
+                          src={imagem}
+                          alt={`${produto.nome} ${index + 1}`}
+                          className="h-full w-full object-cover object-center"
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  {mostrarSetasMiniaturas && (
+                    <button
+                      type="button"
+                      onClick={() => rolarMiniaturas("baixo")}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
+                      aria-label="Descer miniaturas"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -819,75 +842,13 @@ export default function ProdutoLojaClient({
               {imagemSelecionada ? (
                 <>
                   <div className="relative aspect-square overflow-hidden">
-                    {possuiMaisDeUmaImagem && !imagemVariacaoSelecionada ? (
-                      <>
-                        <div
-                          className="flex h-full transition-transform duration-500 ease-out"
-                          style={{
-                            transform: `translateX(-${
-                              indiceImagemSelecionada * 100
-                            }%)`,
-                          }}
-                        >
-                          {galeriaExibicao.map((imagem, index) => (
-                            <div
-                              key={`${imagem}-${index}`}
-                              className="relative h-full min-w-full overflow-hidden"
-                            >
-                              <div
-                                className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-                                style={{
-                                  backgroundImage: `url(${imagem})`,
-                                }}
-                                aria-label={`${produto.nome} ${index + 1}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={irParaImagemAnterior}
-                          className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-900 shadow-sm transition hover:bg-white"
-                          aria-label="Imagem anterior"
-                        >
-                          <ChevronLeft className="h-5 w-5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={irParaProximaImagem}
-                          className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-slate-900 shadow-sm transition hover:bg-white"
-                          aria-label="Próxima imagem"
-                        >
-                          <ChevronRight className="h-5 w-5" />
-                        </button>
-
-                        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3">
-                          {galeriaExibicao.map((_, index) => (
-                            <button
-                              key={`dot-${index}`}
-                              type="button"
-                              onClick={() => irParaImagem(index)}
-                              className={`h-1.5 transition-all ${
-                                indiceImagemSelecionada === index
-                                  ? "w-9 bg-[var(--brand-blue)]"
-                                  : "w-6 bg-[var(--brand-blue-soft)]"
-                              }`}
-                              aria-label={`Ir para imagem ${index + 1}`}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div
-                        className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-                        style={{
-                          backgroundImage: `url(${imagemSelecionada})`,
-                        }}
-                        aria-label={produto.nome}
-                      />
-                    )}
+                    <div
+                      className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
+                      style={{
+                        backgroundImage: `url(${imagemSelecionada})`,
+                      }}
+                      aria-label={produto.nome}
+                    />
                   </div>
 
                   {possuiMaisDeUmaImagem && (
@@ -1020,6 +981,35 @@ export default function ProdutoLojaClient({
                             const selecionado =
                               tamanhoSelecionado === opcao.nome;
                             const semSaldo = opcao.quantidadeAtual <= 0;
+                            const possuiImagem = Boolean(opcao.imagemUrl);
+
+                            if (!possuiImagem) {
+                              return (
+                                <button
+                                  key={opcao.id}
+                                  type="button"
+                                  disabled={semSaldo}
+                                  onClick={() => {
+                                    setTamanhoSelecionado(opcao.nome);
+                                    setQuantidade(1);
+                                    setErro("");
+                                    setMensagem("");
+                                    setImagemVariacaoSelecionada("");
+                                  }}
+                                  className={`shrink-0 rounded-full border px-5 py-2.5 text-sm font-medium transition ${
+                                    selecionado
+                                      ? "brand-border brand-bg-soft brand-text"
+                                      : "border-slate-300 bg-white text-slate-700 hover:border-[var(--brand-blue)]"
+                                  } ${
+                                    semSaldo
+                                      ? "cursor-not-allowed opacity-40"
+                                      : ""
+                                  }`}
+                                >
+                                  {opcao.nome}
+                                </button>
+                              );
+                            }
 
                             return (
                               <button
@@ -1036,8 +1026,6 @@ export default function ProdutoLojaClient({
                                     setImagemVariacaoSelecionada(
                                       opcao.imagemUrl
                                     );
-                                  } else {
-                                    setImagemVariacaoSelecionada("");
                                   }
                                 }}
                                 className={`group w-24 shrink-0 text-center transition ${
@@ -1053,17 +1041,11 @@ export default function ProdutoLojaClient({
                                       : "border-slate-200 group-hover:border-[var(--brand-blue)]"
                                   }`}
                                 >
-                                  {opcao.imagemUrl ? (
-                                    <img
-                                      src={opcao.imagemUrl}
-                                      alt={opcao.nome}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="text-lg font-medium text-slate-400">
-                                      {opcao.nome.slice(0, 2)}
-                                    </span>
-                                  )}
+                                  <img
+                                    src={opcao.imagemUrl || ""}
+                                    alt={opcao.nome}
+                                    className="h-full w-full object-cover"
+                                  />
 
                                   {semSaldo ? (
                                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 px-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
