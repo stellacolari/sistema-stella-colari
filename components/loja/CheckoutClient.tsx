@@ -1388,9 +1388,9 @@ function preencherDadosClienteLogado() {
 
                         <p className="mt-1 text-xs font-light text-slate-500">
                           {item.quantidade} un.
-                          {item.tamanhoAnel
-                            ? ` · Tam. ${item.tamanhoAnel}`
-                            : ""}
+                        {item.tamanhoAnel
+                          ? ` · ${item.tamanhoAnel}`
+                          : ""}
                         </p>
 
                         <p className="mt-1 text-sm font-medium text-slate-950">

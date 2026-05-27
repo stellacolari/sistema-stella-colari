@@ -12,10 +12,6 @@ type ProdutoRelacionadoRaw = Awaited<
   ReturnType<typeof buscarProdutosRelacionadosRaw>
 >[number];
 
-type ProdutoDetalheRaw = NonNullable<
-  Awaited<ReturnType<typeof buscarProdutoDetalheRaw>>
->;
-
 function produtoTemDesconto(produto: {
   descontoAtivo: boolean;
   precoPromocional: number | null;
@@ -27,6 +23,14 @@ function produtoTemDesconto(produto: {
     produto.precoPromocional > 0 &&
     produto.precoPromocional < produto.precoVenda
   );
+}
+
+function normalizarTexto(value: string | null | undefined) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function normalizarTamanhosDisponiveis(
@@ -41,11 +45,21 @@ function normalizarTamanhosDisponiveis(
       quantidadeAtual: item.quantidadeAtual,
     }))
     .filter((item) => item.tamanhoAnel)
+    .filter((item) => item.quantidadeAtual > 0)
     .map((item) => ({
       tamanhoAnel: item.tamanhoAnel as string,
       quantidadeAtual: item.quantidadeAtual,
     }))
-    .sort((a, b) => Number(b.tamanhoAnel) - Number(a.tamanhoAnel));
+    .sort((a, b) => {
+      const numeroA = Number(a.tamanhoAnel);
+      const numeroB = Number(b.tamanhoAnel);
+
+      if (Number.isFinite(numeroA) && Number.isFinite(numeroB)) {
+        return numeroA - numeroB;
+      }
+
+      return a.tamanhoAnel.localeCompare(b.tamanhoAnel);
+    });
 }
 
 async function buscarProdutoDetalheRaw(id: string) {
@@ -74,6 +88,24 @@ async function buscarProdutoDetalheRaw(id: string) {
                   quantidadeAtual: true,
                 },
               },
+            },
+          },
+        },
+      },
+      variacoes: {
+        where: {
+          ativo: true,
+        },
+        orderBy: {
+          ordem: "asc",
+        },
+        include: {
+          opcoes: {
+            where: {
+              ativo: true,
+            },
+            orderBy: {
+              ordem: "asc",
             },
           },
         },
@@ -183,9 +215,45 @@ export async function buscarProdutoDetalhePublico(id: string) {
     ? produto.imagens.map((imagem) => imagem.imagemUrl)
     : [produto.imagemUrl, produto.imagemHoverUrl].filter(Boolean).map(String);
 
+  const variacoes = produto.variacoes.map((variacao) => {
+    const opcoesComEstoque = variacao.opcoes.map((opcao) => {
+      const estoqueOpcao = produto.estoque.find(
+        (item) =>
+          normalizarTexto(item.tamanhoAnel) === normalizarTexto(opcao.nome)
+      );
+
+      return {
+        id: opcao.id,
+        nome: opcao.nome,
+        imagemUrl: opcao.imagemUrl,
+        precoAdicional: Number(opcao.precoAdicional || 0),
+        custoAdicional: Number(opcao.custoAdicional || 0),
+        quantidadeAtual: Number(estoqueOpcao?.quantidadeAtual || 0),
+      };
+    });
+
+    return {
+      id: variacao.id,
+      nome: variacao.nome,
+      obrigatoria: variacao.obrigatoria,
+      opcoes: opcoesComEstoque,
+    };
+  });
+
+  const possuiVariacao = variacoes.some((variacao) => variacao.opcoes.length > 0);
+
   const tamanhosDisponiveis =
     produto.tipoProduto === "KIT"
       ? []
+      : possuiVariacao
+      ? variacoes
+          .flatMap((variacao) =>
+            variacao.opcoes.map((opcao) => ({
+              tamanhoAnel: opcao.nome,
+              quantidadeAtual: opcao.quantidadeAtual,
+            }))
+          )
+          .filter((opcao) => opcao.quantidadeAtual > 0)
       : normalizarTamanhosDisponiveis(produto.estoque);
 
   const produtoFormatado: ProdutoLojaDetalhe = {
@@ -205,6 +273,7 @@ export async function buscarProdutoDetalhePublico(id: string) {
     observacoes: produto.observacoes,
     estoqueTotal: estoque.estoqueTotal,
     tamanhosDisponiveis,
+    variacoes,
     garantia: {
       titulo: "Garantia",
       conteudo:

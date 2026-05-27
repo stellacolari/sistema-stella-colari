@@ -61,6 +61,19 @@ export type ProdutoLojaDetalhe = {
     tamanhoAnel: string;
     quantidadeAtual: number;
   }[];
+  variacoes?: {
+    id: string;
+    nome: string;
+    obrigatoria: boolean;
+    opcoes: {
+      id: string;
+      nome: string;
+      imagemUrl?: string | null;
+      precoAdicional?: number;
+      custoAdicional?: number;
+      quantidadeAtual: number;
+    }[];
+  }[];
   garantia: {
     titulo: string;
     conteudo: string;
@@ -185,7 +198,17 @@ function getCarrinhoAtual(): CarrinhoItem[] {
 function salvarCarrinho(itens: CarrinhoItem[]) {
   window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(itens));
 }
+function getVariacaoPrincipalProduto(produto: ProdutoLojaDetalhe) {
+  return (
+    produto.variacoes?.find(
+      (variacao) => Array.isArray(variacao.opcoes) && variacao.opcoes.length > 0
+    ) || null
+  );
+}
 
+function produtoTemVariacao(produto: ProdutoLojaDetalhe) {
+  return Boolean(getVariacaoPrincipalProduto(produto));
+}
 function getItemKey(item: {
   produtoId: string;
   tamanhoAnel: string | null;
@@ -423,10 +446,16 @@ export default function ProdutoLojaClient({
   const possuiMaisDeUmaImagem = galeriaExibicao.length > 1;
 
   const [indiceImagemSelecionada, setIndiceImagemSelecionada] = useState(0);
-  const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
+  const [imagemVariacaoSelecionada, setImagemVariacaoSelecionada] =
+  useState<string>("");
+const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
+
+const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
+  variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)?.nome ??
     produto.tamanhosDisponiveis.find((tamanho) => tamanho.quantidadeAtual > 0)
-      ?.tamanhoAnel ?? ""
-  );
+      ?.tamanhoAnel ??
+    ""
+);
   const [quantidade, setQuantidade] = useState(1);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
@@ -438,14 +467,18 @@ export default function ProdutoLojaClient({
   const [opcaoAdicionalSelecionadaId, setOpcaoAdicionalSelecionadaId] =
     useState<string>("");
 
-  const produtoTemTamanho = produto.tamanhosDisponiveis.length > 0;
-  const semEstoque = produto.estoqueTotal <= 0;
+const temVariacao = produtoTemVariacao(produto);
+const produtoTemTamanho = temVariacao || produto.tamanhosDisponiveis.length > 0;
+const semEstoque = produto.estoqueTotal <= 0;
   const temDesconto = produtoTemDesconto(produto);
   const desconto = percentualDesconto(produto);
   const precoFinal = precoFinalProduto(produto);
 
-  const imagemSelecionada =
-    galeriaExibicao[indiceImagemSelecionada] || galeriaExibicao[0] || "";
+const imagemSelecionada =
+  imagemVariacaoSelecionada ||
+  galeriaExibicao[indiceImagemSelecionada] ||
+  galeriaExibicao[0] ||
+  "";
 
   const opcaoAdicionalSelecionada = useMemo(() => {
     if (!opcaoAdicionalSelecionadaId) {
@@ -468,22 +501,32 @@ export default function ProdutoLojaClient({
   const totalComAdicional = totalProdutoSelecionado + totalAdicionalSelecionado;
   const cashbackValor = totalComAdicional * CASHBACK_PERCENTUAL;
 
-  const estoqueDisponivel = useMemo(() => {
-    if (!produtoTemTamanho) {
-      return produto.estoqueTotal;
-    }
-
+const estoqueDisponivel = useMemo(() => {
+  if (temVariacao) {
     return (
-      produto.tamanhosDisponiveis.find(
-        (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado
+      variacaoPrincipal?.opcoes.find(
+        (opcao) => opcao.nome === tamanhoSelecionado
       )?.quantidadeAtual ?? 0
     );
-  }, [
-    produto.estoqueTotal,
-    produto.tamanhosDisponiveis,
-    produtoTemTamanho,
-    tamanhoSelecionado,
-  ]);
+  }
+
+  if (!produtoTemTamanho) {
+    return produto.estoqueTotal;
+  }
+
+  return (
+    produto.tamanhosDisponiveis.find(
+      (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado
+    )?.quantidadeAtual ?? 0
+  );
+}, [
+  produto.estoqueTotal,
+  produto.tamanhosDisponiveis,
+  produtoTemTamanho,
+  tamanhoSelecionado,
+  temVariacao,
+  variacaoPrincipal,
+]);
 
   const menusPublicos: MenuPublicoItem[] = useMemo(
     () =>
@@ -609,10 +652,14 @@ export default function ProdutoLojaClient({
       return;
     }
 
-    if (produtoTemTamanho && !tamanhoSelecionado) {
-      setErro("Selecione um tamanho.");
-      return;
-    }
+if (produtoTemTamanho && !tamanhoSelecionado) {
+  setErro(
+    temVariacao
+      ? `Selecione ${variacaoPrincipal?.nome.toLowerCase() || "a variação"}.`
+      : "Selecione uma opção."
+  );
+  return;
+}
 
     if (quantidade <= 0) {
       setErro("Informe uma quantidade válida.");
@@ -951,40 +998,71 @@ export default function ProdutoLojaClient({
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {produto.tamanhosDisponiveis.map((tamanho) => {
-                      const habilitado = tamanho.quantidadeAtual > 0;
-                      const selecionado =
-                        tamanhoSelecionado === tamanho.tamanhoAnel;
+{temVariacao && variacaoPrincipal ? (
+  <>
+    <p className="mb-3 text-sm font-light text-slate-600">
+      Escolha {variacaoPrincipal.nome.toLowerCase()}:
+    </p>
 
-                      return (
-                        <button
-                          key={tamanho.tamanhoAnel}
-                          type="button"
-                          disabled={!habilitado}
-                          onClick={() => {
-                            setTamanhoSelecionado(tamanho.tamanhoAnel);
-                            setQuantidade(1);
-                            setErro("");
-                            setMensagem("");
-                          }}
-                          className={`relative flex h-12 items-center justify-center border text-sm font-medium transition ${
-                            selecionado
-                              ? "border-slate-950 bg-white text-slate-950"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-800"
-                          } ${
-                            !habilitado
-                              ? "cursor-not-allowed bg-slate-50 text-slate-300 hover:border-slate-200"
-                              : ""
-                          }`}
-                        >
-                          {tamanho.tamanhoAnel}
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {variacaoPrincipal.opcoes.map((opcao) => {
+        const selecionado = tamanhoSelecionado === opcao.nome;
+        const semSaldo = opcao.quantidadeAtual <= 0;
 
-                          {!habilitado && (
-                            <span className="absolute left-1/2 top-1/2 h-px w-[135%] -translate-x-1/2 -translate-y-1/2 rotate-[28deg] bg-slate-300" />
-                          )}
-                        </button>
-                      );
-                    })}
+        return (
+          <button
+            key={opcao.id}
+            type="button"
+            disabled={semSaldo}
+            onClick={() => {
+              setTamanhoSelecionado(opcao.nome);
+              setErro("");
+
+              if (opcao.imagemUrl) {
+                setImagemVariacaoSelecionada(opcao.imagemUrl);
+              } else {
+                setImagemVariacaoSelecionada("");
+              }
+            }}
+            className={`border px-3 py-3 text-sm font-medium transition ${
+              selecionado
+                ? "brand-border brand-bg-soft brand-text"
+                : "border-slate-300 text-slate-700 hover:border-[var(--brand-blue)]"
+            } ${semSaldo ? "cursor-not-allowed opacity-40" : ""}`}
+          >
+            {opcao.nome}
+          </button>
+        );
+      })}
+    </div>
+  </>
+) : (
+  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    {produto.tamanhosDisponiveis.map((tamanho) => {
+      const selecionado = tamanhoSelecionado === tamanho.tamanhoAnel;
+      const semSaldo = tamanho.quantidadeAtual <= 0;
+
+      return (
+        <button
+          key={tamanho.tamanhoAnel}
+          type="button"
+          disabled={semSaldo}
+          onClick={() => {
+            setTamanhoSelecionado(tamanho.tamanhoAnel);
+            setErro("");
+          }}
+          className={`border px-3 py-3 text-sm font-medium transition ${
+            selecionado
+              ? "brand-border brand-bg-soft brand-text"
+              : "border-slate-300 text-slate-700 hover:border-[var(--brand-blue)]"
+          } ${semSaldo ? "cursor-not-allowed opacity-40" : ""}`}
+        >
+          {tamanho.tamanhoAnel}
+        </button>
+      );
+    })}
+  </div>
+)}
                   </div>
                 </div>
               ) : (

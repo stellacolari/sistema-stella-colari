@@ -400,10 +400,10 @@ export default function CarrinhoClient({
                           </h2>
 
                           <p className="mt-2 text-sm font-light text-slate-500">
-                            {item.categoria}
-                            {item.tamanhoAnel
-                              ? ` · Tam. ${item.tamanhoAnel}`
-                              : ""}
+                          {item.categoria}
+                          {item.tamanhoAnel
+                            ? ` · ${item.tamanhoAnel}`
+                            : ""}
                           </p>
 
                           <div className="mt-3 flex flex-wrap items-baseline gap-2">
