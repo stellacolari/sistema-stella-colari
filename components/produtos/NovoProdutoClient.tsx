@@ -610,13 +610,13 @@ export default function NovoProdutoClient({
               </Field>
             </div>
           </AccordionSection>
-          <ProdutoGaleriaInput name="galeriaProduto" />
+            <VariacoesProdutoInput name="variacoesProduto" />
           <AccordionSection
             title="Imagens do produto"
             description="A imagem 1 será a principal e a imagem 2 será usada no hover."
             defaultOpen
           >
-            <VariacoesProdutoInput name="variacoesProduto" />
+             <ProdutoGaleriaInput name="galeriaProduto" />
           </AccordionSection>
 
           <AccordionSection
