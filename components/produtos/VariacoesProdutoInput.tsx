@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import ImageBox from "@/components/ui/ImageBox";
 
 export type ProdutoVariacaoOpcaoInput = {
   id?: string;
@@ -55,6 +56,8 @@ export default function VariacoesProdutoInput({
 }: VariacoesProdutoInputProps) {
   const variacaoInicial = variacoesIniciais[0];
 
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
   const [ativo, setAtivo] = useState(Boolean(variacaoInicial));
   const [nomeVariacao, setNomeVariacao] = useState(
     variacaoInicial?.nome || ""
@@ -77,6 +80,9 @@ export default function VariacoesProdutoInput({
         }))
       : [criarOpcaoVazia(0)]
   );
+
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [erroUpload, setErroUpload] = useState("");
 
   const payload = useMemo(() => {
     if (!ativo) {
@@ -149,6 +155,53 @@ export default function VariacoesProdutoInput({
           : opcao
       )
     );
+  }
+
+  async function enviarImagemOpcao(index: number, arquivo: File | null) {
+    if (!arquivo) {
+      return;
+    }
+
+    try {
+      setErroUpload("");
+      setUploadingIndex(index);
+
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+
+      const resposta = await fetch("/api/configuracoes/loja/uploads", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await resposta.json();
+
+      if (!resposta.ok) {
+        throw new Error(data.erro || "Erro ao enviar imagem.");
+      }
+
+      const imagemUrl = data.url || data.imagemUrl || data.caminho;
+
+      if (!imagemUrl) {
+        throw new Error("A rota de upload não retornou a URL da imagem.");
+      }
+
+      atualizarOpcao(index, "imagemUrl", imagemUrl);
+    } catch (error) {
+      setErroUpload(
+        error instanceof Error
+          ? error.message
+          : "Erro ao enviar imagem da opção."
+      );
+    } finally {
+      setUploadingIndex(null);
+
+      const input = fileInputRefs.current[index];
+
+      if (input) {
+        input.value = "";
+      }
+    }
   }
 
   return (
@@ -238,89 +291,161 @@ export default function VariacoesProdutoInput({
               </button>
             </div>
 
+            {erroUpload ? (
+              <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {erroUpload}
+              </div>
+            ) : null}
+
             <div className="divide-y divide-slate-200">
-              {opcoes.map((opcao, index) => (
-                <div key={index} className="grid gap-4 px-4 py-4 xl:grid-cols-[1.1fr_1fr_150px_150px_44px]">
-                  <div>
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Nome
-                    </label>
+              {opcoes.map((opcao, index) => {
+                const possuiImagem = Boolean(opcao.imagemUrl);
+                const enviandoImagem = uploadingIndex === index;
 
-                    <input
-                      value={opcao.nome}
-                      onChange={(event) =>
-                        atualizarOpcao(index, "nome", event.target.value)
-                      }
-                      placeholder="Ex: 16, Prata, Azul, Grande"
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                    />
+                return (
+                  <div key={index} className="grid gap-4 px-4 py-4">
+                    <div className="grid gap-4 xl:grid-cols-[1fr_180px_150px_150px_44px]">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                          Nome
+                        </label>
+
+                        <input
+                          value={opcao.nome}
+                          onChange={(event) =>
+                            atualizarOpcao(index, "nome", event.target.value)
+                          }
+                          placeholder="Ex: 16, Prata, Azul, Grande"
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                          Imagem
+                        </label>
+
+                        <input
+                          ref={(element) => {
+                            fileInputRefs.current[index] = element;
+                          }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) =>
+                            enviarImagemOpcao(
+                              index,
+                              event.target.files?.[0] || null
+                            )
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => fileInputRefs.current[index]?.click()}
+                          disabled={enviandoImagem}
+                          className="flex h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {enviandoImagem ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Enviando
+                            </>
+                          ) : (
+                            <>
+                              <ImagePlus className="h-4 w-4" />
+                              {possuiImagem ? "Trocar" : "Adicionar"}
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                          Preço extra
+                        </label>
+
+                        <input
+                          value={numeroParaInput(opcao.precoAdicional)}
+                          onChange={(event) =>
+                            atualizarOpcao(
+                              index,
+                              "precoAdicional",
+                              inputParaNumero(event.target.value)
+                            )
+                          }
+                          placeholder="0,00"
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                          Custo extra
+                        </label>
+
+                        <input
+                          value={numeroParaInput(opcao.custoAdicional)}
+                          onChange={(event) =>
+                            atualizarOpcao(
+                              index,
+                              "custoAdicional",
+                              inputParaNumero(event.target.value)
+                            )
+                          }
+                          placeholder="0,00"
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                        />
+                      </div>
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => removerOpcao(index)}
+                          className="flex h-[46px] w-full items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                          title="Remover opção"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {possuiImagem ? (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <div className="h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            <ImageBox
+                              src={opcao.imagemUrl}
+                              alt={opcao.nome || "Imagem da opção"}
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                              Imagem vinculada
+                            </p>
+
+                            <p className="mt-1 truncate text-xs text-slate-500">
+                              {opcao.imagemUrl}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              atualizarOpcao(index, "imagemUrl", "")
+                            }
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Remover imagem
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Imagem opcional
-                    </label>
-
-                    <input
-                      value={opcao.imagemUrl || ""}
-                      onChange={(event) =>
-                        atualizarOpcao(index, "imagemUrl", event.target.value)
-                      }
-                      placeholder="URL da imagem, se houver"
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Preço adicional
-                    </label>
-
-                    <input
-                      value={numeroParaInput(opcao.precoAdicional)}
-                      onChange={(event) =>
-                        atualizarOpcao(
-                          index,
-                          "precoAdicional",
-                          inputParaNumero(event.target.value)
-                        )
-                      }
-                      placeholder="0,00"
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                      Custo adicional
-                    </label>
-
-                    <input
-                      value={numeroParaInput(opcao.custoAdicional)}
-                      onChange={(event) =>
-                        atualizarOpcao(
-                          index,
-                          "custoAdicional",
-                          inputParaNumero(event.target.value)
-                        )
-                      }
-                      placeholder="0,00"
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => removerOpcao(index)}
-                      className="flex h-[46px] w-full items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                      title="Remover opção"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
