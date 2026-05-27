@@ -304,10 +304,10 @@ export default function VariacoesProdutoInput({
 
                 return (
                   <div key={index} className="grid gap-4 px-4 py-4">
-                    <div className="grid gap-4 xl:grid-cols-[1fr_180px_150px_150px_44px]">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(260px,1.5fr)_160px_130px_130px_44px]">
                       <div>
                         <label className="mb-2 block text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                          Nome
+                        Nome da opção
                         </label>
 
                         <input
