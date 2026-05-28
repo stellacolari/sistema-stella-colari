@@ -101,18 +101,24 @@ export default async function ConfiguracoesLojaPage() {
     )
   ).sort((a, b) => a.localeCompare(b));
 
-const banners = bannersRaw.map((banner) => ({
-  id: banner.id,
-  titulo: banner.titulo,
-  subtitulo: banner.subtitulo,
-  imagemUrl: banner.imagemUrl,
-  imagemMobileUrl: banner.imagemMobileUrl ?? null,
-  linkUrl: banner.linkUrl,
-  ordem: banner.ordem,
-  ativo: banner.ativo,
-  criadoEm: banner.criadoEm.toISOString(),
-  atualizadoEm: banner.atualizadoEm.toISOString(),
-}));
+const banners = bannersRaw.map((banner) => {
+  const bannerComMobile = banner as typeof banner & {
+    imagemMobileUrl?: string | null;
+  };
+
+  return {
+    id: banner.id,
+    titulo: banner.titulo,
+    subtitulo: banner.subtitulo,
+    imagemUrl: banner.imagemUrl,
+    imagemMobileUrl: bannerComMobile.imagemMobileUrl ?? null,
+    linkUrl: banner.linkUrl,
+    ordem: banner.ordem,
+    ativo: banner.ativo,
+    criadoEm: banner.criadoEm.toISOString(),
+    atualizadoEm: banner.atualizadoEm.toISOString(),
+  };
+});
 
   const menus = menusRaw.map((menu) => ({
     id: menu.id,
