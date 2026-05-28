@@ -248,6 +248,7 @@ export default function ProdutosCatalogClient({
   >([]);
   const [erroFamilia, setErroFamilia] = useState<string | null>(null);
   const [salvandoFamilia, setSalvandoFamilia] = useState(false);
+  const [confirmarMoverFamilia, setConfirmarMoverFamilia] = useState(false);
 
   const produtosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -281,6 +282,7 @@ export default function ProdutosCatalogClient({
           produto.familiaNome,
           produto.familiaMaterial,
           produto.familiaCorJoia,
+          getNomeVersaoFamilia(produto),
           statusProduto,
           produtoTemDesconto(produto) ? "desconto promoção promocional" : "",
           produto.custoAdicionais > 0 ? "adicionais pacote contém" : "",
@@ -336,6 +338,18 @@ export default function ProdutosCatalogClient({
     setProdutosSelecionados(produtosSelecionaveis.map((produto) => produto.id));
   }
 
+  function montarItensAgrupamento(produtosBase: ProdutoCatalogItem[]) {
+    return produtosBase.map((produto, index) => ({
+      produtoId: produto.id,
+      familiaMaterial: produto.familiaMaterial || "",
+      familiaCorJoia: produto.familiaCorJoia || "",
+      familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
+      familiaOrdem: Number.isFinite(Number(produto.familiaOrdem))
+        ? Number(produto.familiaOrdem)
+        : index,
+    }));
+  }
+
   function abrirModalFamilia() {
     if (produtosSelecionadosObjetos.length === 0) {
       return;
@@ -347,19 +361,33 @@ export default function ProdutosCatalogClient({
 
     setFamiliaSelecionadaId(familiaIdBase);
     setNovaFamiliaNome("");
+    setItensAgrupamento(montarItensAgrupamento(produtosSelecionadosObjetos));
+    setConfirmarMoverFamilia(false);
+    setErroFamilia(null);
+    setModalFamiliaAberto(true);
+  }
 
-    setItensAgrupamento(
-      produtosSelecionadosObjetos.map((produto, index) => ({
-        produtoId: produto.id,
-        familiaMaterial: produto.familiaMaterial || "",
-        familiaCorJoia: produto.familiaCorJoia || "",
-        familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
-        familiaOrdem: Number.isFinite(Number(produto.familiaOrdem))
-          ? Number(produto.familiaOrdem)
-          : index,
-      }))
-    );
+  function abrirEdicaoFamilia(familiaId: string) {
+    const produtosDaFamilia = produtos
+      .filter((produto) => produto.familiaId === familiaId)
+      .sort((a, b) => {
+        const ordemA = Number(a.familiaOrdem || 0);
+        const ordemB = Number(b.familiaOrdem || 0);
 
+        if (ordemA !== ordemB) return ordemA - ordemB;
+
+        return a.nome.localeCompare(b.nome);
+      });
+
+    if (produtosDaFamilia.length === 0) {
+      return;
+    }
+
+    setProdutosSelecionados(produtosDaFamilia.map((produto) => produto.id));
+    setFamiliaSelecionadaId(familiaId);
+    setNovaFamiliaNome("");
+    setItensAgrupamento(montarItensAgrupamento(produtosDaFamilia));
+    setConfirmarMoverFamilia(false);
     setErroFamilia(null);
     setModalFamiliaAberto(true);
   }
@@ -371,6 +399,7 @@ export default function ProdutosCatalogClient({
 
     setModalFamiliaAberto(false);
     setErroFamilia(null);
+    setConfirmarMoverFamilia(false);
   }
 
   function atualizarItemAgrupamento(
@@ -416,11 +445,18 @@ export default function ProdutosCatalogClient({
         body: JSON.stringify({
           familiaId: familiaSelecionadaId || null,
           familiaNome: novaFamiliaNome.trim() || null,
+          confirmarMover: confirmarMoverFamilia,
           produtos: itensAgrupamento,
         }),
       });
 
       const data = await response.json().catch(() => ({}));
+
+      if (response.status === 409 && data.requerConfirmacao) {
+        setErroFamilia(data.error || "Confirme a movimentação de família.");
+        setConfirmarMoverFamilia(true);
+        return;
+      }
 
       if (!response.ok) {
         setErroFamilia(data.error || "Erro ao agrupar produtos.");
@@ -429,6 +465,7 @@ export default function ProdutosCatalogClient({
 
       setModalFamiliaAberto(false);
       setProdutosSelecionados([]);
+      setConfirmarMoverFamilia(false);
 
       startTransition(() => {
         router.refresh();
@@ -592,8 +629,8 @@ export default function ProdutosCatalogClient({
             </h1>
 
             <p className="mt-1 text-sm text-slate-600">
-              Visualize preço, custo, adicionais, lucro, estoque e status dos
-              produtos cadastrados.
+              Visualize preço, custo, adicionais, lucro, estoque, status e
+              famílias comerciais dos produtos cadastrados.
             </p>
           </div>
 
@@ -835,6 +872,16 @@ export default function ProdutosCatalogClient({
                     </span>
                   </div>
 
+                  {possuiFamilia && produto.familiaId && (
+                    <button
+                      type="button"
+                      onClick={() => abrirEdicaoFamilia(produto.familiaId!)}
+                      className="mt-3 rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+                    >
+                      Editar família completa
+                    </button>
+                  )}
+
                   <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1012,6 +1059,12 @@ export default function ProdutosCatalogClient({
               {erroFamilia && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {erroFamilia}
+
+                  {confirmarMoverFamilia && (
+                    <p className="mt-2 text-xs font-medium">
+                      Clique em salvar novamente para confirmar a movimentação.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1025,6 +1078,7 @@ export default function ProdutosCatalogClient({
                     value={familiaSelecionadaId}
                     onChange={(event) => {
                       setFamiliaSelecionadaId(event.target.value);
+                      setConfirmarMoverFamilia(false);
                       if (event.target.value) {
                         setNovaFamiliaNome("");
                       }
@@ -1049,7 +1103,10 @@ export default function ProdutosCatalogClient({
                   <input
                     value={novaFamiliaNome}
                     disabled={Boolean(familiaSelecionadaId)}
-                    onChange={(event) => setNovaFamiliaNome(event.target.value)}
+                    onChange={(event) => {
+                      setNovaFamiliaNome(event.target.value);
+                      setConfirmarMoverFamilia(false);
+                    }}
                     placeholder="Ex: Anel Coração"
                     className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-400"
                   />
@@ -1215,7 +1272,11 @@ export default function ProdutosCatalogClient({
                   disabled={salvandoFamilia}
                   className="rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {salvandoFamilia ? "Salvando..." : "Salvar família"}
+                  {salvandoFamilia
+                    ? "Salvando..."
+                    : confirmarMoverFamilia
+                    ? "Confirmar e salvar"
+                    : "Salvar família"}
                 </button>
               </div>
             </div>
@@ -1226,13 +1287,7 @@ export default function ProdutosCatalogClient({
   );
 }
 
-function Info({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
       <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
