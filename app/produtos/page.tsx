@@ -12,6 +12,13 @@ type ProdutoComRelacoes = Prisma.ProdutoGetPayload<{
         id: true;
       };
     };
+    familia: {
+      select: {
+        id: true;
+        nome: true;
+        slug: true;
+      };
+    };
     categoriasProduto: {
       include: {
         categoria: {
@@ -139,7 +146,7 @@ function calcularPrecoVendaAtualizado({
 }
 
 export default async function ProdutosPage() {
-  const [produtosRaw, regrasAdicionais] = await Promise.all([
+  const [produtosRaw, regrasAdicionais, familiasRaw] = await Promise.all([
     prisma.produto.findMany({
       orderBy: {
         nome: "asc",
@@ -149,6 +156,13 @@ export default async function ProdutosPage() {
         vendasItens: {
           select: {
             id: true,
+          },
+        },
+        familia: {
+          select: {
+            id: true,
+            nome: true,
+            slug: true,
           },
         },
         categoriasProduto: {
@@ -174,6 +188,20 @@ export default async function ProdutosPage() {
       },
       orderBy: [{ categoria: "asc" }, { criadoEm: "asc" }],
     }),
+
+    prisma.produtoFamilia.findMany({
+      where: {
+        ativo: true,
+      },
+      select: {
+        id: true,
+        nome: true,
+        slug: true,
+        ativo: true,
+        ordem: true,
+      },
+      orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+    }),
   ]);
 
   const custoAdicionaisPorCategoria =
@@ -181,6 +209,14 @@ export default async function ProdutosPage() {
 
   const quantidadeAdicionaisPorCategoria =
     montarMapaQuantidadeAdicionais(regrasAdicionais);
+
+  const familiasDisponiveis = familiasRaw.map((familia) => ({
+    id: familia.id,
+    nome: familia.nome,
+    slug: familia.slug,
+    ativo: familia.ativo,
+    ordem: familia.ordem,
+  }));
 
   const produtos = produtosRaw.map((produto: ProdutoComRelacoes) => {
     const categoriaPrincipal = getCategoriaPrincipalProduto(produto);
@@ -258,8 +294,21 @@ export default async function ProdutosPage() {
       estoqueAtual: somarEstoqueProduto(produto),
       valorEstoque: somarValorEstoqueProduto(produto),
       totalVendas: produto.vendasItens.length,
+
+      familiaId: produto.familiaId,
+      familiaNome: produto.familia?.nome || null,
+      familiaSlug: produto.familia?.slug || null,
+      familiaMaterial: produto.familiaMaterial,
+      familiaCorJoia: produto.familiaCorJoia,
+      familiaImagemUrl: produto.familiaImagemUrl,
+      familiaOrdem: produto.familiaOrdem,
     };
   });
 
-  return <ProdutosCatalogClient produtos={produtos} />;
+  return (
+    <ProdutosCatalogClient
+      produtos={produtos}
+      familiasDisponiveis={familiasDisponiveis}
+    />
+  );
 }

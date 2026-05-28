@@ -14,10 +14,19 @@ import {
   Search,
   Tag,
   Trash2,
+  X,
 } from "lucide-react";
 import ImageBox from "@/components/ui/ImageBox";
 
 type ProdutoStatus = "ATIVO" | "INATIVO" | "NA_LIXEIRA" | string;
+
+type ProdutoFamiliaOption = {
+  id: string;
+  nome: string;
+  slug: string;
+  ativo: boolean;
+  ordem: number;
+};
 
 type ProdutoCatalogItem = {
   id: string;
@@ -49,6 +58,22 @@ type ProdutoCatalogItem = {
   estoqueAtual: number;
   valorEstoque: number;
   totalVendas: number;
+
+  familiaId?: string | null;
+  familiaNome?: string | null;
+  familiaSlug?: string | null;
+  familiaMaterial?: string | null;
+  familiaCorJoia?: string | null;
+  familiaImagemUrl?: string | null;
+  familiaOrdem?: number;
+};
+
+type ProdutoAgrupamentoFormItem = {
+  produtoId: string;
+  familiaMaterial: string;
+  familiaCorJoia: string;
+  familiaImagemUrl: string;
+  familiaOrdem: number;
 };
 
 const STATUS_OPTIONS = [
@@ -57,6 +82,28 @@ const STATUS_OPTIONS = [
   { value: "ATIVO", label: "Ativo" },
   { value: "INATIVO", label: "Inativo" },
   { value: "NA_LIXEIRA", label: "Na lixeira" },
+];
+
+const MATERIAIS_JOIA = [
+  "",
+  "Prata",
+  "Ouro",
+  "Dourado",
+  "Ródio branco",
+  "Ródio negro",
+  "Banho ouro",
+];
+
+const CORES_JOIA = [
+  "",
+  "Vermelha",
+  "Azul",
+  "Rosa",
+  "Verde",
+  "Cristal",
+  "Preta",
+  "Branca",
+  "Pérola",
 ];
 
 function moeda(valor: number) {
@@ -168,10 +215,20 @@ function getMargemEfetiva(produto: ProdutoCatalogItem) {
   return ((precoEfetivo - produto.custoTotal) / precoEfetivo) * 100;
 }
 
+function getNomeVersaoFamilia(produto: ProdutoCatalogItem) {
+  const partes = [produto.familiaMaterial, produto.familiaCorJoia]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  return partes.length > 0 ? partes.join(" · ") : "Versão sem nome";
+}
+
 export default function ProdutosCatalogClient({
   produtos,
+  familiasDisponiveis = [],
 }: {
   produtos: ProdutoCatalogItem[];
+  familiasDisponiveis?: ProdutoFamiliaOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -182,6 +239,15 @@ export default function ProdutosCatalogClient({
     []
   );
   const [erroLixeira, setErroLixeira] = useState<string | null>(null);
+
+  const [modalFamiliaAberto, setModalFamiliaAberto] = useState(false);
+  const [familiaSelecionadaId, setFamiliaSelecionadaId] = useState("");
+  const [novaFamiliaNome, setNovaFamiliaNome] = useState("");
+  const [itensAgrupamento, setItensAgrupamento] = useState<
+    ProdutoAgrupamentoFormItem[]
+  >([]);
+  const [erroFamilia, setErroFamilia] = useState<string | null>(null);
+  const [salvandoFamilia, setSalvandoFamilia] = useState(false);
 
   const produtosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -212,6 +278,9 @@ export default function ProdutosCatalogClient({
           produto.codigoFornecedor,
           produto.categoria,
           produto.fornecedorPadrao,
+          produto.familiaNome,
+          produto.familiaMaterial,
+          produto.familiaCorJoia,
           statusProduto,
           produtoTemDesconto(produto) ? "desconto promoção promocional" : "",
           produto.custoAdicionais > 0 ? "adicionais pacote contém" : "",
@@ -227,6 +296,12 @@ export default function ProdutosCatalogClient({
       (produto) => getStatusProduto(produto) !== "NA_LIXEIRA"
     );
   }, [produtosFiltrados]);
+
+  const produtosSelecionadosObjetos = useMemo(() => {
+    const selecionados = new Set(produtosSelecionados);
+
+    return produtos.filter((produto) => selecionados.has(produto.id));
+  }, [produtos, produtosSelecionados]);
 
   const todosSelecionados =
     produtosSelecionaveis.length > 0 &&
@@ -259,6 +334,111 @@ export default function ProdutosCatalogClient({
     }
 
     setProdutosSelecionados(produtosSelecionaveis.map((produto) => produto.id));
+  }
+
+  function abrirModalFamilia() {
+    if (produtosSelecionadosObjetos.length === 0) {
+      return;
+    }
+
+    const familiaIdBase =
+      produtosSelecionadosObjetos.find((produto) => produto.familiaId)
+        ?.familiaId || "";
+
+    setFamiliaSelecionadaId(familiaIdBase);
+    setNovaFamiliaNome("");
+
+    setItensAgrupamento(
+      produtosSelecionadosObjetos.map((produto, index) => ({
+        produtoId: produto.id,
+        familiaMaterial: produto.familiaMaterial || "",
+        familiaCorJoia: produto.familiaCorJoia || "",
+        familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
+        familiaOrdem: Number.isFinite(Number(produto.familiaOrdem))
+          ? Number(produto.familiaOrdem)
+          : index,
+      }))
+    );
+
+    setErroFamilia(null);
+    setModalFamiliaAberto(true);
+  }
+
+  function fecharModalFamilia() {
+    if (salvandoFamilia) {
+      return;
+    }
+
+    setModalFamiliaAberto(false);
+    setErroFamilia(null);
+  }
+
+  function atualizarItemAgrupamento(
+    produtoId: string,
+    campo: keyof ProdutoAgrupamentoFormItem,
+    value: string | number
+  ) {
+    setItensAgrupamento((atuais) =>
+      atuais.map((item) =>
+        item.produtoId === produtoId
+          ? {
+              ...item,
+              [campo]: value,
+            }
+          : item
+      )
+    );
+  }
+
+  async function salvarAgrupamentoFamilia() {
+    setErroFamilia(null);
+
+    if (!familiaSelecionadaId && !novaFamiliaNome.trim()) {
+      setErroFamilia(
+        "Selecione uma família existente ou informe o nome de uma nova família."
+      );
+      return;
+    }
+
+    if (itensAgrupamento.length === 0) {
+      setErroFamilia("Selecione pelo menos um produto para agrupar.");
+      return;
+    }
+
+    setSalvandoFamilia(true);
+
+    try {
+      const response = await fetch("/api/produtos/familias/agrupar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          familiaId: familiaSelecionadaId || null,
+          familiaNome: novaFamiliaNome.trim() || null,
+          produtos: itensAgrupamento,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroFamilia(data.error || "Erro ao agrupar produtos.");
+        return;
+      }
+
+      setModalFamiliaAberto(false);
+      setProdutosSelecionados([]);
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      console.error(error);
+      setErroFamilia("Erro ao agrupar produtos.");
+    } finally {
+      setSalvandoFamilia(false);
+    }
   }
 
   async function moverParaLixeira(produto: ProdutoCatalogItem) {
@@ -435,7 +615,7 @@ export default function ProdutosCatalogClient({
             <input
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
-              placeholder="Pesquisar por nome, código, categoria ou fornecedor"
+              placeholder="Pesquisar por nome, código, categoria, família ou fornecedor"
               className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
             />
           </label>
@@ -492,20 +672,32 @@ export default function ProdutosCatalogClient({
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
-                A lixeira não apaga imagens, estoque ou movimentações. Apenas
-                oculta os produtos da visualização de ativos.
+                Agrupe versões da mesma joia ou envie produtos selecionados para
+                a lixeira.
               </p>
             </div>
 
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={moverSelecionadosParaLixeira}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Trash2 className="h-4 w-4" />
-              Enviar selecionados para lixeira
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={abrirModalFamilia}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Tag className="h-4 w-4" />
+                Agrupar como família
+              </button>
+
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={moverSelecionadosParaLixeira}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                Enviar para lixeira
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -549,6 +741,7 @@ export default function ProdutosCatalogClient({
             const precoEfetivo = getPrecoEfetivo(produto);
             const lucroEfetivo = getLucroEfetivo(produto);
             const margemEfetiva = getMargemEfetiva(produto);
+            const possuiFamilia = Boolean(produto.familiaId);
 
             return (
               <div
@@ -596,6 +789,24 @@ export default function ProdutosCatalogClient({
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                           {produto.categoria}
                         </span>
+
+                        {possuiFamilia && (
+                          <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                            Família: {produto.familiaNome}
+                          </span>
+                        )}
+
+                        {produto.familiaMaterial && (
+                          <span className="inline-flex rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                            Material: {produto.familiaMaterial}
+                          </span>
+                        )}
+
+                        {produto.familiaCorJoia && (
+                          <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                            Cor: {produto.familiaCorJoia}
+                          </span>
+                        )}
 
                         {produto.custoAdicionais > 0 && (
                           <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
@@ -763,6 +974,252 @@ export default function ProdutosCatalogClient({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {modalFamiliaAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Família de produtos
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+                  Agrupar versões da mesma joia
+                </h2>
+
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                  Use para conectar produtos separados, como versões em prata,
+                  ouro ou cores diferentes da mesma joia. Eles continuam
+                  aparecendo individualmente na loja, mas ficam relacionados na
+                  página do produto.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={fecharModalFamilia}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Fechar modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-5 px-6 py-5">
+              {erroFamilia && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {erroFamilia}
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Família existente
+                  </span>
+
+                  <select
+                    value={familiaSelecionadaId}
+                    onChange={(event) => {
+                      setFamiliaSelecionadaId(event.target.value);
+                      if (event.target.value) {
+                        setNovaFamiliaNome("");
+                      }
+                    }}
+                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                  >
+                    <option value="">Criar nova família</option>
+
+                    {familiasDisponiveis.map((familia) => (
+                      <option key={familia.id} value={familia.id}>
+                        {familia.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Nome da nova família
+                  </span>
+
+                  <input
+                    value={novaFamiliaNome}
+                    disabled={Boolean(familiaSelecionadaId)}
+                    onChange={(event) => setNovaFamiliaNome(event.target.value)}
+                    placeholder="Ex: Anel Coração"
+                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-400"
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                Material e cor da joia são informações de agrupamento visual.
+                Tamanho, medida e comprimento continuam como variações internas
+                do produto.
+              </div>
+
+              <div className="space-y-3">
+                {produtosSelecionadosObjetos.map((produto, index) => {
+                  const item = itensAgrupamento.find(
+                    (agrupamento) => agrupamento.produtoId === produto.id
+                  );
+
+                  if (!item) {
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      key={produto.id}
+                      className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[120px_1fr]"
+                    >
+                      <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+                        <ImageBox src={produto.imagemUrl} alt={produto.nome} />
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                              {produto.codigoInterno}
+                            </p>
+
+                            <h3 className="mt-1 text-base font-semibold text-slate-950">
+                              {produto.nome}
+                            </h3>
+                          </div>
+
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+                            Ordem {index + 1}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-4">
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Material
+                            </span>
+
+                            <input
+                              list={`materiais-${produto.id}`}
+                              value={item.familiaMaterial}
+                              onChange={(event) =>
+                                atualizarItemAgrupamento(
+                                  produto.id,
+                                  "familiaMaterial",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Prata, Ouro..."
+                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+
+                            <datalist id={`materiais-${produto.id}`}>
+                              {MATERIAIS_JOIA.map((material) =>
+                                material ? (
+                                  <option key={material} value={material} />
+                                ) : null
+                              )}
+                            </datalist>
+                          </label>
+
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Cor da joia
+                            </span>
+
+                            <input
+                              list={`cores-${produto.id}`}
+                              value={item.familiaCorJoia}
+                              onChange={(event) =>
+                                atualizarItemAgrupamento(
+                                  produto.id,
+                                  "familiaCorJoia",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Vermelha, Azul..."
+                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+
+                            <datalist id={`cores-${produto.id}`}>
+                              {CORES_JOIA.map((cor) =>
+                                cor ? <option key={cor} value={cor} /> : null
+                              )}
+                            </datalist>
+                          </label>
+
+                          <label className="block md:col-span-2">
+                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Imagem do seletor
+                            </span>
+
+                            <input
+                              value={item.familiaImagemUrl}
+                              onChange={(event) =>
+                                atualizarItemAgrupamento(
+                                  produto.id,
+                                  "familiaImagemUrl",
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Usa a imagem principal por padrão"
+                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+                        </div>
+
+                        <div className="mt-3">
+                          <label className="block max-w-[180px]">
+                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Ordem
+                            </span>
+
+                            <input
+                              type="number"
+                              value={item.familiaOrdem}
+                              onChange={(event) =>
+                                atualizarItemAgrupamento(
+                                  produto.id,
+                                  "familiaOrdem",
+                                  Number(event.target.value || 0)
+                                )
+                              }
+                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={fecharModalFamilia}
+                  disabled={salvandoFamilia}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={salvarAgrupamentoFamilia}
+                  disabled={salvandoFamilia}
+                  className="rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {salvandoFamilia ? "Salvando..." : "Salvar família"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
