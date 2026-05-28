@@ -91,6 +91,10 @@ export async function POST(request: NextRequest) {
       (await uploadImagemSeEnviada(formData, "imagemUrl")) ||
       (await uploadImagemSeEnviada(formData, "arquivo")) ||
       (await uploadImagemSeEnviada(formData, "file"));
+      const imagemMobileUpload =
+  (await uploadImagemSeEnviada(formData, "imagemMobile")) ||
+  (await uploadImagemSeEnviada(formData, "imagemMobileUrl")) ||
+  null;
 
     const imagemUrl =
       imagemUpload || textoOpcional(formData.get("imagemUrl"));
@@ -102,16 +106,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const banner = await prisma.bannerLoja.create({
-      data: {
-        titulo,
-        subtitulo,
-        imagemUrl,
-        linkUrl,
-        ordem,
-        ativo,
-      },
-    });
+const banner = await prisma.bannerLoja.create({
+  data: {
+    titulo,
+    subtitulo,
+    imagemUrl,
+    imagemMobileUrl: imagemMobileUpload,
+    linkUrl,
+    ordem,
+    ativo,
+  },
+});
 
     return NextResponse.json({ banner });
   } catch (error) {

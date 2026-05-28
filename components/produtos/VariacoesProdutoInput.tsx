@@ -370,8 +370,8 @@ export default function VariacoesProdutoInput({
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                      <div className="max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center">
                         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                           {possuiImagem ? (
                             <ImageBox
@@ -385,7 +385,7 @@ export default function VariacoesProdutoInput({
                           )}
                         </div>
 
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 max-w-full flex-1 overflow-hidden">
                           <p className="text-sm font-semibold text-slate-900">
                             Imagem da opção
                           </p>
@@ -396,7 +396,10 @@ export default function VariacoesProdutoInput({
                           </p>
 
                           {possuiImagem ? (
-                            <p className="mt-2 truncate text-xs text-slate-400">
+                            <p
+                              className="mt-2 block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-400"
+                              title={opcao.imagemUrl || ""}
+                            >
                               {opcao.imagemUrl}
                             </p>
                           ) : null}

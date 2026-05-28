@@ -50,16 +50,44 @@ export async function PATCH(request: Request, context: RouteContext) {
     const data = {
       titulo: limparTextoOuNull(body.titulo),
       subtitulo: limparTextoOuNull(body.subtitulo),
+      imagemUrl: limparTextoOuNull(body.imagemUrl),
+      imagemMobileUrl: limparTextoOuNull(body.imagemMobileUrl),
       linkUrl: limparTextoOuNull(body.linkUrl),
       ordem: limparNumeroOuUndefined(body.ordem),
       ativo: limparBooleanOuUndefined(body.ativo),
     };
 
     const banner = await prisma.bannerLoja.update({
-      where: {
-        id,
+      where: { id },
+      data: {
+        ...(typeof data.titulo !== "undefined"
+          ? { titulo: data.titulo }
+          : {}),
+
+        ...(typeof data.subtitulo !== "undefined"
+          ? { subtitulo: data.subtitulo }
+          : {}),
+
+        ...(typeof data.imagemUrl !== "undefined"
+          ? { imagemUrl: data.imagemUrl || "" }
+          : {}),
+
+        ...(typeof data.imagemMobileUrl !== "undefined"
+          ? { imagemMobileUrl: data.imagemMobileUrl || null }
+          : {}),
+
+        ...(typeof data.linkUrl !== "undefined"
+          ? { linkUrl: data.linkUrl }
+          : {}),
+
+        ...(typeof data.ordem !== "undefined"
+          ? { ordem: data.ordem }
+          : {}),
+
+        ...(typeof data.ativo !== "undefined"
+          ? { ativo: data.ativo }
+          : {}),
       },
-      data,
     });
 
     return NextResponse.json({ banner });

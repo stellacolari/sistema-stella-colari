@@ -39,6 +39,33 @@ model Produto {
   canaisVenda        ProdutoCanal[]
   compraItens        CompraItem[]
   variacoes          ProdutoVariacao[]
+
+  familiaId        String?
+  familia          ProdutoFamilia? @relation(fields: [familiaId], references: [id], onDelete: SetNull)
+  familiaMaterial  String?
+  familiaCorJoia   String?
+  familiaImagemUrl String?
+  familiaOrdem     Int             @default(0)
+
+  @@index([familiaId])
+  @@index([familiaMaterial])
+  @@index([familiaCorJoia])
+}
+
+model ProdutoFamilia {
+  id    String  @id @default(cuid())
+  nome  String
+  slug  String  @unique
+  ativo Boolean @default(true)
+  ordem Int     @default(0)
+
+  produtos Produto[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([ativo])
+  @@index([ordem])
 }
 
 model ProdutoImagem {
@@ -345,15 +372,16 @@ model MovimentacaoAdicional {
 }
 
 model BannerLoja {
-  id           String   @id @default(cuid())
-  titulo       String?
-  subtitulo    String?
-  imagemUrl    String
-  linkUrl      String?
-  ordem        Int      @default(0)
-  ativo        Boolean  @default(true)
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id              String   @id @default(cuid())
+  titulo          String?
+  subtitulo       String?
+  imagemUrl       String
+  imagemMobileUrl String?
+  linkUrl         String?
+  ordem           Int      @default(0)
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
 }
 
 model MenuLoja {

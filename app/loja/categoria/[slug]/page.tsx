@@ -315,17 +315,20 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
     );
   }
 
-  const banners: LojaBannerItem[] = categoria.imagemUrl
-    ? [
-        {
-          id: `categoria-${categoria.id}`,
-          titulo: categoria.nome,
-          subtitulo: categoria.descricao || null,
-          imagemUrl: categoria.imagemUrl,
-          linkUrl: null,
-        },
-      ]
-    : [];
+const banners: LojaBannerItem[] = categoria.imagemUrl
+  ? [
+      {
+        id: `categoria-${categoria.id}`,
+        titulo: categoria.nome,
+        subtitulo: categoria.descricao,
+        imagemUrl: categoria.imagemUrl,
+        imagemMobileUrl: null,
+        linkUrl: null,
+        ordem: 0,
+        ativo: true,
+      },
+    ]
+  : [];
 
   const menus: LojaMenuItem[] = menusPublicos.map((menu) => ({
     id: menu.id,

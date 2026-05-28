@@ -33,7 +33,10 @@ export type LojaBannerItem = {
   titulo: string | null;
   subtitulo: string | null;
   imagemUrl: string;
+  imagemMobileUrl?: string | null;
   linkUrl: string | null;
+  ordem: number;
+  ativo: boolean;
 };
 
 export type LojaMenuItem = {
@@ -230,23 +233,32 @@ function LogoLoja() {
 }
 
 function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
-  const imagem = (
-    <img
-      src={banner.imagemUrl}
-      alt={banner.titulo || "Banner da loja"}
-      className="h-[280px] w-full object-cover sm:h-[360px] lg:h-[500px] xl:h-[560px]"
-    />
+  const conteudo = (
+    <picture className="block w-full">
+      {banner.imagemMobileUrl && (
+        <source media="(max-width: 768px)" srcSet={banner.imagemMobileUrl} />
+      )}
+
+      <img
+        src={banner.imagemUrl}
+        alt={banner.titulo || "Banner da loja"}
+        className="h-[420px] w-full object-cover md:h-auto md:min-h-0"
+      />
+    </picture>
   );
+
+  const wrapperClass =
+    "block w-full overflow-hidden max-md:h-[70vh] max-md:[&_img]:h-full max-md:[&_img]:object-cover";
 
   if (banner.linkUrl) {
     return (
-      <Link href={banner.linkUrl} className="block w-full overflow-hidden">
-        {imagem}
+      <Link href={banner.linkUrl} className={wrapperClass}>
+        {conteudo}
       </Link>
     );
   }
 
-  return <div className="w-full overflow-hidden">{imagem}</div>;
+  return <div className={wrapperClass}>{conteudo}</div>;
 }
 
 function MicroFaixaDiferenciais() {
