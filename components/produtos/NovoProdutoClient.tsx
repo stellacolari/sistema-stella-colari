@@ -211,6 +211,7 @@ export default function NovoProdutoClient({
   const [categoriaPrincipal, setCategoriaPrincipal] =
     useState<CategoriaProduto | null>(null);
   const [produtoEhKit, setProdutoEhKit] = useState(false);
+  const [erroFormulario, setErroFormulario] = useState("");
 
   const regrasAdicionaisCategoria = useMemo(() => {
     if (!categoriaPrincipal?.nome) {
@@ -294,7 +295,77 @@ export default function NovoProdutoClient({
     precoPromocional,
     regrasAdicionaisCategoria,
   ]);
+function validarFormularioAntesDeEnviar(
+  event: React.FormEvent<HTMLFormElement>
+) {
+  setErroFormulario("");
 
+  const formData = new FormData(event.currentTarget);
+
+  const nome = String(formData.get("nome") || "").trim();
+  const fornecedorPadrao = String(formData.get("fornecedorPadrao") || "").trim();
+  const custoBase = parseNumero(String(formData.get("custoBase") || ""));
+  const margem = parseNumero(String(formData.get("margemAplicada") || ""));
+  const categoriaPrincipalId = String(
+    formData.get("categoriaPrincipalId") || ""
+  ).trim();
+  const tipoProduto = String(formData.get("tipoProduto") || "UNITARIO").trim();
+  const kitComponentes = String(formData.get("kitComponentes") || "[]");
+
+  if (!nome) {
+    event.preventDefault();
+    setErroFormulario("Informe o nome do produto antes de salvar.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (!categoriaPrincipalId) {
+    event.preventDefault();
+    setErroFormulario("Selecione uma categoria principal antes de salvar.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (!fornecedorPadrao) {
+    event.preventDefault();
+    setErroFormulario("Selecione o fornecedor padrão antes de salvar.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (tipoProduto !== "KIT" && custoBase <= 0) {
+    event.preventDefault();
+    setErroFormulario("Informe um custo base maior que zero.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (margem <= 0) {
+    event.preventDefault();
+    setErroFormulario("Informe um multiplicador/margem maior que zero.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  if (tipoProduto === "KIT") {
+    try {
+      const parsed = JSON.parse(kitComponentes);
+
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        event.preventDefault();
+        setErroFormulario(
+          "Produtos do tipo kit precisam ter ao menos um componente."
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    } catch {
+      event.preventDefault();
+      setErroFormulario("A composição do kit está inválida.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+}
   return (
     <div className="space-y-6">
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -334,8 +405,14 @@ export default function NovoProdutoClient({
 
       <form
         action={criarProdutoAction}
+        onSubmit={validarFormularioAntesDeEnviar}
         className="grid gap-6 xl:grid-cols-[1.4fr_1fr]"
       >
+        {erroFormulario ? (
+          <div className="xl:col-span-2 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium leading-6 text-rose-700">
+            {erroFormulario}
+          </div>
+        ) : null}
         <div className="space-y-4">
           <AccordionSection
             title="Identificação"
