@@ -10,6 +10,7 @@ import {
   EyeOff,
   Filter,
   Package,
+  Plus,
   RefreshCcw,
   Search,
   Tag,
@@ -20,12 +21,40 @@ import ImageBox from "@/components/ui/ImageBox";
 
 type ProdutoStatus = "ATIVO" | "INATIVO" | "NA_LIXEIRA" | string;
 
+type ProdutoFamiliaCampoOption = {
+  id: string;
+  nome: string;
+  slug: string;
+  ativo: boolean;
+  ordem: number;
+};
+
+type ProdutoFamiliaProdutoOption = {
+  id: string;
+  produtoId: string;
+  codigoInterno: string;
+  nome: string;
+  imagemUrl?: string | null;
+  ativo: boolean;
+  ordem: number;
+  produtoAtivo: boolean;
+  valores: {
+    campoId: string;
+    campoNome: string;
+    campoSlug: string;
+    valor: string;
+  }[];
+  valoresPorCampo: Record<string, string>;
+};
+
 type ProdutoFamiliaOption = {
   id: string;
   nome: string;
   slug: string;
   ativo: boolean;
   ordem: number;
+  campos?: ProdutoFamiliaCampoOption[];
+  produtos?: ProdutoFamiliaProdutoOption[];
 };
 
 type ProdutoCatalogItem = {
@@ -66,14 +95,31 @@ type ProdutoCatalogItem = {
   familiaCorJoia?: string | null;
   familiaImagemUrl?: string | null;
   familiaOrdem?: number;
+
+  familiaVinculoId?: string | null;
+  familiaValores?: {
+    campoId: string;
+    campoNome: string;
+    campoSlug: string;
+    valor: string;
+  }[];
+  familiaValoresPorCampo?: Record<string, string>;
+};
+
+type CampoFamiliaFormItem = {
+  id?: string;
+  tempId: string;
+  nome: string;
+  slug: string;
+  ordem: number;
+  ativo: boolean;
 };
 
 type ProdutoAgrupamentoFormItem = {
   produtoId: string;
-  familiaMaterial: string;
-  familiaCorJoia: string;
   familiaImagemUrl: string;
   familiaOrdem: number;
+  valores: Record<string, string>;
 };
 
 const STATUS_OPTIONS = [
@@ -84,27 +130,45 @@ const STATUS_OPTIONS = [
   { value: "NA_LIXEIRA", label: "Na lixeira" },
 ];
 
-const MATERIAIS_JOIA = [
-  "",
-  "Prata",
-  "Ouro",
-  "Dourado",
-  "Ródio branco",
-  "Ródio negro",
-  "Banho ouro",
+const CAMPOS_PADRAO_FAMILIA: CampoFamiliaFormItem[] = [
+  {
+    tempId: "material",
+    nome: "Material",
+    slug: "material",
+    ordem: 0,
+    ativo: true,
+  },
+  {
+    tempId: "cor-da-joia",
+    nome: "Cor da joia",
+    slug: "cor-da-joia",
+    ordem: 1,
+    ativo: true,
+  },
 ];
 
-const CORES_JOIA = [
-  "",
-  "Vermelha",
-  "Azul",
-  "Rosa",
-  "Verde",
-  "Cristal",
-  "Preta",
-  "Branca",
-  "Pérola",
-];
+const SUGESTOES_VALORES: Record<string, string[]> = {
+  material: [
+    "Prata",
+    "Ouro",
+    "Dourado",
+    "Ródio branco",
+    "Ródio negro",
+    "Banho ouro",
+  ],
+  "cor-da-joia": [
+    "Vermelha",
+    "Azul",
+    "Rosa",
+    "Verde",
+    "Cristal",
+    "Preta",
+    "Branca",
+    "Pérola",
+  ],
+  pedra: ["Zircônia", "Pérola", "Cristal", "Rubi", "Safira", "Esmeralda"],
+  acabamento: ["Polido", "Fosco", "Texturizado", "Escovado"],
+};
 
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -126,6 +190,20 @@ function normalizarTexto(value: string | null | undefined) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function gerarSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function criarTempId() {
+  return `campo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function labelStatus(status: string) {
@@ -215,12 +293,114 @@ function getMargemEfetiva(produto: ProdutoCatalogItem) {
   return ((precoEfetivo - produto.custoTotal) / precoEfetivo) * 100;
 }
 
+function getValoresFamiliaProduto(produto: ProdutoCatalogItem) {
+  if (produto.familiaValores && produto.familiaValores.length > 0) {
+    return produto.familiaValores;
+  }
+
+  const valores = [];
+
+  if (produto.familiaMaterial) {
+    valores.push({
+      campoId: "material",
+      campoNome: "Material",
+      campoSlug: "material",
+      valor: produto.familiaMaterial,
+    });
+  }
+
+  if (produto.familiaCorJoia) {
+    valores.push({
+      campoId: "cor-da-joia",
+      campoNome: "Cor da joia",
+      campoSlug: "cor-da-joia",
+      valor: produto.familiaCorJoia,
+    });
+  }
+
+  return valores;
+}
+
 function getNomeVersaoFamilia(produto: ProdutoCatalogItem) {
-  const partes = [produto.familiaMaterial, produto.familiaCorJoia]
-    .map((item) => String(item || "").trim())
+  const valoresDinamicos = getValoresFamiliaProduto(produto)
+    .map((item) => item.valor)
     .filter(Boolean);
 
-  return partes.length > 0 ? partes.join(" · ") : "Versão sem nome";
+  if (valoresDinamicos.length > 0) {
+    return valoresDinamicos.join(" · ");
+  }
+
+  return "Versão sem nome";
+}
+
+function getValorCampoProduto({
+  produto,
+  campo,
+}: {
+  produto: ProdutoCatalogItem;
+  campo: CampoFamiliaFormItem;
+}) {
+  const valoresPorCampo = produto.familiaValoresPorCampo || {};
+  const valor =
+    valoresPorCampo[campo.id || ""] ||
+    valoresPorCampo[campo.tempId] ||
+    valoresPorCampo[campo.slug] ||
+    valoresPorCampo[campo.nome];
+
+  if (valor) {
+    return valor;
+  }
+
+  if (campo.slug === "material") {
+    return produto.familiaMaterial || "";
+  }
+
+  if (campo.slug === "cor-da-joia") {
+    return produto.familiaCorJoia || "";
+  }
+
+  return "";
+}
+
+function montarCamposIniciaisFamilia({
+  familia,
+  produtosBase,
+}: {
+  familia?: ProdutoFamiliaOption | null;
+  produtosBase: ProdutoCatalogItem[];
+}): CampoFamiliaFormItem[] {
+  if (familia?.campos && familia.campos.length > 0) {
+    return familia.campos
+      .filter((campo) => campo.ativo)
+      .sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0))
+      .map((campo, index) => ({
+        id: campo.id,
+        tempId: campo.id,
+        nome: campo.nome,
+        slug: campo.slug,
+        ordem: Number.isFinite(Number(campo.ordem)) ? campo.ordem : index,
+        ativo: campo.ativo,
+      }));
+  }
+
+  const usaMaterial = produtosBase.some((produto) => produto.familiaMaterial);
+  const usaCorJoia = produtosBase.some((produto) => produto.familiaCorJoia);
+
+  const campos = [];
+
+  if (usaMaterial) {
+    campos.push(CAMPOS_PADRAO_FAMILIA[0]);
+  }
+
+  if (usaCorJoia) {
+    campos.push(CAMPOS_PADRAO_FAMILIA[1]);
+  }
+
+  if (campos.length > 0) {
+    return campos.map((campo) => ({ ...campo }));
+  }
+
+  return CAMPOS_PADRAO_FAMILIA.map((campo) => ({ ...campo }));
 }
 
 export default function ProdutosCatalogClient({
@@ -243,6 +423,9 @@ export default function ProdutosCatalogClient({
   const [modalFamiliaAberto, setModalFamiliaAberto] = useState(false);
   const [familiaSelecionadaId, setFamiliaSelecionadaId] = useState("");
   const [novaFamiliaNome, setNovaFamiliaNome] = useState("");
+  const [camposFamilia, setCamposFamilia] = useState<CampoFamiliaFormItem[]>(
+    []
+  );
   const [itensAgrupamento, setItensAgrupamento] = useState<
     ProdutoAgrupamentoFormItem[]
   >([]);
@@ -283,6 +466,7 @@ export default function ProdutosCatalogClient({
           produto.familiaMaterial,
           produto.familiaCorJoia,
           getNomeVersaoFamilia(produto),
+          ...getValoresFamiliaProduto(produto).map((item) => item.valor),
           statusProduto,
           produtoTemDesconto(produto) ? "desconto promoção promocional" : "",
           produto.custoAdicionais > 0 ? "adicionais pacote contém" : "",
@@ -304,6 +488,18 @@ export default function ProdutosCatalogClient({
 
     return produtos.filter((produto) => selecionados.has(produto.id));
   }, [produtos, produtosSelecionados]);
+
+  const familiaSelecionada = useMemo(() => {
+    if (!familiaSelecionadaId) {
+      return null;
+    }
+
+    return (
+      familiasDisponiveis.find(
+        (familia) => familia.id === familiaSelecionadaId
+      ) || null
+    );
+  }, [familiaSelecionadaId, familiasDisponiveis]);
 
   const todosSelecionados =
     produtosSelecionaveis.length > 0 &&
@@ -338,16 +534,57 @@ export default function ProdutosCatalogClient({
     setProdutosSelecionados(produtosSelecionaveis.map((produto) => produto.id));
   }
 
-  function montarItensAgrupamento(produtosBase: ProdutoCatalogItem[]) {
-    return produtosBase.map((produto, index) => ({
-      produtoId: produto.id,
-      familiaMaterial: produto.familiaMaterial || "",
-      familiaCorJoia: produto.familiaCorJoia || "",
-      familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
-      familiaOrdem: Number.isFinite(Number(produto.familiaOrdem))
-        ? Number(produto.familiaOrdem)
-        : index,
-    }));
+  function montarItensAgrupamento({
+    produtosBase,
+    campos,
+  }: {
+    produtosBase: ProdutoCatalogItem[];
+    campos: CampoFamiliaFormItem[];
+  }) {
+    return produtosBase.map((produto, index) => {
+      const valores = campos.reduce<Record<string, string>>((acc, campo) => {
+        acc[campo.tempId] = getValorCampoProduto({ produto, campo });
+        return acc;
+      }, {});
+
+      return {
+        produtoId: produto.id,
+        familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
+        familiaOrdem: Number.isFinite(Number(produto.familiaOrdem))
+          ? Number(produto.familiaOrdem)
+          : index,
+        valores,
+      };
+    });
+  }
+
+  function prepararModalFamilia({
+    produtosBase,
+    familiaId,
+  }: {
+    produtosBase: ProdutoCatalogItem[];
+    familiaId?: string | null;
+  }) {
+    const familia =
+      familiasDisponiveis.find((item) => item.id === familiaId) || null;
+
+    const campos = montarCamposIniciaisFamilia({
+      familia,
+      produtosBase,
+    });
+
+    setFamiliaSelecionadaId(familiaId || "");
+    setNovaFamiliaNome("");
+    setCamposFamilia(campos);
+    setItensAgrupamento(
+      montarItensAgrupamento({
+        produtosBase,
+        campos,
+      })
+    );
+    setConfirmarMoverFamilia(false);
+    setErroFamilia(null);
+    setModalFamiliaAberto(true);
   }
 
   function abrirModalFamilia() {
@@ -359,12 +596,10 @@ export default function ProdutosCatalogClient({
       produtosSelecionadosObjetos.find((produto) => produto.familiaId)
         ?.familiaId || "";
 
-    setFamiliaSelecionadaId(familiaIdBase);
-    setNovaFamiliaNome("");
-    setItensAgrupamento(montarItensAgrupamento(produtosSelecionadosObjetos));
-    setConfirmarMoverFamilia(false);
-    setErroFamilia(null);
-    setModalFamiliaAberto(true);
+    prepararModalFamilia({
+      produtosBase: produtosSelecionadosObjetos,
+      familiaId: familiaIdBase,
+    });
   }
 
   function abrirEdicaoFamilia(familiaId: string) {
@@ -384,12 +619,11 @@ export default function ProdutosCatalogClient({
     }
 
     setProdutosSelecionados(produtosDaFamilia.map((produto) => produto.id));
-    setFamiliaSelecionadaId(familiaId);
-    setNovaFamiliaNome("");
-    setItensAgrupamento(montarItensAgrupamento(produtosDaFamilia));
-    setConfirmarMoverFamilia(false);
-    setErroFamilia(null);
-    setModalFamiliaAberto(true);
+
+    prepararModalFamilia({
+      produtosBase: produtosDaFamilia,
+      familiaId,
+    });
   }
 
   function fecharModalFamilia() {
@@ -402,9 +636,94 @@ export default function ProdutosCatalogClient({
     setConfirmarMoverFamilia(false);
   }
 
+  function atualizarCampoFamilia(
+    tempId: string,
+    campo: keyof CampoFamiliaFormItem,
+    value: string | number | boolean
+  ) {
+    setCamposFamilia((atuais) =>
+      atuais.map((item) => {
+        if (item.tempId !== tempId) {
+          return item;
+        }
+
+        if (campo === "nome") {
+          const nome = String(value || "");
+          return {
+            ...item,
+            nome,
+            slug: gerarSlug(nome),
+          };
+        }
+
+        return {
+          ...item,
+          [campo]: value,
+        };
+      })
+    );
+    setConfirmarMoverFamilia(false);
+  }
+
+  function adicionarCampoFamilia() {
+    const proximaOrdem = camposFamilia.length;
+
+    const novoCampo: CampoFamiliaFormItem = {
+      tempId: criarTempId(),
+      nome: "",
+      slug: "",
+      ordem: proximaOrdem,
+      ativo: true,
+    };
+
+    setCamposFamilia((atuais) => [...atuais, novoCampo]);
+    setItensAgrupamento((atuais) =>
+      atuais.map((item) => ({
+        ...item,
+        valores: {
+          ...item.valores,
+          [novoCampo.tempId]: "",
+        },
+      }))
+    );
+  }
+
+  function removerCampoFamilia(tempId: string) {
+    const confirmado = window.confirm(
+      "Remover este campo da família? Os valores preenchidos para ele deixarão de ser usados neste agrupamento."
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setCamposFamilia((atuais) =>
+      atuais
+        .filter((campo) => campo.tempId !== tempId)
+        .map((campo, index) => ({
+          ...campo,
+          ordem: index,
+        }))
+    );
+
+    setItensAgrupamento((atuais) =>
+      atuais.map((item) => {
+        const novosValores = { ...item.valores };
+        delete novosValores[tempId];
+
+        return {
+          ...item,
+          valores: novosValores,
+        };
+      })
+    );
+
+    setConfirmarMoverFamilia(false);
+  }
+
   function atualizarItemAgrupamento(
     produtoId: string,
-    campo: keyof ProdutoAgrupamentoFormItem,
+    campo: "familiaImagemUrl" | "familiaOrdem",
     value: string | number
   ) {
     setItensAgrupamento((atuais) =>
@@ -417,6 +736,32 @@ export default function ProdutosCatalogClient({
           : item
       )
     );
+    setConfirmarMoverFamilia(false);
+  }
+
+  function atualizarValorCampoProduto({
+    produtoId,
+    campoTempId,
+    value,
+  }: {
+    produtoId: string;
+    campoTempId: string;
+    value: string;
+  }) {
+    setItensAgrupamento((atuais) =>
+      atuais.map((item) =>
+        item.produtoId === produtoId
+          ? {
+              ...item,
+              valores: {
+                ...item.valores,
+                [campoTempId]: value,
+              },
+            }
+          : item
+      )
+    );
+    setConfirmarMoverFamilia(false);
   }
 
   async function salvarAgrupamentoFamilia() {
@@ -429,8 +774,52 @@ export default function ProdutosCatalogClient({
       return;
     }
 
+    const camposValidos = camposFamilia
+      .map((campo, index) => ({
+        ...campo,
+        nome: campo.nome.trim(),
+        slug: gerarSlug(campo.slug || campo.nome),
+        ordem: index,
+        ativo: true,
+      }))
+      .filter((campo) => campo.nome && campo.slug);
+
+    if (camposValidos.length === 0) {
+      setErroFamilia("Adicione pelo menos um campo para identificar as versões.");
+      return;
+    }
+
     if (itensAgrupamento.length === 0) {
       setErroFamilia("Selecione pelo menos um produto para agrupar.");
+      return;
+    }
+
+    const possuiValorDuplicado = (() => {
+      const chaves = new Set<string>();
+
+      for (const item of itensAgrupamento) {
+        const chave = camposValidos
+          .map((campo) => item.valores[campo.tempId]?.trim() || "")
+          .join("|");
+
+        if (!chave.replaceAll("|", "").trim()) {
+          continue;
+        }
+
+        if (chaves.has(chave)) {
+          return true;
+        }
+
+        chaves.add(chave);
+      }
+
+      return false;
+    })();
+
+    if (possuiValorDuplicado) {
+      setErroFamilia(
+        "Existem produtos com a mesma combinação de valores. Ajuste os campos para diferenciar cada versão."
+      );
       return;
     }
 
@@ -446,7 +835,34 @@ export default function ProdutosCatalogClient({
           familiaId: familiaSelecionadaId || null,
           familiaNome: novaFamiliaNome.trim() || null,
           confirmarMover: confirmarMoverFamilia,
-          produtos: itensAgrupamento,
+          campos: camposValidos,
+          produtos: itensAgrupamento.map((item) => {
+            const valoresNormalizados = camposValidos.reduce<
+              Record<string, string>
+            >((acc, campo) => {
+              acc[campo.tempId] = item.valores[campo.tempId]?.trim() || "";
+              return acc;
+            }, {});
+
+            return {
+              produtoId: item.produtoId,
+              familiaImagemUrl: item.familiaImagemUrl,
+              familiaOrdem: item.familiaOrdem,
+              valores: valoresNormalizados,
+
+              // Compatibilidade temporária.
+              familiaMaterial:
+                valoresNormalizados[
+                  camposValidos.find((campo) => campo.slug === "material")
+                    ?.tempId || ""
+                ] || null,
+              familiaCorJoia:
+                valoresNormalizados[
+                  camposValidos.find((campo) => campo.slug === "cor-da-joia")
+                    ?.tempId || ""
+                ] || null,
+            };
+          }),
         }),
       });
 
@@ -779,6 +1195,7 @@ export default function ProdutosCatalogClient({
             const lucroEfetivo = getLucroEfetivo(produto);
             const margemEfetiva = getMargemEfetiva(produto);
             const possuiFamilia = Boolean(produto.familiaId);
+            const valoresFamilia = getValoresFamiliaProduto(produto);
 
             return (
               <div
@@ -833,17 +1250,14 @@ export default function ProdutosCatalogClient({
                           </span>
                         )}
 
-                        {produto.familiaMaterial && (
-                          <span className="inline-flex rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                            Material: {produto.familiaMaterial}
+                        {valoresFamilia.map((valor) => (
+                          <span
+                            key={`${produto.id}-${valor.campoId}-${valor.valor}`}
+                            className="inline-flex rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                          >
+                            {valor.campoNome}: {valor.valor}
                           </span>
-                        )}
-
-                        {produto.familiaCorJoia && (
-                          <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-                            Cor: {produto.familiaCorJoia}
-                          </span>
-                        )}
+                        ))}
 
                         {produto.custoAdicionais > 0 && (
                           <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
@@ -1026,7 +1440,7 @@ export default function ProdutosCatalogClient({
 
       {modalFamiliaAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1038,10 +1452,8 @@ export default function ProdutosCatalogClient({
                 </h2>
 
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  Use para conectar produtos separados, como versões em prata,
-                  ouro ou cores diferentes da mesma joia. Eles continuam
-                  aparecendo individualmente na loja, mas ficam relacionados na
-                  página do produto.
+                  Crie campos como Material, Cor da joia, Pedra ou Acabamento
+                  para identificar versões comerciais relacionadas.
                 </p>
               </div>
 
@@ -1077,10 +1489,35 @@ export default function ProdutosCatalogClient({
                   <select
                     value={familiaSelecionadaId}
                     onChange={(event) => {
-                      setFamiliaSelecionadaId(event.target.value);
+                      const novoFamiliaId = event.target.value;
+                      const familia =
+                        familiasDisponiveis.find(
+                          (item) => item.id === novoFamiliaId
+                        ) || null;
+
+                      setFamiliaSelecionadaId(novoFamiliaId);
                       setConfirmarMoverFamilia(false);
-                      if (event.target.value) {
+
+                      if (novoFamiliaId) {
                         setNovaFamiliaNome("");
+
+                        const produtosBase =
+                          produtosSelecionadosObjetos.length > 0
+                            ? produtosSelecionadosObjetos
+                            : produtos;
+
+                        const campos = montarCamposIniciaisFamilia({
+                          familia,
+                          produtosBase,
+                        });
+
+                        setCamposFamilia(campos);
+                        setItensAgrupamento(
+                          montarItensAgrupamento({
+                            produtosBase: produtosSelecionadosObjetos,
+                            campos,
+                          })
+                        );
                       }
                     }}
                     className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
@@ -1113,8 +1550,96 @@ export default function ProdutosCatalogClient({
                 </label>
               </div>
 
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">
+                      Campos da família
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      Use campos para diferenciar os produtos agrupados. Ex:
+                      Material, Cor da joia, Pedra, Acabamento.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={adicionarCampoFamilia}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar campo
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {camposFamilia.map((campo, index) => (
+                    <div
+                      key={campo.tempId}
+                      className="rounded-2xl border border-slate-200 bg-white p-3"
+                    >
+                      <div className="grid gap-3 sm:grid-cols-[1fr_90px_auto]">
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Nome do campo
+                          </span>
+
+                          <input
+                            value={campo.nome}
+                            onChange={(event) =>
+                              atualizarCampoFamilia(
+                                campo.tempId,
+                                "nome",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Material, Pedra..."
+                            className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                          />
+                        </label>
+
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Ordem
+                          </span>
+
+                          <input
+                            type="number"
+                            value={campo.ordem}
+                            onChange={(event) =>
+                              atualizarCampoFamilia(
+                                campo.tempId,
+                                "ordem",
+                                Number(event.target.value || index)
+                              )
+                            }
+                            className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                          />
+                        </label>
+
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => removerCampoFamilia(campo.tempId)}
+                            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+                            title="Remover campo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-400">
+                        Identificador: {campo.slug || "gerado ao salvar"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-                Material e cor da joia são informações de agrupamento visual.
+                Campos de família são apenas agrupamento visual/comercial.
                 Tamanho, medida e comprimento continuam como variações internas
                 do produto.
               </div>
@@ -1155,62 +1680,60 @@ export default function ProdutosCatalogClient({
                           </span>
                         </div>
 
-                        <div className="mt-4 grid gap-3 md:grid-cols-4">
-                          <label className="block">
-                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Material
-                            </span>
+                        <div
+                          className={`mt-4 grid gap-3 ${
+                            camposFamilia.length <= 2
+                              ? "md:grid-cols-2"
+                              : "md:grid-cols-3"
+                          }`}
+                        >
+                          {camposFamilia.map((campo) => {
+                            const sugestoes =
+                              SUGESTOES_VALORES[campo.slug] || [];
 
-                            <input
-                              list={`materiais-${produto.id}`}
-                              value={item.familiaMaterial}
-                              onChange={(event) =>
-                                atualizarItemAgrupamento(
-                                  produto.id,
-                                  "familiaMaterial",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Prata, Ouro..."
-                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
-                            />
+                            return (
+                              <label key={campo.tempId} className="block">
+                                <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  {campo.nome || "Campo sem nome"}
+                                </span>
 
-                            <datalist id={`materiais-${produto.id}`}>
-                              {MATERIAIS_JOIA.map((material) =>
-                                material ? (
-                                  <option key={material} value={material} />
-                                ) : null
-                              )}
-                            </datalist>
-                          </label>
+                                <input
+                                  list={
+                                    sugestoes.length > 0
+                                      ? `sugestoes-${produto.id}-${campo.tempId}`
+                                      : undefined
+                                  }
+                                  value={item.valores[campo.tempId] || ""}
+                                  onChange={(event) =>
+                                    atualizarValorCampoProduto({
+                                      produtoId: produto.id,
+                                      campoTempId: campo.tempId,
+                                      value: event.target.value,
+                                    })
+                                  }
+                                  placeholder={`Valor para ${
+                                    campo.nome || "campo"
+                                  }`}
+                                  className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
 
-                          <label className="block">
-                            <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              Cor da joia
-                            </span>
+                                {sugestoes.length > 0 && (
+                                  <datalist
+                                    id={`sugestoes-${produto.id}-${campo.tempId}`}
+                                  >
+                                    {sugestoes.map((sugestao) => (
+                                      <option
+                                        key={sugestao}
+                                        value={sugestao}
+                                      />
+                                    ))}
+                                  </datalist>
+                                )}
+                              </label>
+                            );
+                          })}
 
-                            <input
-                              list={`cores-${produto.id}`}
-                              value={item.familiaCorJoia}
-                              onChange={(event) =>
-                                atualizarItemAgrupamento(
-                                  produto.id,
-                                  "familiaCorJoia",
-                                  event.target.value
-                                )
-                              }
-                              placeholder="Vermelha, Azul..."
-                              className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
-                            />
-
-                            <datalist id={`cores-${produto.id}`}>
-                              {CORES_JOIA.map((cor) =>
-                                cor ? <option key={cor} value={cor} /> : null
-                              )}
-                            </datalist>
-                          </label>
-
-                          <label className="block md:col-span-2">
+                          <label className="block md:col-span-full">
                             <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                               Imagem do seletor
                             </span>

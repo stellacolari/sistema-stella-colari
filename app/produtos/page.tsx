@@ -39,6 +39,8 @@ type RegraAdicionalComItem = Prisma.RegraCategoriaGetPayload<{
   };
 }>;
 
+type FamiliaComRelacoes = Awaited<ReturnType<typeof buscarFamiliasRaw>>[number];
+
 function arredondarMoeda(valor: number) {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
@@ -145,6 +147,160 @@ function calcularPrecoVendaAtualizado({
   return arredondarMoeda(custoBase * margemAplicada + custoAdicionais);
 }
 
+async function buscarFamiliasRaw() {
+  return prisma.produtoFamilia.findMany({
+    where: {
+      ativo: true,
+    },
+    include: {
+      campos: {
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+      },
+      vinculos: {
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        include: {
+          produto: {
+            select: {
+              id: true,
+              codigoInterno: true,
+              nome: true,
+              imagemUrl: true,
+              ativo: true,
+              status: true,
+            },
+          },
+          valores: {
+            include: {
+              campo: {
+                select: {
+                  id: true,
+                  nome: true,
+                  slug: true,
+                  ordem: true,
+                  ativo: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+  });
+}
+
+function montarMapaValoresFamilia(familias: FamiliaComRelacoes[]) {
+  const mapa = new Map<
+    string,
+    {
+      vinculoId: string;
+      familiaId: string;
+      familiaImagemUrl: string | null;
+      familiaOrdem: number;
+      valores: {
+        campoId: string;
+        campoNome: string;
+        campoSlug: string;
+        valor: string;
+      }[];
+      valoresPorCampo: Record<string, string>;
+    }
+  >();
+
+  familias.forEach((familia) => {
+    familia.vinculos.forEach((vinculo) => {
+      const valores = vinculo.valores
+        .filter((valor) => valor.campo.ativo)
+        .sort((a, b) => Number(a.campo.ordem || 0) - Number(b.campo.ordem || 0))
+        .map((valor) => ({
+          campoId: valor.campoId,
+          campoNome: valor.campo.nome,
+          campoSlug: valor.campo.slug,
+          valor: valor.valor,
+        }));
+
+      const valoresPorCampo = valores.reduce<Record<string, string>>(
+        (acc, item) => {
+          acc[item.campoId] = item.valor;
+          acc[item.campoSlug] = item.valor;
+          acc[item.campoNome] = item.valor;
+          return acc;
+        },
+        {}
+      );
+
+      mapa.set(vinculo.produtoId, {
+        vinculoId: vinculo.id,
+        familiaId: vinculo.familiaId,
+        familiaImagemUrl: vinculo.imagemUrl,
+        familiaOrdem: vinculo.ordem,
+        valores,
+        valoresPorCampo,
+      });
+    });
+  });
+
+  return mapa;
+}
+
+function serializarFamilias(familias: FamiliaComRelacoes[]) {
+  return familias.map((familia) => ({
+    id: familia.id,
+    nome: familia.nome,
+    slug: familia.slug,
+    ativo: familia.ativo,
+    ordem: familia.ordem,
+    campos: familia.campos.map((campo) => ({
+      id: campo.id,
+      nome: campo.nome,
+      slug: campo.slug,
+      ativo: campo.ativo,
+      ordem: campo.ordem,
+    })),
+    produtos: familia.vinculos.map((vinculo) => {
+      const valores = vinculo.valores
+        .filter((valor) => valor.campo.ativo)
+        .sort((a, b) => Number(a.campo.ordem || 0) - Number(b.campo.ordem || 0))
+        .map((valor) => ({
+          campoId: valor.campoId,
+          campoNome: valor.campo.nome,
+          campoSlug: valor.campo.slug,
+          valor: valor.valor,
+        }));
+
+      const valoresPorCampo = valores.reduce<Record<string, string>>(
+        (acc, item) => {
+          acc[item.campoId] = item.valor;
+          acc[item.campoSlug] = item.valor;
+          acc[item.campoNome] = item.valor;
+          return acc;
+        },
+        {}
+      );
+
+      return {
+        id: vinculo.id,
+        produtoId: vinculo.produtoId,
+        codigoInterno: vinculo.produto.codigoInterno,
+        nome: vinculo.produto.nome,
+        imagemUrl: vinculo.imagemUrl || vinculo.produto.imagemUrl,
+        ativo: vinculo.ativo,
+        ordem: vinculo.ordem,
+        produtoAtivo:
+          vinculo.produto.ativo && vinculo.produto.status !== "NA_LIXEIRA",
+        valores,
+        valoresPorCampo,
+      };
+    }),
+  }));
+}
+
 export default async function ProdutosPage() {
   const [produtosRaw, regrasAdicionais, familiasRaw] = await Promise.all([
     prisma.produto.findMany({
@@ -189,19 +345,7 @@ export default async function ProdutosPage() {
       orderBy: [{ categoria: "asc" }, { criadoEm: "asc" }],
     }),
 
-    prisma.produtoFamilia.findMany({
-      where: {
-        ativo: true,
-      },
-      select: {
-        id: true,
-        nome: true,
-        slug: true,
-        ativo: true,
-        ordem: true,
-      },
-      orderBy: [{ ordem: "asc" }, { nome: "asc" }],
-    }),
+    buscarFamiliasRaw(),
   ]);
 
   const custoAdicionaisPorCategoria =
@@ -210,13 +354,8 @@ export default async function ProdutosPage() {
   const quantidadeAdicionaisPorCategoria =
     montarMapaQuantidadeAdicionais(regrasAdicionais);
 
-  const familiasDisponiveis = familiasRaw.map((familia) => ({
-    id: familia.id,
-    nome: familia.nome,
-    slug: familia.slug,
-    ativo: familia.ativo,
-    ordem: familia.ordem,
-  }));
+  const familiasDisponiveis = serializarFamilias(familiasRaw);
+  const mapaValoresFamilia = montarMapaValoresFamilia(familiasRaw);
 
   const produtos = produtosRaw.map((produto: ProdutoComRelacoes) => {
     const categoriaPrincipal = getCategoriaPrincipalProduto(produto);
@@ -264,6 +403,8 @@ export default async function ProdutosPage() {
         ? arredondarMoeda(((precoEfetivo - custoTotal) / precoEfetivo) * 100)
         : 0;
 
+    const dadosFamilia = mapaValoresFamilia.get(produto.id);
+
     return {
       id: produto.id,
       codigoInterno: produto.codigoInterno,
@@ -298,10 +439,21 @@ export default async function ProdutosPage() {
       familiaId: produto.familiaId,
       familiaNome: produto.familia?.nome || null,
       familiaSlug: produto.familia?.slug || null,
+
+      // Compatibilidade temporária com estrutura antiga.
       familiaMaterial: produto.familiaMaterial,
       familiaCorJoia: produto.familiaCorJoia,
-      familiaImagemUrl: produto.familiaImagemUrl,
-      familiaOrdem: produto.familiaOrdem,
+      familiaImagemUrl:
+        dadosFamilia?.familiaImagemUrl || produto.familiaImagemUrl,
+      familiaOrdem:
+        typeof dadosFamilia?.familiaOrdem === "number"
+          ? dadosFamilia.familiaOrdem
+          : produto.familiaOrdem,
+
+      // Estrutura dinâmica nova.
+      familiaVinculoId: dadosFamilia?.vinculoId || null,
+      familiaValores: dadosFamilia?.valores || [],
+      familiaValoresPorCampo: dadosFamilia?.valoresPorCampo || {},
     };
   });
 
