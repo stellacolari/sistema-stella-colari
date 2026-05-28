@@ -936,7 +936,7 @@ export default function ProdutoLojaClient({
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="min-h-screen bg-[#f4f1ec] text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -978,11 +978,11 @@ export default function ProdutoLojaClient({
                         key={`${imagem}-${index}`}
                         type="button"
                         onClick={() => irParaImagem(index)}
-                        className={`h-[84px] w-[84px] overflow-hidden bg-[#f7f7f7] transition ${
+                        className={`h-[84px] w-[84px] overflow-hidden bg-white transition ${
                           !imagemVariacaoSelecionada &&
                           indiceImagemSelecionada === index
-                            ? "ring-1 ring-slate-900"
-                            : "ring-1 ring-slate-200 hover:ring-slate-400"
+                            ? "ring-2 ring-black/10 shadow-sm"
+                            : "ring-1 ring-black/5 hover:ring-black/15"
                         }`}
                       >
                         <img
@@ -1008,7 +1008,7 @@ export default function ProdutoLojaClient({
               </div>
             )}
 
-            <div className="overflow-hidden bg-[#f7f7f7]">
+            <div className="overflow-hidden bg-white shadow-sm ring-1 ring-black/5">
               {imagemSelecionada ? (
                 <>
                   <div className="relative aspect-square overflow-hidden">
@@ -1031,8 +1031,8 @@ export default function ProdutoLojaClient({
                           className={`aspect-square overflow-hidden bg-white transition ${
                             !imagemVariacaoSelecionada &&
                             indiceImagemSelecionada === index
-                              ? "ring-1 ring-slate-900"
-                              : "ring-1 ring-slate-200"
+                              ? "ring-2 ring-black/10 shadow-sm"
+                              : "ring-1 ring-black/5"
                           }`}
                         >
                           <div
