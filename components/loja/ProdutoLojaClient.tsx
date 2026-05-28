@@ -59,6 +59,19 @@ export type ProdutoLojaVariacao = {
   }[];
 };
 
+export type ProdutoLojaFamiliaProduto = {
+  id: string;
+  codigoInterno: string;
+  nome: string;
+  nomeOpcao: string;
+  imagemUrl?: string | null;
+  material?: string | null;
+  corJoia?: string | null;
+  href: string;
+  selecionado: boolean;
+  estoqueTotal: number;
+};
+
 export type ProdutoLojaDetalhe = {
   id: string;
   codigoInterno: string;
@@ -78,6 +91,14 @@ export type ProdutoLojaDetalhe = {
     quantidadeAtual: number;
   }[];
   variacoes?: ProdutoLojaVariacao[];
+  familia?: {
+    id: string;
+    nome: string;
+    slug: string;
+  } | null;
+  familiaMaterial?: string | null;
+  familiaCorJoia?: string | null;
+  familiaProdutos?: ProdutoLojaFamiliaProduto[];
   garantia: {
     titulo: string;
     conteudo: string;
@@ -442,6 +463,93 @@ function ProdutosRelacionadosSection({
   );
 }
 
+function ProdutoFamiliaSection({
+  produtos,
+}: {
+  produtos: ProdutoLojaFamiliaProduto[];
+}) {
+  const opcoes = produtos.filter((item) => produtos.length > 1);
+
+  if (opcoes.length <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 border-t border-slate-200 pt-4">
+      <div className="mb-3">
+        <p className="text-sm font-semibold text-slate-950">
+          Outras versões desta joia
+        </p>
+
+        <p className="mt-1 text-xs font-light leading-5 text-slate-500">
+          Confira também em outros materiais ou cores.
+        </p>
+      </div>
+
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
+        {opcoes.map((item) => {
+          const semEstoque = item.estoqueTotal <= 0;
+
+          const conteudo = (
+            <div
+              className={`group w-24 shrink-0 text-center ${
+                item.selecionado ? "pointer-events-none" : ""
+              }`}
+            >
+              <div
+                className={`relative h-20 w-20 overflow-hidden border bg-slate-50 transition ${
+                  item.selecionado
+                    ? "border-slate-950 ring-2 ring-slate-950/10"
+                    : "border-slate-200 group-hover:border-slate-700"
+                } ${semEstoque ? "opacity-50" : ""}`}
+              >
+                <ImageBox src={item.imagemUrl} alt={item.nomeOpcao} />
+
+                {item.selecionado && (
+                  <div className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-700 shadow-sm">
+                    Atual
+                  </div>
+                )}
+
+                {!item.selecionado && semEstoque && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/75 px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Sem estoque
+                  </div>
+                )}
+              </div>
+
+              <span
+                className={`mt-2 block truncate text-xs ${
+                  item.selecionado
+                    ? "font-semibold text-slate-950"
+                    : "font-medium text-slate-600 group-hover:text-slate-950"
+                }`}
+                title={item.nomeOpcao}
+              >
+                {item.nomeOpcao}
+              </span>
+            </div>
+          );
+
+          if (item.selecionado) {
+            return (
+              <div key={item.id} aria-current="true">
+                {conteudo}
+              </div>
+            );
+          }
+
+          return (
+            <Link key={item.id} href={item.href}>
+              {conteudo}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RodapeLoja({ menus }: { menus: ProdutoLojaMenuItem[] }) {
   return (
     <footer className="mt-12 border-t border-slate-200 bg-white">
@@ -500,6 +608,7 @@ export default function ProdutoLojaClient({
   const opcoesAdicionais = produto.opcoesAdicionais || [];
   const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
   const temVariacao = produtoTemVariacao(produto);
+  const familiaProdutos = produto.familiaProdutos || [];
 
   const galeriaExibicao = useMemo(() => {
     const imagens = (produto.imagens || []).filter(Boolean);
@@ -1013,8 +1122,10 @@ export default function ProdutoLojaClient({
               </span>
             </div>
 
-            <div className="mt-5 border-t border-slate-200 pt-4">
-              {produtoTemTamanho ? (
+            <ProdutoFamiliaSection produtos={familiaProdutos} />
+
+            {produtoTemTamanho && (
+              <div className="mt-5 border-t border-slate-200 pt-4">
                 <div>
                   {temVariacao && variacaoPrincipal ? (
                     <div>
@@ -1187,12 +1298,8 @@ export default function ProdutoLojaClient({
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="rounded-sm border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-light text-slate-600">
-                  Produto sem variação.
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {opcoesAdicionais.length > 0 && !semEstoque && (
               <div className="mt-5 border-t border-slate-200 pt-4">
