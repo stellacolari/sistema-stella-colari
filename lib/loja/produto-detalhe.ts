@@ -185,7 +185,6 @@ async function buscarProdutosRelacionadosRaw({
 }
 
 async function buscarProdutosFamiliaRaw({
-  produtoId,
   familiaId,
 }: {
   produtoId: string;
@@ -195,32 +194,52 @@ async function buscarProdutosFamiliaRaw({
     return [];
   }
 
-  return prisma.produto.findMany({
+  return prisma.produtoFamiliaProduto.findMany({
     where: {
       familiaId,
       ativo: true,
-      status: {
-        not: "NA_LIXEIRA",
-      },
-    },
-    orderBy: [{ familiaOrdem: "asc" }, { nome: "asc" }],
-    include: {
-      estoque: {
-        select: {
-          tamanhoAnel: true,
-          quantidadeAtual: true,
+      produto: {
+        ativo: true,
+        status: {
+          not: "NA_LIXEIRA",
         },
       },
-      componentesDoKit: {
-        select: {
-          quantidade: true,
-          componenteProduto: {
+    },
+    orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+    include: {
+      produto: {
+        include: {
+          estoque: {
             select: {
-              estoque: {
+              tamanhoAnel: true,
+              quantidadeAtual: true,
+            },
+          },
+          componentesDoKit: {
+            select: {
+              quantidade: true,
+              componenteProduto: {
                 select: {
-                  quantidadeAtual: true,
+                  estoque: {
+                    select: {
+                      quantidadeAtual: true,
+                    },
+                  },
                 },
               },
+            },
+          },
+        },
+      },
+      valores: {
+        include: {
+          campo: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
+              ativo: true,
+              ordem: true,
             },
           },
         },
@@ -254,25 +273,58 @@ function formatarProdutoRelacionado(
   };
 }
 
+function getValoresOrdenadosFamilia(vinculo: ProdutoFamiliaRelacionadoRaw) {
+  return [...vinculo.valores]
+    .filter((valor) => valor.campo.ativo)
+    .sort((a, b) => Number(a.campo.ordem || 0) - Number(b.campo.ordem || 0))
+    .map((valor) => ({
+      campoId: valor.campoId,
+      campoNome: valor.campo.nome,
+      campoSlug: valor.campo.slug,
+      valor: valor.valor,
+    }))
+    .filter((item) => String(item.valor || "").trim());
+}
+
 function formatarProdutoFamiliaRelacionado({
-  produto,
+  vinculo,
   produtoAtualId,
 }: {
-  produto: ProdutoFamiliaRelacionadoRaw;
+  vinculo: ProdutoFamiliaRelacionadoRaw;
   produtoAtualId: string;
 }) {
+  const produto = vinculo.produto;
+
   const estoque = calcularEstoqueProdutoPublico({
     tipoProduto: produto.tipoProduto,
     estoque: produto.estoque,
     componentesDoKit: produto.componentesDoKit,
   });
 
-  const partesOpcao = [produto.familiaMaterial, produto.familiaCorJoia]
+  const valoresOrdenados = getValoresOrdenadosFamilia(vinculo);
+
+  const partesOpcaoDinamicas = valoresOrdenados
+    .map((item) => String(item.valor || "").trim())
+    .filter(Boolean);
+
+  const partesOpcaoFallback = [produto.familiaMaterial, produto.familiaCorJoia]
     .map((item) => String(item || "").trim())
     .filter(Boolean);
 
   const nomeOpcao =
-    partesOpcao.length > 0 ? partesOpcao.join(" · ") : produto.nome;
+    partesOpcaoDinamicas.length > 0
+      ? partesOpcaoDinamicas.join(" · ")
+      : partesOpcaoFallback.length > 0
+      ? partesOpcaoFallback.join(" · ")
+      : produto.nome;
+
+  const materialDinamico =
+    valoresOrdenados.find((item) => item.campoSlug === "material")?.valor ||
+    produto.familiaMaterial;
+
+  const corJoiaDinamica =
+    valoresOrdenados.find((item) => item.campoSlug === "cor-da-joia")?.valor ||
+    produto.familiaCorJoia;
 
   return {
     id: produto.id,
@@ -280,9 +332,12 @@ function formatarProdutoFamiliaRelacionado({
     nome: produto.nome,
     nomeOpcao,
     imagemUrl:
-      produto.familiaImagemUrl || produto.imagemUrl || produto.imagemHoverUrl,
-    material: produto.familiaMaterial,
-    corJoia: produto.familiaCorJoia,
+      vinculo.imagemUrl ||
+      produto.familiaImagemUrl ||
+      produto.imagemUrl ||
+      produto.imagemHoverUrl,
+    material: materialDinamico,
+    corJoia: corJoiaDinamica,
     href: `/loja/produto/${produto.id}`,
     selecionado: produto.id === produtoAtualId,
     estoqueTotal: estoque.estoqueTotal,
@@ -359,9 +414,9 @@ export async function buscarProdutoDetalhePublico(id: string) {
       : normalizarTamanhosDisponiveis(produto.estoque);
 
   const familiaProdutos = produtosFamiliaRaw
-    .map((produtoFamilia) =>
+    .map((vinculo) =>
       formatarProdutoFamiliaRelacionado({
-        produto: produtoFamilia,
+        vinculo,
         produtoAtualId: produto.id,
       })
     )
