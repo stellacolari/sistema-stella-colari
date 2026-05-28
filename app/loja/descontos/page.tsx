@@ -45,16 +45,22 @@ export default async function LojaDescontosPage() {
 
   const produtos = produtosPublicos.filter(produtoTemDesconto);
 
-const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => ({
-  id: banner.id,
-  titulo: banner.titulo,
-  subtitulo: banner.subtitulo,
-  imagemUrl: banner.imagemUrl,
-  imagemMobileUrl: banner.imagemMobileUrl ?? null,
-  linkUrl: banner.linkUrl,
-  ordem: banner.ordem ?? index,
-  ativo: banner.ativo ?? true,
-}));
+  const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => {
+    const bannerComMobile = banner as typeof banner & {
+      imagemMobileUrl?: string | null;
+    };
+
+    return {
+      id: banner.id,
+      titulo: banner.titulo,
+      subtitulo: banner.subtitulo,
+      imagemUrl: banner.imagemUrl,
+      imagemMobileUrl: bannerComMobile.imagemMobileUrl ?? null,
+      linkUrl: banner.linkUrl,
+      ordem: banner.ordem ?? index,
+      ativo: banner.ativo ?? true,
+    };
+  });
 
   const menus: LojaMenuItem[] = menusPublicos.map((menu) => ({
     id: menu.id,
