@@ -64,13 +64,16 @@ export default async function LojaPage() {
     }),
   ]);
 
-  const banners: LojaBannerItem[] = bannersRaw.map((banner) => ({
-    id: banner.id,
-    titulo: banner.titulo,
-    subtitulo: banner.subtitulo,
-    imagemUrl: banner.imagemUrl,
-    linkUrl: banner.linkUrl,
-  }));
+const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => ({
+  id: banner.id,
+  titulo: banner.titulo,
+  subtitulo: banner.subtitulo,
+  imagemUrl: banner.imagemUrl,
+  imagemMobileUrl: banner.imagemMobileUrl ?? null,
+  linkUrl: banner.linkUrl,
+  ordem: banner.ordem ?? index,
+  ativo: banner.ativo ?? true,
+}));
 
   const menus: LojaMenuItem[] = menusPublicos.map((menu) => ({
     id: menu.id,
