@@ -482,7 +482,7 @@ function ProdutoFamiliaSection({
         </p>
 
         <p className="mt-1 text-xs font-light leading-5 text-slate-500">
-          Confira também em outros materiais ou cores.
+          Confira outras versões disponíveis desta peça.
         </p>
       </div>
 
@@ -492,24 +492,18 @@ function ProdutoFamiliaSection({
 
           const conteudo = (
             <div
-              className={`group w-24 shrink-0 text-center ${
+              className={`group flex w-24 shrink-0 flex-col items-center text-center ${
                 item.selecionado ? "pointer-events-none" : ""
               }`}
             >
               <div
-                className={`relative h-20 w-20 overflow-hidden border bg-slate-50 transition ${
+                className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white transition ${
                   item.selecionado
-                    ? "border-slate-950 ring-2 ring-slate-950/10"
-                    : "border-slate-200 group-hover:border-slate-700"
+                    ? "border border-[var(--brand-blue)]"
+                    : "border border-transparent group-hover:border-slate-200"
                 } ${semEstoque ? "opacity-50" : ""}`}
               >
                 <ImageBox src={item.imagemUrl} alt={item.nomeOpcao} />
-
-                {item.selecionado && (
-                  <div className="absolute left-1.5 top-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-700 shadow-sm">
-                    Atual
-                  </div>
-                )}
 
                 {!item.selecionado && semEstoque && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/75 px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -519,9 +513,9 @@ function ProdutoFamiliaSection({
               </div>
 
               <span
-                className={`mt-2 block truncate text-xs ${
+                className={`mt-2 block max-w-full truncate text-center text-xs leading-4 ${
                   item.selecionado
-                    ? "font-semibold text-slate-950"
+                    ? "font-semibold text-[var(--brand-blue)]"
                     : "font-medium text-slate-600 group-hover:text-slate-950"
                 }`}
                 title={item.nomeOpcao}
@@ -936,7 +930,7 @@ export default function ProdutoLojaClient({
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f1ec] text-slate-950">
+    <div className="min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -981,8 +975,8 @@ export default function ProdutoLojaClient({
                         className={`h-[84px] w-[84px] overflow-hidden bg-white transition ${
                           !imagemVariacaoSelecionada &&
                           indiceImagemSelecionada === index
-                            ? "ring-2 ring-black/10 shadow-sm"
-                            : "ring-1 ring-black/5 hover:ring-black/15"
+                            ? "opacity-100"
+                            : "opacity-60 hover:opacity-100"
                         }`}
                       >
                         <img
@@ -1008,7 +1002,7 @@ export default function ProdutoLojaClient({
               </div>
             )}
 
-            <div className="overflow-hidden bg-white shadow-sm ring-1 ring-black/5">
+            <div className="overflow-hidden bg-white">
               {imagemSelecionada ? (
                 <>
                   <div className="relative aspect-square overflow-hidden">
@@ -1031,8 +1025,8 @@ export default function ProdutoLojaClient({
                           className={`aspect-square overflow-hidden bg-white transition ${
                             !imagemVariacaoSelecionada &&
                             indiceImagemSelecionada === index
-                              ? "ring-2 ring-black/10 shadow-sm"
-                              : "ring-1 ring-black/5"
+                              ? "opacity-100"
+                              : "opacity-60"
                           }`}
                         >
                           <div
