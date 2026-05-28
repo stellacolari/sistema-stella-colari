@@ -18,6 +18,7 @@ export type BannerLojaItem = {
   titulo: string | null;
   subtitulo: string | null;
   imagemUrl: string;
+  imagemMobileUrl: string | null;
   linkUrl: string | null;
   ordem: number;
   ativo: boolean;
@@ -241,6 +242,38 @@ export default function ConfiguracoesLojaClient({
   const [bannerLinkUrl, setBannerLinkUrl] = useState("");
   const [bannerAtivo, setBannerAtivo] = useState(true);
   const [bannerArquivo, setBannerArquivo] = useState<File | null>(null);
+  const [bannerArquivoMobile, setBannerArquivoMobile] = useState<File | null>(null);
+  const LIMITE_UPLOAD_BANNER_MB = 4;
+
+function arquivoDentroDoLimite(file: File | null) {
+  if (!file) return true;
+
+  const tamanhoMb = file.size / 1024 / 1024;
+
+  return tamanhoMb <= LIMITE_UPLOAD_BANNER_MB;
+}
+
+function selecionarBannerDesktop(file: File | null) {
+  if (!arquivoDentroDoLimite(file)) {
+    setErro(`O banner desktop deve ter no máximo ${LIMITE_UPLOAD_BANNER_MB} MB. Comprima a imagem antes de enviar.`);
+    setBannerArquivo(null);
+    return;
+  }
+
+  setErro(null);
+  setBannerArquivo(file);
+}
+
+function selecionarBannerMobile(file: File | null) {
+  if (!arquivoDentroDoLimite(file)) {
+    setErro(`O banner mobile deve ter no máximo ${LIMITE_UPLOAD_BANNER_MB} MB. Comprima a imagem antes de enviar.`);
+    setBannerArquivoMobile(null);
+    return;
+  }
+
+  setErro(null);
+  setBannerArquivoMobile(file);
+}
 
   const [menuNome, setMenuNome] = useState("");
   const [menuTipo, setMenuTipo] = useState("CATEGORIA");
@@ -313,6 +346,10 @@ export default function ConfiguracoesLojaClient({
       formData.append("ativo", String(bannerAtivo));
       formData.append("imagem", bannerArquivo);
 
+if (bannerArquivoMobile) {
+  formData.append("imagemMobile", bannerArquivoMobile);
+}
+
       const response = await fetch("/api/configuracoes/loja/banners", {
         method: "POST",
         body: formData,
@@ -333,13 +370,19 @@ export default function ConfiguracoesLojaClient({
       setBannerLinkUrl("");
       setBannerAtivo(true);
       setBannerArquivo(null);
-      setSucesso("Banner adicionado com sucesso.");
+      setBannerArquivoMobile(null);
+            setSucesso("Banner adicionado com sucesso.");
 
-      const input = document.getElementById(
+      const inputDesktop = document.getElementById(
         "banner-imagem"
       ) as HTMLInputElement | null;
 
-      if (input) input.value = "";
+      const inputMobile = document.getElementById(
+        "banner-imagem-mobile"
+      ) as HTMLInputElement | null;
+
+      if (inputDesktop) inputDesktop.value = "";
+      if (inputMobile) inputMobile.value = "";
 
       refresh();
     } catch (error) {
@@ -723,21 +766,51 @@ export default function ConfiguracoesLojaClient({
             </h2>
           </div>
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            O banner será exibido como imagem clicável na loja. Recomendado:
-            1920 x 640 px.
-          </p>
+<p className="mt-2 text-sm leading-6 text-slate-500">
+  O banner será exibido como imagem clicável na loja. Envie uma versão
+  horizontal para desktop e, opcionalmente, uma versão vertical para mobile.
+</p>
 
-          <div className="mt-5 space-y-4">
-            <input
-              id="banner-imagem"
-              type="file"
-              accept="image/*"
-              onChange={(event) =>
-                setBannerArquivo(event.target.files?.[0] ?? null)
-              }
-              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm"
-            />
+<div className="mt-5 space-y-4">
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-700">
+      Banner desktop
+    </label>
+
+    <p className="mb-2 text-xs leading-5 text-slate-500">
+      Recomendado: 1920 x 640 px. Use imagem horizontal.
+    </p>
+
+    <input
+      id="banner-imagem"
+      type="file"
+      accept="image/*"
+      onChange={(event) =>
+        selecionarBannerDesktop(event.target.files?.[0] ?? null)
+      }
+      className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm"
+    />
+  </div>
+
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-700">
+      Banner mobile
+    </label>
+
+    <p className="mb-2 text-xs leading-5 text-slate-500">
+      Opcional. Recomendado: 1080 x 1350 px ou 900 x 1200 px. A imagem ocupará cerca de 70% da altura da tela no mobile.
+    </p>
+
+    <input
+      id="banner-imagem-mobile"
+      type="file"
+      accept="image/*"
+      onChange={(event) =>
+        selecionarBannerMobile(event.target.files?.[0] ?? null)
+      }
+      className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm"
+    />
+  </div>
 
             <input
               value={bannerTitulo}
@@ -826,11 +899,37 @@ export default function ConfiguracoesLojaClient({
                     <GripVertical className="h-5 w-5" />
                   </div>
 
-                  <img
-                    src={banner.imagemUrl}
-                    alt={banner.titulo || "Banner da loja"}
-                    className="h-28 w-full rounded-2xl object-cover ring-1 ring-slate-200"
-                  />
+                <div className="grid gap-2">
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Desktop
+                    </p>
+
+                    <img
+                      src={banner.imagemUrl}
+                      alt={banner.titulo || "Banner da loja"}
+                      className="h-24 w-full rounded-2xl object-cover ring-1 ring-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Mobile
+                    </p>
+
+                    {banner.imagemMobileUrl ? (
+                      <img
+                        src={banner.imagemMobileUrl}
+                        alt={`${banner.titulo || "Banner da loja"} mobile`}
+                        className="h-28 w-full rounded-2xl object-cover ring-1 ring-slate-200"
+                      />
+                    ) : (
+                      <div className="flex h-20 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
+                        Sem mobile
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                   <div className="space-y-2">
                     <input
