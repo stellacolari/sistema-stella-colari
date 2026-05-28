@@ -47,6 +47,8 @@ model Produto {
   familiaImagemUrl String?
   familiaOrdem     Int             @default(0)
 
+  familiasVinculos ProdutoFamiliaProduto[]
+
   @@index([familiaId])
   @@index([familiaMaterial])
   @@index([familiaCorJoia])
@@ -60,12 +62,79 @@ model ProdutoFamilia {
   ordem Int     @default(0)
 
   produtos Produto[]
+  campos   ProdutoFamiliaCampo[]
+  vinculos ProdutoFamiliaProduto[]
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   @@index([ativo])
   @@index([ordem])
+}
+
+model ProdutoFamiliaCampo {
+  id        String         @id @default(cuid())
+  familiaId String
+  familia   ProdutoFamilia @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+
+  nome  String
+  slug  String
+  ativo Boolean @default(true)
+  ordem Int     @default(0)
+
+  valores ProdutoFamiliaProdutoValor[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([familiaId, slug])
+  @@index([familiaId])
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model ProdutoFamiliaProduto {
+  id        String         @id @default(cuid())
+  familiaId String
+  familia   ProdutoFamilia @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+
+  produtoId String
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  imagemUrl String?
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+
+  valores ProdutoFamiliaProdutoValor[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([familiaId, produtoId])
+  @@index([familiaId])
+  @@index([produtoId])
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model ProdutoFamiliaProdutoValor {
+  id String @id @default(cuid())
+
+  familiaProdutoId String
+  familiaProduto   ProdutoFamiliaProduto @relation(fields: [familiaProdutoId], references: [id], onDelete: Cascade)
+
+  campoId String
+  campo   ProdutoFamiliaCampo @relation(fields: [campoId], references: [id], onDelete: Cascade)
+
+  valor String
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([familiaProdutoId, campoId])
+  @@index([familiaProdutoId])
+  @@index([campoId])
+  @@index([valor])
 }
 
 model ProdutoImagem {
