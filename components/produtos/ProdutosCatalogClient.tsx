@@ -422,6 +422,7 @@ export default function ProdutosCatalogClient({
 
   const [modalFamiliaAberto, setModalFamiliaAberto] = useState(false);
   const [familiaSelecionadaId, setFamiliaSelecionadaId] = useState("");
+  const [familiaNomeEditavel, setFamiliaNomeEditavel] = useState("");
   const [novaFamiliaNome, setNovaFamiliaNome] = useState("");
   const [camposFamilia, setCamposFamilia] = useState<CampoFamiliaFormItem[]>(
     []
@@ -488,18 +489,6 @@ export default function ProdutosCatalogClient({
 
     return produtos.filter((produto) => selecionados.has(produto.id));
   }, [produtos, produtosSelecionados]);
-
-  const familiaSelecionada = useMemo(() => {
-    if (!familiaSelecionadaId) {
-      return null;
-    }
-
-    return (
-      familiasDisponiveis.find(
-        (familia) => familia.id === familiaSelecionadaId
-      ) || null
-    );
-  }, [familiaSelecionadaId, familiasDisponiveis]);
 
   const todosSelecionados =
     produtosSelecionaveis.length > 0 &&
@@ -574,6 +563,7 @@ export default function ProdutosCatalogClient({
     });
 
     setFamiliaSelecionadaId(familiaId || "");
+    setFamiliaNomeEditavel(familia?.nome || "");
     setNovaFamiliaNome("");
     setCamposFamilia(campos);
     setItensAgrupamento(
@@ -764,6 +754,102 @@ export default function ProdutosCatalogClient({
     setConfirmarMoverFamilia(false);
   }
 
+  async function removerProdutoDaFamilia(produto: ProdutoCatalogItem) {
+    if (!familiaSelecionadaId) {
+      setProdutosSelecionados((selecionados) =>
+        selecionados.filter((id) => id !== produto.id)
+      );
+
+      setItensAgrupamento((atuais) =>
+        atuais.filter((item) => item.produtoId !== produto.id)
+      );
+
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Remover "${produto.nome}" desta família? O produto continuará cadastrado normalmente.`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroFamilia(null);
+    setSalvandoFamilia(true);
+
+    try {
+      const response = await fetch(
+        `/api/produtos/familias/${familiaSelecionadaId}/produtos/${produto.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroFamilia(data.error || "Erro ao remover produto da família.");
+        return;
+      }
+
+      setProdutosSelecionados((selecionados) =>
+        selecionados.filter((id) => id !== produto.id)
+      );
+
+      setItensAgrupamento((atuais) =>
+        atuais.filter((item) => item.produtoId !== produto.id)
+      );
+
+      if (data.familiaVazia) {
+        setErroFamilia(
+          "A família ficou sem produtos. Ela não foi excluída automaticamente."
+        );
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      console.error(error);
+      setErroFamilia("Erro ao remover produto da família.");
+    } finally {
+      setSalvandoFamilia(false);
+    }
+  }
+
+  async function atualizarNomeFamiliaSeNecessario() {
+    if (!familiaSelecionadaId) {
+      return true;
+    }
+
+    const nome = familiaNomeEditavel.trim();
+
+    if (!nome) {
+      setErroFamilia("Informe um nome válido para a família.");
+      return false;
+    }
+
+    const response = await fetch(`/api/produtos/familias/${familiaSelecionadaId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nome,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setErroFamilia(data.error || "Erro ao atualizar o nome da família.");
+      return false;
+    }
+
+    return true;
+  }
+
   async function salvarAgrupamentoFamilia() {
     setErroFamilia(null);
 
@@ -826,6 +912,12 @@ export default function ProdutosCatalogClient({
     setSalvandoFamilia(true);
 
     try {
+      const nomeAtualizado = await atualizarNomeFamiliaSeNecessario();
+
+      if (!nomeAtualizado) {
+        return;
+      }
+
       const response = await fetch("/api/produtos/familias/agrupar", {
         method: "POST",
         headers: {
@@ -1500,6 +1592,7 @@ export default function ProdutosCatalogClient({
 
                       if (novoFamiliaId) {
                         setNovaFamiliaNome("");
+                        setFamiliaNomeEditavel(familia?.nome || "");
 
                         const produtosBase =
                           produtosSelecionadosObjetos.length > 0
@@ -1518,6 +1611,8 @@ export default function ProdutosCatalogClient({
                             campos,
                           })
                         );
+                      } else {
+                        setFamiliaNomeEditavel("");
                       }
                     }}
                     className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
@@ -1532,22 +1627,39 @@ export default function ProdutosCatalogClient({
                   </select>
                 </label>
 
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
-                    Nome da nova família
-                  </span>
+                {familiaSelecionadaId ? (
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Nome da família
+                    </span>
 
-                  <input
-                    value={novaFamiliaNome}
-                    disabled={Boolean(familiaSelecionadaId)}
-                    onChange={(event) => {
-                      setNovaFamiliaNome(event.target.value);
-                      setConfirmarMoverFamilia(false);
-                    }}
-                    placeholder="Ex: Anel Coração"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500 disabled:bg-slate-100 disabled:text-slate-400"
-                  />
-                </label>
+                    <input
+                      value={familiaNomeEditavel}
+                      onChange={(event) => {
+                        setFamiliaNomeEditavel(event.target.value);
+                        setConfirmarMoverFamilia(false);
+                      }}
+                      placeholder="Ex: Anel Coração"
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                    />
+                  </label>
+                ) : (
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Nome da nova família
+                    </span>
+
+                    <input
+                      value={novaFamiliaNome}
+                      onChange={(event) => {
+                        setNovaFamiliaNome(event.target.value);
+                        setConfirmarMoverFamilia(false);
+                      }}
+                      placeholder="Ex: Anel Coração"
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -1664,7 +1776,7 @@ export default function ProdutosCatalogClient({
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                               {produto.codigoInterno}
@@ -1675,9 +1787,20 @@ export default function ProdutosCatalogClient({
                             </h3>
                           </div>
 
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
-                            Ordem {index + 1}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+                              Ordem {index + 1}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => removerProdutoDaFamilia(produto)}
+                              disabled={salvandoFamilia}
+                              className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Remover da família
+                            </button>
+                          </div>
                         </div>
 
                         <div
