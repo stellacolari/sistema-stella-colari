@@ -286,31 +286,29 @@ function ProdutoRelacionadoCard({
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group block bg-white ${semEstoque ? "opacity-75" : ""}`}
+      className={`group relative block overflow-hidden bg-white transition duration-500 hover:bg-slate-50 hover:shadow-sm ${
+        semEstoque ? "opacity-75" : ""
+      }`}
     >
       <div className="relative overflow-hidden bg-slate-50">
         <ImageBox src={produto.imagemUrl} alt={produto.nome} />
 
-        {produto.imagemHoverUrl && (
-          <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
-            <ImageBox src={produto.imagemHoverUrl} alt={produto.nome} />
-          </div>
-        )}
+        <div className="pointer-events-none absolute inset-0 bg-black/5" />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
+          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
+          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
             Sem estoque
           </div>
         )}
       </div>
 
-      <div className="pt-4">
+      <div className="relative z-10 bg-white pt-4 transition duration-500 group-hover:bg-transparent">
         <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
@@ -331,10 +329,21 @@ function ProdutoRelacionadoCard({
           </p>
         )}
       </div>
+
+      {produto.imagemHoverUrl && (
+        <div className="pointer-events-none absolute inset-0 z-20 bg-white opacity-0 transition duration-500 group-hover:opacity-100">
+          <img
+            src={produto.imagemHoverUrl}
+            alt={produto.nome}
+            className="h-full w-full object-cover object-center"
+          />
+
+          <div className="absolute inset-0 bg-black/5" />
+        </div>
+      )}
     </Link>
   );
 }
-
 function ProdutosRelacionadosSection({
   titulo,
   produtos,
@@ -504,6 +513,8 @@ function ProdutoFamiliaSection({
                 } ${semEstoque ? "opacity-50" : ""}`}
               >
                 <ImageBox src={item.imagemUrl} alt={item.nomeOpcao} />
+
+                <div className="pointer-events-none absolute inset-0 bg-black/5" />
 
                 {!item.selecionado && semEstoque && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/75 px-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -979,11 +990,15 @@ export default function ProdutoLojaClient({
                             : "opacity-60 hover:opacity-100"
                         }`}
                       >
+                      <div className="relative h-full w-full">
                         <img
                           src={imagem}
                           alt={`${produto.nome} ${index + 1}`}
                           className="h-full w-full object-cover object-center"
                         />
+
+                        <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                      </div>
                       </button>
                     ))}
                   </div>
@@ -1005,15 +1020,17 @@ export default function ProdutoLojaClient({
             <div className="overflow-hidden bg-white">
               {imagemSelecionada ? (
                 <>
-                  <div className="relative aspect-square overflow-hidden">
-                    <div
-                      className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-                      style={{
-                        backgroundImage: `url(${imagemSelecionada})`,
-                      }}
-                      aria-label={produto.nome}
-                    />
-                  </div>
+                <div className="relative aspect-square overflow-hidden">
+                  <div
+                    className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
+                    style={{
+                      backgroundImage: `url(${imagemSelecionada})`,
+                    }}
+                    aria-label={produto.nome}
+                  />
+
+                  <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                </div>
 
                   {possuiMaisDeUmaImagem && (
                     <div className="grid grid-cols-4 gap-3 p-4 lg:hidden">
@@ -1029,12 +1046,16 @@ export default function ProdutoLojaClient({
                               : "opacity-60"
                           }`}
                         >
+                        <div className="relative h-full w-full">
                           <div
                             className="h-full w-full bg-cover bg-center bg-no-repeat"
                             style={{
                               backgroundImage: `url(${imagem})`,
                             }}
                           />
+
+                          <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                        </div>
                         </button>
                       ))}
                     </div>

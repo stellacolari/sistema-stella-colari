@@ -152,23 +152,11 @@ function ProdutoPreco({ produto }: { produto: LojaProdutoItem }) {
 }
 
 function ProdutoImagem({ produto }: { produto: LojaProdutoItem }) {
-  const hasHover = Boolean(produto.imagemHoverUrl);
-
   return (
     <div className="relative overflow-hidden bg-slate-50">
-      <div
-        className={`transition duration-500 ${
-          hasHover ? "group-hover:opacity-0" : ""
-        }`}
-      >
-        <ImageBox src={produto.imagemUrl} alt={produto.nome} />
-      </div>
+      <ImageBox src={produto.imagemUrl} alt={produto.nome} />
 
-      {hasHover && (
-        <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
-          <ImageBox src={produto.imagemHoverUrl} alt={produto.nome} />
-        </div>
-      )}
+      <div className="pointer-events-none absolute inset-0 bg-black/5" />
     </div>
   );
 }
@@ -176,11 +164,14 @@ function ProdutoImagem({ produto }: { produto: LojaProdutoItem }) {
 function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
+  const hasHover = Boolean(produto.imagemHoverUrl);
 
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group block bg-white ${semEstoque ? "opacity-75" : ""}`}
+      className={`group relative block overflow-hidden bg-white transition duration-500 hover:bg-slate-50 hover:shadow-sm ${
+        semEstoque ? "opacity-75" : ""
+      }`}
     >
       <div className="relative">
         <ProdutoImagem produto={produto} />
@@ -198,13 +189,25 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
         )}
       </div>
 
-      <div className="pt-4">
+      <div className="relative z-10 bg-white pt-4 transition duration-500 group-hover:bg-transparent">
         <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
 
         <ProdutoPreco produto={produto} />
       </div>
+
+      {hasHover && produto.imagemHoverUrl && (
+        <div className="pointer-events-none absolute inset-0 z-20 bg-white opacity-0 transition duration-500 group-hover:opacity-100">
+          <img
+            src={produto.imagemHoverUrl}
+            alt={produto.nome}
+            className="h-full w-full object-cover object-center"
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-black/5" />
+        </div>
+      )}
     </Link>
   );
 }
@@ -451,12 +454,14 @@ function ComprePorCategorias({
             )}`}
             className="group block text-center"
           >
-            <div className="aspect-square overflow-hidden bg-slate-100">
+            <div className="relative aspect-square overflow-hidden bg-slate-100">
               <img
                 src={item.imagemUrl}
                 alt={item.titulo}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
+
+              <div className="pointer-events-none absolute inset-0 bg-black/5" />
             </div>
 
             <p className="mt-3 text-sm font-medium tracking-wide text-slate-900 transition group-hover:text-[var(--brand-blue)]">
@@ -476,13 +481,17 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
     <section className="py-8 lg:py-10">
       <div className="grid w-full bg-slate-50 lg:h-[50vh] lg:min-h-[280px] lg:grid-cols-[1.1fr_0.9fr]">
         <div className="min-h-[220px] bg-slate-100 sm:min-h-[250px] lg:h-full lg:min-h-0">
-          {bloco.imagemUrl ? (
+        {bloco.imagemUrl ? (
+          <div className="relative h-full w-full">
             <img
               src={bloco.imagemUrl}
               alt={bloco.titulo}
               className="h-full w-full object-cover"
             />
-          ) : (
+
+            <div className="pointer-events-none absolute inset-0 bg-black/5" />
+          </div>
+        ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-medium text-slate-500">
               Sem imagem
             </div>
