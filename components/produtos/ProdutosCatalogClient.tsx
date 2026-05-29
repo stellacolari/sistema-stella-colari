@@ -439,57 +439,76 @@ export default function ProdutosCatalogClient({
   const produtosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
 
-    return produtos.filter((produto) => {
-      const statusProduto = getStatusProduto(produto);
+const filtrados = produtos.filter((produto) => {
+  const statusProduto = getStatusProduto(produto);
 
-      if (statusSelecionado === "ATIVOS" && statusProduto === "NA_LIXEIRA") {
-        return false;
-      }
+  if (statusSelecionado === "ATIVOS" && statusProduto === "NA_LIXEIRA") {
+    return false;
+  }
 
-    if (
-      statusSelecionado !== "ATIVOS" &&
-      statusSelecionado !== "TODOS" &&
-      statusProduto !== statusSelecionado
-    ) {
-      return false;
+  if (
+    statusSelecionado !== "ATIVOS" &&
+    statusSelecionado !== "TODOS" &&
+    statusProduto !== statusSelecionado
+  ) {
+    return false;
+  }
+
+  if (familiaFiltroId === "SEM_FAMILIA" && produto.familiaId) {
+    return false;
+  }
+
+  if (
+    familiaFiltroId !== "TODAS" &&
+    familiaFiltroId !== "SEM_FAMILIA" &&
+    produto.familiaId !== familiaFiltroId
+  ) {
+    return false;
+  }
+
+  if (!termo) {
+    return true;
+  }
+
+  const texto = normalizarTexto(
+    [
+      produto.nome,
+      produto.codigoInterno,
+      produto.codigoFornecedor,
+      produto.categoria,
+      produto.fornecedorPadrao,
+      produto.familiaNome,
+      produto.familiaMaterial,
+      produto.familiaCorJoia,
+      getNomeVersaoFamilia(produto),
+      ...getValoresFamiliaProduto(produto).map((item) => item.valor),
+      ...Object.values(produto.familiaValoresPorCampo || {}),
+      statusProduto,
+      produtoTemDesconto(produto) ? "desconto promoção promocional" : "",
+      produto.custoAdicionais > 0 ? "adicionais pacote contém" : "",
+    ].join(" ")
+  );
+
+  return texto.includes(termo);
+});
+
+if (
+  familiaFiltroId !== "TODAS" &&
+  familiaFiltroId !== "SEM_FAMILIA"
+) {
+  return filtrados.sort((a, b) => {
+    const ordemA = Number(a.familiaOrdem || 0);
+    const ordemB = Number(b.familiaOrdem || 0);
+
+    if (ordemA !== ordemB) {
+      return ordemA - ordemB;
     }
 
-    if (familiaFiltroId === "SEM_FAMILIA" && produto.familiaId) {
-      return false;
-    }
+    return a.nome.localeCompare(b.nome);
+  });
+}
 
-    if (
-      familiaFiltroId !== "TODAS" &&
-      familiaFiltroId !== "SEM_FAMILIA" &&
-      produto.familiaId !== familiaFiltroId
-    ) {
-      return false;
-    }
-
-    if (!termo) {
-      return true;
-    }
-
-      const texto = normalizarTexto(
-        [
-          produto.nome,
-          produto.codigoInterno,
-          produto.codigoFornecedor,
-          produto.categoria,
-          produto.fornecedorPadrao,
-          produto.familiaNome,
-          produto.familiaMaterial,
-          produto.familiaCorJoia,
-          getNomeVersaoFamilia(produto),
-          ...getValoresFamiliaProduto(produto).map((item) => item.valor),
-          statusProduto,
-          produtoTemDesconto(produto) ? "desconto promoção promocional" : "",
-          produto.custoAdicionais > 0 ? "adicionais pacote contém" : "",
-        ].join(" ")
-      );
-
-      return texto.includes(termo);
-    });
+return filtrados;
   }, [busca, familiaFiltroId, produtos, statusSelecionado]);
 
   const produtosSelecionaveis = useMemo(() => {
@@ -511,6 +530,12 @@ export default function ProdutosCatalogClient({
     );
 
   const quantidadeSelecionada = produtosSelecionados.length;
+  const quantidadeSemFamilia = useMemo(() => {
+  return produtos.filter(
+    (produto) =>
+      getStatusProduto(produto) !== "NA_LIXEIRA" && !produto.familiaId
+  ).length;
+}, [produtos]);
   const produtosNoModalIds = useMemo(() => {
   return new Set(itensAgrupamento.map((item) => item.produtoId));
 }, [itensAgrupamento]);
@@ -558,7 +583,18 @@ const produtosParaAdicionarFamilia = useMemo(() => {
     setFamiliaFiltroId("TODAS");
     setProdutosSelecionados([]);
   }
-
+  function filtrarPorFamilia(familiaId: string) {
+  setBusca("");
+  setFamiliaFiltroId(familiaId);
+  setStatusSelecionado("ATIVOS");
+  setProdutosSelecionados([]);
+}
+function filtrarSemFamilia() {
+  setBusca("");
+  setFamiliaFiltroId("SEM_FAMILIA");
+  setStatusSelecionado("ATIVOS");
+  setProdutosSelecionados([]);
+}
   function alternarProdutoSelecionado(produtoId: string) {
     setProdutosSelecionados((selecionados) => {
       if (selecionados.includes(produtoId)) {
@@ -1318,6 +1354,28 @@ const produtosParaAdicionarFamilia = useMemo(() => {
             {erroLixeira}
           </div>
         )}
+        {quantidadeSemFamilia > 0 && familiaFiltroId !== "SEM_FAMILIA" && (
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">
+                {quantidadeSemFamilia} produto
+                {quantidadeSemFamilia === 1 ? "" : "s"} sem família comercial
+              </p>
+
+              <p className="mt-1 text-xs text-violet-700">
+                Revise esses produtos para decidir se devem ser agrupados com versões comerciais.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={filtrarSemFamilia}
+              className="rounded-2xl bg-white px-4 py-2 text-xs font-semibold text-violet-700 ring-1 ring-violet-200 transition hover:bg-violet-100"
+            >
+              Ver produtos sem família
+            </button>
+          </div>
+        )}
       </div>
 
       {quantidadeSelecionada > 0 && (
@@ -1362,32 +1420,36 @@ const produtosParaAdicionarFamilia = useMemo(() => {
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">
-            {produtosFiltrados.length} produto
-            {produtosFiltrados.length === 1 ? "" : "s"} encontrado
-            {produtosFiltrados.length === 1 ? "" : "s"}
-          </p>
+<div className="flex items-center justify-between rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200">
+  <div>
+    <p className="text-sm font-semibold text-slate-900">
+      {produtosFiltrados.length} produto
+      {produtosFiltrados.length === 1 ? "" : "s"} encontrado
+      {produtosFiltrados.length === 1 ? "" : "s"}
+    </p>
 
-          <p className="mt-1 text-xs text-slate-500">
-            Use os checkboxes dos cards para ações em lote.
-          </p>
-        </div>
+    <p className="mt-1 text-xs text-slate-500">
+      {familiaFiltroId !== "TODAS" && familiaFiltroId !== "SEM_FAMILIA"
+        ? "Produtos filtrados por família e ordenados pela ordem configurada no agrupamento."
+        : familiaFiltroId === "SEM_FAMILIA"
+        ? "Exibindo produtos que ainda não pertencem a nenhuma família comercial."
+        : "Use os checkboxes dos cards para ações em lote."}
+    </p>
+  </div>
 
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <input
-            type="checkbox"
-            checked={todosSelecionados}
-            disabled={produtosSelecionaveis.length === 0}
-            onChange={alternarTodosSelecionados}
-            className="h-4 w-4 rounded border-slate-300"
-          />
-          Selecionar todos visíveis
-        </label>
-      </div>
+  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+    <input
+      type="checkbox"
+      checked={todosSelecionados}
+      disabled={produtosSelecionaveis.length === 0}
+      onChange={alternarTodosSelecionados}
+      className="h-4 w-4 rounded border-slate-300"
+    />
+    Selecionar todos visíveis
+  </label>
+</div>
 
-      {produtosFiltrados.length === 0 ? (
+{produtosFiltrados.length === 0 ? (
         <div className="rounded-3xl bg-white px-6 py-10 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
           Nenhum produto encontrado.
         </div>
@@ -1451,10 +1513,15 @@ const produtosParaAdicionarFamilia = useMemo(() => {
                           {produto.categoria}
                         </span>
 
-                        {possuiFamilia && (
-                          <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                        {possuiFamilia && produto.familiaId && (
+                          <button
+                            type="button"
+                            onClick={() => filtrarPorFamilia(produto.familiaId!)}
+                            className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 transition hover:bg-violet-100"
+                            title="Filtrar esta família"
+                          >
                             Família: {produto.familiaNome}
-                          </span>
+                          </button>
                         )}
 
                         {valoresFamilia.map((valor) => (
