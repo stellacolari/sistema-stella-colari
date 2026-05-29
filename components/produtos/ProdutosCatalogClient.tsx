@@ -415,6 +415,7 @@ export default function ProdutosCatalogClient({
 
   const [busca, setBusca] = useState("");
   const [statusSelecionado, setStatusSelecionado] = useState("ATIVOS");
+  const [familiaFiltroId, setFamiliaFiltroId] = useState("TODAS");
   const [produtosSelecionados, setProdutosSelecionados] = useState<string[]>(
     []
   );
@@ -445,17 +446,29 @@ export default function ProdutosCatalogClient({
         return false;
       }
 
-      if (
-        statusSelecionado !== "ATIVOS" &&
-        statusSelecionado !== "TODOS" &&
-        statusProduto !== statusSelecionado
-      ) {
-        return false;
-      }
+    if (
+      statusSelecionado !== "ATIVOS" &&
+      statusSelecionado !== "TODOS" &&
+      statusProduto !== statusSelecionado
+    ) {
+      return false;
+    }
 
-      if (!termo) {
-        return true;
-      }
+    if (familiaFiltroId === "SEM_FAMILIA" && produto.familiaId) {
+      return false;
+    }
+
+    if (
+      familiaFiltroId !== "TODAS" &&
+      familiaFiltroId !== "SEM_FAMILIA" &&
+      produto.familiaId !== familiaFiltroId
+    ) {
+      return false;
+    }
+
+    if (!termo) {
+      return true;
+    }
 
       const texto = normalizarTexto(
         [
@@ -477,7 +490,7 @@ export default function ProdutosCatalogClient({
 
       return texto.includes(termo);
     });
-  }, [busca, produtos, statusSelecionado]);
+  }, [busca, familiaFiltroId, produtos, statusSelecionado]);
 
   const produtosSelecionaveis = useMemo(() => {
     return produtosFiltrados.filter(
@@ -542,6 +555,7 @@ const produtosParaAdicionarFamilia = useMemo(() => {
   function limparFiltros() {
     setBusca("");
     setStatusSelecionado("ATIVOS");
+    setFamiliaFiltroId("TODAS");
     setProdutosSelecionados([]);
   }
 
@@ -1227,7 +1241,7 @@ const produtosParaAdicionarFamilia = useMemo(() => {
           </Link>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_260px_auto]">
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Search className="h-4 w-4 text-slate-400" />
@@ -1240,6 +1254,30 @@ const produtosParaAdicionarFamilia = useMemo(() => {
               placeholder="Pesquisar por nome, código, categoria, família ou fornecedor"
               className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
             />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Tag className="h-4 w-4 text-slate-400" />
+              Família
+            </span>
+
+            <select
+              value={familiaFiltroId}
+              onChange={(event) => {
+                setFamiliaFiltroId(event.target.value);
+                setProdutosSelecionados([]);
+              }}
+              className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+            >
+              <option value="TODAS">Todas as famílias</option>
+              <option value="SEM_FAMILIA">Sem família</option>
+
+              {familiasDisponiveis.map((familia) => (
+                <option key={familia.id} value={familia.id}>
+                  {familia.nome}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="flex flex-col gap-2">
@@ -1851,7 +1889,7 @@ const produtosParaAdicionarFamilia = useMemo(() => {
       <input
         value={buscaProdutoFamilia}
         onChange={(event) => setBuscaProdutoFamilia(event.target.value)}
-        placeholder="Buscar por nome, SKU interno ou código fornecedor"
+        placeholder="Buscar por nome, SKU interno, código fornecedor, categoria ou família"
         className="h-full w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
       />
     </label>
