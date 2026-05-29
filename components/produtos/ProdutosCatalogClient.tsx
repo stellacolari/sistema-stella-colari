@@ -433,6 +433,7 @@ export default function ProdutosCatalogClient({
   const [erroFamilia, setErroFamilia] = useState<string | null>(null);
   const [salvandoFamilia, setSalvandoFamilia] = useState(false);
   const [confirmarMoverFamilia, setConfirmarMoverFamilia] = useState(false);
+  const [buscaProdutoFamilia, setBuscaProdutoFamilia] = useState("");
 
   const produtosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -497,6 +498,43 @@ export default function ProdutosCatalogClient({
     );
 
   const quantidadeSelecionada = produtosSelecionados.length;
+  const produtosNoModalIds = useMemo(() => {
+  return new Set(itensAgrupamento.map((item) => item.produtoId));
+}, [itensAgrupamento]);
+
+const produtosParaAdicionarFamilia = useMemo(() => {
+  const termo = normalizarTexto(buscaProdutoFamilia);
+
+  if (termo.length < 2) {
+    return [];
+  }
+
+  return produtos
+    .filter((produto) => {
+      if (produtosNoModalIds.has(produto.id)) {
+        return false;
+      }
+
+      if (getStatusProduto(produto) === "NA_LIXEIRA") {
+        return false;
+      }
+
+      const texto = normalizarTexto(
+        [
+          produto.nome,
+          produto.codigoInterno,
+          produto.codigoFornecedor,
+          produto.categoria,
+          produto.fornecedorPadrao,
+          produto.familiaNome,
+          ...getValoresFamiliaProduto(produto).map((item) => item.valor),
+        ].join(" ")
+      );
+
+      return texto.includes(termo);
+    })
+    .slice(0, 8);
+}, [buscaProdutoFamilia, produtos, produtosNoModalIds]);
 
   function limparFiltros() {
     setBusca("");
@@ -753,7 +791,39 @@ export default function ProdutosCatalogClient({
     );
     setConfirmarMoverFamilia(false);
   }
+  function adicionarProdutoAoModalFamilia(produto: ProdutoCatalogItem) {
+  if (produtosNoModalIds.has(produto.id)) {
+    return;
+  }
 
+  const novaOrdem =
+    itensAgrupamento.length > 0
+      ? Math.max(...itensAgrupamento.map((item) => Number(item.familiaOrdem || 0))) + 1
+      : 0;
+
+  const valores = camposFamilia.reduce<Record<string, string>>((acc, campo) => {
+    acc[campo.tempId] = getValorCampoProduto({ produto, campo }) || "";
+    return acc;
+  }, {});
+
+  setProdutosSelecionados((atuais) =>
+    atuais.includes(produto.id) ? atuais : [...atuais, produto.id]
+  );
+
+  setItensAgrupamento((atuais) => [
+    ...atuais,
+    {
+      produtoId: produto.id,
+      familiaImagemUrl: produto.familiaImagemUrl || produto.imagemUrl || "",
+      familiaOrdem: novaOrdem,
+      valores,
+    },
+  ]);
+
+  setBuscaProdutoFamilia("");
+  setConfirmarMoverFamilia(false);
+  setErroFamilia(null);
+}
   async function removerProdutoDaFamilia(produto: ProdutoCatalogItem) {
     if (!familiaSelecionadaId) {
       setProdutosSelecionados((selecionados) =>
@@ -775,8 +845,9 @@ export default function ProdutosCatalogClient({
       return;
     }
 
+    setBuscaProdutoFamilia("");
     setErroFamilia(null);
-    setSalvandoFamilia(true);
+    setModalFamiliaAberto(true);
 
     try {
       const response = await fetch(
@@ -974,6 +1045,7 @@ export default function ProdutosCatalogClient({
       setModalFamiliaAberto(false);
       setProdutosSelecionados([]);
       setConfirmarMoverFamilia(false);
+      setBuscaProdutoFamilia("");
 
       startTransition(() => {
         router.refresh();
@@ -1755,7 +1827,109 @@ export default function ProdutosCatalogClient({
                 Tamanho, medida e comprimento continuam como variações internas
                 do produto.
               </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-slate-950">
+                Adicionar produto à família
+              </p>
 
+              <p className="text-sm leading-6 text-slate-500">
+                Busque por nome, SKU interno ou código do fornecedor. A foto ajuda a
+                conferir se é a joia correta antes de adicionar.
+              </p>
+            </div>
+
+  <div className="mt-4">
+    <label className="flex h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 transition focus-within:border-slate-500">
+      <Search className="h-4 w-4 text-slate-400" />
+
+      <input
+        value={buscaProdutoFamilia}
+        onChange={(event) => setBuscaProdutoFamilia(event.target.value)}
+        placeholder="Buscar por nome, SKU interno ou código fornecedor"
+        className="h-full w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+      />
+    </label>
+  </div>
+
+  {buscaProdutoFamilia.trim().length >= 2 && (
+    <div className="mt-3 space-y-2">
+      {produtosParaAdicionarFamilia.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+          Nenhum produto encontrado para essa busca.
+        </div>
+      ) : (
+        produtosParaAdicionarFamilia.map((produto) => {
+          const estaEmOutraFamilia = Boolean(
+            produto.familiaId && produto.familiaId !== familiaSelecionadaId
+          );
+
+          return (
+            <div
+              key={produto.id}
+              className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[72px_1fr_auto]"
+            >
+              <div className="overflow-hidden rounded-2xl bg-white">
+                <ImageBox src={produto.imagemUrl} alt={produto.nome} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {produto.codigoInterno}
+                  {produto.codigoFornecedor
+                    ? ` · Forn.: ${produto.codigoFornecedor}`
+                    : ""}
+                </p>
+
+                <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-950">
+                  {produto.nome}
+                </p>
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                    {produto.categoria}
+                  </span>
+
+                  {produto.familiaNome ? (
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
+                        estaEmOutraFamilia
+                          ? "bg-amber-50 text-amber-700 ring-amber-200"
+                          : "bg-violet-50 text-violet-700 ring-violet-200"
+                      }`}
+                    >
+                      Família atual: {produto.familiaNome}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                      Sem família
+                    </span>
+                  )}
+
+                  {estaEmOutraFamilia && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                      Será movido ao salvar
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => adicionarProdutoAoModalFamilia(produto)}
+                  className="w-full rounded-2xl bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 sm:w-auto"
+                >
+                  {estaEmOutraFamilia ? "Adicionar e mover" : "Adicionar"}
+                </button>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  )}
+</div>
               <div className="space-y-3">
                 {produtosSelecionadosObjetos.map((produto, index) => {
                   const item = itensAgrupamento.find(
