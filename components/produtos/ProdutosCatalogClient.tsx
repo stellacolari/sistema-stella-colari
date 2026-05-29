@@ -519,17 +519,20 @@ const produtosParaAdicionarFamilia = useMemo(() => {
         return false;
       }
 
-      const texto = normalizarTexto(
-        [
-          produto.nome,
-          produto.codigoInterno,
-          produto.codigoFornecedor,
-          produto.categoria,
-          produto.fornecedorPadrao,
-          produto.familiaNome,
-          ...getValoresFamiliaProduto(produto).map((item) => item.valor),
-        ].join(" ")
-      );
+    const texto = normalizarTexto(
+      [
+        produto.nome,
+        produto.codigoInterno,
+        produto.codigoFornecedor,
+        produto.categoria,
+        produto.fornecedorPadrao,
+        produto.familiaNome,
+        produto.familiaMaterial,
+        produto.familiaCorJoia,
+        ...getValoresFamiliaProduto(produto).map((item) => item.valor),
+        ...Object.values(produto.familiaValoresPorCampo || {}),
+      ].join(" ")
+    );
 
       return texto.includes(termo);
     })
@@ -612,6 +615,7 @@ const produtosParaAdicionarFamilia = useMemo(() => {
     );
     setConfirmarMoverFamilia(false);
     setErroFamilia(null);
+    setBuscaProdutoFamilia("");
     setModalFamiliaAberto(true);
   }
 
@@ -659,9 +663,10 @@ const produtosParaAdicionarFamilia = useMemo(() => {
       return;
     }
 
-    setModalFamiliaAberto(false);
-    setErroFamilia(null);
-    setConfirmarMoverFamilia(false);
+  setModalFamiliaAberto(false);
+  setErroFamilia(null);
+  setConfirmarMoverFamilia(false);
+  setBuscaProdutoFamilia("");
   }
 
   function atualizarCampoFamilia(
