@@ -691,8 +691,8 @@ function validarFormularioAntesDeEnviar(
           </AccordionSection>
 
           <AccordionSection
-            title="Variações do produto"
-            description="Configure opções como tamanho, material, cor ou modelo."
+            title="Variações internas do produto"
+            description="Configure opções operacionais de estoque, como tamanho, medida, comprimento ou aro. Material e cor comercial devem ser tratados como produtos separados em uma família."
           >
             <VariacoesProdutoInput name="variacoesProduto" />
           </AccordionSection>

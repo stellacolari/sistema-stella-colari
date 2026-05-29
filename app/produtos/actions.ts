@@ -5,6 +5,8 @@ import { unlink } from "fs/promises";
 import { put, del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+const LIMITE_IMAGEM_BASE64_MB = 6;
+const LIMITE_IMAGEM_BASE64_BYTES = LIMITE_IMAGEM_BASE64_MB * 1024 * 1024;
 
 type GaleriaProdutoPayloadItem = {
   id?: string;
@@ -431,13 +433,19 @@ async function salvarImagemBase64(
 
   const nomeArquivo = `produtos/${codigoSeguro}-${sufixoSeguro}-${Date.now()}.${extensao}`;
 
-  const buffer = Buffer.from(base64, "base64");
+const buffer = Buffer.from(base64, "base64");
 
-  const blob = await put(nomeArquivo, buffer, {
-    access: "public",
-    contentType: mimeType,
-    addRandomSuffix: true,
-  });
+if (buffer.length > LIMITE_IMAGEM_BASE64_BYTES) {
+  throw new Error(
+    `A imagem processada ficou muito grande. Ajuste o corte ou comprima a imagem antes de salvar. Limite: ${LIMITE_IMAGEM_BASE64_MB} MB.`
+  );
+}
+
+const blob = await put(nomeArquivo, buffer, {
+  access: "public",
+  contentType: mimeType,
+  addRandomSuffix: true,
+});
 
   return blob.url;
 }
@@ -487,55 +495,55 @@ async function sincronizarGaleriaProduto({
   const idsMantidos = new Set<string>();
   const imagensFinais: { id?: string; imagemUrl: string; ordem: number }[] = [];
 
-  for (const [index, item] of galeria.entries()) {
-    if (item.id && imagensAtuaisMap.has(item.id)) {
-      const imagemAtual = imagensAtuaisMap.get(item.id)!;
+for (const [index, item] of galeria.entries()) {
+  if (isImagemNovaBase64(item.dataUrl)) {
+    const imagemUrl = await salvarImagemBase64(
+      item.dataUrl!,
+      codigoInterno,
+      `galeria-${index + 1}`
+    );
 
-      idsMantidos.add(item.id);
-
-      await prisma.produtoImagem.update({
-        where: {
-          id: item.id,
-        },
-        data: {
-          ordem: index,
-        },
-      });
-
-      imagensFinais.push({
-        id: item.id,
-        imagemUrl: imagemAtual.imagemUrl,
+    const criada = await prisma.produtoImagem.create({
+      data: {
+        produtoId,
+        imagemUrl,
         ordem: index,
-      });
+      },
+    });
 
-      continue;
-    }
+    idsMantidos.add(criada.id);
 
-    if (isImagemNovaBase64(item.dataUrl)) {
-      const imagemUrl = await salvarImagemBase64(
-        item.dataUrl!,
-        codigoInterno,
-        `galeria-${index + 1}`
-      );
+    imagensFinais.push({
+      id: criada.id,
+      imagemUrl: criada.imagemUrl,
+      ordem: criada.ordem,
+    });
 
-      const criada = await prisma.produtoImagem.create({
-        data: {
-          produtoId,
-          imagemUrl,
-          ordem: index,
-        },
-      });
+    continue;
+  }
 
-      idsMantidos.add(criada.id);
+  if (item.id && imagensAtuaisMap.has(item.id)) {
+    const imagemAtual = imagensAtuaisMap.get(item.id)!;
 
-      imagensFinais.push({
-        id: criada.id,
-        imagemUrl: criada.imagemUrl,
-        ordem: criada.ordem,
-      });
+    idsMantidos.add(item.id);
 
-      continue;
-    }
+    await prisma.produtoImagem.update({
+      where: {
+        id: item.id,
+      },
+      data: {
+        ordem: index,
+      },
+    });
+
+    imagensFinais.push({
+      id: item.id,
+      imagemUrl: imagemAtual.imagemUrl,
+      ordem: index,
+    });
+
+    continue;
+  }
 
     if (item.imagemUrl) {
       const criada = await prisma.produtoImagem.create({
