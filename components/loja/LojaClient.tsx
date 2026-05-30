@@ -160,7 +160,57 @@ function ProdutoImagem({ produto }: { produto: LojaProdutoItem }) {
     </div>
   );
 }
+function ProdutoReveal({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [visivel, setVisivel] = useState(false);
 
+  useEffect(() => {
+    const element = ref.current;
+
+    if (!element) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisivel(true);
+          observer.unobserve(element);
+        }
+      },
+      {
+        threshold: 0.18,
+        rootMargin: "0px 0px -40px 0px",
+      }
+    );
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition duration-500 ease-out ${
+        visivel ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+      }`}
+      style={{
+        transitionDelay: visivel ? `${delay}ms` : "0ms",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
@@ -431,15 +481,9 @@ function finalizarToque() {
             }`}
           >
           {produtosDaPagina.map((produto, index) => (
-            <div
-              key={produto.id}
-              className="animate-[fadeUp_0.45s_ease-out_both]"
-              style={{
-                animationDelay: `${index * 70}ms`,
-              }}
-            >
+            <ProdutoReveal key={produto.id} delay={index * 70}>
               <ProdutoCard produto={produto} />
-            </div>
+            </ProdutoReveal>
           ))}
           </div>
 
@@ -660,20 +704,7 @@ export default function LojaClient({
   }));
 
 return (
-  <div className="min-h-screen bg-white text-slate-950">
-    <style jsx global>{`
-      @keyframes fadeUp {
-        from {
-          opacity: 0;
-          transform: translateY(18px);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-    `}</style>
+  <div className="min-h-screen bg-white text-slate-950">  
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
