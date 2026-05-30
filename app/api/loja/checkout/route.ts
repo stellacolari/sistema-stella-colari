@@ -97,6 +97,51 @@ async function gerarProximoCodigoPedido(tx: Prisma.TransactionClient) {
   throw new Error("Não foi possível gerar um código único para o pedido.");
 }
 
+async function gerarProximoCodigoCliente(tx: Prisma.TransactionClient) {
+  const ultimoCliente = await tx.cliente.findFirst({
+    where: {
+      codigo: {
+        startsWith: "CL",
+      },
+    },
+    orderBy: {
+      codigo: "desc",
+    },
+    select: {
+      codigo: true,
+    },
+  });
+
+  let proximoNumero = 1;
+
+  if (ultimoCliente?.codigo) {
+    const numeroAtual = Number(ultimoCliente.codigo.replace("CL", ""));
+
+    if (!Number.isNaN(numeroAtual)) {
+      proximoNumero = numeroAtual + 1;
+    }
+  }
+
+  for (let tentativa = 0; tentativa < 100; tentativa++) {
+    const codigo = gerarCodigoCliente(proximoNumero + tentativa);
+
+    const clienteExistente = await tx.cliente.findUnique({
+      where: {
+        codigo,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!clienteExistente) {
+      return codigo;
+    }
+  }
+
+  throw new Error("Não foi possível gerar um código único para o cliente.");
+}
+
 function parseNumero(value: unknown, fallback = 0) {
   const raw = String(value ?? "").trim();
 
@@ -150,6 +195,58 @@ function normalizarTamanhoAnel(tamanho: string | null | undefined) {
   }
 
   return value;
+}
+
+type ProdutoCheckoutComVariacoes = Prisma.ProdutoGetPayload<{
+  include: {
+    variacoes: {
+      include: {
+        opcoes: true;
+      };
+    };
+  };
+}>;
+
+function normalizarOpcaoProduto(value: string | null | undefined) {
+  return String(value ?? "").trim();
+}
+
+function getVariacaoPrincipalProduto(produto: ProdutoCheckoutComVariacoes) {
+  return (
+    produto.variacoes.find(
+      (variacao) =>
+        variacao.ativo &&
+        variacao.obrigatoria !== false &&
+        variacao.opcoes.some((opcao) => opcao.ativo)
+    ) || null
+  );
+}
+
+function produtoExigeVariacao(produto: ProdutoCheckoutComVariacoes) {
+  return Boolean(getVariacaoPrincipalProduto(produto));
+}
+
+function validarOpcaoVariacaoProduto({
+  produto,
+  opcaoInformada,
+}: {
+  produto: ProdutoCheckoutComVariacoes;
+  opcaoInformada: string;
+}) {
+  const variacao = getVariacaoPrincipalProduto(produto);
+
+  if (!variacao) {
+    return null;
+  }
+
+  const opcaoNormalizada = normalizarCategoria(opcaoInformada);
+
+  return (
+    variacao.opcoes.find(
+      (opcao) =>
+        opcao.ativo && normalizarCategoria(opcao.nome) === opcaoNormalizada
+    ) || null
+  );
 }
 
 function criarSenhaHash(senha: string) {
@@ -219,34 +316,7 @@ function calcularDescontoCupom({
     return Math.min(subtotal, subtotal * (valor / 100));
   }
 
-  if (tipo === "VALOR_FIXO") {
-    return Math.min(subtotal, valor);
-  }
-
-  return 0;
-}
-
-async function gerarProximoCodigoCliente(tx: Prisma.TransactionClient) {
-  const ultimoCliente = await tx.cliente.findFirst({
-    orderBy: {
-      criadoEm: "desc",
-    },
-    select: {
-      codigo: true,
-    },
-  });
-
-  let proximoNumero = 1;
-
-  if (ultimoCliente?.codigo) {
-    const numeroAtual = Number(ultimoCliente.codigo.replace("CL", ""));
-
-    if (!Number.isNaN(numeroAtual)) {
-      proximoNumero = numeroAtual + 1;
-    }
-  }
-
-  return gerarCodigoCliente(proximoNumero);
+  return Math.min(subtotal, valor);
 }
 
 async function baixarEstoqueProduto({
@@ -276,7 +346,7 @@ async function baixarEstoqueProduto({
   if (!estoqueProduto) {
     throw new Error(
       tamanhoEstoque !== "UNICO"
-        ? `Produto sem estoque no tamanho ${tamanhoEstoque}: ${descricao}`
+        ? `Produto sem estoque na opção ${tamanhoEstoque}: ${descricao}`
         : `Produto sem estoque: ${descricao}`
     );
   }
@@ -284,7 +354,7 @@ async function baixarEstoqueProduto({
   if (estoqueProduto.quantidadeAtual < quantidade) {
     throw new Error(
       tamanhoEstoque !== "UNICO"
-        ? `Saldo insuficiente para ${descricao} no tamanho ${tamanhoEstoque}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
+        ? `Saldo insuficiente para ${descricao} na opção ${tamanhoEstoque}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
         : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
     );
   }
@@ -852,6 +922,11 @@ export async function POST(request: Request) {
                   componenteProduto: true;
                 };
               };
+              variacoes: {
+                include: {
+                  opcoes: true;
+                };
+              };
             };
           }>;
           produtoEhKit: boolean;
@@ -884,6 +959,24 @@ export async function POST(request: Request) {
                   criadoEm: "asc",
                 },
               },
+              variacoes: {
+                where: {
+                  ativo: true,
+                },
+                orderBy: {
+                  ordem: "asc",
+                },
+                include: {
+                  opcoes: {
+                    where: {
+                      ativo: true,
+                    },
+                    orderBy: {
+                      ordem: "asc",
+                    },
+                  },
+                },
+              },
             },
           });
 
@@ -899,24 +992,52 @@ export async function POST(request: Request) {
             );
           }
 
-          const exigeTamanho =
-            !produtoEhKit && produtoExigeTamanhoAnel(produto.categoria);
+          const exigeVariacao = !produtoEhKit && produtoExigeVariacao(produto);
+          const exigeTamanhoAnel =
+            !produtoEhKit &&
+            !exigeVariacao &&
+            produtoExigeTamanhoAnel(produto.categoria);
 
-          const tamanhoAnel = exigeTamanho
+          const opcaoInformada = normalizarOpcaoProduto(item.tamanhoAnel);
+
+          const opcaoVariacaoValida =
+            exigeVariacao && opcaoInformada
+              ? validarOpcaoVariacaoProduto({
+                  produto,
+                  opcaoInformada,
+                })
+              : null;
+
+          if (exigeVariacao && !opcaoVariacaoValida) {
+            const nomeVariacao =
+              getVariacaoPrincipalProduto(produto)?.nome || "opção";
+
+            throw new Error(
+              `Selecione uma opção válida de ${nomeVariacao} para o produto: ${produto.nome}`
+            );
+          }
+
+          const tamanhoAnel = exigeVariacao
+            ? opcaoVariacaoValida?.nome || null
+            : exigeTamanhoAnel
             ? normalizarTamanhoAnel(item.tamanhoAnel)
             : null;
 
-          if (exigeTamanho && !tamanhoAnel) {
+          if (exigeTamanhoAnel && !tamanhoAnel) {
             throw new Error(
               `Selecione o tamanho do anel para o produto: ${produto.nome}`
             );
           }
 
+          const precoAdicionalVariacao = Number(
+            opcaoVariacaoValida?.precoAdicional || 0
+          );
+
           const preco = calcularPrecoProduto({
-            precoVenda: Number(produto.precoVenda),
+            precoVenda: Number(produto.precoVenda) + precoAdicionalVariacao,
             descontoAtivo: produto.descontoAtivo,
             precoPromocional: produto.precoPromocional
-              ? Number(produto.precoPromocional)
+              ? Number(produto.precoPromocional) + precoAdicionalVariacao
               : null,
           });
 
@@ -960,7 +1081,7 @@ export async function POST(request: Request) {
             quantidade,
             produto,
             produtoEhKit,
-            exigeTamanho,
+            exigeTamanho: exigeVariacao || exigeTamanhoAnel,
             tamanhoAnel,
             preco,
             totalProdutoItem,
