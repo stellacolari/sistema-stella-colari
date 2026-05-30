@@ -4,7 +4,6 @@ import type { ReactNode, TouchEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import ImageBox from "@/components/ui/ImageBox";
 import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
@@ -154,8 +153,18 @@ function ProdutoPreco({ produto }: { produto: LojaProdutoItem }) {
 
 function ProdutoImagem({ produto }: { produto: LojaProdutoItem }) {
   return (
-    <div className="relative overflow-hidden bg-slate-50">
-      <ImageBox src={produto.imagemUrl} alt={produto.nome} />
+    <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
+      {produto.imagemUrl ? (
+        <img
+          src={produto.imagemUrl}
+          alt={produto.nome}
+          className="h-full w-full object-cover object-center"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
+          Sem imagem
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-0 bg-black/5" />
     </div>
@@ -222,7 +231,7 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block overflow-hidden bg-white p-3 transition duration-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-50 ${
+      className={`group relative block overflow-hidden bg-white p-3 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
@@ -242,8 +251,8 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
         )}
       </div>
 
-      <div className="relative z-10 bg-white px-1 pb-1 pt-4 transition duration-300 group-hover:bg-transparent group-active:bg-transparent">
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition duration-300 group-hover:text-[var(--brand-blue)]">
+      <div className="relative z-10 bg-white px-1 pb-1 pt-4 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
+        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
 
@@ -251,7 +260,7 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
       </div>
 
       {hasHover && produto.imagemHoverUrl && (
-        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition duration-300 group-hover:opacity-100 group-active:opacity-100">
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
@@ -474,7 +483,7 @@ function SecaoProdutos({
             onTouchStart={iniciarToque}
             onTouchMove={moverToque}
             onTouchEnd={finalizarToque}
-            className={`grid touch-pan-y gap-4 sm:gap-5 ${
+            className={`grid touch-pan-y gap-1 sm:gap-2 ${
               itensPorPagina === 1
                 ? "grid-cols-1"
                 : itensPorPagina === 2
