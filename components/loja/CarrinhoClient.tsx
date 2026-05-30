@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Gift, Minus, Plus, ShoppingBag, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  Gift,
+  Minus,
+  Plus,
+  ShoppingBag,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState, type ComponentProps } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
@@ -36,11 +43,17 @@ type CarrinhoItem = {
   nome: string;
   imagemUrl?: string | null;
   categoria: string;
+
+  // Já chega da página do produto com preço adicional de variação aplicado.
   precoVenda: number;
   precoOriginal?: number | null;
   precoPromocional?: number | null;
   descontoPercentual?: number | null;
+
+  // Campo legado usado como chave operacional da variação.
+  // Pode representar tamanho, modelo, comprimento, aro etc.
   tamanhoAnel: string | null;
+
   quantidade: number;
   estoqueDisponivel: number;
 
@@ -90,7 +103,7 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
         ? item.descontoPercentual
         : null,
     tamanhoAnel: item.tamanhoAnel ?? null,
-    quantidade: Number(item.quantidade || 1),
+    quantidade: Math.max(1, Number(item.quantidade || 1)),
     estoqueDisponivel: Number(item.estoqueDisponivel || 0),
     opcaoAdicional: item.opcaoAdicional
       ? {
@@ -207,6 +220,14 @@ function getTotalItem(item: CarrinhoItem) {
   return getTotalProdutoItem(item) + getTotalAdicionalItem(item);
 }
 
+function getTextoOpcaoProduto(item: CarrinhoItem) {
+  if (!item.tamanhoAnel) {
+    return null;
+  }
+
+  return item.tamanhoAnel;
+}
+
 export default function CarrinhoClient({
   menus: menusPublicos,
   categoriasMenu,
@@ -320,8 +341,8 @@ export default function CarrinhoClient({
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm font-light leading-6 text-slate-500">
-            Revise seus produtos, opções adicionais e valores antes de avançar
-            para o checkout.
+            Revise seus produtos, variações, opções adicionais e valores antes
+            de avançar para o checkout.
           </p>
         </div>
 
@@ -360,6 +381,7 @@ export default function CarrinhoClient({
                 const valorAdicionalUnitario = getValorAdicionalUnitario(item);
                 const semEstoque = item.estoqueDisponivel <= 0;
                 const possuiOpcaoAdicional = Boolean(item.opcaoAdicional);
+                const textoOpcaoProduto = getTextoOpcaoProduto(item);
 
                 return (
                   <article
@@ -374,6 +396,8 @@ export default function CarrinhoClient({
                   >
                     <div className="relative">
                       <ImageBox src={item.imagemUrl} alt={item.nome} />
+
+                      <div className="pointer-events-none absolute inset-0 bg-black/5" />
 
                       {desconto !== null && (
                         <div className="absolute right-2 top-2 brand-bg px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em]">
@@ -399,12 +423,18 @@ export default function CarrinhoClient({
                             {item.nome}
                           </h2>
 
-                          <p className="mt-2 text-sm font-light text-slate-500">
-                          {item.categoria}
-                          {item.tamanhoAnel
-                            ? ` · ${item.tamanhoAnel}`
-                            : ""}
-                          </p>
+                          <div className="mt-2 space-y-1 text-sm font-light text-slate-500">
+                            <p>{item.categoria}</p>
+
+                            {textoOpcaoProduto && (
+                              <p>
+                                Opção selecionada:{" "}
+                                <span className="font-medium text-slate-800">
+                                  {textoOpcaoProduto}
+                                </span>
+                              </p>
+                            )}
+                          </div>
 
                           <div className="mt-3 flex flex-wrap items-baseline gap-2">
                             {precoOriginal !== null && (
@@ -450,7 +480,8 @@ export default function CarrinhoClient({
                                     + {moeda(valorAdicionalUnitario)} por item
                                   </p>
 
-                                  {item.opcaoAdicional.itemAdicionalConsumidoNome && (
+                                  {item.opcaoAdicional
+                                    .itemAdicionalConsumidoNome && (
                                     <p className="mt-1 text-[11px] font-light text-slate-400">
                                       Inclui:{" "}
                                       {
@@ -474,10 +505,13 @@ export default function CarrinhoClient({
                             {moeda(totalItem)}
                           </p>
 
-                          {possuiOpcaoAdicional && (
+                          {(possuiOpcaoAdicional || textoOpcaoProduto) && (
                             <div className="mt-2 space-y-1 text-xs font-light text-slate-500">
                               <p>Produto: {moeda(totalProduto)}</p>
-                              <p>Adicional: {moeda(totalAdicional)}</p>
+
+                              {possuiOpcaoAdicional && (
+                                <p>Adicional: {moeda(totalAdicional)}</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -548,9 +582,7 @@ export default function CarrinhoClient({
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 brand-text" />
 
-                <h2 className="text-lg font-medium text-slate-950">
-                  Resumo
-                </h2>
+                <h2 className="text-lg font-medium text-slate-950">Resumo</h2>
               </div>
 
               <div className="mt-6 space-y-4 border-b border-slate-200 pb-5">
@@ -571,9 +603,7 @@ export default function CarrinhoClient({
                 )}
 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-light text-slate-500">
-                    Produtos
-                  </span>
+                  <span className="font-light text-slate-500">Produtos</span>
                   <span className="font-medium text-slate-950">
                     {moeda(subtotalProdutos)}
                   </span>

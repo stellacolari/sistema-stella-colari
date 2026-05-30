@@ -249,6 +249,7 @@ function getItemKey(item: {
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
   ].join("-");
 }
+
 function ProdutoImagemQuadrada({
   src,
   alt,
@@ -259,7 +260,9 @@ function ProdutoImagemQuadrada({
   className?: string;
 }) {
   return (
-    <div className={`relative aspect-square w-full overflow-hidden bg-slate-50 ${className}`}>
+    <div
+      className={`relative aspect-square w-full overflow-hidden bg-slate-50 ${className}`}
+    >
       {src ? (
         <img
           src={src}
@@ -276,6 +279,7 @@ function ProdutoImagemQuadrada({
     </div>
   );
 }
+
 function LogoLoja() {
   const [logoErro, setLogoErro] = useState(false);
 
@@ -370,6 +374,7 @@ function ProdutoRelacionadoCard({
     </Link>
   );
 }
+
 function ProdutosRelacionadosSection({
   titulo,
   produtos,
@@ -702,6 +707,31 @@ export default function ProdutoLojaClient({
     galeriaExibicao[0] ||
     "";
 
+  const opcaoVariacaoSelecionada = useMemo(() => {
+    if (!temVariacao || !variacaoPrincipal || !tamanhoSelecionado) {
+      return null;
+    }
+
+    return (
+      variacaoPrincipal.opcoes.find(
+        (opcao) => opcao.nome === tamanhoSelecionado
+      ) || null
+    );
+  }, [temVariacao, variacaoPrincipal, tamanhoSelecionado]);
+
+  const precoAdicionalVariacao = Number(
+    opcaoVariacaoSelecionada?.precoAdicional || 0
+  );
+
+  const precoVendaComVariacao = produto.precoVenda + precoAdicionalVariacao;
+
+  const precoPromocionalComVariacao =
+    temDesconto && produto.precoPromocional !== null
+      ? produto.precoPromocional + precoAdicionalVariacao
+      : null;
+
+  const precoFinalComVariacao = precoFinal + precoAdicionalVariacao;
+
   const opcaoAdicionalSelecionada = useMemo(() => {
     if (!opcaoAdicionalSelecionadaId) {
       return null;
@@ -719,7 +749,7 @@ export default function ProdutoLojaClient({
   );
 
   const totalAdicionalSelecionado = valorAdicionalSelecionado * quantidade;
-  const totalProdutoSelecionado = precoFinal * quantidade;
+  const totalProdutoSelecionado = precoFinalComVariacao * quantidade;
   const totalComAdicional = totalProdutoSelecionado + totalAdicionalSelecionado;
   const cashbackValor = totalComAdicional * CASHBACK_PERCENTUAL;
 
@@ -897,11 +927,11 @@ export default function ProdutoLojaClient({
       nome: produto.nome,
       imagemUrl: imagemSelecionada || produto.imagemUrl || null,
       categoria: produto.categoria,
-      precoVenda: precoFinal,
-      precoOriginal: temDesconto ? produto.precoVenda : null,
+      precoVenda: precoFinalComVariacao,
+      precoOriginal: temDesconto ? precoVendaComVariacao : null,
       precoPromocional:
-        temDesconto && produto.precoPromocional !== null
-          ? produto.precoPromocional
+        temDesconto && precoPromocionalComVariacao !== null
+          ? precoPromocionalComVariacao
           : null,
       descontoPercentual: desconto,
       tamanhoAnel,
@@ -949,7 +979,7 @@ export default function ProdutoLojaClient({
           ? {
               ...item,
               quantidade: novaQuantidade,
-              precoVenda: precoFinal,
+              precoVenda: precoFinalComVariacao,
               precoOriginal: novoItem.precoOriginal,
               precoPromocional: novoItem.precoPromocional,
               descontoPercentual: novoItem.descontoPercentual,
@@ -1003,7 +1033,7 @@ export default function ProdutoLojaClient({
                     <button
                       type="button"
                       onClick={() => rolarMiniaturas("cima")}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
+                      className="flex h-7 w-7 items-center justify-center border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
                       aria-label="Subir miniaturas"
                     >
                       <ChevronUp className="h-4 w-4" />
@@ -1026,15 +1056,15 @@ export default function ProdutoLojaClient({
                             : "opacity-60 hover:opacity-100"
                         }`}
                       >
-                      <div className="relative h-full w-full">
-                        <img
-                          src={imagem}
-                          alt={`${produto.nome} ${index + 1}`}
-                          className="h-full w-full object-cover object-center"
-                        />
+                        <div className="relative h-full w-full">
+                          <img
+                            src={imagem}
+                            alt={`${produto.nome} ${index + 1}`}
+                            className="h-full w-full object-cover object-center"
+                          />
 
-                        <div className="pointer-events-none absolute inset-0 bg-black/5" />
-                      </div>
+                          <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -1043,7 +1073,7 @@ export default function ProdutoLojaClient({
                     <button
                       type="button"
                       onClick={() => rolarMiniaturas("baixo")}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
+                      className="flex h-7 w-7 items-center justify-center border border-slate-200 bg-white text-slate-400 transition hover:border-slate-400 hover:text-slate-700"
                       aria-label="Descer miniaturas"
                     >
                       <ChevronDown className="h-4 w-4" />
@@ -1056,17 +1086,17 @@ export default function ProdutoLojaClient({
             <div className="overflow-hidden bg-white">
               {imagemSelecionada ? (
                 <>
-                <div className="relative aspect-square overflow-hidden">
-                  <div
-                    className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-                    style={{
-                      backgroundImage: `url(${imagemSelecionada})`,
-                    }}
-                    aria-label={produto.nome}
-                  />
+                  <div className="relative aspect-square overflow-hidden">
+                    <div
+                      className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
+                      style={{
+                        backgroundImage: `url(${imagemSelecionada})`,
+                      }}
+                      aria-label={produto.nome}
+                    />
 
-                  <div className="pointer-events-none absolute inset-0 bg-black/5" />
-                </div>
+                    <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                  </div>
 
                   {possuiMaisDeUmaImagem && (
                     <div className="grid grid-cols-4 gap-3 p-4 lg:hidden">
@@ -1082,16 +1112,16 @@ export default function ProdutoLojaClient({
                               : "opacity-60"
                           }`}
                         >
-                        <div className="relative h-full w-full">
-                          <div
-                            className="h-full w-full bg-cover bg-center bg-no-repeat"
-                            style={{
-                              backgroundImage: `url(${imagem})`,
-                            }}
-                          />
+                          <div className="relative h-full w-full">
+                            <div
+                              className="h-full w-full bg-cover bg-center bg-no-repeat"
+                              style={{
+                                backgroundImage: `url(${imagem})`,
+                              }}
+                            />
 
-                          <div className="pointer-events-none absolute inset-0 bg-black/5" />
-                        </div>
+                            <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -1125,7 +1155,7 @@ export default function ProdutoLojaClient({
                 <>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-sm font-light text-slate-400 line-through">
-                      {moeda(produto.precoVenda)}
+                      {moeda(precoVendaComVariacao)}
                     </span>
 
                     {desconto !== null && (
@@ -1136,12 +1166,14 @@ export default function ProdutoLojaClient({
                   </div>
 
                   <p className="mt-1 text-xl font-light tracking-tight brand-text">
-                    {moeda(produto.precoPromocional)}
+                    {moeda(
+                      precoPromocionalComVariacao || precoFinalComVariacao
+                    )}
                   </p>
                 </>
               ) : (
                 <p className="text-xl font-light tracking-tight text-slate-950">
-                  {moeda(produto.precoVenda)}
+                  {moeda(precoFinalComVariacao)}
                 </p>
               )}
 
@@ -1149,7 +1181,7 @@ export default function ProdutoLojaClient({
                 <p className="font-light text-slate-500">
                   ou 4 parcelas de{" "}
                   <strong className="font-semibold text-slate-900">
-                    {moeda(precoFinal / 4)}
+                    {moeda(precoFinalComVariacao / 4)}
                   </strong>{" "}
                   + juros
                 </p>
@@ -1205,6 +1237,9 @@ export default function ProdutoLojaClient({
                               tamanhoSelecionado === opcao.nome;
                             const semSaldo = opcao.quantidadeAtual <= 0;
                             const possuiImagem = Boolean(opcao.imagemUrl);
+                            const precoExtra = Number(
+                              opcao.precoAdicional || 0
+                            );
 
                             if (!possuiImagem) {
                               return (
@@ -1219,7 +1254,7 @@ export default function ProdutoLojaClient({
                                     setMensagem("");
                                     setImagemVariacaoSelecionada("");
                                   }}
-                                  className={`shrink-0 rounded-full border px-5 py-2.5 text-sm font-medium transition ${
+                                  className={`shrink-0 border px-5 py-2.5 text-sm font-medium transition ${
                                     selecionado
                                       ? "brand-border brand-bg-soft brand-text"
                                       : "border-slate-300 bg-white text-slate-700 hover:border-[var(--brand-blue)]"
@@ -1229,7 +1264,13 @@ export default function ProdutoLojaClient({
                                       : ""
                                   }`}
                                 >
-                                  {opcao.nome}
+                                  <span>{opcao.nome}</span>
+
+                                  {precoExtra > 0 && (
+                                    <span className="ml-2 text-xs font-normal opacity-70">
+                                      + {moeda(precoExtra)}
+                                    </span>
+                                  )}
                                 </button>
                               );
                             }
@@ -1270,6 +1311,8 @@ export default function ProdutoLojaClient({
                                     className="h-full w-full object-cover"
                                   />
 
+                                  <div className="pointer-events-none absolute inset-0 bg-black/5" />
+
                                   {semSaldo ? (
                                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 px-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
                                       Indisp.
@@ -1287,6 +1330,12 @@ export default function ProdutoLojaClient({
                                 >
                                   {opcao.nome}
                                 </span>
+
+                                {precoExtra > 0 && (
+                                  <span className="block text-[11px] font-normal text-slate-400">
+                                    + {moeda(precoExtra)}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -1376,7 +1425,7 @@ export default function ProdutoLojaClient({
                               atual === opcao.id ? "" : opcao.id
                             )
                           }
-                          className="h-4 w-4 rounded border-slate-300"
+                          className="h-4 w-4 border-slate-300"
                         />
 
                         <Gift className="h-4 w-4 shrink-0 brand-text" />

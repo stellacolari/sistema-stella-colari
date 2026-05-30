@@ -278,6 +278,13 @@ function getItemKey(item: CarrinhoItem) {
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
   ].join("-");
 }
+function getTextoOpcaoProduto(item: CarrinhoItem) {
+  if (!item.tamanhoAnel) {
+    return null;
+  }
+
+  return item.tamanhoAnel;
+}
 
 function formatarTipoCupom(cupom: CupomAplicado) {
   if (cupom.tipo === "PERCENTUAL") return `${cupom.valor}% off`;
@@ -757,8 +764,7 @@ function preencherDadosClienteLogado() {
 
       limparCarrinho();
 
-      window.location.href = `/loja/pedido/${data.codigo}`;
-      window.location.href = `/loja/pedido/${data.codigo}`;
+    window.location.href = `/loja/pedido/${data.codigo}`;
     } catch {
       setErro("Erro ao finalizar pedido.");
       setSalvando(false);
@@ -1371,10 +1377,12 @@ function preencherDadosClienteLogado() {
                       key={getItemKey(item)}
                       className="grid grid-cols-[64px_1fr] gap-3 border-b border-slate-100 pb-4 last:border-b-0"
                     >
-                      <div className="relative">
-                        <ImageBox src={item.imagemUrl} alt={item.nome} />
+                    <div className="relative">
+                      <ImageBox src={item.imagemUrl} alt={item.nome} />
 
-                        {desconto !== null && (
+                      <div className="pointer-events-none absolute inset-0 bg-black/5" />
+
+                      {desconto !== null && (
                           <div className="absolute right-1 top-1 bg-slate-950 px-1.5 py-0.5 text-[10px] font-medium text-white">
                             -{desconto}%
                           </div>
@@ -1388,10 +1396,16 @@ function preencherDadosClienteLogado() {
 
                         <p className="mt-1 text-xs font-light text-slate-500">
                           {item.quantidade} un.
-                        {item.tamanhoAnel
-                          ? ` · ${item.tamanhoAnel}`
-                          : ""}
                         </p>
+
+                        {getTextoOpcaoProduto(item) && (
+                          <p className="mt-1 text-xs font-light text-slate-500">
+                            Opção:{" "}
+                            <span className="font-medium text-slate-700">
+                              {getTextoOpcaoProduto(item)}
+                            </span>
+                          </p>
+                        )}
 
                         <p className="mt-1 text-sm font-medium text-slate-950">
                           {moeda(totalItem)}
