@@ -169,28 +169,28 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block overflow-hidden bg-white transition duration-500 hover:bg-slate-50 hover:shadow-sm ${
+      className={`group relative block overflow-hidden rounded-[1.75rem] bg-white p-3 transition duration-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-[1.35rem]">
         <ProdutoImagem produto={produto} />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
+          <div className="absolute right-3 top-3 z-10 rounded-full brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+          <div className="absolute left-3 top-3 z-10 rounded-full bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
             Sem estoque
           </div>
         )}
       </div>
 
-      <div className="relative z-10 bg-white pt-4 transition duration-500 group-hover:bg-transparent">
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition group-hover:text-[var(--brand-blue)]">
+      <div className="relative z-10 bg-white px-1 pb-1 pt-4 transition duration-300 group-hover:bg-transparent group-active:bg-transparent">
+        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition duration-300 group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
 
@@ -198,7 +198,7 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
       </div>
 
       {hasHover && produto.imagemHoverUrl && (
-        <div className="pointer-events-none absolute inset-0 z-20 bg-white opacity-0 transition duration-500 group-hover:opacity-100">
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[1.75rem] bg-white opacity-0 transition duration-300 group-hover:opacity-100 group-active:opacity-100">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
@@ -299,9 +299,12 @@ function SecaoProdutos({
   titulo: string;
   produtos: LojaProdutoItem[];
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [itensPorPagina, setItensPorPagina] = useState(4);
-  const [paginaAtual, setPaginaAtual] = useState(0);
+const containerRef = useRef<HTMLDivElement | null>(null);
+const touchStartXRef = useRef<number | null>(null);
+const touchEndXRef = useRef<number | null>(null);
+
+const [itensPorPagina, setItensPorPagina] = useState(4);
+const [paginaAtual, setPaginaAtual] = useState(0);
 
   useEffect(() => {
     function calcularItensPorPagina(largura: number) {
@@ -348,14 +351,48 @@ function SecaoProdutos({
   }, [produtos, paginaAtual, itensPorPagina]);
 
   if (produtos.length === 0) return null;
+function paginaAnterior() {
+  setPaginaAtual((current) => Math.max(current - 1, 0));
+}
 
-  function paginaAnterior() {
-    setPaginaAtual((current) => Math.max(current - 1, 0));
+function proximaPagina() {
+  setPaginaAtual((current) => Math.min(current + 1, totalPaginas - 1));
+}
+
+function iniciarToque(event: React.TouchEvent<HTMLDivElement>) {
+  touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  touchEndXRef.current = null;
+}
+
+function moverToque(event: React.TouchEvent<HTMLDivElement>) {
+  touchEndXRef.current = event.touches[0]?.clientX ?? null;
+}
+
+function finalizarToque() {
+  const inicio = touchStartXRef.current;
+  const fim = touchEndXRef.current;
+
+  touchStartXRef.current = null;
+  touchEndXRef.current = null;
+
+  if (inicio === null || fim === null) {
+    return;
   }
 
-  function proximaPagina() {
-    setPaginaAtual((current) => Math.min(current + 1, totalPaginas - 1));
+  const distancia = inicio - fim;
+  const distanciaMinima = 45;
+
+  if (Math.abs(distancia) < distanciaMinima) {
+    return;
   }
+
+  if (distancia > 0) {
+    proximaPagina();
+    return;
+  }
+
+  paginaAnterior();
+}
 
   return (
     <section className="relative px-5 py-12 sm:px-6 lg:px-8">
@@ -380,7 +417,10 @@ function SecaoProdutos({
           )}
 
           <div
-            className={`grid gap-6 ${
+            onTouchStart={iniciarToque}
+            onTouchMove={moverToque}
+            onTouchEnd={finalizarToque}
+            className={`grid touch-pan-y gap-4 sm:gap-5 ${
               itensPorPagina === 1
                 ? "grid-cols-1"
                 : itensPorPagina === 2
@@ -390,9 +430,17 @@ function SecaoProdutos({
                 : "grid-cols-4"
             }`}
           >
-            {produtosDaPagina.map((produto) => (
-              <ProdutoCard key={produto.id} produto={produto} />
-            ))}
+          {produtosDaPagina.map((produto, index) => (
+            <div
+              key={produto.id}
+              className="animate-[fadeUp_0.45s_ease-out_both]"
+              style={{
+                animationDelay: `${index * 70}ms`,
+              }}
+            >
+              <ProdutoCard produto={produto} />
+            </div>
+          ))}
           </div>
 
           {totalPaginas > 1 && (
@@ -611,8 +659,21 @@ export default function LojaClient({
     corDestaque: menu.corDestaque,
   }));
 
-  return (
-    <div className="min-h-screen bg-white text-slate-950">
+return (
+  <div className="min-h-screen bg-white text-slate-950">
+    <style jsx global>{`
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}</style>
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
