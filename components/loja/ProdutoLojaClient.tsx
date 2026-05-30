@@ -15,7 +15,6 @@ import {
   ShoppingCart,
   Truck,
 } from "lucide-react";
-import ImageBox from "@/components/ui/ImageBox";
 import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
@@ -250,7 +249,33 @@ function getItemKey(item: {
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
   ].join("-");
 }
+function ProdutoImagemQuadrada({
+  src,
+  alt,
+  className = "",
+}: {
+  src?: string | null;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <div className={`relative aspect-square w-full overflow-hidden bg-slate-50 ${className}`}>
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover object-center"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
+          Sem imagem
+        </div>
+      )}
 
+      <div className="pointer-events-none absolute inset-0 bg-black/5" />
+    </div>
+  );
+}
 function LogoLoja() {
   const [logoErro, setLogoErro] = useState(false);
 
@@ -282,18 +307,17 @@ function ProdutoRelacionadoCard({
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
   const temDesconto = produtoTemDesconto(produto);
+  const hasHover = Boolean(produto.imagemHoverUrl);
 
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block overflow-hidden bg-white transition duration-500 hover:bg-slate-50 hover:shadow-sm ${
+      className={`group relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
-      <div className="relative overflow-hidden bg-slate-50">
-        <ImageBox src={produto.imagemUrl} alt={produto.nome} />
-
-        <div className="pointer-events-none absolute inset-0 bg-black/5" />
+      <div className="relative overflow-hidden">
+        <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
 
         {desconto !== null && (
           <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
@@ -308,37 +332,39 @@ function ProdutoRelacionadoCard({
         )}
       </div>
 
-      <div className="relative z-10 bg-white pt-4 transition duration-500 group-hover:bg-transparent">
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition group-hover:text-[var(--brand-blue)]">
+      <div className="relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
+        <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
 
-        {temDesconto && produto.precoPromocional !== null ? (
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-xs font-light tracking-wide text-slate-400 line-through">
-              {moeda(produto.precoVenda)}
-            </span>
+        <div className="mt-auto">
+          {temDesconto && produto.precoPromocional !== null ? (
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-xs font-normal tracking-wide text-slate-400 line-through">
+                {moeda(produto.precoVenda)}
+              </span>
 
-            <span className="text-sm font-medium tracking-wide brand-text">
-              {moeda(produto.precoPromocional)}
-            </span>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm font-light tracking-wide text-slate-700">
-            {moeda(produto.precoVenda)}
-          </p>
-        )}
+              <span className="text-sm font-semibold tracking-wide brand-text">
+                {moeda(produto.precoPromocional)}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm font-medium tracking-wide text-slate-700">
+              {moeda(produto.precoVenda)}
+            </p>
+          )}
+        </div>
       </div>
 
-      {produto.imagemHoverUrl && (
-        <div className="pointer-events-none absolute inset-0 z-20 bg-white opacity-0 transition duration-500 group-hover:opacity-100">
+      {hasHover && produto.imagemHoverUrl && (
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
             className="h-full w-full object-cover object-center"
           />
 
-          <div className="absolute inset-0 bg-black/5" />
+          <div className="pointer-events-none absolute inset-0 bg-black/5" />
         </div>
       )}
     </Link>
@@ -450,14 +476,14 @@ function ProdutosRelacionadosSection({
         onPointerMove={moverArraste}
         onPointerUp={finalizarArraste}
         onPointerCancel={finalizarArraste}
-        className={`-mx-5 flex gap-6 overflow-x-auto px-5 pb-4 [scrollbar-width:thin] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 ${
+        className={`-mx-5 flex gap-2 overflow-x-auto px-5 pb-4 [scrollbar-width:thin] sm:-mx-6 sm:gap-3 sm:px-6 lg:-mx-8 lg:px-8 ${
           arrastando ? "cursor-grabbing select-none" : "cursor-grab"
         }`}
       >
         {produtos.map((produto) => (
           <div
             key={produto.id}
-            className="w-[230px] shrink-0 sm:w-[260px] lg:w-[280px]"
+            className="w-[220px] shrink-0 sm:w-[250px] lg:w-[270px]"
             onClick={(event) => {
               if (arrastando) {
                 event.preventDefault();
@@ -506,13 +532,23 @@ function ProdutoFamiliaSection({
               }`}
             >
               <div
-                className={`relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white transition ${
+                className={`relative flex h-20 w-20 items-center justify-center overflow-hidden bg-white transition-colors duration-200 ${
                   item.selecionado
                     ? "border border-[var(--brand-blue)]"
                     : "border border-transparent group-hover:border-slate-200"
                 } ${semEstoque ? "opacity-50" : ""}`}
               >
-                <ImageBox src={item.imagemUrl} alt={item.nomeOpcao} />
+                {item.imagemUrl ? (
+                  <img
+                    src={item.imagemUrl}
+                    alt={item.nomeOpcao}
+                    className="h-full w-full object-cover object-center"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-slate-100 px-2 text-center text-[10px] font-medium text-slate-400">
+                    Sem imagem
+                  </div>
+                )}
 
                 <div className="pointer-events-none absolute inset-0 bg-black/5" />
 
