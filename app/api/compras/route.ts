@@ -87,7 +87,7 @@ function validarOpcaoVariacaoProduto({
     (opcao) => opcao.ativo && normalizarTexto(opcao.nome) === opcaoNormalizada
   );
 
-  return opcaoEncontrada?.nome || null;
+  return opcaoEncontrada || null;
 }
 
 function calcularRateioKit(produto: ProdutoComKit, valorTotalFinalItem: number) {
@@ -332,15 +332,14 @@ export async function POST(req: Request) {
         });
 
         for (const item of itens) {
-          const valorUnitarioBase = Number(item.custoBase);
+        let valorUnitarioBase = Number(item.custoBase);
+        let valorUnitarioFinal =
+          item.tipo === "produto"
+            ? valorUnitarioBase * (1 - descontoPercentual / 100)
+            : valorUnitarioBase;
 
-          const valorUnitarioFinal =
-            item.tipo === "produto"
-              ? valorUnitarioBase * (1 - descontoPercentual / 100)
-              : valorUnitarioBase;
-
-          const valorTotalBase = valorUnitarioBase * item.quantidade;
-          const valorTotalFinalItem = valorUnitarioFinal * item.quantidade;
+        let valorTotalBase = valorUnitarioBase * item.quantidade;
+        let valorTotalFinalItem = valorUnitarioFinal * item.quantidade;
 
           if (item.tipo === "produto") {
             const produto = await tx.produto.findUnique({
@@ -406,11 +405,19 @@ export async function POST(req: Request) {
                 `Informe uma opção válida de ${nomeVariacao} para o produto: ${produto.nome}`
               );
             }
+            if (opcaoVariacaoValida) {
+              valorUnitarioBase =
+                Number(item.custoBase) + Number(opcaoVariacaoValida.custoAdicional || 0);
 
-            const tamanhoAnel = exigeVariacao ? opcaoVariacaoValida : null;
+              valorUnitarioFinal = valorUnitarioBase * (1 - descontoPercentual / 100);
+              valorTotalBase = valorUnitarioBase * item.quantidade;
+              valorTotalFinalItem = valorUnitarioFinal * item.quantidade;
+            }
+
+            const tamanhoAnel = exigeVariacao ? opcaoVariacaoValida?.nome || null : null;
 
             const tamanhoEstoque: string = exigeVariacao
-              ? opcaoVariacaoValida || "UNICO"
+              ? opcaoVariacaoValida?.nome || "UNICO"
               : "UNICO";
 
             const compraItem = await tx.compraItem.create({

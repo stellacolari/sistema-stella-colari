@@ -60,7 +60,33 @@ function getVariacaoPrincipal(item: { variacoes?: ProdutoVariacaoCompra[] }) {
 function produtoTemVariacao(item: { variacoes?: ProdutoVariacaoCompra[] }) {
   return Boolean(getVariacaoPrincipal(item));
 }
+function getOpcaoVariacaoSelecionada(item: ItemPedido) {
+  const variacao = getVariacaoPrincipal(item);
 
+  if (!variacao || !item.tamanhoAnel) {
+    return null;
+  }
+
+  const opcaoNormalizada = normalizarOpcaoVariacao(item.tamanhoAnel).toLowerCase();
+
+  return (
+    variacao.opcoes.find(
+      (opcao) =>
+        opcao.ativo !== false &&
+        normalizarOpcaoVariacao(opcao.nome).toLowerCase() === opcaoNormalizada
+    ) || null
+  );
+}
+
+function getCustoUnitarioBaseComVariacao(item: ItemPedido) {
+  if (item.tipo !== "produto") {
+    return item.custoBase;
+  }
+
+  const opcao = getOpcaoVariacaoSelecionada(item);
+
+  return item.custoBase + Number(opcao?.custoAdicional || 0);
+}
 function normalizarOpcaoVariacao(valor: string) {
   return valor.trim();
 }
@@ -135,23 +161,31 @@ export default function NovaCompraV2Client({
     });
   }, [busca, filtroTipo, fornecedor, itensBusca]);
 
-  const descontoAutomatico = useMemo(() => {
-    const subtotalProdutos = itensPedido
-      .filter((item) => item.tipo === "produto")
-      .reduce((acc, item) => acc + item.custoBase * item.quantidade, 0);
+const descontoAutomatico = useMemo(() => {
+  const subtotalProdutos = itensPedido
+    .filter((item) => item.tipo === "produto")
+    .reduce(
+      (acc, item) =>
+        acc + getCustoUnitarioBaseComVariacao(item) * item.quantidade,
+      0
+    );
 
-    if (subtotalProdutos > 3000) return 20;
-    if (subtotalProdutos > 2000) return 15;
-    if (subtotalProdutos > 1200) return 10;
-    if (subtotalProdutos > 800) return 5;
-    return 0;
-  }, [itensPedido]);
+  if (subtotalProdutos > 3000) return 20;
+  if (subtotalProdutos > 2000) return 15;
+  if (subtotalProdutos > 1200) return 10;
+  if (subtotalProdutos > 800) return 5;
+  return 0;
+}, [itensPedido]);
 
-  const subtotalProdutos = useMemo(() => {
-    return itensPedido
-      .filter((item) => item.tipo === "produto")
-      .reduce((acc, item) => acc + item.custoBase * item.quantidade, 0);
-  }, [itensPedido]);
+const subtotalProdutos = useMemo(() => {
+  return itensPedido
+    .filter((item) => item.tipo === "produto")
+    .reduce(
+      (acc, item) =>
+        acc + getCustoUnitarioBaseComVariacao(item) * item.quantidade,
+      0
+    );
+}, [itensPedido]);
 
   const subtotalAdicionais = useMemo(() => {
     return itensPedido
@@ -278,13 +312,13 @@ export default function NovaCompraV2Client({
     });
   }
 
-  function valorUnitarioFinal(item: ItemPedido) {
-    if (item.tipo === "produto") {
-      return item.custoBase * (1 - descontoAutomatico / 100);
-    }
-
-    return item.custoBase;
+function valorUnitarioFinal(item: ItemPedido) {
+  if (item.tipo === "produto") {
+    return getCustoUnitarioBaseComVariacao(item) * (1 - descontoAutomatico / 100);
   }
+
+  return item.custoBase;
+}
 
   async function confirmarCompra() {
     try {
@@ -657,7 +691,18 @@ export default function NovaCompraV2Client({
                             />
                           </td>
 
-                          <td className="px-6 py-4">{moeda(item.custoBase)}</td>
+                          <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span>{moeda(getCustoUnitarioBaseComVariacao(item))}</span>
+
+                            {getOpcaoVariacaoSelecionada(item)?.custoAdicional ? (
+                              <span className="mt-0.5 text-[11px] text-slate-400">
+                                Base {moeda(item.custoBase)} + variação{" "}
+                                {moeda(Number(getOpcaoVariacaoSelecionada(item)?.custoAdicional || 0))}
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
 
                           <td className="px-6 py-4">
                             {item.tipo === "produto"
