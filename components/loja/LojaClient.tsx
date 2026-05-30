@@ -231,7 +231,7 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block overflow-hidden bg-white p-3 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
+      className={`group relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
@@ -239,24 +239,26 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
         <ProdutoImagem produto={produto} />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
+          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
             Sem estoque
           </div>
         )}
       </div>
 
-      <div className="relative z-10 bg-white px-1 pb-1 pt-4 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
+      <div className="relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
+        <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
           {produto.nome}
         </h3>
 
-        <ProdutoPreco produto={produto} />
+        <div className="mt-auto">
+          <ProdutoPreco produto={produto} />
+        </div>
       </div>
 
       {hasHover && produto.imagemHoverUrl && (
