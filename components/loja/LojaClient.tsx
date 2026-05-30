@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode, TouchEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -160,11 +161,12 @@ function ProdutoImagem({ produto }: { produto: LojaProdutoItem }) {
     </div>
   );
 }
+
 function ProdutoReveal({
   children,
   delay = 0,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   delay?: number;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -211,6 +213,7 @@ function ProdutoReveal({
     </div>
   );
 }
+
 function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
@@ -219,21 +222,21 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block overflow-hidden rounded-[1.75rem] bg-white p-3 transition duration-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-50 ${
+      className={`group relative block overflow-hidden bg-white p-3 transition duration-300 hover:bg-slate-50 hover:shadow-sm active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
-      <div className="relative overflow-hidden rounded-[1.35rem]">
+      <div className="relative overflow-hidden">
         <ProdutoImagem produto={produto} />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 z-10 rounded-full brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
+          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 z-10 rounded-full bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
             Sem estoque
           </div>
         )}
@@ -248,7 +251,7 @@ function ProdutoCard({ produto }: { produto: LojaProdutoItem }) {
       </div>
 
       {hasHover && produto.imagemHoverUrl && (
-        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-[1.75rem] bg-white opacity-0 transition duration-300 group-hover:opacity-100 group-active:opacity-100">
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition duration-300 group-hover:opacity-100 group-active:opacity-100">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
@@ -349,12 +352,12 @@ function SecaoProdutos({
   titulo: string;
   produtos: LojaProdutoItem[];
 }) {
-const containerRef = useRef<HTMLDivElement | null>(null);
-const touchStartXRef = useRef<number | null>(null);
-const touchEndXRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchEndXRef = useRef<number | null>(null);
 
-const [itensPorPagina, setItensPorPagina] = useState(4);
-const [paginaAtual, setPaginaAtual] = useState(0);
+  const [itensPorPagina, setItensPorPagina] = useState(4);
+  const [paginaAtual, setPaginaAtual] = useState(0);
 
   useEffect(() => {
     function calcularItensPorPagina(largura: number) {
@@ -401,48 +404,49 @@ const [paginaAtual, setPaginaAtual] = useState(0);
   }, [produtos, paginaAtual, itensPorPagina]);
 
   if (produtos.length === 0) return null;
-function paginaAnterior() {
-  setPaginaAtual((current) => Math.max(current - 1, 0));
-}
 
-function proximaPagina() {
-  setPaginaAtual((current) => Math.min(current + 1, totalPaginas - 1));
-}
-
-function iniciarToque(event: React.TouchEvent<HTMLDivElement>) {
-  touchStartXRef.current = event.touches[0]?.clientX ?? null;
-  touchEndXRef.current = null;
-}
-
-function moverToque(event: React.TouchEvent<HTMLDivElement>) {
-  touchEndXRef.current = event.touches[0]?.clientX ?? null;
-}
-
-function finalizarToque() {
-  const inicio = touchStartXRef.current;
-  const fim = touchEndXRef.current;
-
-  touchStartXRef.current = null;
-  touchEndXRef.current = null;
-
-  if (inicio === null || fim === null) {
-    return;
+  function paginaAnterior() {
+    setPaginaAtual((current) => Math.max(current - 1, 0));
   }
 
-  const distancia = inicio - fim;
-  const distanciaMinima = 45;
-
-  if (Math.abs(distancia) < distanciaMinima) {
-    return;
+  function proximaPagina() {
+    setPaginaAtual((current) => Math.min(current + 1, totalPaginas - 1));
   }
 
-  if (distancia > 0) {
-    proximaPagina();
-    return;
+  function iniciarToque(event: TouchEvent<HTMLDivElement>) {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+    touchEndXRef.current = null;
   }
 
-  paginaAnterior();
-}
+  function moverToque(event: TouchEvent<HTMLDivElement>) {
+    touchEndXRef.current = event.touches[0]?.clientX ?? null;
+  }
+
+  function finalizarToque() {
+    const inicio = touchStartXRef.current;
+    const fim = touchEndXRef.current;
+
+    touchStartXRef.current = null;
+    touchEndXRef.current = null;
+
+    if (inicio === null || fim === null) {
+      return;
+    }
+
+    const distancia = inicio - fim;
+    const distanciaMinima = 45;
+
+    if (Math.abs(distancia) < distanciaMinima) {
+      return;
+    }
+
+    if (distancia > 0) {
+      proximaPagina();
+      return;
+    }
+
+    paginaAnterior();
+  }
 
   return (
     <section className="relative px-5 py-12 sm:px-6 lg:px-8">
@@ -480,11 +484,11 @@ function finalizarToque() {
                 : "grid-cols-4"
             }`}
           >
-          {produtosDaPagina.map((produto, index) => (
-            <ProdutoReveal key={produto.id} delay={index * 70}>
-              <ProdutoCard produto={produto} />
-            </ProdutoReveal>
-          ))}
+            {produtosDaPagina.map((produto, index) => (
+              <ProdutoReveal key={produto.id} delay={index * 70}>
+                <ProdutoCard produto={produto} />
+              </ProdutoReveal>
+            ))}
           </div>
 
           {totalPaginas > 1 && (
@@ -550,7 +554,7 @@ function ComprePorCategorias({
               <img
                 src={item.imagemUrl}
                 alt={item.titulo}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
               />
 
               <div className="pointer-events-none absolute inset-0 bg-black/5" />
@@ -573,17 +577,17 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
     <section className="py-8 lg:py-10">
       <div className="grid w-full bg-slate-50 lg:h-[50vh] lg:min-h-[280px] lg:grid-cols-[1.1fr_0.9fr]">
         <div className="min-h-[220px] bg-slate-100 sm:min-h-[250px] lg:h-full lg:min-h-0">
-        {bloco.imagemUrl ? (
-          <div className="relative h-full w-full">
-            <img
-              src={bloco.imagemUrl}
-              alt={bloco.titulo}
-              className="h-full w-full object-cover"
-            />
+          {bloco.imagemUrl ? (
+            <div className="relative h-full w-full">
+              <img
+                src={bloco.imagemUrl}
+                alt={bloco.titulo}
+                className="h-full w-full object-cover"
+              />
 
-            <div className="pointer-events-none absolute inset-0 bg-black/5" />
-          </div>
-        ) : (
+              <div className="pointer-events-none absolute inset-0 bg-black/5" />
+            </div>
+          ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-medium text-slate-500">
               Sem imagem
             </div>
@@ -703,8 +707,8 @@ export default function LojaClient({
     corDestaque: menu.corDestaque,
   }));
 
-return (
-  <div className="min-h-screen bg-white text-slate-950">  
+  return (
+    <div className="min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
