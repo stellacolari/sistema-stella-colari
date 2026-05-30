@@ -119,7 +119,7 @@ function LogoLoja() {
   return (
     <Link
       href="/loja"
-      className="flex min-w-0 max-w-[118px] shrink items-center justify-center sm:max-w-[150px] md:max-w-[180px]"
+      className="flex min-w-0 shrink items-center justify-center"
       aria-label="Ir para a loja"
     >
       {!logoErro && (
@@ -127,7 +127,7 @@ function LogoLoja() {
           src={LOGO_URL}
           alt="Stella"
           onError={() => setLogoErro(true)}
-          className="block h-8 max-h-8 w-auto max-w-full object-contain sm:h-9 sm:max-h-9"
+          className="block h-8 max-h-8 w-auto max-w-[132px] object-contain sm:h-9 sm:max-h-9 sm:max-w-[160px]"
         />
       )}
 
@@ -140,10 +140,17 @@ function LogoLoja() {
   );
 }
 
-function ProdutoSugestaoBusca({ produto }: { produto: ProdutoBuscaMenuItem }) {
+function ProdutoSugestaoBusca({
+  produto,
+  onNavigate,
+}: {
+  produto: ProdutoBuscaMenuItem;
+  onNavigate: () => void;
+}) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
+      onClick={onNavigate}
       className="block border-b border-slate-100 px-1 py-3 last:border-b-0"
     >
       <p className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
@@ -207,6 +214,67 @@ function CategoriaSubLink({
   );
 }
 
+function CategoriaMobileItem({
+  categoria,
+  aberta,
+  onToggle,
+  onNavigate,
+}: {
+  categoria: CategoriaMenuComFilhos;
+  aberta: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+}) {
+  const temFilhos = categoria.filhos.length > 0;
+
+  return (
+    <div className="border-b border-slate-100 last:border-b-0">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={`/loja/categoria/${categoria.slug}`}
+          onClick={onNavigate}
+          className="min-w-0 flex-1 py-4 text-base font-medium tracking-tight text-slate-950"
+        >
+          {categoria.nome}
+        </Link>
+
+        {temFilhos && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-slate-500 transition hover:text-[var(--brand-blue)]"
+            aria-label={
+              aberta
+                ? `Fechar subcategorias de ${categoria.nome}`
+                : `Abrir subcategorias de ${categoria.nome}`
+            }
+          >
+            <ChevronRight
+              className={`h-5 w-5 transition-transform duration-200 ${
+                aberta ? "rotate-90" : ""
+              }`}
+            />
+          </button>
+        )}
+      </div>
+
+      {temFilhos && aberta && (
+        <div className="pb-4">
+          <div className="border-l border-slate-200 pl-4">
+            {categoria.filhos.map((filho) => (
+              <CategoriaSubLink
+                key={filho.id}
+                categoria={filho}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MenuPublicoLoja({
   menus,
   categorias = [],
@@ -221,6 +289,9 @@ export default function MenuPublicoLoja({
   const [categoriaSelecionadaId, setCategoriaSelecionadaId] = useState<
     string | null
   >(null);
+  const [categoriasMobileAbertas, setCategoriasMobileAbertas] = useState<
+    string[]
+  >([]);
   const [busca, setBusca] = useState("");
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
 
@@ -254,7 +325,7 @@ export default function MenuPublicoLoja({
 
         return texto.includes(termoBusca);
       })
-      .slice(0, 5);
+      .slice(0, 6);
   }, [produtos, termoBusca]);
 
   useEffect(() => {
@@ -269,12 +340,30 @@ export default function MenuPublicoLoja({
     };
   }, [menuAberto]);
 
-  function abrirBusca() {
-    setBuscaAberta(true);
+  useEffect(() => {
+    if (!buscaAberta) return;
 
     window.setTimeout(() => {
       inputBuscaRef.current?.focus();
     }, 0);
+  }, [buscaAberta]);
+
+  useEffect(() => {
+    if (!menuAberto && !buscaAberta) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+    };
+  }, [menuAberto, buscaAberta]);
+
+  function abrirBusca() {
+    setBuscaAberta(true);
+    setMenuVisivel(false);
+    setMenuAberto(false);
+    setCategoriaSelecionadaId(null);
   }
 
   function fecharBusca() {
@@ -284,6 +373,8 @@ export default function MenuPublicoLoja({
 
   function abrirMenu() {
     setMenuAberto(true);
+    setBuscaAberta(false);
+    setBusca("");
   }
 
   function fecharMenu() {
@@ -292,42 +383,40 @@ export default function MenuPublicoLoja({
     window.setTimeout(() => {
       setMenuAberto(false);
       setCategoriaSelecionadaId(null);
+      setCategoriasMobileAbertas([]);
     }, 280);
+  }
+
+  function toggleCategoriaMobile(categoriaId: string) {
+    setCategoriasMobileAbertas((atuais) => {
+      if (atuais.includes(categoriaId)) {
+        return atuais.filter((id) => id !== categoriaId);
+      }
+
+      return [...atuais, categoriaId];
+    });
   }
 
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-        <div className="brand-bg px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white sm:text-[13px] sm:tracking-[0.28em]">
+        <div className="brand-bg px-4 py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-white sm:text-[13px] sm:tracking-[0.28em]">
           10% de cashback na primeira compra
         </div>
 
-        <div className="mx-auto grid max-w-7xl grid-cols-[88px_minmax(0,1fr)_88px] items-center gap-2 px-4 py-3 sm:grid-cols-[160px_minmax(0,1fr)_160px] sm:px-6 sm:py-4 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-8">
-          <div className="flex min-w-0 items-center justify-start gap-1 sm:gap-2">
+        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[72px_minmax(0,1fr)_72px] items-center px-4 sm:h-[72px] sm:grid-cols-[160px_minmax(0,1fr)_160px] sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-8">
+          <div className="flex min-w-0 items-center justify-start">
             <button
               type="button"
               onClick={abrirMenu}
               aria-label="Abrir menu"
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 bg-white text-xs font-light uppercase tracking-[0.14em] text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-start bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-auto sm:gap-2"
             >
               <Menu className="h-5 w-5" />
-              <span className="hidden sm:inline">Menu</span>
+              <span className="hidden text-xs font-light uppercase tracking-[0.14em] sm:inline">
+                Menu
+              </span>
             </button>
-
-            {mostrarBusca && (
-              <button
-                type="button"
-                onClick={buscaAberta ? fecharBusca : abrirBusca}
-                aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-11"
-              >
-                {buscaAberta ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Search className="h-5 w-5" />
-                )}
-              </button>
-            )}
           </div>
 
           <div className="flex min-w-0 items-center justify-center overflow-hidden">
@@ -342,13 +431,32 @@ export default function MenuPublicoLoja({
               Fale Conosco
             </Link>
 
-            {mostrarPerfil && <PerfilClienteLink className="h-10 w-10" />}
+            {mostrarBusca && (
+              <button
+                type="button"
+                onClick={buscaAberta ? fecharBusca : abrirBusca}
+                aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
+                className="inline-flex h-11 w-9 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+              >
+                {buscaAberta ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Search className="h-5 w-5" />
+                )}
+              </button>
+            )}
+
+            {mostrarPerfil && (
+              <div className="hidden md:block">
+                <PerfilClienteLink className="h-10 w-10" />
+              </div>
+            )}
 
             {mostrarCarrinho && (
               <Link
                 href="/loja/carrinho"
                 aria-label="Carrinho"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-11"
+                className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
               >
                 <ShoppingBag className="h-5 w-5" />
               </Link>
@@ -357,24 +465,35 @@ export default function MenuPublicoLoja({
         </div>
 
         {buscaAberta && (
-          <div className="absolute left-0 right-0 top-full z-50 px-5 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-xl border border-slate-200 bg-white p-4 shadow-2xl">
-              <label className="flex h-11 items-center gap-2 border border-slate-200 bg-white px-4 transition focus-within:border-[var(--brand-blue)]">
-                <Search className="h-4 w-4 text-slate-400" />
+          <div className="absolute left-0 right-0 top-full z-50 border-t border-slate-100 bg-white px-4 py-4 shadow-2xl sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl">
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex h-12 flex-1 items-center gap-2 border border-slate-200 bg-white px-4 transition focus-within:border-[var(--brand-blue)]">
+                  <Search className="h-4 w-4 text-slate-400" />
 
-                <input
-                  ref={inputBuscaRef}
-                  value={busca}
-                  onChange={(event) => setBusca(event.target.value)}
-                  placeholder="Buscar produtos"
-                  className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
-                />
-              </label>
+                  <input
+                    ref={inputBuscaRef}
+                    value={busca}
+                    onChange={(event) => setBusca(event.target.value)}
+                    placeholder="Buscar joias, categorias ou códigos"
+                    className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
+                  />
+                </label>
 
-              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={fecharBusca}
+                  className="flex h-12 w-12 items-center justify-center border border-slate-200 text-slate-500 transition hover:border-slate-400 hover:text-slate-900"
+                  aria-label="Fechar busca"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-3 max-h-[55vh] overflow-y-auto">
                 {!termoBusca ? (
                   <p className="px-1 py-3 text-sm font-medium text-slate-500">
-                    Digite o nome, código ou categoria do produto.
+                    Digite o nome, código, categoria ou tamanho do produto.
                   </p>
                 ) : sugestoesBusca.length > 0 ? (
                   <div>
@@ -386,6 +505,7 @@ export default function MenuPublicoLoja({
                       <ProdutoSugestaoBusca
                         key={produto.id}
                         produto={produto}
+                        onNavigate={fecharBusca}
                       />
                     ))}
                   </div>
@@ -410,51 +530,122 @@ export default function MenuPublicoLoja({
           />
 
           <aside
-            className={`absolute left-0 top-0 h-full w-[88vw] max-w-[420px] bg-white shadow-2xl transition-transform duration-300 ease-out lg:w-[20vw] lg:max-w-none ${
+            className={`absolute left-0 top-0 h-full w-[92vw] max-w-[430px] bg-white shadow-2xl transition-transform duration-300 ease-out lg:w-[20vw] lg:max-w-none ${
               menuVisivel ? "translate-x-0" : "-translate-x-full"
             }`}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-center gap-3 px-8 py-7">
-                <button
-                  type="button"
-                  onClick={fecharMenu}
-                  className="flex h-8 w-8 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)]"
-                  aria-label="Fechar menu"
-                >
-                  <X className="h-6 w-6" />
-                </button>
+              <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5 sm:h-[72px] sm:px-8">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={fecharMenu}
+                    className="flex h-10 w-10 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)]"
+                    aria-label="Fechar menu"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
 
-                <span className="text-sm font-medium text-slate-900">
-                  Fechar
-                </span>
+                  <span className="text-sm font-medium text-slate-900">
+                    Menu
+                  </span>
+                </div>
+
+                <div className="lg:hidden">
+                  <LogoLoja />
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-8 pb-8">
-                <nav className="space-y-7 pt-5">
-                  {categoriasArvore.map((categoria) => (
-                    <button
-                      key={categoria.id}
-                      type="button"
-                      onClick={() => setCategoriaSelecionadaId(categoria.id)}
-                      className={`block w-full text-left text-[18px] font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
-                        categoriaSelecionadaId === categoria.id
-                          ? "text-[var(--brand-blue)]"
-                          : "text-slate-950"
-                      }`}
-                    >
-                      {categoria.nome}
-                    </button>
-                  ))}
+              <div className="flex-1 overflow-y-auto px-5 pb-8 sm:px-8">
+                <div className="border-b border-slate-100 py-5 lg:hidden">
+                  <div className="grid grid-cols-2 gap-2">
+                    {mostrarPerfil && (
+                      <div className="flex items-center gap-3 border border-slate-200 px-3 py-3">
+                        <PerfilClienteLink className="h-9 w-9" />
+                        <span className="text-sm font-medium text-slate-900">
+                          Minha conta
+                        </span>
+                      </div>
+                    )}
+
+                    {mostrarCarrinho && (
+                      <Link
+                        href="/loja/carrinho"
+                        onClick={fecharMenu}
+                        className="flex items-center gap-3 border border-slate-200 px-3 py-3"
+                      >
+                        <ShoppingBag className="h-5 w-5 text-slate-900" />
+                        <span className="text-sm font-medium text-slate-900">
+                          Carrinho
+                        </span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                <nav className="pt-5 lg:space-y-7">
+                  {categoriasArvore.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 lg:hidden">
+                        Categorias
+                      </p>
+
+                      <div className="lg:hidden">
+                        {categoriasArvore.map((categoria) => (
+                          <CategoriaMobileItem
+                            key={categoria.id}
+                            categoria={categoria}
+                            aberta={categoriasMobileAbertas.includes(
+                              categoria.id
+                            )}
+                            onToggle={() => toggleCategoriaMobile(categoria.id)}
+                            onNavigate={fecharMenu}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="hidden space-y-7 lg:block">
+                        {categoriasArvore.map((categoria) => (
+                          <button
+                            key={categoria.id}
+                            type="button"
+                            onClick={() =>
+                              setCategoriaSelecionadaId(categoria.id)
+                            }
+                            className={`block w-full text-left text-[18px] font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
+                              categoriaSelecionadaId === categoria.id
+                                ? "text-[var(--brand-blue)]"
+                                : "text-slate-950"
+                            }`}
+                          >
+                            {categoria.nome}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {menus.length > 0 && (
-                    <div className="space-y-7 border-t border-slate-100 pt-7">
+                    <div className="mt-7 space-y-1 border-t border-slate-100 pt-5 lg:mt-0 lg:space-y-7 lg:pt-7">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 lg:hidden">
+                        Links
+                      </p>
+
                       {menus.map((menu) => (
                         <Link
                           key={menu.id}
                           href={menu.href}
                           onClick={fecharMenu}
-                          className="block text-[20px] font-normal leading-tight tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
+                          className={`block py-3 text-base font-medium leading-tight tracking-tight transition hover:text-[var(--brand-blue)] lg:py-0 lg:text-[20px] lg:font-normal ${
+                            menu.destaque
+                              ? "text-[var(--brand-blue)]"
+                              : "text-slate-950"
+                          }`}
+                          style={
+                            menu.corDestaque
+                              ? { color: menu.corDestaque }
+                              : undefined
+                          }
                         >
                           {menu.nome}
                         </Link>
@@ -463,7 +654,7 @@ export default function MenuPublicoLoja({
                       <Link
                         href={CONTATO_URL}
                         onClick={fecharMenu}
-                        className="block text-[20px] font-normal leading-tight tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)] md:hidden"
+                        className="block py-3 text-base font-medium leading-tight tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)] md:hidden"
                       >
                         Fale conosco
                       </Link>
@@ -472,12 +663,12 @@ export default function MenuPublicoLoja({
                 </nav>
               </div>
 
-              <div className="border-t border-slate-100 px-8 py-7 text-sm text-slate-700">
+              <div className="border-t border-slate-100 px-5 py-5 text-sm text-slate-700 sm:px-8 lg:py-7">
                 <p className="font-medium">Precisa de ajuda?</p>
                 <Link
                   href={CONTATO_URL}
                   onClick={fecharMenu}
-                  className="mt-3 block text-slate-950 transition hover:text-[var(--brand-blue)]"
+                  className="mt-2 block text-slate-950 transition hover:text-[var(--brand-blue)]"
                 >
                   Fale conosco
                 </Link>
@@ -495,11 +686,15 @@ export default function MenuPublicoLoja({
             {categoriaSelecionada && (
               <div className="h-full overflow-y-auto">
                 {categoriaSelecionada.imagemUrl ? (
-                  <img
-                    src={categoriaSelecionada.imagemUrl}
-                    alt={categoriaSelecionada.nome}
-                    className="h-64 w-full object-cover"
-                  />
+                  <div className="relative h-64 w-full overflow-hidden bg-slate-100">
+                    <img
+                      src={categoriaSelecionada.imagemUrl}
+                      alt={categoriaSelecionada.nome}
+                      className="h-full w-full object-cover"
+                    />
+
+                    <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                  </div>
                 ) : (
                   <div className="flex h-64 w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
                     Sem imagem cadastrada
@@ -544,68 +739,6 @@ export default function MenuPublicoLoja({
               </div>
             )}
           </section>
-
-          {categoriaSelecionada && (
-            <section
-              className={`absolute bottom-0 left-0 right-0 max-h-[65vh] overflow-y-auto bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
-                menuVisivel ? "translate-y-0" : "translate-y-full"
-              }`}
-            >
-              {categoriaSelecionada.imagemUrl ? (
-                <img
-                  src={categoriaSelecionada.imagemUrl}
-                  alt={categoriaSelecionada.nome}
-                  className="h-44 w-full object-cover"
-                />
-              ) : null}
-
-              <div className="flex items-start justify-between gap-4 px-6 pt-5">
-                <div>
-                  <Link
-                    href={`/loja/categoria/${categoriaSelecionada.slug}`}
-                    onClick={fecharMenu}
-                    className="text-2xl font-medium tracking-tight text-slate-950"
-                  >
-                    {categoriaSelecionada.nome}
-                  </Link>
-
-                  {categoriaSelecionada.descricao && (
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {categoriaSelecionada.descricao}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setCategoriaSelecionadaId(null)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center text-slate-500"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="px-6 pb-6 pt-5">
-                <div className="border-t border-slate-200 pt-5">
-                  {categoriaSelecionada.filhos.length > 0 ? (
-                    <div className="space-y-1">
-                      {categoriaSelecionada.filhos.map((filho) => (
-                        <CategoriaSubLink
-                          key={filho.id}
-                          categoria={filho}
-                          onNavigate={fecharMenu}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      Nenhuma subcategoria cadastrada.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
         </div>
       )}
     </>
