@@ -183,7 +183,13 @@ function pedidoClass(status: string) {
 
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
+function getTextoOpcaoProduto(item: PedidoPublicoItem) {
+  if (!item.tamanhoAnel) {
+    return null;
+  }
 
+  return item.tamanhoAnel;
+}
 function montarEndereco(pedido: PedidoPublicoData) {
   const partes = [
     pedido.rua,
@@ -360,17 +366,19 @@ const pagamentoNaoConcluido =
                       key={item.id}
                       className="grid gap-4 py-4 first:pt-0 last:pb-0 sm:grid-cols-[80px_1fr_auto]"
                     >
-                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
-                        {item.imagemUrl ? (
-                          <img
-                            src={item.imagemUrl}
-                            alt={item.nomeProduto}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <ShoppingBag className="h-6 w-6 text-slate-300" />
-                        )}
-                      </div>
+                    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden bg-slate-100">
+                      {item.imagemUrl ? (
+                        <img
+                          src={item.imagemUrl}
+                          alt={item.nomeProduto}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ShoppingBag className="h-6 w-6 text-slate-300" />
+                      )}
+
+                      <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                    </div>
 
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -380,11 +388,18 @@ const pagamentoNaoConcluido =
                         <h3 className="mt-1 text-sm font-semibold text-slate-950">
                           {item.nomeProduto}
                         </h3>
-
                         <p className="mt-1 text-xs text-slate-500">
                           {item.quantidade} un.
-                          {item.tamanhoAnel ? ` · Tam. ${item.tamanhoAnel}` : ""}
                         </p>
+
+                        {getTextoOpcaoProduto(item) && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Opção:{" "}
+                            <span className="font-medium text-slate-700">
+                              {getTextoOpcaoProduto(item)}
+                            </span>
+                          </p>
+                        )}
 
                         {item.adicionais.length > 0 && (
                           <div className="mt-3 space-y-1">
