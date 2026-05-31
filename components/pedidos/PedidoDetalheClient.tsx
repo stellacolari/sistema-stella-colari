@@ -221,7 +221,13 @@ function montarEndereco(pedido: PedidoDetalhe) {
 function valorSeguro(value: number | null | undefined) {
   return Number(value || 0);
 }
+function getTextoOpcaoProduto(tamanhoAnel: string | null) {
+  if (!tamanhoAnel) {
+    return null;
+  }
 
+  return tamanhoAnel;
+}
 export default function PedidoDetalheClient({
   pedido,
 }: {
@@ -576,7 +582,7 @@ export default function PedidoDetalheClient({
                 key={item.id}
                 className="grid gap-4 py-4 first:pt-0 last:pb-0 md:grid-cols-[72px_1fr_auto]"
               >
-                <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
+                <div className="relative flex h-[72px] w-[72px] items-center justify-center overflow-hidden bg-slate-100">
                   {item.imagemUrl ? (
                     <img
                       src={item.imagemUrl}
@@ -586,6 +592,7 @@ export default function PedidoDetalheClient({
                   ) : (
                     <Package className="h-6 w-6 text-slate-300" />
                   )}
+                  <div className="pointer-events-none absolute inset-0 bg-black/5" />
                 </div>
 
                 <div>
@@ -596,16 +603,27 @@ export default function PedidoDetalheClient({
                   <h3 className="mt-1 text-sm font-semibold text-slate-950">
                     {item.nomeProduto}
                   </h3>
-
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     {item.categoria}
-                    {item.tamanhoAnel ? ` · Tam. ${item.tamanhoAnel}` : ""}
                   </p>
+
+                  {getTextoOpcaoProduto(item.tamanhoAnel) && (
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Opção escolhida:{" "}
+                      <span className="font-semibold text-slate-700">
+                        {getTextoOpcaoProduto(item.tamanhoAnel)}
+                      </span>
+                    </p>
+                  )}
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     {item.quantidade} un. × {moeda(item.precoUnitario)}
                   </p>
-
+                  {getTextoOpcaoProduto(item.tamanhoAnel) && (
+                    <div className="mt-2 inline-flex border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                      Separar opção: {getTextoOpcaoProduto(item.tamanhoAnel)}
+                    </div>
+                  )}
                   {adicionais.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {adicionais.map((adicional) => (
