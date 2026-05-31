@@ -30,10 +30,29 @@ export default async function PedidosPage() {
       },
       envio: true,
       itens: {
+        orderBy: {
+          criadoEm: "asc",
+        },
         select: {
           id: true,
+          codigoInterno: true,
+          nomeProduto: true,
+          categoria: true,
+          tamanhoAnel: true,
           quantidade: true,
+          precoUnitario: true,
           total: true,
+          adicionais: {
+            orderBy: {
+              criadoEm: "asc",
+            },
+            select: {
+              id: true,
+              nome: true,
+              quantidade: true,
+              valorVendaTotal: true,
+            },
+          },
         },
       },
       statusHistorico: {
@@ -102,6 +121,23 @@ export default async function PedidosPage() {
 
       quantidadeItens,
       totalItensUnicos: pedido.itens.length,
+
+      itens: pedido.itens.map((item) => ({
+        id: item.id,
+        codigoInterno: item.codigoInterno,
+        nomeProduto: item.nomeProduto,
+        categoria: item.categoria,
+        tamanhoAnel: item.tamanhoAnel,
+        quantidade: item.quantidade,
+        precoUnitario: Number(item.precoUnitario || 0),
+        total: Number(item.total || 0),
+        adicionais: item.adicionais.map((adicional) => ({
+          id: adicional.id,
+          nome: adicional.nome,
+          quantidade: adicional.quantidade,
+          valorVendaTotal: Number(adicional.valorVendaTotal || 0),
+        })),
+      })),
 
       envio: pedido.envio
         ? {

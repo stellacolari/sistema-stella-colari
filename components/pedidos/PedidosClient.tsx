@@ -58,8 +58,23 @@ export type PedidoOperacionalItem = {
 
   quantidadeItens: number;
   totalItensUnicos: number;
-
-  envio: {
+    itens: {
+    id: string;
+    codigoInterno: string;
+    nomeProduto: string;
+    categoria: string;
+    tamanhoAnel: string | null;
+    quantidade: number;
+    precoUnitario: number;
+    total: number;
+    adicionais: {
+      id: string;
+      nome: string;
+      quantidade: number;
+      valorVendaTotal: number;
+    }[];
+  }[];
+    envio: {
     id: string;
     tipoEntrega: string;
     transportadora: string | null;
@@ -274,7 +289,13 @@ function pedidoCombinaBusca(pedido: PedidoOperacionalItem, busca: string) {
 
   return texto.includes(termo);
 }
+function getTextoOpcaoProduto(tamanhoAnel: string | null) {
+  if (!tamanhoAnel) {
+    return null;
+  }
 
+  return tamanhoAnel;
+}
 function getMensagemAcao(pedido: PedidoOperacionalItem) {
   if (pedido.status === "PROBLEMA") {
     return {
@@ -584,6 +605,46 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     {pedido.quantidadeItens} un. · {pedido.totalItensUnicos} item
                     {pedido.totalItensUnicos === 1 ? "" : "s"}
                   </p>
+                  {pedido.itens.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {pedido.itens.slice(0, 3).map((item) => {
+                        const textoOpcao = getTextoOpcaoProduto(item.tamanhoAnel);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-xl bg-slate-50 px-2.5 py-2 text-xs text-slate-600 ring-1 ring-slate-200"
+                          >
+                            <p className="line-clamp-1 font-medium text-slate-800">
+                              {item.quantidade}x {item.nomeProduto}
+                            </p>
+
+                            {textoOpcao && (
+                              <p className="mt-0.5 text-slate-500">
+                                Opção:{" "}
+                                <span className="font-medium text-slate-700">
+                                  {textoOpcao}
+                                </span>
+                              </p>
+                            )}
+
+                            {item.adicionais.length > 0 && (
+                              <p className="mt-0.5 text-blue-700">
+                                + {item.adicionais.map((adicional) => adicional.nome).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {pedido.itens.length > 3 && (
+                        <p className="text-[11px] text-slate-400">
+                          + {pedido.itens.length - 3} item
+                          {pedido.itens.length - 3 === 1 ? "" : "s"} no pedido
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
