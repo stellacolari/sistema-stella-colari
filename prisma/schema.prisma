@@ -8,46 +8,44 @@ datasource db {
 }
 
 model Produto {
-  id                 String                 @id @default(cuid())
-  codigoInterno      String                 @unique
+  id                 String                  @id @default(cuid())
+  codigoInterno      String                  @unique
   codigoFornecedor   String?
   nome               String
   imagemUrl          String?
-  imagemHoverUrl     String?
   linkCompra         String?
   custoBase          Float
   margemAplicada     Float
   precoVenda         Float
-  descontoAtivo      Boolean                @default(false)
-  precoPromocional   Float?
   categoria          String
   fornecedorPadrao   String
-  ativo              Boolean                @default(true)
-  status             String                 @default("ATIVO")
-  statusAntesLixeira String?
+  ativo              Boolean                 @default(true)
   observacoes        String?
-  criadoEm           DateTime               @default(now())
-  atualizadoEm       DateTime               @updatedAt
-  estoque            EstoqueProduto[]
-  vendasItens        VendaItem[]
-  imagens            ProdutoImagem[]
+  criadoEm           DateTime                @default(now())
+  atualizadoEm       DateTime                @updatedAt
+  status             String                  @default("ATIVO")
+  statusAntesLixeira String?
+  descontoAtivo      Boolean                 @default(false)
+  precoPromocional   Float?
+  imagemHoverUrl     String?
   descricaoLoja      String?
-  tipoProduto        String                 @default("UNITARIO")
-  componentesDoKit   ProdutoKitComponente[] @relation("KitProduto")
-  usadoEmKits        ProdutoKitComponente[] @relation("ComponenteProduto")
-  categoriasProduto  ProdutoCategoria[]
-  canaisVenda        ProdutoCanal[]
+  tipoProduto        String                  @default("UNITARIO")
+  familiaId          String?
+  familiaMaterial    String?
+  familiaCorJoia     String?
+  familiaImagemUrl   String?
+  familiaOrdem       Int                     @default(0)
   compraItens        CompraItem[]
+  estoque            EstoqueProduto[]
+  familia            ProdutoFamilia?         @relation(fields: [familiaId], references: [id])
+  canaisVenda        ProdutoCanal[]
+  categoriasProduto  ProdutoCategoria[]
+  familiasVinculos   ProdutoFamiliaProduto[]
+  imagens            ProdutoImagem[]
+  usadoEmKits        ProdutoKitComponente[]  @relation("ComponenteProduto")
+  componentesDoKit   ProdutoKitComponente[]  @relation("KitProduto")
   variacoes          ProdutoVariacao[]
-
-  familiaId        String?
-  familia          ProdutoFamilia? @relation(fields: [familiaId], references: [id], onDelete: SetNull)
-  familiaMaterial  String?
-  familiaCorJoia   String?
-  familiaImagemUrl String?
-  familiaOrdem     Int             @default(0)
-
-  familiasVinculos ProdutoFamiliaProduto[]
+  vendasItens        VendaItem[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -55,37 +53,32 @@ model Produto {
 }
 
 model ProdutoFamilia {
-  id    String  @id @default(cuid())
-  nome  String
-  slug  String  @unique
-  ativo Boolean @default(true)
-  ordem Int     @default(0)
-
-  produtos Produto[]
-  campos   ProdutoFamiliaCampo[]
-  vinculos ProdutoFamiliaProduto[]
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String                  @id @default(cuid())
+  nome         String
+  slug         String                  @unique
+  ativo        Boolean                 @default(true)
+  ordem        Int                     @default(0)
+  criadoEm     DateTime                @default(now())
+  atualizadoEm DateTime                @updatedAt
+  produtos     Produto[]
+  campos       ProdutoFamiliaCampo[]
+  vinculos     ProdutoFamiliaProduto[]
 
   @@index([ativo])
   @@index([ordem])
 }
 
 model ProdutoFamiliaCampo {
-  id        String         @id @default(cuid())
-  familiaId String
-  familia   ProdutoFamilia @relation(fields: [familiaId], references: [id], onDelete: Cascade)
-
-  nome  String
-  slug  String
-  ativo Boolean @default(true)
-  ordem Int     @default(0)
-
-  valores ProdutoFamiliaProdutoValor[]
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String                       @id @default(cuid())
+  familiaId    String
+  nome         String
+  slug         String
+  ativo        Boolean                      @default(true)
+  ordem        Int                          @default(0)
+  criadoEm     DateTime                     @default(now())
+  atualizadoEm DateTime                     @updatedAt
+  familia      ProdutoFamilia               @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  valores      ProdutoFamiliaProdutoValor[]
 
   @@unique([familiaId, slug])
   @@index([familiaId])
@@ -94,21 +87,17 @@ model ProdutoFamiliaCampo {
 }
 
 model ProdutoFamiliaProduto {
-  id        String         @id @default(cuid())
-  familiaId String
-  familia   ProdutoFamilia @relation(fields: [familiaId], references: [id], onDelete: Cascade)
-
-  produtoId String
-  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
-  imagemUrl String?
-  ordem     Int     @default(0)
-  ativo     Boolean @default(true)
-
-  valores ProdutoFamiliaProdutoValor[]
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String                       @id @default(cuid())
+  familiaId    String
+  produtoId    String
+  imagemUrl    String?
+  ordem        Int                          @default(0)
+  ativo        Boolean                      @default(true)
+  criadoEm     DateTime                     @default(now())
+  atualizadoEm DateTime                     @updatedAt
+  familia      ProdutoFamilia               @relation(fields: [familiaId], references: [id], onDelete: Cascade)
+  produto      Produto                      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  valores      ProdutoFamiliaProdutoValor[]
 
   @@unique([familiaId, produtoId])
   @@index([familiaId])
@@ -118,18 +107,14 @@ model ProdutoFamiliaProduto {
 }
 
 model ProdutoFamiliaProdutoValor {
-  id String @id @default(cuid())
-
+  id               String                @id @default(cuid())
   familiaProdutoId String
+  campoId          String
+  valor            String
+  criadoEm         DateTime              @default(now())
+  atualizadoEm     DateTime              @updatedAt
+  campo            ProdutoFamiliaCampo   @relation(fields: [campoId], references: [id], onDelete: Cascade)
   familiaProduto   ProdutoFamiliaProduto @relation(fields: [familiaProdutoId], references: [id], onDelete: Cascade)
-
-  campoId String
-  campo   ProdutoFamiliaCampo @relation(fields: [campoId], references: [id], onDelete: Cascade)
-
-  valor String
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
 
   @@unique([familiaProdutoId, campoId])
   @@index([familiaProdutoId])
@@ -140,29 +125,26 @@ model ProdutoFamiliaProdutoValor {
 model ProdutoImagem {
   id        String   @id @default(cuid())
   produtoId String
-  produto   Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   imagemUrl String
   ordem     Int      @default(0)
   criadoEm  DateTime @default(now())
+  produto   Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@index([produtoId])
   @@index([ordem])
 }
 
 model ProdutoVariacao {
-  id        String  @id @default(cuid())
-  produtoId String
-  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
-  nome        String
-  obrigatoria Boolean @default(true)
-  ativo       Boolean @default(true)
-  ordem       Int     @default(0)
-
-  opcoes ProdutoVariacaoOpcao[]
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String                 @id @default(cuid())
+  produtoId    String
+  nome         String
+  obrigatoria  Boolean                @default(true)
+  ativo        Boolean                @default(true)
+  ordem        Int                    @default(0)
+  criadoEm     DateTime               @default(now())
+  atualizadoEm DateTime               @updatedAt
+  produto      Produto                @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  opcoes       ProdutoVariacaoOpcao[]
 
   @@index([produtoId])
   @@index([ativo])
@@ -170,19 +152,17 @@ model ProdutoVariacao {
 }
 
 model ProdutoVariacaoOpcao {
-  id         String          @id @default(cuid())
-  variacaoId String
-  variacao   ProdutoVariacao @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
-
+  id             String          @id @default(cuid())
+  variacaoId     String
   nome           String
   imagemUrl      String?
-  precoAdicional Float   @default(0)
-  custoAdicional Float   @default(0)
-  ativo          Boolean @default(true)
-  ordem          Int     @default(0)
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  precoAdicional Float           @default(0)
+  custoAdicional Float           @default(0)
+  ativo          Boolean         @default(true)
+  ordem          Int             @default(0)
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
+  variacao       ProdutoVariacao @relation(fields: [variacaoId], references: [id], onDelete: Cascade)
 
   @@index([variacaoId])
   @@index([ativo])
@@ -190,29 +170,22 @@ model ProdutoVariacaoOpcao {
 }
 
 model ProdutoCanal {
-  id String @id @default(cuid())
-
-  produtoId String
-  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
-  canal String
-
-  skuExterno        String?
-  produtoExternoId  String?
-  variacaoExternaId String?
-  tituloExterno     String?
-
-  precoCanal       Float?
-  estoqueAnunciado Int?
-
-  sincronizarEstoque Boolean @default(true)
-  sincronizarPreco   Boolean @default(false)
-
-  ativo Boolean @default(true)
-
+  id                    String    @id @default(cuid())
+  produtoId             String
+  canal                 String
+  skuExterno            String?
+  produtoExternoId      String?
+  variacaoExternaId     String?
+  tituloExterno         String?
+  precoCanal            Float?
+  estoqueAnunciado      Int?
+  sincronizarEstoque    Boolean   @default(true)
+  sincronizarPreco      Boolean   @default(false)
+  ativo                 Boolean   @default(true)
   ultimaSincronizacaoEm DateTime?
   criadoEm              DateTime  @default(now())
   atualizadoEm          DateTime  @updatedAt
+  produto               Produto   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@unique([canal, skuExterno])
   @@index([produtoId])
@@ -224,28 +197,27 @@ model ProdutoCanal {
 }
 
 model ItemAdicional {
-  id                 String            @id @default(cuid())
-  codigoInterno      String            @unique
-  codigoFornecedor   String?
-  nome               String
-  imagemUrl          String?
-  linkCompra         String?
-  custoBase          Float
-  fornecedorPadrao   String
-  ativo              Boolean           @default(true)
-  status             String            @default("ATIVO")
-  statusAntesLixeira String?
-  observacoes        String?
-  criadoEm           DateTime          @default(now())
-  atualizadoEm       DateTime          @updatedAt
-  regrasCategoria    RegraCategoria[]
-  estoque            EstoqueAdicional?
-
-  opcoesComoPadraoSubstituido   CategoriaOpcaoAdicional[]   @relation("CategoriaOpcaoItemPadraoSubstituido")
+  id                            String                      @id @default(cuid())
+  codigoInterno                 String                      @unique
+  codigoFornecedor              String?
+  nome                          String
+  imagemUrl                     String?
+  linkCompra                    String?
+  custoBase                     Float
+  fornecedorPadrao              String
+  ativo                         Boolean                     @default(true)
+  observacoes                   String?
+  criadoEm                      DateTime                    @default(now())
+  atualizadoEm                  DateTime                    @updatedAt
+  status                        String                      @default("ATIVO")
+  statusAntesLixeira            String?
   opcoesComoAdicionalConsumido  CategoriaOpcaoAdicional[]   @relation("CategoriaOpcaoItemAdicionalConsumido")
-  pedidosComoPadraoSubstituido  PedidoOnlineItemAdicional[] @relation("PedidoItemPadraoSubstituido")
-  pedidosComoAdicionalConsumido PedidoOnlineItemAdicional[] @relation("PedidoItemAdicionalConsumido")
+  opcoesComoPadraoSubstituido   CategoriaOpcaoAdicional[]   @relation("CategoriaOpcaoItemPadraoSubstituido")
   compraItens                   CompraItem[]
+  estoque                       EstoqueAdicional?
+  pedidosComoAdicionalConsumido PedidoOnlineItemAdicional[] @relation("PedidoItemAdicionalConsumido")
+  pedidosComoPadraoSubstituido  PedidoOnlineItemAdicional[] @relation("PedidoItemPadraoSubstituido")
+  regrasCategoria               RegraCategoria[]
 }
 
 model RegraCategoria {
@@ -253,9 +225,9 @@ model RegraCategoria {
   categoria       String
   quantidade      Int           @default(1)
   itemAdicionalId String
-  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
   criadoEm        DateTime      @default(now())
   atualizadoEm    DateTime      @updatedAt
+  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
 }
 
 model Cliente {
@@ -268,22 +240,22 @@ model Cliente {
   cep                   String?
   rua                   String?
   numero                String?
-  complemento           String?
-  bairro                String?
-  cidade                String?
-  estado                String?
   tipoCliente           String
   status                String                        @default("NOVO")
-  statusAntesLixeira    String?
   observacoes           String?
-  senhaHash             String?
-  cashbackSaldo         Float                         @default(0)
-  origemCadastro        String?
   criadoEm              DateTime                      @default(now())
   atualizadoEm          DateTime                      @updatedAt
-  vendas                Venda[]
-  pedidosOnline         PedidoOnline[]
+  statusAntesLixeira    String?
+  cashbackSaldo         Float                         @default(0)
+  origemCadastro        String?
+  senhaHash             String?
+  bairro                String?
+  cidade                String?
+  complemento           String?
+  estado                String?
   cashbackMovimentacoes ClienteCashbackMovimentacao[]
+  pedidosOnline         PedidoOnline[]
+  vendas                Venda[]
 }
 
 model Compra {
@@ -295,25 +267,23 @@ model Compra {
   valorTotalBruto        Float        @default(0)
   valorTotalFinal        Float        @default(0)
   observacoes            String?
-  status                 String       @default("ATIVA")
-  statusAntesLixeira     String?
-  cancelamentoMotivo     String?
-  cancelamentoObservacao String?
-  canceladoEm            DateTime?
   criadoEm               DateTime     @default(now())
   atualizadoEm           DateTime     @updatedAt
+  canceladoEm            DateTime?
+  cancelamentoMotivo     String?
+  cancelamentoObservacao String?
+  status                 String       @default("ATIVA")
+  statusAntesLixeira     String?
   itens                  CompraItem[]
 }
 
 model CompraItem {
   id                 String         @id @default(cuid())
   compraId           String
-  compra             Compra         @relation(fields: [compraId], references: [id], onDelete: Cascade)
   tipoItem           String
   codigoDigitado     String
   descricao          String
   quantidade         Int
-  tamanhoAnel        String?
   valorUnitarioBase  Float
   valorUnitarioFinal Float
   valorTotalBase     Float
@@ -321,11 +291,13 @@ model CompraItem {
   parcelaFrete       Float          @default(0)
   valorTotalComFrete Float          @default(0)
   produtoId          String?
-  produto            Produto?       @relation(fields: [produtoId], references: [id])
   itemAdicionalId    String?
-  itemAdicional      ItemAdicional? @relation(fields: [itemAdicionalId], references: [id])
   criadoEm           DateTime       @default(now())
   atualizadoEm       DateTime       @updatedAt
+  tamanhoAnel        String?
+  compra             Compra         @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  itemAdicional      ItemAdicional? @relation(fields: [itemAdicionalId], references: [id])
+  produto            Produto?       @relation(fields: [produtoId], references: [id])
 
   @@index([compraId])
   @@index([produtoId])
@@ -335,13 +307,13 @@ model CompraItem {
 model EstoqueProduto {
   id              String   @id @default(cuid())
   produtoId       String
-  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  tamanhoAnel     String   @default("UNICO")
   quantidadeAtual Int      @default(0)
   valorAcumulado  Float    @default(0)
   custoMedio      Float    @default(0)
   criadoEm        DateTime @default(now())
   atualizadoEm    DateTime @updatedAt
+  tamanhoAnel     String   @default("UNICO")
+  produto         Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@unique([produtoId, tamanhoAnel])
   @@index([produtoId])
@@ -351,70 +323,66 @@ model EstoqueProduto {
 model EstoqueAdicional {
   id              String        @id @default(cuid())
   itemAdicionalId String        @unique
-  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
   quantidadeAtual Int           @default(0)
   valorAcumulado  Float         @default(0)
   custoMedio      Float         @default(0)
   criadoEm        DateTime      @default(now())
   atualizadoEm    DateTime      @updatedAt
+  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
 }
 
 model Movimentacao {
-  id                    String   @id @default(cuid())
-  codigoMovimentacao    String   @unique
+  id                    String                  @id @default(cuid())
+  codigoMovimentacao    String                  @unique
   tipoMovimentacao      String
   origemTipo            String
   origemId              String
   codigoItem            String
   itemTipo              String
   quantidade            Int
-  tamanhoAnel           String?
-  custo                 Float    @default(0)
-  faturamento           Float    @default(0)
+  custo                 Float                   @default(0)
+  faturamento           Float                   @default(0)
   documentoCliente      String?
   status                String
   relacionadoA          String?
-  gastoProdutoPrincipal Float    @default(0)
-  gastoAdd1             Float    @default(0)
-  gastoAdd2             Float    @default(0)
-  gastoAdd3             Float    @default(0)
-  criadoEm              DateTime @default(now())
-  atualizadoEm          DateTime @updatedAt
-
-  adicionaisConsumidos MovimentacaoAdicional[]
+  gastoProdutoPrincipal Float                   @default(0)
+  gastoAdd1             Float                   @default(0)
+  gastoAdd2             Float                   @default(0)
+  gastoAdd3             Float                   @default(0)
+  criadoEm              DateTime                @default(now())
+  atualizadoEm          DateTime                @updatedAt
+  tamanhoAnel           String?
+  adicionaisConsumidos  MovimentacaoAdicional[]
 }
 
 model Venda {
   id                     String      @id @default(cuid())
   codigo                 String      @unique
   clienteId              String
-  cliente                Cliente     @relation(fields: [clienteId], references: [id], onDelete: Restrict)
   meioVenda              String
   descontoPercentual     Float       @default(0)
   valorTotal             Float       @default(0)
   gastoTotal             Float       @default(0)
   lucroTotal             Float       @default(0)
-  status                 String      @default("VENDA_FINALIZADA")
-  statusAntesLixeira     String?
   observacoes            String?
-  cancelamentoMotivo     String?
-  cancelamentoObservacao String?
-  canceladoEm            DateTime?
   criadoEm               DateTime    @default(now())
   atualizadoEm           DateTime    @updatedAt
+  status                 String      @default("VENDA_FINALIZADA")
+  canceladoEm            DateTime?
+  cancelamentoMotivo     String?
+  cancelamentoObservacao String?
+  statusAntesLixeira     String?
+  cliente                Cliente     @relation(fields: [clienteId], references: [id])
   itens                  VendaItem[]
 }
 
 model VendaItem {
   id                 String   @id @default(cuid())
   vendaId            String
-  venda              Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   produtoId          String
-  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
   codigoDigitado     String
   descricao          String
   quantidade         Int
-  tamanhoAnel        String?
   valorUnitarioBase  Float
   valorUnitarioFinal Float
   valorTotal         Float
@@ -423,18 +391,21 @@ model VendaItem {
   lucroTotal         Float    @default(0)
   criadoEm           DateTime @default(now())
   atualizadoEm       DateTime @updatedAt
+  tamanhoAnel        String?
+  produto            Produto  @relation(fields: [produtoId], references: [id])
+  venda              Venda    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
 }
 
 model MovimentacaoAdicional {
   id             String       @id @default(cuid())
   movimentacaoId String
-  movimentacao   Movimentacao @relation(fields: [movimentacaoId], references: [id], onDelete: Cascade)
   codigoItem     String
   nomeItem       String
   quantidade     Float
   custoUnitario  Float
   custoTotal     Float
   criadoEm       DateTime     @default(now())
+  movimentacao   Movimentacao @relation(fields: [movimentacaoId], references: [id], onDelete: Cascade)
 
   @@index([movimentacaoId])
   @@index([codigoItem])
@@ -445,12 +416,12 @@ model BannerLoja {
   titulo          String?
   subtitulo       String?
   imagemUrl       String
-  imagemMobileUrl String?
   linkUrl         String?
   ordem           Int      @default(0)
   ativo           Boolean  @default(true)
   criadoEm        DateTime @default(now())
   atualizadoEm    DateTime @updatedAt
+  imagemMobileUrl String?
 }
 
 model MenuLoja {
@@ -460,16 +431,16 @@ model MenuLoja {
   tipo                   String
   linkUrl                String?
   categoria              String?
-  paginaEspecial         String?
-  categoriasSelecionadas String?
-  destaque               Boolean   @default(false)
-  corDestaque            String?
   ativo                  Boolean   @default(true)
   ordem                  Int       @default(0)
   dataInicio             DateTime?
   dataFim                DateTime?
   criadoEm               DateTime  @default(now())
   atualizadoEm           DateTime  @updatedAt
+  categoriasSelecionadas String?
+  corDestaque            String?
+  destaque               Boolean   @default(false)
+  paginaEspecial         String?
 }
 
 model LojaCategoriaHome {
@@ -520,67 +491,58 @@ model LojaTextoInstitucional {
 }
 
 model PedidoOnline {
-  id     String @id @default(cuid())
-  codigo String @unique
-
-  origemCanal           String   @default("LOJA_STELLA")
-  codigoPedidoExterno   String?
-  statusExterno         String?
-  substatusExterno      String?
-  dadosOriginaisJson    Json?
-  clienteId             String?
-  cliente               Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  clienteCriadoCheckout Boolean  @default(false)
-
-  nomeCliente     String
-  telefoneCliente String
-  emailCliente    String?
-  documento       String?
-
-  cep         String?
-  rua         String?
-  numero      String?
-  complemento String?
-  bairro      String?
-  cidade      String?
-  estado      String?
-
-  subtotal Float @default(0)
-  frete    Float @default(0)
-  total    Float @default(0)
-
-  cashbackBaseValor          Float     @default(0)
-  cashbackPrevistoValor      Float     @default(0)
-  cashbackCreditadoValor     Float     @default(0)
+  id                         String                      @id @default(cuid())
+  codigo                     String                      @unique
+  clienteId                  String?
+  clienteCriadoCheckout      Boolean                     @default(false)
+  nomeCliente                String
+  telefoneCliente            String
+  emailCliente               String?
+  documento                  String?
+  cep                        String?
+  rua                        String?
+  numero                     String?
+  complemento                String?
+  bairro                     String?
+  cidade                     String?
+  estado                     String?
+  subtotal                   Float                       @default(0)
+  frete                      Float                       @default(0)
+  total                      Float                       @default(0)
+  cashbackBaseValor          Float                       @default(0)
+  cashbackPrevistoValor      Float                       @default(0)
+  cashbackCreditadoValor     Float                       @default(0)
   cashbackCreditadoEm        DateTime?
-  cashbackStatus             String    @default("NAO_APLICAVEL")
-  cashbackPercentualAplicado Float     @default(0)
+  cashbackStatus             String                      @default("NAO_APLICAVEL")
+  status                     String                      @default("AGUARDANDO_PAGAMENTO")
+  observacoes                String?
+  criadoEm                   DateTime                    @default(now())
+  atualizadoEm               DateTime                    @updatedAt
+  gatewayPagamento           String?
+  gatewayPagamentoId         String?
+  gatewayPedidoId            String?
+  metodoPagamento            String?
+  pagamentoObservacao        String?
+  pagoEm                     DateTime?
+  statusPagamento            String                      @default("AGUARDANDO_PAGAMENTO")
+  valorPago                  Float                       @default(0)
+  codigoPedidoExterno        String?
+  dadosOriginaisJson         Json?
+  origemCanal                String                      @default("LOJA_STELLA")
+  statusExterno              String?
+  substatusExterno           String?
   cashbackBloqueadoMotivo    String?
-  cashbackUsadoValor         Float     @default(0)
-
-  cupomId            String?
-  cupom              CupomLoja? @relation(fields: [cupomId], references: [id], onDelete: SetNull)
-  cupomCodigo        String?
-  cupomDescontoValor Float      @default(0)
-
-  statusPagamento     String    @default("AGUARDANDO_PAGAMENTO")
-  metodoPagamento     String?
-  gatewayPagamento    String?
-  gatewayPedidoId     String?
-  gatewayPagamentoId  String?
-  pagoEm              DateTime?
-  valorPago           Float     @default(0)
-  pagamentoObservacao String?
-
-  status       String   @default("AGUARDANDO_PAGAMENTO")
-  observacoes  String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  itens           PedidoOnlineItem[]
-  envio           PedidoEnvio?
-  statusHistorico PedidoStatusHistorico[]
-  adicionais      PedidoOnlineItemAdicional[]
+  cashbackPercentualAplicado Float                       @default(0)
+  cupomCodigo                String?
+  cupomDescontoValor         Float                       @default(0)
+  cupomId                    String?
+  cashbackUsadoValor         Float                       @default(0)
+  envio                      PedidoEnvio?
+  cliente                    Cliente?                    @relation(fields: [clienteId], references: [id])
+  cupom                      CupomLoja?                  @relation(fields: [cupomId], references: [id])
+  itens                      PedidoOnlineItem[]
+  adicionais                 PedidoOnlineItemAdicional[]
+  statusHistorico            PedidoStatusHistorico[]
 
   @@index([clienteId])
   @@index([codigo])
@@ -598,10 +560,8 @@ model PedidoOnline {
 }
 
 model PedidoOnlineItem {
-  id             String       @id @default(cuid())
-  pedidoOnlineId String
-  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
-
+  id                 String                      @id @default(cuid())
+  pedidoOnlineId     String
   produtoId          String?
   codigoInterno      String
   nomeProduto        String
@@ -612,12 +572,12 @@ model PedidoOnlineItem {
   precoUnitario      Float
   precoOriginal      Float?
   descontoPercentual Float?
-  geraCashback       Boolean  @default(false)
-  cashbackBaseValor  Float    @default(0)
+  geraCashback       Boolean                     @default(false)
+  cashbackBaseValor  Float                       @default(0)
   total              Float
-  criadoEm           DateTime @default(now())
-
-  adicionais PedidoOnlineItemAdicional[]
+  criadoEm           DateTime                    @default(now())
+  pedidoOnline       PedidoOnline                @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  adicionais         PedidoOnlineItemAdicional[]
 
   @@index([pedidoOnlineId])
   @@index([produtoId])
@@ -625,10 +585,8 @@ model PedidoOnlineItem {
 }
 
 model ClienteCashbackMovimentacao {
-  id        String  @id @default(cuid())
-  clienteId String
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
+  id         String   @id @default(cuid())
+  clienteId  String
   tipo       String
   status     String   @default("EFETIVADO")
   origemTipo String
@@ -636,31 +594,28 @@ model ClienteCashbackMovimentacao {
   valor      Float
   observacao String?
   criadoEm   DateTime @default(now())
+  cliente    Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
   @@index([origemId])
 }
 
 model LojaPagina {
-  id     String  @id @default(cuid())
-  titulo String
-  slug   String  @unique
-  tipo   String  @default("GERAL")
-  ativo  Boolean @default(true)
-
-  categoriaId String?
-  categoria   CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id], onDelete: SetNull)
-
-  statusPublicacao       String  @default("PUBLICADA")
-  usarComoTemplatePadrao Boolean @default(false)
-
-  seoTitle       String?
-  seoDescription String?
-  publicadoEm    DateTime?
-
-  criadoEm     DateTime          @default(now())
-  atualizadoEm DateTime          @updatedAt
-  blocos       LojaPaginaBloco[]
+  id                     String            @id @default(cuid())
+  titulo                 String
+  slug                   String            @unique
+  tipo                   String            @default("GERAL")
+  ativo                  Boolean           @default(true)
+  criadoEm               DateTime          @default(now())
+  atualizadoEm           DateTime          @updatedAt
+  categoriaId            String?
+  publicadoEm            DateTime?
+  seoDescription         String?
+  seoTitle               String?
+  statusPublicacao       String            @default("PUBLICADA")
+  usarComoTemplatePadrao Boolean           @default(false)
+  categoria              CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
+  blocos                 LojaPaginaBloco[]
 
   @@index([slug])
   @@index([tipo])
@@ -673,7 +628,6 @@ model LojaPagina {
 model LojaPaginaBloco {
   id           String     @id @default(cuid())
   paginaId     String
-  pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
   tipo         String
   titulo       String?
   ativo        Boolean    @default(true)
@@ -681,6 +635,7 @@ model LojaPaginaBloco {
   configJson   Json
   criadoEm     DateTime   @default(now())
   atualizadoEm DateTime   @updatedAt
+  pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
 
   @@index([paginaId])
   @@index([ordem])
@@ -689,26 +644,23 @@ model LojaPaginaBloco {
 }
 
 model CategoriaProduto {
-  id           String  @id @default(cuid())
-  nome         String
-  slug         String  @unique
-  descricao    String?
-  imagemUrl    String?
-  ativo        Boolean @default(true)
-  exibirNoMenu Boolean @default(true)
-  ordem        Int     @default(0)
-  ordemMenu    Int     @default(0)
-
-  categoriaMaeId String?
-  categoriaMae   CategoriaProduto?  @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id], onDelete: SetNull)
-  subcategorias  CategoriaProduto[] @relation("CategoriaHierarquia")
-
-  produtos         ProdutoCategoria[]
-  paginasBuilder   LojaPagina[]              @relation("LojaPaginaCategoria")
+  id               String                    @id @default(cuid())
+  nome             String
+  slug             String                    @unique
+  descricao        String?
+  ativo            Boolean                   @default(true)
+  ordem            Int                       @default(0)
+  categoriaMaeId   String?
+  criadoEm         DateTime                  @default(now())
+  atualizadoEm     DateTime                  @updatedAt
+  exibirNoMenu     Boolean                   @default(true)
+  imagemUrl        String?
+  ordemMenu        Int                       @default(0)
   opcoesAdicionais CategoriaOpcaoAdicional[]
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  categoriaMae     CategoriaProduto?         @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id])
+  subcategorias    CategoriaProduto[]        @relation("CategoriaHierarquia")
+  paginasBuilder   LojaPagina[]              @relation("LojaPaginaCategoria")
+  produtos         ProdutoCategoria[]
 
   @@index([categoriaMaeId])
   @@index([slug])
@@ -719,17 +671,13 @@ model CategoriaProduto {
 }
 
 model ProdutoCategoria {
-  id String @id @default(cuid())
-
-  produtoId String
-  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
+  id          String           @id @default(cuid())
+  produtoId   String
   categoriaId String
+  principal   Boolean          @default(false)
+  criadoEm    DateTime         @default(now())
   categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-
-  principal Boolean @default(false)
-
-  criadoEm DateTime @default(now())
+  produto     Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@unique([produtoId, categoriaId])
   @@index([produtoId])
@@ -738,18 +686,14 @@ model ProdutoCategoria {
 }
 
 model ProdutoKitComponente {
-  id String @id @default(cuid())
-
-  kitProdutoId String
-  kitProduto   Produto @relation("KitProduto", fields: [kitProdutoId], references: [id], onDelete: Cascade)
-
+  id                  String   @id @default(cuid())
+  kitProdutoId        String
   componenteProdutoId String
-  componenteProduto   Produto @relation("ComponenteProduto", fields: [componenteProdutoId], references: [id], onDelete: Restrict)
-
-  quantidade Int @default(1)
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  quantidade          Int      @default(1)
+  criadoEm            DateTime @default(now())
+  atualizadoEm        DateTime @updatedAt
+  componenteProduto   Produto  @relation("ComponenteProduto", fields: [componenteProdutoId], references: [id])
+  kitProduto          Produto  @relation("KitProduto", fields: [kitProdutoId], references: [id], onDelete: Cascade)
 
   @@unique([kitProdutoId, componenteProdutoId])
   @@index([kitProdutoId])
@@ -757,42 +701,32 @@ model ProdutoKitComponente {
 }
 
 model PedidoEnvio {
-  id String @id @default(cuid())
-
-  pedidoOnlineId String       @unique
-  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
-
-  tipoEntrega    String  @default("ENTREGA")
-  transportadora String?
-  servico        String?
-  statusEnvio    String  @default("PENDENTE")
-
-  cepOrigem  String?
-  cepDestino String?
-
-  pesoGramas    Float?
-  alturaCm      Float?
-  larguraCm     Float?
-  comprimentoCm Float?
-
-  valorFrete Float @default(0)
-  prazoDias  Int?
-
+  id                    String       @id @default(cuid())
+  pedidoOnlineId        String       @unique
+  tipoEntrega           String       @default("ENTREGA")
+  transportadora        String?
+  servico               String?
+  statusEnvio           String       @default("PENDENTE")
+  cepOrigem             String?
+  cepDestino            String?
+  pesoGramas            Float?
+  alturaCm              Float?
+  larguraCm             Float?
+  comprimentoCm         Float?
+  valorFrete            Float        @default(0)
+  prazoDias             Int?
   codigoRastreio        String?
   etiquetaUrl           String?
   etiquetaPdfUrl        String?
   declaracaoConteudoUrl String?
-
-  gatewayLogistico String?
-  gatewayEnvioId   String?
-
-  postadoEm  DateTime?
-  entregueEm DateTime?
-
-  observacoes String?
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  gatewayLogistico      String?
+  gatewayEnvioId        String?
+  postadoEm             DateTime?
+  entregueEm            DateTime?
+  observacoes           String?
+  criadoEm              DateTime     @default(now())
+  atualizadoEm          DateTime     @updatedAt
+  pedidoOnline          PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
 
   @@index([pedidoOnlineId])
   @@index([tipoEntrega])
@@ -802,20 +736,16 @@ model PedidoEnvio {
 }
 
 model PedidoStatusHistorico {
-  id String @id @default(cuid())
-
+  id             String       @id @default(cuid())
   pedidoOnlineId String
-  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
-
   statusAnterior String?
   statusNovo     String
-
-  tipoEvento  String  @default("MANUAL")
-  origem      String  @default("SISTEMA")
-  usuarioNome String?
-  observacao  String?
-
-  criadoEm DateTime @default(now())
+  tipoEvento     String       @default("MANUAL")
+  origem         String       @default("SISTEMA")
+  usuarioNome    String?
+  observacao     String?
+  criadoEm       DateTime     @default(now())
+  pedidoOnline   PedidoOnline @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
 
   @@index([pedidoOnlineId])
   @@index([statusNovo])
@@ -824,33 +754,27 @@ model PedidoStatusHistorico {
 }
 
 model LojaFormularioResposta {
-  id String @id @default(cuid())
-
-  paginaId     String?
-  paginaTitulo String?
-  paginaSlug   String?
-  paginaTipo   String?
-
-  blocoId     String?
-  blocoTipo   String?
-  blocoTitulo String?
-
-  nome     String?
-  telefone String?
-  email    String?
-  cidade   String?
-  mensagem String?
-
-  aceiteTermos    Boolean @default(false)
-  aceitaMarketing Boolean @default(false)
-
-  status            String  @default("NOVO")
+  id                String   @id @default(cuid())
+  paginaId          String?
+  paginaTitulo      String?
+  paginaSlug        String?
+  paginaTipo        String?
+  blocoId           String?
+  blocoTipo         String?
+  blocoTitulo       String?
+  nome              String?
+  telefone          String?
+  email             String?
+  cidade            String?
+  mensagem          String?
+  aceiteTermos      Boolean  @default(false)
+  aceitaMarketing   Boolean  @default(false)
+  status            String   @default("NOVO")
   origemUrl         String?
   userAgent         String?
   observacaoInterna String?
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  criadoEm          DateTime @default(now())
+  atualizadoEm      DateTime @updatedAt
 
   @@index([paginaId])
   @@index([blocoId])
@@ -861,28 +785,20 @@ model LojaFormularioResposta {
 }
 
 model CategoriaOpcaoAdicional {
-  id String @id @default(cuid())
-
-  categoriaId String
-  categoria   CategoriaProduto @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-
-  nome      String
-  descricao String?
-
-  itemPadraoSubstituidoId String?
-  itemPadraoSubstituido   ItemAdicional? @relation("CategoriaOpcaoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id], onDelete: SetNull)
-
+  id                       String                      @id @default(cuid())
+  categoriaId              String
+  nome                     String
+  descricao                String?
+  itemPadraoSubstituidoId  String?
   itemAdicionalConsumidoId String
-  itemAdicionalConsumido   ItemAdicional @relation("CategoriaOpcaoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id], onDelete: Restrict)
-
-  valorVenda Float @default(0)
-
-  ativo Boolean @default(true)
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  pedidosItensAdicionais PedidoOnlineItemAdicional[]
+  valorVenda               Float                       @default(0)
+  ativo                    Boolean                     @default(true)
+  criadoEm                 DateTime                    @default(now())
+  atualizadoEm             DateTime                    @updatedAt
+  categoria                CategoriaProduto            @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  itemAdicionalConsumido   ItemAdicional               @relation("CategoriaOpcaoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id])
+  itemPadraoSubstituido    ItemAdicional?              @relation("CategoriaOpcaoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id])
+  pedidosItensAdicionais   PedidoOnlineItemAdicional[]
 
   @@index([categoriaId])
   @@index([itemPadraoSubstituidoId])
@@ -891,35 +807,25 @@ model CategoriaOpcaoAdicional {
 }
 
 model PedidoOnlineItemAdicional {
-  id String @id @default(cuid())
-
-  pedidoOnlineItemId String
-  pedidoOnlineItem   PedidoOnlineItem @relation(fields: [pedidoOnlineItemId], references: [id], onDelete: Cascade)
-
-  pedidoOnlineId String?
-  pedidoOnline   PedidoOnline? @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
-
-  opcaoAdicionalId String?
-  opcaoAdicional   CategoriaOpcaoAdicional? @relation(fields: [opcaoAdicionalId], references: [id], onDelete: SetNull)
-
-  nome String
-
-  itemPadraoSubstituidoId String?
-  itemPadraoSubstituido   ItemAdicional? @relation("PedidoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id], onDelete: SetNull)
-
+  id                       String                   @id @default(cuid())
+  pedidoOnlineItemId       String
+  opcaoAdicionalId         String?
+  nome                     String
+  itemPadraoSubstituidoId  String?
   itemAdicionalConsumidoId String?
-  itemAdicionalConsumido   ItemAdicional? @relation("PedidoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id], onDelete: SetNull)
-
-  quantidade Int @default(1)
-
-  custoUnitario      Float @default(0)
-  valorVendaUnitario Float @default(0)
-
-  custoTotal      Float @default(0)
-  valorVendaTotal Float @default(0)
-  lucroTotal      Float @default(0)
-
-  criadoEm DateTime @default(now())
+  quantidade               Int                      @default(1)
+  custoUnitario            Float                    @default(0)
+  valorVendaUnitario       Float                    @default(0)
+  custoTotal               Float                    @default(0)
+  valorVendaTotal          Float                    @default(0)
+  lucroTotal               Float                    @default(0)
+  criadoEm                 DateTime                 @default(now())
+  pedidoOnlineId           String?
+  itemAdicionalConsumido   ItemAdicional?           @relation("PedidoItemAdicionalConsumido", fields: [itemAdicionalConsumidoId], references: [id])
+  itemPadraoSubstituido    ItemAdicional?           @relation("PedidoItemPadraoSubstituido", fields: [itemPadraoSubstituidoId], references: [id])
+  opcaoAdicional           CategoriaOpcaoAdicional? @relation(fields: [opcaoAdicionalId], references: [id])
+  pedidoOnline             PedidoOnline?            @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  pedidoOnlineItem         PedidoOnlineItem         @relation(fields: [pedidoOnlineItemId], references: [id], onDelete: Cascade)
 
   @@index([pedidoOnlineItemId])
   @@index([pedidoOnlineId])
@@ -929,52 +835,36 @@ model PedidoOnlineItemAdicional {
 }
 
 model LojaCashbackConfiguracao {
-  id String @id @default(cuid())
-
-  chave String @unique @default("PADRAO")
-
-  ativo Boolean @default(true)
-
-  percentualPrimeiraCompra   Float @default(10)
-  percentualCompraRecorrente Float @default(5)
-
-  somenteClienteCadastrado   Boolean @default(true)
-  permitirComCupom           Boolean @default(false)
-  permitirProdutoComDesconto Boolean @default(true)
-
-  diasValidade Int?
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id                         String   @id @default(cuid())
+  chave                      String   @unique @default("PADRAO")
+  ativo                      Boolean  @default(true)
+  percentualPrimeiraCompra   Float    @default(10)
+  percentualCompraRecorrente Float    @default(5)
+  somenteClienteCadastrado   Boolean  @default(true)
+  permitirComCupom           Boolean  @default(false)
+  permitirProdutoComDesconto Boolean  @default(true)
+  diasValidade               Int?
+  criadoEm                   DateTime @default(now())
+  atualizadoEm               DateTime @updatedAt
 }
 
 model CupomLoja {
-  id String @id @default(cuid())
-
-  codigo String  @unique
-  nome   String?
-
-  tipo  String
-  valor Float
-
-  valorMinimoPedido Float @default(0)
-
-  ativo Boolean @default(true)
-
-  dataInicio DateTime?
-  dataFim    DateTime?
-
+  id                  String         @id @default(cuid())
+  codigo              String         @unique
+  nome                String?
+  tipo                String
+  valor               Float
+  valorMinimoPedido   Float          @default(0)
+  ativo               Boolean        @default(true)
+  dataInicio          DateTime?
+  dataFim             DateTime?
   limiteUsoTotal      Int?
   limiteUsoPorCliente Int?
-
-  quantidadeUsada Int @default(0)
-
-  bloqueiaCashback Boolean @default(true)
-
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  pedidos PedidoOnline[]
+  quantidadeUsada     Int            @default(0)
+  bloqueiaCashback    Boolean        @default(true)
+  criadoEm            DateTime       @default(now())
+  atualizadoEm        DateTime       @updatedAt
+  pedidos             PedidoOnline[]
 
   @@index([codigo])
   @@index([ativo])

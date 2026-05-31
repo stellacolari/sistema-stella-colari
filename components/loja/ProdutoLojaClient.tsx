@@ -676,13 +676,16 @@ export default function ProdutoLojaClient({
   const [indiceImagemSelecionada, setIndiceImagemSelecionada] = useState(0);
   const [imagemVariacaoSelecionada, setImagemVariacaoSelecionada] =
     useState("");
-  const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
-    variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
-      ?.nome ??
-      produto.tamanhosDisponiveis.find((tamanho) => tamanho.quantidadeAtual > 0)
-        ?.tamanhoAnel ??
-      ""
-  );
+const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
+  temVariacao && variacaoPrincipal?.obrigatoria !== false
+    ? ""
+    : variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
+        ?.nome ??
+        produto.tamanhosDisponiveis.find(
+          (tamanho) => tamanho.quantidadeAtual > 0
+        )?.tamanhoAnel ??
+        ""
+);
   const [quantidade, setQuantidade] = useState(1);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
@@ -719,9 +722,40 @@ export default function ProdutoLojaClient({
     );
   }, [temVariacao, variacaoPrincipal, tamanhoSelecionado]);
 
-  const precoAdicionalVariacao = Number(
-    opcaoVariacaoSelecionada?.precoAdicional || 0
+const opcoesVariacaoDisponiveis = useMemo(() => {
+  if (!temVariacao || !variacaoPrincipal) {
+    return [];
+  }
+
+  return variacaoPrincipal.opcoes.filter(
+    (opcao) => opcao.quantidadeAtual > 0
   );
+}, [temVariacao, variacaoPrincipal]);
+
+const menorPrecoAdicionalVariacao = useMemo(() => {
+  if (opcoesVariacaoDisponiveis.length === 0) {
+    return 0;
+  }
+
+  return Math.min(
+    ...opcoesVariacaoDisponiveis.map((opcao) =>
+      Number(opcao.precoAdicional || 0)
+    )
+  );
+}, [opcoesVariacaoDisponiveis]);
+
+const variacaoObrigatoriaSemSelecao =
+  temVariacao &&
+  variacaoPrincipal?.obrigatoria !== false &&
+  !opcaoVariacaoSelecionada;
+
+const precoAdicionalVariacao = variacaoObrigatoriaSemSelecao
+  ? menorPrecoAdicionalVariacao
+  : Number(opcaoVariacaoSelecionada?.precoAdicional || 0);
+
+const deveMostrarAPartirDe =
+  variacaoObrigatoriaSemSelecao && opcoesVariacaoDisponiveis.length > 0;
+
 
   const precoVendaComVariacao = produto.precoVenda + precoAdicionalVariacao;
 
@@ -1151,6 +1185,11 @@ export default function ProdutoLojaClient({
             </div>
 
             <div className="mt-4">
+              {deveMostrarAPartirDe && (
+                <p className="mb-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                  A partir de
+                </p>
+              )}
               {temDesconto && produto.precoPromocional !== null ? (
                 <>
                   <div className="flex flex-wrap items-center gap-3">
