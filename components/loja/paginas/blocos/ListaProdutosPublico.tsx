@@ -1,4 +1,4 @@
-import Link from "next/link";
+import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
   asConfig,
@@ -13,7 +13,6 @@ import {
   getStringWithDefault,
   hasTextContent,
   getTextColorForBackground,
-  moeda,
   produtoTemDesconto,
   type BlocoPublicoProps,
   type ProdutoPublico,
@@ -102,82 +101,6 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
   return resultado.slice(0, Math.max(1, getNumber(config, "limite", 8)));
 }
 
-function getPrecoProduto(produto: ProdutoPublico) {
-  if (produtoTemDesconto(produto) && produto.precoPromocional !== null) {
-    return produto.precoPromocional;
-  }
-
-  return produto.precoVenda;
-}
-
-function ProdutoCard({
-  produto,
-  exibirPreco,
-  exibirBotao,
-  exibirSeloDesconto,
-  textoBotao,
-}: {
-  produto: ProdutoPublico;
-  exibirPreco: boolean;
-  exibirBotao: boolean;
-  exibirSeloDesconto: boolean;
-  textoBotao: string;
-}) {
-  const temDesconto = produtoTemDesconto(produto);
-
-  return (
-    <article className="group relative">
-      <Link href={`/loja/produto/${produto.id}`} className="block">
-        <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-slate-100">
-          {produto.imagemUrl ? (
-            <img
-              src={produto.imagemUrl}
-              alt={produto.nome}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Sem imagem
-            </div>
-          )}
-
-          {exibirSeloDesconto && temDesconto ? (
-            <span className="absolute left-3 top-3 rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
-              Oferta
-            </span>
-          ) : null}
-        </div>
-
-        <h3 className="mt-4 text-sm font-medium leading-5 text-slate-950">
-          {produto.nome}
-        </h3>
-
-        {exibirPreco ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-            {temDesconto ? (
-              <span className="text-slate-400 line-through">
-                {moeda(produto.precoVenda)}
-              </span>
-            ) : null}
-            <span className="font-semibold text-slate-950">
-              {moeda(getPrecoProduto(produto))}
-            </span>
-          </div>
-        ) : null}
-      </Link>
-
-      {exibirBotao && textoBotao ? (
-        <Link
-          href={`/loja/produto/${produto.id}`}
-          className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
-        >
-          {textoBotao}
-        </Link>
-      ) : null}
-    </article>
-  );
-}
-
 export default function ListaProdutosPublico({
   bloco,
   produtos = [],
@@ -241,7 +164,7 @@ export default function ListaProdutosPublico({
                 key={produto.id}
                 className={isCarousel ? "w-[68vw] shrink-0 snap-start sm:w-64" : ""}
               >
-                <ProdutoCard
+                <ProdutoCardLoja
                   produto={produto}
                   exibirPreco={getBoolean(config, "exibirPreco", true)}
                   exibirBotao={getBoolean(config, "exibirBotao", true)}

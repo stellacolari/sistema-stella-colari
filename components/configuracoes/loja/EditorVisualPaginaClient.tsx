@@ -18,8 +18,6 @@ import {
   ArrowDown,
   ArrowUp,
   ClipboardList,
-  Eye,
-  EyeOff,
   GripVertical,
   HelpCircle,
   ImageIcon,
@@ -37,6 +35,7 @@ import {
   Type,
   X,
 } from "lucide-react";
+import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 
 export type EditorVisualPagina = {
   id: string;
@@ -91,6 +90,7 @@ type TipoBlocoAdicionar =
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
+  | "CTA"
   | "CATEGORIAS"
   | "FAQ"
   | "FORMULARIO"
@@ -171,6 +171,10 @@ type BlocoEditandoState = {
   exibirSeloDescontoProdutos: boolean;
   layoutDesktopCards: string;
   layoutMobileCards: string;
+  layoutDesktopCta: string;
+  layoutMobileCta: string;
+  alinhamentoCta: string;
+  larguraConteudoCta: string;
   colunasDesktopCards: number;
   colunasTabletCards: number;
   colunasMobileCards: number;
@@ -388,6 +392,19 @@ const TIPO_MIDIA_CARD_PRESETS = [
   { value: "NENHUMA", label: "Nenhuma" },
 ];
 
+const LAYOUT_CTA_PRESETS = [
+  { value: "TEXTO_CENTRALIZADO", label: "Texto centralizado" },
+  { value: "TEXTO_MIDIA", label: "Texto + mídia" },
+  { value: "MIDIA_TEXTO", label: "Mídia + texto" },
+  { value: "SOBRE_MIDIA", label: "Texto sobre mídia" },
+];
+
+const LARGURA_CONTEUDO_CTA_PRESETS = [
+  { value: "ESTREITA", label: "Estreita" },
+  { value: "MEDIA", label: "Média" },
+  { value: "LARGA", label: "Larga" },
+];
+
 const MEDIA_POSITION_PRESETS = [
   { value: "center center", label: "Centro" },
   { value: "top center", label: "Topo centro" },
@@ -439,6 +456,13 @@ const TIPOS_BLOCO_ADICIONAR: {
     descricao: "Cards manuais para benefícios, coleções e chamadas da loja.",
     tituloInicial: "Destaques / cards",
     icon: LayoutGrid,
+  },
+  {
+    tipo: "CTA",
+    nome: "CTA",
+    descricao: "Chamada editorial com texto, mídia opcional e até dois botões.",
+    tituloInicial: "Chamada para ação",
+    icon: MousePointer2,
   },
   {
     tipo: "CATEGORIAS",
@@ -827,6 +851,7 @@ const RichTextTypography = Extension.create({
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
   if (tipo === "BANNER") return "Banner";
+  if (tipo === "CTA") return "CTA";
   if (tipo === "TEXTO_IMAGEM") return "Texto + imagem";
   if (tipo === "PRODUTOS") return "Produtos";
   if (tipo === "LISTA_PRODUTOS") return "Lista de produtos";
@@ -871,6 +896,34 @@ function isListaProdutosTipo(tipo: string) {
 
 function isDestaquesCardsTipo(tipo: string) {
   return tipo === "DESTAQUES_CARDS";
+}
+
+function isCtaTipo(tipo: string) {
+  return tipo === "CTA";
+}
+
+function normalizarLayoutCta(value: string) {
+  if (
+    ["TEXTO_CENTRALIZADO", "TEXTO_MIDIA", "MIDIA_TEXTO", "SOBRE_MIDIA"].includes(
+      value
+    )
+  ) {
+    return value;
+  }
+
+  return "TEXTO_CENTRALIZADO";
+}
+
+function normalizarAlinhamentoCta(value: string) {
+  if (["ESQUERDA", "CENTRO", "DIREITA"].includes(value)) return value;
+
+  return "CENTRO";
+}
+
+function normalizarLarguraConteudoCta(value: string) {
+  if (["ESTREITA", "MEDIA", "LARGA"].includes(value)) return value;
+
+  return "MEDIA";
 }
 
 function normalizarLayoutCards(value: string) {
@@ -1120,6 +1173,28 @@ function getBannerTextClasses(corTexto: string) {
   };
 }
 
+function getCtaAlignmentClass(alinhamento: string) {
+  if (alinhamento === "ESQUERDA") return "items-start text-left";
+  if (alinhamento === "DIREITA") return "items-end text-right";
+
+  return "items-center text-center";
+}
+
+function getCtaContentWidthClass(largura: string) {
+  if (largura === "ESTREITA") return "max-w-2xl";
+  if (largura === "LARGA") return "max-w-5xl";
+
+  return "max-w-3xl";
+}
+
+function getCtaDesktopGridClass(layout: string, hasMedia: boolean) {
+  if (!hasMedia || layout === "TEXTO_CENTRALIZADO" || layout === "SOBRE_MIDIA") {
+    return "grid-cols-1";
+  }
+
+  return "grid-cols-2";
+}
+
 async function lerRespostaApi(response: Response) {
   try {
     return await response.json();
@@ -1136,38 +1211,6 @@ function ordenarBlocos(items: EditorVisualBloco[]) {
 
     return new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime();
   });
-}
-
-function BlocoActionsPopup({ ativo }: { ativo: boolean }) {
-  return (
-    <div className="absolute right-3 top-3 z-20 hidden items-center gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-lg backdrop-blur group-hover:flex">
-      <button
-        type="button"
-        className="rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-      >
-        Editar
-      </button>
-
-      <button
-        type="button"
-        className="rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-      >
-        Duplicar
-      </button>
-
-      <button
-        type="button"
-        className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-      >
-        {ativo ? (
-          <EyeOff className="h-3.5 w-3.5" />
-        ) : (
-          <Eye className="h-3.5 w-3.5" />
-        )}
-        {ativo ? "Ocultar" : "Mostrar"}
-      </button>
-    </div>
-  );
 }
 
 function PainelSecao({
@@ -2206,8 +2249,6 @@ function RenderBlocoPreview({
   const botaoSecundarioStyle = getTextStyleConfig(config, "botaoSecundarioStyle");
   const textoStyle = getTextStyleConfig(config, "textoStyle");
   const botaoStyle = getTextStyleConfig(config, "botaoStyle");
-  const nomeProdutoStyle = getTextStyleConfig(config, "nomeProdutoStyle");
-  const precoProdutoStyle = getTextStyleConfig(config, "precoProdutoStyle");
   const tituloSecaoStyle = getTextStyleConfig(config, "tituloSecaoStyle");
   const subtituloSecaoStyle = getTextStyleConfig(config, "subtituloSecaoStyle");
   const cardTituloStyle = getTextStyleConfig(config, "cardTituloStyle");
@@ -2299,6 +2340,18 @@ function RenderBlocoPreview({
   const alinhamentoCards = normalizarAlinhamentoCards(
     getStringConfig(config, "alinhamento")
   );
+  const alinhamentoCta = normalizarAlinhamentoCta(
+    getStringConfig(config, "alinhamento")
+  );
+  const larguraConteudoCta = normalizarLarguraConteudoCta(
+    getStringConfig(config, "larguraConteudo")
+  );
+  const layoutDesktopCta = normalizarLayoutCta(
+    getStringConfig(config, "layoutDesktop")
+  );
+  const layoutMobileCta = normalizarLayoutCta(
+    getStringConfig(config, "layoutMobile")
+  );
 
   const isMobile = device === "MOBILE";
   const bgClass = getBgClass(corFundo);
@@ -2355,6 +2408,20 @@ function RenderBlocoPreview({
     isMobile && imagemMobileUrl ? imagemMobileUrl : imagemDesktopUrl;
   const videoTextoImagemUrl =
     isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
+  const ctaLayoutAtual = isMobile ? layoutMobileCta : layoutDesktopCta;
+  const ctaImageUrl = isMobile && imagemMobileUrl ? imagemMobileUrl : imagemDesktopUrl;
+  const ctaVideoUrl = isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
+  const ctaHasMedia = exibirMidia && Boolean(ctaImageUrl || ctaVideoUrl);
+  const ctaSafeLayout =
+    ctaLayoutAtual === "SOBRE_MIDIA" && !ctaHasMedia
+      ? "TEXTO_CENTRALIZADO"
+      : ctaLayoutAtual;
+  const ctaAlignmentClass = getCtaAlignmentClass(alinhamentoCta);
+  const ctaWidthClass = getCtaContentWidthClass(larguraConteudoCta);
+  const ctaTextColors =
+    corFundo === "ESCURO" || corFundo === "MARCA"
+      ? { title: "text-white", body: "text-white/75", button: "bg-white text-slate-950" }
+      : { title: "text-slate-950", body: "text-slate-600", button: "bg-slate-950 text-white" };
   const textoImagemSobreImagem = isMobile
     ? layoutMobileTextoImagem === "TEXTO_SOBRE_IMAGEM"
     : layoutDesktopTextoImagem === "TEXTO_SOBRE_IMAGEM";
@@ -2475,8 +2542,6 @@ function RenderBlocoPreview({
           : "border-transparent hover:border-indigo-200"
       } ${bloco.ativo ? "" : "opacity-50"}`}
     >
-      <BlocoActionsPopup ativo={bloco.ativo} />
-
       <div className="absolute left-3 top-3 z-10 hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm group-hover:flex">
         <GripVertical className="h-3.5 w-3.5 text-slate-400" />
         {getTipoLabel(bloco.tipo)}
@@ -2820,56 +2885,38 @@ function RenderBlocoPreview({
             ) : (
               Array.from({ length: totalMockProdutos }).map((_, index) => {
               const temDesconto = index % 3 === 0;
+              const precoVenda = 149.9 + index * 18;
+              const precoPromocional = temDesconto ? precoVenda * 0.85 : null;
 
               return (
                 <div
                   key={index}
                   className={
                     layoutAtualProdutos === "CARROSSEL"
-                      ? "w-40 shrink-0"
+                      ? "w-40 shrink-0 sm:w-48"
                       : "min-w-0"
                   }
                 >
-                  <div className="relative aspect-square bg-slate-100">
-                    {exibirSeloDescontoProdutos && temDesconto && (
-                      <span className="absolute left-2 top-2 bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
-                        Off
-                      </span>
-                    )}
-                  </div>
-
-                  <p
-                    className="mt-3 truncate"
-                    style={resolveTextStyle(nomeProdutoStyle)}
-                  >
-                    Produto exemplo
-                  </p>
-
-                  {exibirPrecoProdutos && (
-                    <p className="mt-2" style={resolveTextStyle(precoProdutoStyle)}>
-                      R$ 129,90
-                    </p>
-                  )}
-
-                  {exibirBotaoProdutos && (
-                    <div
-                      className="mt-3 bg-slate-950 px-3 py-2 text-center text-white"
-                      style={resolveTextStyle(botaoStyle)}
-                    >
-                      <InlineTextEditor
-                        value={textoBotao}
-                        placeholder="Texto do botão"
-                        className="text-center"
-                        style={resolveTextStyle(botaoStyle)}
-                        onChange={(value) =>
-                          onInlineTextChange(bloco.id, {
-                            textoBotao: value,
-                            botaoTexto: value,
-                          })
-                        }
-                      />
-                    </div>
-                  )}
+                  <ProdutoCardLoja
+                    modoPreview
+                    produto={{
+                      id: `preview-produto-${index}`,
+                      nome:
+                        index % 2 === 0
+                          ? "Anel solitário Stella"
+                          : "Colar ponto de luz",
+                      imagemUrl: null,
+                      imagemHoverUrl: null,
+                      precoVenda,
+                      descontoAtivo: temDesconto,
+                      precoPromocional,
+                      estoqueTotal: index === 5 ? 0 : 4,
+                    }}
+                    exibirPreco={exibirPrecoProdutos}
+                    exibirBotao={exibirBotaoProdutos}
+                    exibirSeloDesconto={exibirSeloDescontoProdutos}
+                    textoBotao={textoBotao}
+                  />
                 </div>
               );
               })
@@ -3031,6 +3078,226 @@ function RenderBlocoPreview({
             ))}
           </div>
         </div>
+      ) : isCtaTipo(bloco.tipo) ? (
+        <div className={`${bgClass} ${paddingClass}`}>
+          <div
+            className={`mx-auto grid gap-6 ${getCtaContentWidthClass(
+              ctaSafeLayout === "TEXTO_CENTRALIZADO" ? larguraConteudoCta : "LARGA"
+            )} ${
+              isMobile
+                ? "grid-cols-1"
+                : getCtaDesktopGridClass(ctaSafeLayout, ctaHasMedia)
+            }`}
+          >
+            {ctaHasMedia && ctaSafeLayout === "SOBRE_MIDIA" ? (
+              <div className="relative min-h-[420px] overflow-hidden bg-slate-100">
+                <div className="absolute inset-0">
+                  <MediaPreview
+                    tipoMidia={tipoMidia}
+                    imageUrl={ctaImageUrl}
+                    videoUrl={ctaVideoUrl}
+                    posterUrl={videoPosterUrl}
+                    alt={titulo || nomeBloco}
+                    objectPosition={mediaPositionAtual}
+                    videoLoop={videoLoop}
+                    videoMuted={videoSom === "MUDO"}
+                    placeholder="CTA sem mídia"
+                  />
+                </div>
+                <div className="absolute inset-0 bg-slate-950/42" />
+                <div
+                  className={`absolute inset-0 flex flex-col justify-center px-6 py-10 text-white ${ctaAlignmentClass}`}
+                >
+                  {exibirTexto && (
+                    <div className={ctaWidthClass}>
+                      <RichTextInlineEditor
+                        value={tituloRichText}
+                        fallbackText={titulo}
+                        placeholder="Clique para adicionar um título"
+                        className="tracking-tight"
+                        style={resolveTextStyle(tituloStyle)}
+                        onChange={(richText, plainText) =>
+                          onInlineTextChange(bloco.id, {
+                            tituloRichText: richText,
+                            titulo: plainText,
+                          })
+                        }
+                      />
+                      <RichTextInlineEditor
+                        value={subtituloRichText}
+                        fallbackText={texto || ""}
+                        placeholder="Clique para adicionar um texto"
+                        multiline
+                        className="mt-4 leading-7 text-white/82"
+                        style={resolveTextStyle(textoStyle)}
+                        onChange={(richText, plainText) =>
+                          onInlineTextChange(bloco.id, {
+                            textoRichText: richText,
+                            subtituloRichText: richText,
+                            texto: plainText,
+                            descricao: plainText,
+                            conteudo: plainText,
+                          })
+                        }
+                      />
+                      {(exibirBotaoPrimario || exibirBotaoSecundario) && (
+                        <div className="mt-6 flex flex-wrap gap-3">
+                          {exibirBotaoPrimario && (
+                            <div className="inline-flex bg-white px-5 py-3 text-slate-950">
+                              <InlineTextEditor
+                                value={textoBotao}
+                                placeholder="Botão primário"
+                                className="text-center"
+                                style={resolveTextStyle(botaoPrimarioStyle)}
+                                onChange={(value) =>
+                                  onInlineTextChange(bloco.id, {
+                                    textoBotao: value,
+                                    textoBotaoPrimario: value,
+                                    botaoTexto: value,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                          {exibirBotaoSecundario && (
+                            <div className="inline-flex border border-white px-5 py-3 text-white">
+                              <InlineTextEditor
+                                value={textoBotaoSecundario}
+                                placeholder="Botão secundário"
+                                className="text-center"
+                                style={resolveTextStyle(botaoSecundarioStyle)}
+                                onChange={(value) =>
+                                  onInlineTextChange(bloco.id, {
+                                    textoBotaoSecundario: value,
+                                    botaoSecundarioTexto: value,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {ctaHasMedia && ctaSafeLayout === "MIDIA_TEXTO" && (
+                  <div className="min-h-[320px] overflow-hidden bg-slate-100">
+                    <MediaPreview
+                      tipoMidia={tipoMidia}
+                      imageUrl={ctaImageUrl}
+                      videoUrl={ctaVideoUrl}
+                      posterUrl={videoPosterUrl}
+                      alt={titulo || nomeBloco}
+                      objectPosition={mediaPositionAtual}
+                      videoLoop={videoLoop}
+                      videoMuted={videoSom === "MUDO"}
+                      placeholder="CTA sem mídia"
+                    />
+                  </div>
+                )}
+
+                <div
+                  className={`flex min-h-[260px] flex-col justify-center ${ctaAlignmentClass} ${
+                    ctaSafeLayout === "TEXTO_CENTRALIZADO" ? ctaWidthClass : ""
+                  }`}
+                >
+                  {exibirTexto && (
+                    <>
+                      <RichTextInlineEditor
+                        value={tituloRichText}
+                        fallbackText={titulo}
+                        placeholder="Clique para adicionar um título"
+                        className={`tracking-tight ${ctaTextColors.title}`}
+                        style={resolveTextStyle(tituloStyle)}
+                        onChange={(richText, plainText) =>
+                          onInlineTextChange(bloco.id, {
+                            tituloRichText: richText,
+                            titulo: plainText,
+                          })
+                        }
+                      />
+                      <RichTextInlineEditor
+                        value={subtituloRichText}
+                        fallbackText={texto || ""}
+                        placeholder="Clique para adicionar um texto"
+                        multiline
+                        className={`mt-4 leading-7 ${ctaTextColors.body}`}
+                        style={resolveTextStyle(textoStyle)}
+                        onChange={(richText, plainText) =>
+                          onInlineTextChange(bloco.id, {
+                            textoRichText: richText,
+                            subtituloRichText: richText,
+                            texto: plainText,
+                            descricao: plainText,
+                            conteudo: plainText,
+                          })
+                        }
+                      />
+                      {(exibirBotaoPrimario || exibirBotaoSecundario) && (
+                        <div className="mt-6 flex flex-wrap gap-3">
+                          {exibirBotaoPrimario && (
+                            <div
+                              className={`inline-flex px-5 py-3 ${ctaTextColors.button}`}
+                            >
+                              <InlineTextEditor
+                                value={textoBotao}
+                                placeholder="Botão primário"
+                                className="text-center"
+                                style={resolveTextStyle(botaoPrimarioStyle)}
+                                onChange={(value) =>
+                                  onInlineTextChange(bloco.id, {
+                                    textoBotao: value,
+                                    textoBotaoPrimario: value,
+                                    botaoTexto: value,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                          {exibirBotaoSecundario && (
+                            <div className="inline-flex border border-current px-5 py-3">
+                              <InlineTextEditor
+                                value={textoBotaoSecundario}
+                                placeholder="Botão secundário"
+                                className="text-center"
+                                style={resolveTextStyle(botaoSecundarioStyle)}
+                                onChange={(value) =>
+                                  onInlineTextChange(bloco.id, {
+                                    textoBotaoSecundario: value,
+                                    botaoSecundarioTexto: value,
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {ctaHasMedia && ctaSafeLayout === "TEXTO_MIDIA" && (
+                  <div className="min-h-[320px] overflow-hidden bg-slate-100">
+                    <MediaPreview
+                      tipoMidia={tipoMidia}
+                      imageUrl={ctaImageUrl}
+                      videoUrl={ctaVideoUrl}
+                      posterUrl={videoPosterUrl}
+                      alt={titulo || nomeBloco}
+                      objectPosition={mediaPositionAtual}
+                      videoLoop={videoLoop}
+                      videoMuted={videoSom === "MUDO"}
+                      placeholder="CTA sem mídia"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       ) : bloco.tipo.includes("PRODUTO") ? (
         <div className={`${bgClass} ${paddingClass}`}>
           <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
@@ -3150,6 +3417,7 @@ function EditorConteudoBlocoModal({
   const isTextoImagem = isTextoImagemTipo(estado.bloco.tipo);
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
+  const isCta = isCtaTipo(estado.bloco.tipo);
   const produtosFiltradosManual = produtosDisponiveis
     .filter((produto) => {
       const termo = buscaProdutoManual.trim().toLowerCase();
@@ -3333,7 +3601,9 @@ function EditorConteudoBlocoModal({
                     ? "Configure a vitrine visual de produtos no preview do editor."
                     : isDestaquesCards
                       ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
-                      : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
+                      : isCta
+                        ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
+                        : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -3974,6 +4244,364 @@ function EditorConteudoBlocoModal({
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
               Editor rico de texto e crop ainda não estão ativos nesta etapa.
             </div>
+          </div>
+        ) : isCta ? (
+          <div className="space-y-5 px-6 py-5">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Nome interno
+              </span>
+              <input
+                value={estado.nomeInterno}
+                onChange={(event) =>
+                  onChange({ nomeInterno: event.target.value })
+                }
+                placeholder="Ex: Chamada final da página"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <SecaoRecolhivel
+              title="Textos / conteúdo"
+              description="Título e texto também podem ser editados diretamente no preview com seleção parcial."
+            >
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  placeholder="Título da chamada"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto
+                </span>
+                <textarea
+                  value={estado.texto}
+                  onChange={(event) => onChange({ texto: event.target.value })}
+                  rows={4}
+                  placeholder="Texto de apoio da chamada"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                />
+              </label>
+            </SecaoRecolhivel>
+
+            <PainelSecao title="Layout e aparência">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Alinhamento
+                  </span>
+                  <select
+                    value={estado.alinhamentoCta}
+                    onChange={(event) =>
+                      onChange({ alinhamentoCta: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Largura do conteúdo
+                  </span>
+                  <select
+                    value={estado.larguraConteudoCta}
+                    onChange={(event) =>
+                      onChange({ larguraConteudoCta: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {LARGURA_CONTEUDO_CTA_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Cor de fundo
+                  </span>
+                  <select
+                    value={estado.corFundo}
+                    onChange={(event) =>
+                      onChange({ corFundo: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {COR_FUNDO_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Espaçamento
+                  </span>
+                  <select
+                    value={estado.espacamento}
+                    onChange={(event) =>
+                      onChange({ espacamento: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {ESPACAMENTO_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Layout desktop
+                  </span>
+                  <select
+                    value={estado.layoutDesktopCta}
+                    onChange={(event) =>
+                      onChange({ layoutDesktopCta: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {LAYOUT_CTA_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Layout mobile
+                  </span>
+                  <select
+                    value={estado.layoutMobileCta}
+                    onChange={(event) =>
+                      onChange({ layoutMobileCta: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {LAYOUT_CTA_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </PainelSecao>
+
+            <PainelSecao title="Mídia">
+              <div className="space-y-4">
+                <CampoToggle
+                  checked={estado.exibirMidia}
+                  label="Exibir mídia"
+                  description="Quando desligado, URLs e crop continuam salvos."
+                  onChange={(checked) => onChange({ exibirMidia: checked })}
+                />
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Tipo de mídia
+                  </span>
+                  <select
+                    value={estado.tipoMidia}
+                    onChange={(event) => onChange({ tipoMidia: event.target.value })}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {estado.tipoMidia === "VIDEO" ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <UploadMidiaCampo
+                      label="Vídeo desktop URL"
+                      value={estado.videoDesktopUrl}
+                      tipoMidia="VIDEO"
+                      onChange={(url) => onChange({ videoDesktopUrl: url })}
+                      orientacao="Cole uma URL ou envie MP4/WebM. MP4/H.264 é recomendado."
+                    />
+                    <UploadMidiaCampo
+                      label="Vídeo mobile URL"
+                      value={estado.videoMobileUrl}
+                      tipoMidia="VIDEO"
+                      onChange={(url) => onChange({ videoMobileUrl: url })}
+                      orientacao="Opcional. Quando vazio, o mobile usa o vídeo desktop."
+                    />
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <UploadMidiaCampo
+                      label="Imagem desktop URL"
+                      value={estado.imagemDesktopUrl}
+                      tipoMidia="IMAGEM"
+                      onChange={(url) => onChange({ imagemDesktopUrl: url })}
+                      orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
+                    />
+                    <UploadMidiaCampo
+                      label="Imagem mobile URL"
+                      value={estado.imagemMobileUrl}
+                      tipoMidia="IMAGEM"
+                      onChange={(url) => onChange({ imagemMobileUrl: url })}
+                      orientacao="Opcional. Quando vazio, o mobile usa a imagem desktop."
+                    />
+                  </div>
+                )}
+
+                <CropPositionControls
+                  desktopValue={estado.mediaPositionDesktop}
+                  mobileValue={estado.mediaPositionMobile}
+                  onChange={onChange}
+                />
+              </div>
+            </PainelSecao>
+
+            <PainelSecao title="Botões">
+              <div className="space-y-4">
+                <CampoToggle
+                  checked={estado.exibirTexto}
+                  label="Exibir texto"
+                  description="Controla título, texto e botões da chamada."
+                  onChange={(checked) => onChange({ exibirTexto: checked })}
+                />
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <CampoToggle
+                    checked={estado.exibirBotaoPrimario}
+                    label="Exibir botão primário"
+                    onChange={(checked) =>
+                      onChange({ exibirBotaoPrimario: checked })
+                    }
+                  />
+                  <CampoToggle
+                    checked={estado.exibirBotaoSecundario}
+                    label="Exibir botão secundário"
+                    onChange={(checked) =>
+                      onChange({ exibirBotaoSecundario: checked })
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Texto do botão primário
+                    </span>
+                    <input
+                      value={estado.textoBotao}
+                      onChange={(event) =>
+                        onChange({ textoBotao: event.target.value })
+                      }
+                      placeholder="Saiba mais"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Link do botão primário
+                    </span>
+                    <input
+                      value={estado.linkBotao}
+                      onChange={(event) =>
+                        onChange({ linkBotao: event.target.value })
+                      }
+                      placeholder="/loja"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Texto do botão secundário
+                    </span>
+                    <input
+                      value={estado.textoBotaoSecundario}
+                      onChange={(event) =>
+                        onChange({ textoBotaoSecundario: event.target.value })
+                      }
+                      placeholder="Ver coleção"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Link do botão secundário
+                    </span>
+                    <input
+                      value={estado.linkBotaoSecundario}
+                      onChange={(event) =>
+                        onChange({ linkBotaoSecundario: event.target.value })
+                      }
+                      placeholder="/loja/colecao"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+                </div>
+
+                {((estado.exibirBotaoPrimario &&
+                  (!estado.textoBotao.trim() || !estado.linkBotao.trim())) ||
+                  (estado.exibirBotaoSecundario &&
+                    (!estado.textoBotaoSecundario.trim() ||
+                      !estado.linkBotaoSecundario.trim()))) && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                    Botões ativos precisam de texto e link para aparecer na loja
+                    pública.
+                  </div>
+                )}
+              </div>
+            </PainelSecao>
+
+            <PainelSecao title="Tipografia">
+              <div className="space-y-3">
+                <TextStyleControls
+                  title="Título"
+                  value={estado.tituloStyle}
+                  onChange={(style) => onChange({ tituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Texto"
+                  value={estado.textoStyle}
+                  onChange={(style) => onChange({ textoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão primário"
+                  value={estado.botaoPrimarioStyle}
+                  onChange={(style) => onChange({ botaoPrimarioStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão secundário"
+                  value={estado.botaoSecundarioStyle}
+                  onChange={(style) =>
+                    onChange({ botaoSecundarioStyle: style })
+                  }
+                />
+              </div>
+            </PainelSecao>
           </div>
         ) : isListaProdutos ? (
           <div className="space-y-5 px-6 py-5">
@@ -5645,6 +6273,14 @@ export default function EditorVisualPaginaClient({
       layoutMobileCards: normalizarLayoutCards(
         getStringConfig(config, "layoutMobile")
       ),
+      layoutDesktopCta: normalizarLayoutCta(getStringConfig(config, "layoutDesktop")),
+      layoutMobileCta: normalizarLayoutCta(getStringConfig(config, "layoutMobile")),
+      alinhamentoCta: normalizarAlinhamentoCta(
+        getStringConfig(config, "alinhamento")
+      ),
+      larguraConteudoCta: normalizarLarguraConteudoCta(
+        getStringConfig(config, "larguraConteudo")
+      ),
       colunasDesktopCards: getNumberConfig(config, "colunasDesktop", 3),
       colunasTabletCards: getNumberConfig(config, "colunasTablet", 2),
       colunasMobileCards: getNumberConfig(config, "colunasMobile", 1),
@@ -5722,6 +6358,7 @@ export default function EditorVisualPaginaClient({
     const isTextoImagem = isTextoImagemTipo(editando.bloco.tipo);
     const isListaProdutos = isListaProdutosTipo(editando.bloco.tipo);
     const isDestaquesCards = isDestaquesCardsTipo(editando.bloco.tipo);
+    const isCta = isCtaTipo(editando.bloco.tipo);
 
     const novoConfig = {
       ...configAtual,
@@ -5893,6 +6530,49 @@ export default function EditorVisualPaginaClient({
                 textoBotao: card.textoBotao,
                 linkBotao: card.linkBotao,
               })),
+            }
+        : isCta
+          ? {
+              descricao: editando.texto,
+              conteudo: editando.texto,
+              exibirTexto: editando.exibirTexto,
+              exibirBotaoPrimario: editando.exibirBotaoPrimario,
+              textoBotaoPrimario: editando.textoBotao,
+              linkBotaoPrimario: editando.linkBotao,
+              textoBotao: editando.textoBotao,
+              botaoTexto: editando.textoBotao,
+              linkBotao: editando.linkBotao,
+              botaoLink: editando.linkBotao,
+              linkUrl: editando.linkBotao,
+              exibirBotaoSecundario: editando.exibirBotaoSecundario,
+              textoBotaoSecundario: editando.textoBotaoSecundario,
+              botaoSecundarioTexto: editando.textoBotaoSecundario,
+              linkBotaoSecundario: editando.linkBotaoSecundario,
+              botaoSecundarioLink: editando.linkBotaoSecundario,
+              alinhamento: editando.alinhamentoCta,
+              larguraConteudo: editando.larguraConteudoCta,
+              corFundo: editando.corFundo,
+              espacamento: editando.espacamento,
+              layoutDesktop: editando.layoutDesktopCta,
+              layoutMobile: editando.layoutMobileCta,
+              exibirMidia: editando.exibirMidia,
+              tipoMidia: editando.tipoMidia,
+              imagemDesktopUrl: editando.imagemDesktopUrl,
+              imagemDesktop: editando.imagemDesktopUrl,
+              imagemMobileUrl: editando.imagemMobileUrl,
+              imagemMobile: editando.imagemMobileUrl,
+              imagemUrl: editando.imagemDesktopUrl,
+              videoDesktopUrl: editando.videoDesktopUrl,
+              videoMobileUrl: editando.videoMobileUrl,
+              videoPosterUrl: editando.videoPosterUrl,
+              videoLoop: editando.videoLoop,
+              videoSom: editando.videoSom,
+              mediaCropDesktopX: editando.mediaCropDesktopX,
+              mediaCropDesktopY: editando.mediaCropDesktopY,
+              mediaCropMobileX: editando.mediaCropMobileX,
+              mediaCropMobileY: editando.mediaCropMobileY,
+              mediaPositionDesktop: editando.mediaPositionDesktop,
+              mediaPositionMobile: editando.mediaPositionMobile,
             }
         : {
             imagemUrl: editando.imagemUrl,
