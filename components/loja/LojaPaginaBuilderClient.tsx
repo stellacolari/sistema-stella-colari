@@ -17,6 +17,9 @@ import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
+import BlocoPublicoRenderer, {
+  isBlocoVisualPublico,
+} from "@/components/loja/paginas/BlocoPublicoRenderer";
 
 const LOGO_URL = "/logo-stella.png";
 
@@ -1578,6 +1581,16 @@ export default function LojaPaginaBuilderClient({
         ) : (
           blocos.map((bloco) => {
             const config = asConfig(bloco.configJson);
+
+            if (isBlocoVisualPublico(bloco.tipo)) {
+              return (
+                <BlocoPublicoRenderer
+                  key={bloco.id}
+                  bloco={bloco}
+                  produtos={produtos}
+                />
+              );
+            }
 
             if (bloco.tipo === "BANNER") {
               return <BlocoBanner key={bloco.id} config={config} />;

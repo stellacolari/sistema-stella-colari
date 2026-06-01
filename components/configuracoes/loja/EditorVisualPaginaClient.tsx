@@ -477,6 +477,24 @@ function getStringConfig(config: Record<string, unknown>, key: string) {
   return "";
 }
 
+function hasConfigKey(config: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(config, key);
+}
+
+function getStringConfigWithDefault(
+  config: Record<string, unknown>,
+  keys: string[],
+  fallback: string
+) {
+  for (const key of keys) {
+    if (hasConfigKey(config, key)) {
+      return getStringConfig(config, key);
+    }
+  }
+
+  return fallback;
+}
+
 function getBooleanConfig(
   config: Record<string, unknown>,
   key: string,
@@ -616,7 +634,9 @@ function getRichTextConfig(config: Record<string, unknown>, key: string) {
   const value = config[key];
 
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as RichTextValue;
+    const richText = value as RichTextValue;
+
+    return isRichTextEmpty(richText) ? null : richText;
   }
 
   return null;
@@ -651,6 +671,23 @@ function extractRichTextPlainText(value: RichTextValue): string {
   }
 
   return "";
+}
+
+function isRichTextEmpty(value: RichTextValue | null | undefined) {
+  if (!value) return true;
+
+  return extractRichTextPlainText(value).trim().length === 0;
+}
+
+function getEditableRichTextContent(
+  value: RichTextValue | null,
+  fallbackText: string
+) {
+  if (!isRichTextEmpty(value)) return value as RichTextValue;
+
+  const normalizedFallback = fallbackText.trim();
+
+  return getRichTextFallback(normalizedFallback);
 }
 
 function getRichTextPresetCss(
@@ -1109,6 +1146,30 @@ function PainelSecao({
 
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function SecaoRecolhivel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+        {title}
+      </summary>
+
+      {description ? (
+        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+      ) : null}
+
+      <div className="mt-4 space-y-4">{children}</div>
+    </details>
   );
 }
 
@@ -1696,7 +1757,23 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
   return (
     <BubbleMenu
       editor={editor}
-      className="z-50 flex max-w-[min(92vw,720px)] flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-xl"
+      appendTo={() => document.body}
+      updateDelay={80}
+      resizeDelay={40}
+      options={{
+        strategy: "fixed",
+        placement: "top",
+        offset: 10,
+        flip: {
+          padding: 12,
+          fallbackPlacements: ["bottom", "top-start", "top-end", "bottom-start", "bottom-end"],
+        },
+        shift: {
+          padding: 12,
+        },
+        inline: true,
+      }}
+      className="z-[9999] flex max-w-[min(92vw,720px)] flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-2xl"
     >
       <button
         type="button"
@@ -1884,12 +1961,15 @@ function RichTextInlineEditor({
   multiline?: boolean;
   className?: string;
   style?: CSSProperties;
-  onChange: (richText: RichTextValue, plainText: string) => void;
+  onChange: (richText: RichTextValue | null, plainText: string) => void;
 }) {
+  const normalizedFallbackText = fallbackText.trim();
   const initialContent = useMemo(
-    () => value || getRichTextFallback(fallbackText),
-    [fallbackText, value]
+    () => getEditableRichTextContent(value, normalizedFallbackText),
+    [normalizedFallbackText, value]
   );
+  const [isFocused, setIsFocused] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(() => isRichTextEmpty(initialContent));
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -1932,23 +2012,35 @@ function RichTextInlineEditor({
     },
     onUpdate: ({ editor: currentEditor }) => {
       const richText = currentEditor.getJSON();
-      onChange(richText, extractRichTextPlainText(richText).trim());
+      const plainText = extractRichTextPlainText(richText).trim();
+      const nextIsEmpty = plainText.length === 0;
+
+      setIsEmpty(nextIsEmpty);
+      onChange(nextIsEmpty ? null : richText, plainText);
+    },
+    onFocus: () => {
+      setIsFocused(true);
+    },
+    onBlur: () => {
+      setIsFocused(false);
     },
   });
 
   useEffect(() => {
     if (!editor) return;
 
-    const nextContent = value || getRichTextFallback(fallbackText);
+    const nextContent = getEditableRichTextContent(value, normalizedFallbackText);
 
     if (JSON.stringify(editor.getJSON()) !== JSON.stringify(nextContent)) {
       editor.commands.setContent(nextContent, { emitUpdate: false });
     }
-  }, [editor, fallbackText, value]);
+
+    setIsEmpty(isRichTextEmpty(nextContent));
+  }, [editor, normalizedFallbackText, value]);
 
   if (!editor) {
     return (
-      <span className={className} style={style}>
+      <span className={`${className} ${fallbackText ? "" : "opacity-60"}`} style={style}>
         {fallbackText || placeholder}
       </span>
     );
@@ -1956,13 +2048,23 @@ function RichTextInlineEditor({
 
   return (
     <div
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        editor.commands.focus("end");
+      }}
       onKeyDown={(event) => event.stopPropagation()}
-      className={`min-w-0 rounded-md bg-transparent outline-none transition hover:ring-1 hover:ring-indigo-300 focus-within:ring-2 focus-within:ring-indigo-500 ${className}`}
+      className={`relative min-w-0 rounded-md bg-transparent outline-none transition hover:ring-1 hover:ring-indigo-300 focus-within:ring-2 focus-within:ring-indigo-500 ${
+        isEmpty ? "ring-1 ring-dashed ring-slate-300/80" : ""
+      } ${className}`}
       style={style}
       data-placeholder={placeholder}
     >
       <RichTextBubbleToolbar editor={editor} />
+      {isEmpty && !isFocused ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 min-h-[1.5em] text-current opacity-45">
+          {placeholder}
+        </div>
+      ) : null}
       <EditorContent editor={editor} />
     </div>
   );
@@ -2044,10 +2146,8 @@ function RenderBlocoPreview({
 }) {
   const config = getConfigObject(bloco.configJson);
 
-  const titulo =
-    getStringConfig(config, "titulo") ||
-    bloco.titulo ||
-    getTipoLabel(bloco.tipo);
+  const titulo = getStringConfig(config, "titulo");
+  const nomeBloco = bloco.titulo || getTipoLabel(bloco.tipo);
 
   const texto =
     getStringConfig(config, "texto") ||
@@ -2090,9 +2190,7 @@ function RenderBlocoPreview({
     getStringConfig(config, "imagemMobile");
 
   const textoBotao =
-    getStringConfig(config, "textoBotao") ||
-    getStringConfig(config, "botaoTexto") ||
-    "Conhecer";
+    getStringConfigWithDefault(config, ["textoBotao", "botaoTexto"], "Conhecer");
 
   const textoBotaoSecundario =
     getStringConfig(config, "textoBotaoSecundario") ||
@@ -2221,7 +2319,7 @@ function RenderBlocoPreview({
       imageUrl={mediaTextoImagemUrl}
       videoUrl={videoTextoImagemUrl}
       posterUrl={videoPosterUrl}
-      alt={titulo}
+      alt={titulo || nomeBloco}
       objectPosition={mediaPositionAtual}
       videoLoop={videoLoop}
       videoMuted={videoSom === "MUDO"}
@@ -2233,7 +2331,7 @@ function RenderBlocoPreview({
       <RichTextInlineEditor
         value={tituloRichText}
         fallbackText={titulo}
-        placeholder="Título"
+        placeholder="Clique para adicionar um título"
         className="tracking-tight"
         style={resolveTextStyle(tituloStyle)}
         onChange={(richText, plainText) =>
@@ -2247,7 +2345,7 @@ function RenderBlocoPreview({
       <RichTextInlineEditor
         value={subtituloRichText}
         fallbackText={texto || ""}
-        placeholder="Texto do bloco"
+        placeholder="Clique para adicionar um texto"
         multiline
         className={`mt-4 leading-7 ${
           corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
@@ -2264,7 +2362,7 @@ function RenderBlocoPreview({
         }
       />
 
-      {exibirBotaoTextoImagem && textoBotao && (
+      {exibirBotaoTextoImagem && (
         <div
           className={`mt-5 inline-flex px-5 py-3 ${
             corFundo === "ESCURO"
@@ -2382,7 +2480,7 @@ function RenderBlocoPreview({
                   <RichTextInlineEditor
                     value={tituloRichText}
                     fallbackText={titulo}
-                    placeholder="Título do banner"
+                    placeholder="Clique para adicionar um título"
                     className="w-full"
                     style={resolveTextStyle(tituloStyle)}
                     onChange={(richText, plainText) =>
@@ -2398,7 +2496,7 @@ function RenderBlocoPreview({
                   <RichTextInlineEditor
                     value={subtituloRichText}
                     fallbackText={texto || ""}
-                    placeholder="Subtítulo do banner"
+                    placeholder="Clique para adicionar um subtítulo"
                     multiline
                     className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
                     style={resolveTextStyle(subtituloStyle)}
@@ -2416,7 +2514,7 @@ function RenderBlocoPreview({
 
                 {(exibirBotaoPrimario || exibirBotaoSecundario) && (
                   <div className="mt-6 flex flex-wrap gap-3">
-                    {exibirBotaoPrimario && textoBotao && (
+                    {exibirBotaoPrimario && (
                       <div
                         className={`inline-flex px-5 py-3 text-sm font-semibold ${bannerTextClasses.button}`}
                         style={resolveTextStyle(botaoPrimarioStyle)}
@@ -2436,7 +2534,7 @@ function RenderBlocoPreview({
                       </div>
                     )}
 
-                    {exibirBotaoSecundario && textoBotaoSecundario && (
+                    {exibirBotaoSecundario && (
                       <div
                         className={`inline-flex border px-5 py-3 text-sm font-semibold ${
                           corTextoBanner === "ESCURO"
@@ -2484,7 +2582,7 @@ function RenderBlocoPreview({
                 <RichTextInlineEditor
                   value={tituloRichText}
                   fallbackText={titulo}
-                  placeholder="Título"
+                  placeholder="Clique para adicionar um título"
                   className="tracking-tight"
                   style={resolveTextStyle(tituloStyle)}
                   onChange={(richText, plainText) =>
@@ -2498,7 +2596,7 @@ function RenderBlocoPreview({
                 <RichTextInlineEditor
                   value={subtituloRichText}
                   fallbackText={texto || ""}
-                  placeholder="Texto do bloco"
+                  placeholder="Clique para adicionar um texto"
                   multiline
                   className="mt-4 leading-7 text-white/85"
                   style={resolveTextStyle(textoStyle)}
@@ -2513,7 +2611,7 @@ function RenderBlocoPreview({
                   }
                 />
 
-                {exibirBotaoTextoImagem && textoBotao && (
+                {exibirBotaoTextoImagem && (
                   <div
                     className="mt-5 inline-flex bg-white px-5 py-3 text-slate-950"
                     style={resolveTextStyle(botaoStyle)}
@@ -2610,7 +2708,7 @@ function RenderBlocoPreview({
               <RichTextInlineEditor
                 value={tituloRichText}
                 fallbackText={titulo}
-                placeholder="Título da vitrine"
+                placeholder="Clique para adicionar um título da seção"
                 className="tracking-tight"
                 style={resolveTextStyle(tituloStyle)}
                 onChange={(richText, plainText) =>
@@ -2624,7 +2722,7 @@ function RenderBlocoPreview({
               <RichTextInlineEditor
                 value={subtituloRichText}
                 fallbackText={texto || ""}
-                placeholder="Subtítulo da vitrine"
+                placeholder="Clique para adicionar um subtítulo"
                 multiline
                 className={`mt-2 max-w-2xl leading-6 ${
                   corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
@@ -2694,7 +2792,7 @@ function RenderBlocoPreview({
                     </p>
                   )}
 
-                  {exibirBotaoProdutos && textoBotao && (
+                  {exibirBotaoProdutos && (
                     <div
                       className="mt-3 bg-slate-950 px-3 py-2 text-center text-white"
                       style={resolveTextStyle(botaoStyle)}
@@ -2737,7 +2835,7 @@ function RenderBlocoPreview({
             <RichTextInlineEditor
               value={tituloSecaoRichText}
               fallbackText={titulo}
-              placeholder="Título da seção"
+              placeholder="Clique para adicionar um título da seção"
               className="tracking-tight"
               style={resolveTextStyle(tituloSecaoStyle)}
               onChange={(richText, plainText) =>
@@ -2752,7 +2850,7 @@ function RenderBlocoPreview({
             <RichTextInlineEditor
               value={subtituloSecaoRichText}
               fallbackText={texto || ""}
-              placeholder="Subtítulo da seção"
+              placeholder="Clique para adicionar um subtítulo"
               multiline
               className={`mt-2 leading-6 ${
                 corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
@@ -2837,7 +2935,7 @@ function RenderBlocoPreview({
                     }
                   />
 
-                  {card.exibirBotao && card.textoBotao && (
+                  {card.exibirBotao && (
                     <>
                       <div
                         className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-white"
@@ -3142,32 +3240,37 @@ function EditorConteudoBlocoModal({
               />
             </div>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Título
-              </span>
+            <SecaoRecolhivel
+              title="Textos / conteúdo"
+              description="Você também pode editar título e subtítulo diretamente no preview."
+            >
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
 
-              <input
-                value={estado.titulo}
-                onChange={(event) => onChange({ titulo: event.target.value })}
-                placeholder="Título visível"
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              />
-            </label>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  placeholder="Título visível"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Subtítulo/texto
-              </span>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Subtítulo/texto
+                </span>
 
-              <textarea
-                value={estado.texto}
-                onChange={(event) => onChange({ texto: event.target.value })}
-                rows={4}
-                placeholder="Texto de apoio do banner"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-              />
-            </label>
+                <textarea
+                  value={estado.texto}
+                  onChange={(event) => onChange({ texto: event.target.value })}
+                  rows={4}
+                  placeholder="Texto de apoio do banner"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                />
+              </label>
+            </SecaoRecolhivel>
 
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -3473,32 +3576,37 @@ function EditorConteudoBlocoModal({
               />
             </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Título
-              </span>
+            <SecaoRecolhivel
+              title="Textos / conteúdo"
+              description="Edite título e texto direto no preview quando quiser ajustar por seleção."
+            >
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
 
-              <input
-                value={estado.titulo}
-                onChange={(event) => onChange({ titulo: event.target.value })}
-                placeholder="Título visível"
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              />
-            </label>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  placeholder="Título visível"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Texto
-              </span>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto
+                </span>
 
-              <textarea
-                value={estado.texto}
-                onChange={(event) => onChange({ texto: event.target.value })}
-                rows={5}
-                placeholder="Texto do bloco"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-              />
-            </label>
+                <textarea
+                  value={estado.texto}
+                  onChange={(event) => onChange({ texto: event.target.value })}
+                  rows={5}
+                  placeholder="Texto do bloco"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                />
+              </label>
+            </SecaoRecolhivel>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label>
@@ -3729,32 +3837,37 @@ function EditorConteudoBlocoModal({
               />
             </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Título
-              </span>
+            <SecaoRecolhivel
+              title="Textos / conteúdo"
+              description="O título e subtítulo da seção também são editáveis no preview."
+            >
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
 
-              <input
-                value={estado.titulo}
-                onChange={(event) => onChange({ titulo: event.target.value })}
-                placeholder="Título da vitrine"
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              />
-            </label>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  placeholder="Título da vitrine"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Subtítulo
-              </span>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Subtítulo
+                </span>
 
-              <textarea
-                value={estado.texto}
-                onChange={(event) => onChange({ texto: event.target.value })}
-                rows={3}
-                placeholder="Texto de apoio da vitrine"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-              />
-            </label>
+                <textarea
+                  value={estado.texto}
+                  onChange={(event) => onChange({ texto: event.target.value })}
+                  rows={3}
+                  placeholder="Texto de apoio da vitrine"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                />
+              </label>
+            </SecaoRecolhivel>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label>
@@ -4026,17 +4139,6 @@ function EditorConteudoBlocoModal({
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Título
-                </span>
-                <input
-                  value={estado.titulo}
-                  onChange={(event) => onChange({ titulo: event.target.value })}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
                   Alinhamento
                 </span>
                 <select
@@ -4055,17 +4157,33 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Subtítulo
-              </span>
-              <textarea
-                value={estado.texto}
-                onChange={(event) => onChange({ texto: event.target.value })}
-                rows={3}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-              />
-            </label>
+            <SecaoRecolhivel
+              title="Textos / conteúdo"
+              description="Título e subtítulo da seção ficam mais confortáveis para editar no preview."
+            >
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Subtítulo
+                </span>
+                <textarea
+                  value={estado.texto}
+                  onChange={(event) => onChange({ texto: event.target.value })}
+                  rows={3}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                />
+              </label>
+            </SecaoRecolhivel>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label>

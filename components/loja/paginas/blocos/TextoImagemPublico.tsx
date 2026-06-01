@@ -1,0 +1,147 @@
+import Link from "next/link";
+import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
+import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
+import {
+  asConfig,
+  getBackgroundClass,
+  getBoolean,
+  getButtonHref,
+  getImageDesktop,
+  getImageMobile,
+  getMediaPosition,
+  getRichText,
+  getSpacingClass,
+  getString,
+  getTextColorForBackground,
+  type BlocoPublicoProps,
+} from "@/components/loja/paginas/blocos/utils";
+
+function getDesktopLayoutClass(layout: string) {
+  if (layout === "IMAGEM_DIREITA") return "lg:grid-cols-2";
+  if (layout === "IMAGEM_ACIMA") return "lg:grid-cols-1";
+  if (layout === "TEXTO_SOBRE_IMAGEM") return "lg:grid-cols-1";
+
+  return "lg:grid-cols-2";
+}
+
+function getMediaOrderClass(layout: string, tipo: string) {
+  if (tipo === "IMAGEM_TEXTO") return "lg:order-first";
+  if (layout === "IMAGEM_DIREITA") return "lg:order-last";
+
+  return "lg:order-first";
+}
+
+export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
+  const config = asConfig(bloco.configJson);
+  const titulo = getString(config, "titulo", bloco.titulo || "");
+  const texto = getString(config, ["texto", "descricao", "conteudo"]);
+  const tituloRichText = getRichText(config, "tituloRichText");
+  const textoRichText = getRichText(config, "textoRichText");
+  const tipoMidia = getString(config, "tipoMidia", "IMAGEM");
+  const layoutDesktop = getString(
+    config,
+    ["layoutDesktopTextoImagem", "layoutDesktop"],
+    bloco.tipo === "IMAGEM_TEXTO" ? "IMAGEM_ESQUERDA" : "IMAGEM_DIREITA"
+  );
+  const layoutMobile = getString(config, ["layoutMobileTextoImagem", "layoutMobile"], "IMAGEM_ACIMA");
+  const textoSobreImagem =
+    layoutDesktop === "TEXTO_SOBRE_IMAGEM" || layoutMobile === "TEXTO_SOBRE_IMAGEM";
+  const corFundo = getString(config, "corFundo", "BRANCO");
+  const colors = getTextColorForBackground(corFundo);
+  const textoBotao = getString(config, ["textoBotao", "botaoTexto"]);
+
+  if (textoSobreImagem) {
+    return (
+      <section className={`relative overflow-hidden ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
+        <div className="absolute inset-0">
+          <PublicMediaRenderer
+            tipoMidia={tipoMidia}
+            exibirMidia={getBoolean(config, "exibirMidia", true)}
+            imagemDesktopUrl={getImageDesktop(config)}
+            imagemMobileUrl={getImageMobile(config)}
+            videoDesktopUrl={getString(config, "videoDesktopUrl")}
+            videoMobileUrl={getString(config, "videoMobileUrl")}
+            objectPositionDesktop={getMediaPosition(config, "Desktop")}
+            objectPositionMobile={getMediaPosition(config, "Mobile")}
+            alt={titulo}
+          />
+        </div>
+        <div className="absolute inset-0 bg-slate-950/42" />
+
+        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-5 sm:px-6 lg:px-8">
+          <div className="max-w-2xl text-white">
+            <PublicRichTextRenderer
+              value={tituloRichText}
+              fallback={titulo}
+              className="text-3xl font-light leading-tight md:text-5xl"
+            />
+            <PublicRichTextRenderer
+              value={textoRichText}
+              fallback={texto}
+              className="mt-5 text-base leading-7 text-white/82"
+            />
+            {getBoolean(config, "exibirBotao", true) && textoBotao ? (
+              <Link
+                href={getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"])}
+                className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/90"
+              >
+                {textoBotao}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
+      <div
+        className={`mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:items-center lg:gap-12 lg:px-8 ${getDesktopLayoutClass(
+          layoutDesktop
+        )}`}
+      >
+        {getBoolean(config, "exibirMidia", true) ? (
+          <div
+            className={`relative h-[340px] overflow-hidden rounded-sm bg-slate-100 md:h-[460px] ${
+              layoutMobile === "TEXTO_ACIMA" ? "order-last" : "order-first"
+            } ${getMediaOrderClass(layoutDesktop, bloco.tipo)}`}
+          >
+            <PublicMediaRenderer
+              tipoMidia={tipoMidia}
+              imagemDesktopUrl={getImageDesktop(config)}
+              imagemMobileUrl={getImageMobile(config)}
+              videoDesktopUrl={getString(config, "videoDesktopUrl")}
+              videoMobileUrl={getString(config, "videoMobileUrl")}
+              objectPositionDesktop={getMediaPosition(config, "Desktop")}
+              objectPositionMobile={getMediaPosition(config, "Mobile")}
+              alt={titulo}
+            />
+          </div>
+        ) : null}
+
+        <div className={getBoolean(config, "exibirMidia", true) ? "" : "mx-auto max-w-3xl text-center"}>
+          <PublicRichTextRenderer
+            value={tituloRichText}
+            fallback={titulo}
+            className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+          />
+          <PublicRichTextRenderer
+            value={textoRichText}
+            fallback={texto}
+            className={`mt-5 text-base leading-7 ${colors.body}`}
+          />
+
+          {getBoolean(config, "exibirBotao", true) && textoBotao ? (
+            <Link
+              href={getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"])}
+              className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              {textoBotao}
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
