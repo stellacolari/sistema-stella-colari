@@ -5,8 +5,12 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "BANNER",
   "FAIXA_DIFERENCIAIS",
   "TEXTO",
+  "TEXTO_IMAGEM",
   "PRODUTOS",
+  "LISTA_PRODUTOS",
+  "CATEGORIAS",
   "IMAGEM_TEXTO",
+  "ESPACADOR",
 
   "CATEGORIA_HERO",
   "CATEGORIA_DESCRICAO",
@@ -23,8 +27,12 @@ function getTituloPadrao(tipo: string) {
     BANNER: "Banner",
     FAIXA_DIFERENCIAIS: "Faixa de diferenciais",
     TEXTO: "Texto / título",
+    TEXTO_IMAGEM: "Texto + imagem",
     PRODUTOS: "Produtos",
+    LISTA_PRODUTOS: "Lista de produtos",
+    CATEGORIAS: "Categorias",
     IMAGEM_TEXTO: "Imagem + texto",
+    ESPACADOR: "Espaçador",
 
     CATEGORIA_HERO: "Hero da categoria",
     CATEGORIA_DESCRICAO: "Descrição da categoria",
@@ -68,7 +76,7 @@ function getConfigPadrao(tipo: string) {
     };
   }
 
-  if (tipo === "PRODUTOS") {
+  if (tipo === "PRODUTOS" || tipo === "LISTA_PRODUTOS") {
     return {
       titulo: "Produtos",
       descricao: "",
@@ -95,7 +103,7 @@ function getConfigPadrao(tipo: string) {
     };
   }
 
-  if (tipo === "IMAGEM_TEXTO") {
+  if (tipo === "IMAGEM_TEXTO" || tipo === "TEXTO_IMAGEM") {
     return {
       imagemUrl: "",
       posicaoImagem: "ESQUERDA",
@@ -104,6 +112,22 @@ function getConfigPadrao(tipo: string) {
       textoBotao: "",
       linkBotao: "",
       altura: 420,
+    };
+  }
+
+  if (tipo === "CATEGORIAS") {
+    return {
+      titulo: "Categorias",
+      descricao: "",
+      categorias: [],
+      colunas: 3,
+      espacamento: "MEDIO",
+    };
+  }
+
+  if (tipo === "ESPACADOR") {
+    return {
+      altura: 64,
     };
   }
 

@@ -2,18 +2,23 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowDown,
   ArrowUp,
+  ClipboardList,
   Eye,
   EyeOff,
   GripVertical,
+  HelpCircle,
   ImageIcon,
+  Layers,
   LayoutGrid,
   Monitor,
   MousePointer2,
   PanelRight,
   Plus,
+  Rows3,
   Save,
   Smartphone,
   Tablet,
@@ -59,6 +64,16 @@ type EditorVisualPaginaClientProps = {
 
 type DevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
 
+type TipoBlocoAdicionar =
+  | "BANNER"
+  | "TEXTO_IMAGEM"
+  | "LISTA_PRODUTOS"
+  | "CATEGORIAS"
+  | "FAQ"
+  | "FORMULARIO"
+  | "TEXTO"
+  | "ESPACADOR";
+
 type BlocoEditandoState = {
   bloco: EditorVisualBloco;
   nomeInterno: string;
@@ -82,6 +97,71 @@ const ESPACAMENTO_PRESETS = [
   { value: "COMPACTO", label: "Compacto" },
   { value: "PADRAO", label: "Padrão" },
   { value: "AMPLO", label: "Amplo" },
+];
+
+const TIPOS_BLOCO_ADICIONAR: {
+  tipo: TipoBlocoAdicionar;
+  nome: string;
+  descricao: string;
+  tituloInicial: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    tipo: "BANNER",
+    nome: "Banner",
+    descricao: "Imagem de destaque com título, texto de apoio e botão.",
+    tituloInicial: "Novo banner",
+    icon: ImageIcon,
+  },
+  {
+    tipo: "TEXTO_IMAGEM",
+    nome: "Texto + imagem",
+    descricao: "Bloco editorial com imagem, texto e chamada para ação.",
+    tituloInicial: "Texto + imagem",
+    icon: ImageIcon,
+  },
+  {
+    tipo: "LISTA_PRODUTOS",
+    nome: "Lista de produtos",
+    descricao: "Vitrine visual para organizar produtos em grade simulada.",
+    tituloInicial: "Lista de produtos",
+    icon: Layers,
+  },
+  {
+    tipo: "CATEGORIAS",
+    nome: "Categorias",
+    descricao: "Grade visual para destacar categorias da loja.",
+    tituloInicial: "Categorias",
+    icon: LayoutGrid,
+  },
+  {
+    tipo: "FAQ",
+    nome: "FAQ",
+    descricao: "Perguntas frequentes em lista simples nesta etapa.",
+    tituloInicial: "FAQ",
+    icon: HelpCircle,
+  },
+  {
+    tipo: "FORMULARIO",
+    nome: "Formulário",
+    descricao: "Bloco para captação de contato ou interesse.",
+    tituloInicial: "Formulário",
+    icon: ClipboardList,
+  },
+  {
+    tipo: "TEXTO",
+    nome: "Texto",
+    descricao: "Título e conteúdo textual básico.",
+    tituloInicial: "Texto",
+    icon: Type,
+  },
+  {
+    tipo: "ESPACADOR",
+    nome: "Espaçador",
+    descricao: "Área de respiro entre seções da página.",
+    tituloInicial: "Espaçador",
+    icon: Rows3,
+  },
 ];
 
 function getConfigObject(value: unknown): Record<string, unknown> {
@@ -130,6 +210,7 @@ function getTipoLabel(tipo: string) {
   if (tipo === "FORMULARIO") return "Formulário";
   if (tipo === "TEXTO") return "Texto";
   if (tipo === "IMAGEM") return "Imagem";
+  if (tipo === "ESPACADOR") return "Espaçador";
 
   return tipo.replaceAll("_", " ");
 }
@@ -409,6 +490,10 @@ function RenderBlocoPreview({
               </div>
             </div>
           </div>
+        </div>
+      ) : bloco.tipo === "ESPACADOR" ? (
+        <div className="flex h-16 items-center justify-center bg-slate-50">
+          <div className="h-px w-24 bg-slate-200" />
         </div>
       ) : bloco.tipo === "TEXTO_IMAGEM" ? (
         <div
@@ -750,6 +835,84 @@ function EditorConteudoBlocoModal({
   );
 }
 
+function AdicionarBlocoModal({
+  aberto,
+  onClose,
+  onSelect,
+  salvando,
+}: {
+  aberto: boolean;
+  onClose: () => void;
+  onSelect: (tipo: TipoBlocoAdicionar) => void;
+  salvando: boolean;
+}) {
+  if (!aberto) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Editor visual
+            </p>
+
+            <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+              Adicionar bloco
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Escolha um tipo de bloco para inserir na página.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={salvando}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Fechar seleção de bloco"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-3 px-6 py-5 sm:grid-cols-2">
+          {TIPOS_BLOCO_ADICIONAR.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <button
+                key={item.tipo}
+                type="button"
+                onClick={() => onSelect(item.tipo)}
+                disabled={salvando}
+                className="flex min-h-28 items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                  <Icon className="h-5 w-5" />
+                </span>
+
+                <span>
+                  <span className="block text-sm font-semibold text-slate-950">
+                    {item.nome}
+                  </span>
+
+                  <span className="mt-1 block text-sm leading-6 text-slate-500">
+                    {item.descricao}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EditorVisualPaginaClient({
   pagina,
   blocos,
@@ -761,6 +924,7 @@ export default function EditorVisualPaginaClient({
   const [salvando, setSalvando] = useState(false);
   const [ordemSalvando, setOrdemSalvando] = useState(false);
   const [editando, setEditando] = useState<BlocoEditandoState>(null);
+  const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
 
   const [blocosEditor, setBlocosEditor] = useState<EditorVisualBloco[]>(() =>
     ordenarBlocos(blocos)
@@ -955,7 +1119,13 @@ export default function EditorVisualPaginaClient({
     }
   }
 
-  async function criarBlocoBasico() {
+  async function criarBloco(tipo: TipoBlocoAdicionar) {
+    const tipoSelecionado = TIPOS_BLOCO_ADICIONAR.find(
+      (item) => item.tipo === tipo
+    );
+
+    if (!tipoSelecionado) return;
+
     setErro("");
     setSucesso("");
     setSalvando(true);
@@ -969,8 +1139,8 @@ export default function EditorVisualPaginaClient({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            tipo: "BANNER",
-            titulo: "Novo banner",
+            tipo: tipoSelecionado.tipo,
+            titulo: tipoSelecionado.tituloInicial,
           }),
         }
       );
@@ -1002,6 +1172,7 @@ export default function EditorVisualPaginaClient({
 
         setBlocosEditor((current) => ordenarBlocos([...current, novoBloco]));
         setBlocoSelecionadoId(novoBloco.id);
+        setModalAdicionarAberto(false);
         setSucesso("Bloco criado.");
       }
     } catch {
@@ -1117,12 +1288,12 @@ export default function EditorVisualPaginaClient({
 
           <button
             type="button"
-            onClick={criarBlocoBasico}
+            onClick={() => setModalAdicionarAberto(true)}
             disabled={salvando || isPending}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
-            {salvando ? "Criando..." : "Adicionar banner"}
+            {salvando ? "Criando..." : "Adicionar bloco"}
           </button>
 
           <div className="mt-4 space-y-2">
@@ -1411,6 +1582,13 @@ export default function EditorVisualPaginaClient({
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}
         onSave={() => void salvarEdicaoBloco()}
+        salvando={salvando}
+      />
+
+      <AdicionarBlocoModal
+        aberto={modalAdicionarAberto}
+        onClose={() => setModalAdicionarAberto(false)}
+        onSelect={(tipo) => void criarBloco(tipo)}
         salvando={salvando}
       />
     </div>
