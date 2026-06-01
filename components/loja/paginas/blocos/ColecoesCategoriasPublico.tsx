@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
@@ -74,72 +75,108 @@ function normalizarPresetMosaico(value: string) {
   return "MOSAICO_5_EDITORIAL";
 }
 
-function getTamanhoMosaicoPreset(preset: string, index: number) {
+function normalizarTamanhoCabecalho(value: string) {
+  if (["MEDIO", "GRANDE", "GIGANTE"].includes(value)) return value;
+  return "GRANDE";
+}
+
+function getCabecalhoTitleClass(tamanho: string) {
+  const normalized = normalizarTamanhoCabecalho(tamanho);
+
+  if (normalized === "GIGANTE") {
+    return "text-[clamp(4rem,9vw,9.5rem)] leading-[0.92] tracking-[-0.075em]";
+  }
+
+  if (normalized === "MEDIO") {
+    return "text-[clamp(2.9rem,5.8vw,6rem)] leading-[0.95] tracking-[-0.06em]";
+  }
+
+  return "text-[clamp(3.5rem,7.4vw,8rem)] leading-[0.93] tracking-[-0.07em]";
+}
+
+function getMosaicGridStyle(preset: string): CSSProperties {
   const normalized = normalizarPresetMosaico(preset);
+
   if (normalized === "MOSAICO_3_DESTAQUE") {
-    return ["DESTAQUE", "MEDIO", "MEDIO"][index] || "MEDIO";
-  }
-  if (normalized === "GRID_4_EDITORIAL" || normalized === "GRID_3_EDITORIAL") {
-    return "MEDIO";
+    return {
+      display: "grid",
+      gridTemplateColumns: "1.12fr 0.92fr",
+      gridTemplateRows: "repeat(2, minmax(235px, 1fr))",
+      gap: "22px",
+      alignItems: "stretch",
+    };
   }
 
-  return ["ALTO", "LARGO", "ALTO", "MEDIO", "GRANDE"][index] || "MEDIO";
+  return {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
+    gap: "22px",
+    alignItems: "stretch",
+  };
 }
 
-function getTamanhoMosaicoEfetivo(item: Record<string, unknown>, index: number, preset: string) {
+function getMosaicItemStyle(index: number, preset: string): CSSProperties {
   const normalized = normalizarPresetMosaico(preset);
-  if (
-    (normalized === "MOSAICO_5_EDITORIAL" && index < 5) ||
-    (normalized === "MOSAICO_3_DESTAQUE" && index < 3)
-  ) {
-    return getTamanhoMosaicoPreset(preset, index);
+
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    if (index === 0) {
+      return {
+        gridColumn: "1 / 2",
+        gridRow: "1 / 3",
+      };
+    }
+
+    return {
+      gridColumn: "2 / 3",
+      gridRow: `${index} / ${index + 1}`,
+    };
   }
 
-  const tamanho = getString(item, "tamanhoMosaico", "AUTO");
-  return tamanho && tamanho !== "AUTO" ? tamanho : getTamanhoMosaicoPreset(preset, index);
+  const map: CSSProperties[] = [
+    {
+      gridColumn: "1 / 2",
+      gridRow: "1 / 3",
+    },
+    {
+      gridColumn: "2 / 3",
+      gridRow: "1 / 2",
+    },
+    {
+      gridColumn: "3 / 4",
+      gridRow: "1 / 3",
+    },
+    {
+      gridColumn: "2 / 3",
+      gridRow: "2 / 3",
+    },
+    {
+      gridColumn: "1 / 2",
+      gridRow: "3 / 4",
+    },
+  ];
+
+  return map[index] || {};
 }
 
-function getMosaicGridClass(preset: string) {
-  if (normalizarPresetMosaico(preset) === "MOSAICO_3_DESTAQUE") {
-    return "grid grid-cols-1 gap-5 md:grid-cols-5 md:auto-rows-[170px] lg:auto-rows-[190px]";
+function getMosaicItemClass(index: number, preset: string) {
+  const normalized = normalizarPresetMosaico(preset);
+
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return index === 0
+      ? "min-h-[560px] aspect-[4/5] lg:aspect-auto"
+      : "min-h-[265px] aspect-[4/3] lg:aspect-auto";
   }
 
-  return "grid grid-cols-1 gap-5 md:grid-cols-8 md:auto-rows-[150px] lg:auto-rows-[170px]";
-}
-
-function getMosaicItemClass(tamanho: string, index: number, preset: string) {
-  const normalizedPreset = normalizarPresetMosaico(preset);
-
-  if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
-    if (index === 0) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
-    if (index === 1 || index === 2) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
+  if (index === 0 || index === 2) {
+    return "min-h-[600px] aspect-[4/5] lg:aspect-auto";
   }
 
-  if (normalizedPreset === "MOSAICO_5_EDITORIAL") {
-    if (index === 0) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
-    if (index === 1) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
-    if (index === 2) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
-    if (index === 3) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
-    if (index === 4) return "aspect-[16/7] md:col-span-8 md:aspect-auto";
+  if (index === 4) {
+    return "min-h-[285px] aspect-[4/3] lg:aspect-auto lg:hidden";
   }
 
-  if (tamanho === "DESTAQUE") {
-    return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
-  }
-  if (tamanho === "ALTO") {
-    return "md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[560px]";
-  }
-  if (tamanho === "LARGO") {
-    return "md:col-span-2 aspect-[16/9] md:min-h-[300px]";
-  }
-  if (tamanho === "GRANDE") {
-    return "md:row-span-2 aspect-[3/4] md:aspect-auto md:min-h-[480px]";
-  }
-  if (tamanho === "PEQUENO") {
-    return "aspect-[4/3] md:min-h-[220px]";
-  }
-
-  return "aspect-[4/3] md:min-h-[280px]";
+  return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
 }
 
 function getGridColumnsByPreset(preset: string, fallback: number) {
@@ -164,22 +201,10 @@ function getLabelPositionClass(posicao: string) {
   return "bottom-5 left-5";
 }
 
-function getLabelSizeClass(tamanho: string) {
-  if (tamanho === "GRANDE") return "px-5 py-4";
-  if (tamanho === "MEDIA") return "px-4 py-3";
-  return "px-3 py-2.5";
-}
-
 function getLabelWidthClass(largura: string) {
   if (largura === "LARGA") return "w-[min(82%,420px)]";
   if (largura === "MEDIA") return "w-[min(68%,320px)]";
   return "w-fit max-w-[78%]";
-}
-
-function getHeaderSizeClass(value: string) {
-  if (value === "GIGANTE") return "text-6xl md:text-8xl";
-  if (value === "MEDIO") return "text-4xl md:text-5xl";
-  return "text-5xl md:text-7xl";
 }
 
 function HeaderImage({
@@ -302,8 +327,6 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const layoutVisualEfetivo = presetMosaico.startsWith("GRID_")
     ? "GRID_EDITORIAL"
     : layoutVisual;
-  const tamanhoEtiqueta = getString(config, "tamanhoEtiqueta", "PEQUENA");
-  const tamanhoCabecalho = getString(config, "tamanhoCabecalho", "GRANDE");
   const posicaoEtiqueta = getString(
     config,
     "posicaoEtiqueta",
@@ -311,16 +334,13 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   );
   const larguraEtiqueta = getString(config, "larguraEtiqueta", "AUTO");
   const exibirLinhaEtiqueta = getBoolean(config, "exibirLinhaEtiqueta", true);
-  const exibirEtiqueta = getBoolean(
-    config,
-    "exibirEtiqueta",
-    estiloEtiqueta !== "OCULTA"
+  const tamanhoCabecalho = normalizarTamanhoCabecalho(
+    getString(config, "tamanhoCabecalho", "GRANDE")
   );
-  const exibirBotaoEtiqueta = getBoolean(
-    config,
-    "exibirBotaoEtiqueta",
-    false
-  );
+  const exibirEtiqueta =
+    getBoolean(config, "exibirEtiqueta", estiloEtiqueta !== "OCULTA") &&
+    estiloEtiqueta !== "OCULTA";
+  const exibirBotaoEtiqueta = getBoolean(config, "exibirBotaoEtiqueta", false);
   const cardInteiroClicavel = getBoolean(config, "cardInteiroClicavel", true);
   const larguraCabecalhoDesktop = getNumber(
     config,
@@ -398,9 +418,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
-          className={`${getHeaderSizeClass(
+          className={`whitespace-pre-line font-light ${getCabecalhoTitleClass(
             tamanhoCabecalho
-          )} whitespace-pre-line font-light leading-[0.92] tracking-tight ${colors.title}`}
+          )} ${colors.title}`}
         />
       ) : null}
       {hasSubtitulo ? (
@@ -484,7 +504,10 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
       )}
     </div>
   ) : null;
+
   const renderItemLabel = (item: Record<string, unknown>, overlay: boolean) => {
+    if (!exibirEtiqueta) return null;
+
     const tituloItem = getString(item, "titulo") || getString(item, "categoriaNome");
     const subtituloItem = getString(item, "subtitulo");
     const textoLink = getString(item, "textoLink", "Explorar");
@@ -498,64 +521,191 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
       subtituloItem
     );
 
-    if (
-      !hasTituloItem &&
-      !hasSubtituloItem &&
-      !(exibirBotaoEtiqueta && textoLink && href)
-    ) {
+    if (!hasTituloItem && !hasSubtituloItem && !(textoLink && href)) {
       return null;
     }
 
     const wrapperClass = overlay
-      ? `absolute z-10 bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur ${getLabelPositionClass(
+      ? `absolute z-10 bg-white/92 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm ${getLabelPositionClass(
           posicaoEtiqueta
-        )} ${getLabelSizeClass(tamanhoEtiqueta)} ${getLabelWidthClass(larguraEtiqueta)} break-words`
-      : "pt-5";
+        )} px-4 py-3 ${getLabelWidthClass(larguraEtiqueta)} break-words`
+      : "pt-4";
+
+    const buttonContent =
+      exibirBotaoEtiqueta && textoLink && href ? (
+        cardInteiroClicavel ? (
+          <span
+            className={`mt-4 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
+          >
+            {textoLink}
+          </span>
+        ) : (
+          <Link
+            href={href}
+            className={`mt-4 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
+          >
+            {textoLink}
+          </Link>
+        )
+      ) : null;
 
     return (
       <div className={wrapperClass}>
-        <PublicRichTextRenderer
-          value={getRichText(item, "tituloRichText")}
-          fallback={tituloItem}
-          className={`font-medium leading-snug ${
-            overlay
-              ? tamanhoEtiqueta === "GRANDE"
-                ? "text-sm text-slate-950"
-                : "text-xs text-slate-950"
-              : `text-xl ${colors.title}`
-          }`}
-        />
+        {hasTituloItem ? (
+          <PublicRichTextRenderer
+            value={getRichText(item, "tituloRichText")}
+            fallback={tituloItem}
+            className={
+              overlay
+                ? "text-sm font-medium leading-tight text-slate-950"
+                : `text-xl font-semibold leading-tight ${colors.title}`
+            }
+          />
+        ) : null}
+
         {exibirLinhaEtiqueta && overlay ? (
-          <span className="my-2 block h-px w-8 bg-slate-950/30" />
+          <span className="mt-3 block h-px w-12 bg-slate-950/35" />
         ) : null}
-        <PublicRichTextRenderer
-          value={getRichText(item, "subtituloRichText")}
-          fallback={subtituloItem}
-          className={
-            overlay
-              ? "mt-1 text-xs leading-5 text-slate-600"
-              : `mt-2 text-sm leading-6 ${colors.body}`
-          }
-        />
-        {exibirBotaoEtiqueta && textoLink && href ? (
-          cardInteiroClicavel ? (
-            <span
-              className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
-            >
-              {textoLink}
-            </span>
-          ) : (
-            <Link
-              href={href}
-              className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
-            >
-              {textoLink}
-            </Link>
-          )
+
+        {hasSubtituloItem ? (
+          <PublicRichTextRenderer
+            value={getRichText(item, "subtituloRichText")}
+            fallback={subtituloItem}
+            className={
+              overlay
+                ? "mt-2 text-xs leading-5 text-slate-600"
+                : `mt-2 text-sm leading-6 ${colors.body}`
+            }
+          />
         ) : null}
+
+        {buttonContent}
       </div>
     );
   };
+
+  const renderGridItem = (item: Record<string, unknown>, index: number) => {
+    const tituloItem =
+      getString(item, "titulo") || getString(item, "categoriaNome");
+    const href = getItemHref(item);
+    const content = (
+      <article className="stella-reveal-card" style={{ animationDelay: `${index * 90}ms` }}>
+        <ItemMedia item={item} alt={tituloItem} className="aspect-[4/5]" />
+        {exibirEtiqueta ? renderItemLabel(item, false) : null}
+      </article>
+    );
+    const key = getString(item, "id", `colecao-${index}`);
+
+    if (href && cardInteiroClicavel) {
+      return (
+        <Link key={key} href={href} className="group block">
+          {content}
+        </Link>
+      );
+    }
+
+    return <div key={key}>{content}</div>;
+  };
+
+  const renderMosaicItems = () => (
+    <div className="mt-10 lg:mt-0">
+      <div className="hidden lg:grid" style={getMosaicGridStyle(presetMosaico)}>
+        {itens.map((item, index) => {
+          const tituloItem =
+            getString(item, "titulo") || getString(item, "categoriaNome");
+          const href = getItemHref(item);
+          const hasMedia = itemHasMedia(item);
+          const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+
+          const content = (
+            <article
+              className="stella-reveal-card relative min-w-0"
+              style={{
+                ...getMosaicItemStyle(index, presetMosaico),
+                animationDelay: `${index * 90}ms`,
+              }}
+            >
+              {hasMedia ? (
+                <div
+                  className={`relative h-full overflow-hidden ${getMosaicItemClass(
+                    index,
+                    presetMosaico
+                  )}`}
+                >
+                  <ItemMedia
+                    item={item}
+                    alt={tituloItem}
+                    className="h-full min-h-full transition duration-700 group-hover:scale-[1.035]"
+                  />
+                  {labelSobreposta ? renderItemLabel(item, true) : null}
+                </div>
+              ) : null}
+
+              {exibirEtiqueta && !labelSobreposta
+                ? renderItemLabel(item, false)
+                : null}
+            </article>
+          );
+
+          const key = getString(item, "id", `colecao-${index}`);
+
+          if (href && cardInteiroClicavel) {
+            return (
+              <Link key={key} href={href} className="group block">
+                {content}
+              </Link>
+            );
+          }
+
+          return <div key={key}>{content}</div>;
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:hidden">
+        {itens.map((item, index) => {
+          const tituloItem =
+            getString(item, "titulo") || getString(item, "categoriaNome");
+          const href = getItemHref(item);
+          const hasMedia = itemHasMedia(item);
+          const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+
+          const content = (
+            <article
+              className="stella-reveal-card relative min-w-0"
+              style={{ animationDelay: `${index * 90}ms` }}
+            >
+              {hasMedia ? (
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <ItemMedia
+                    item={item}
+                    alt={tituloItem}
+                    className="h-full min-h-full"
+                  />
+                  {labelSobreposta ? renderItemLabel(item, true) : null}
+                </div>
+              ) : null}
+
+              {exibirEtiqueta && !labelSobreposta
+                ? renderItemLabel(item, false)
+                : null}
+            </article>
+          );
+
+          const key = getString(item, "id", `colecao-${index}`);
+
+          if (href && cardInteiroClicavel) {
+            return (
+              <Link key={key} href={href} className="group block">
+                {content}
+              </Link>
+            );
+          }
+
+          return <div key={key}>{content}</div>;
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <section
@@ -583,106 +733,14 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                   )
                 )}`}
               >
-                {itens.map((item, index) => {
-                  const tituloItem =
-                    getString(item, "titulo") || getString(item, "categoriaNome");
-                  const href = getItemHref(item);
-                  const content = (
-                    <article
-                      className="stella-reveal-card"
-                      style={{ animationDelay: `${index * 80}ms` }}
-                    >
-                      <ItemMedia
-                        item={item}
-                        alt={tituloItem}
-                        className="aspect-[4/5]"
-                      />
-
-                      {exibirEtiqueta ? (
-                        renderItemLabel(item, false)
-                      ) : null}
-                    </article>
-                  );
-
-                  return href && cardInteiroClicavel ? (
-                    <Link
-                      key={getString(item, "id", `colecao-${index}`)}
-                      href={href}
-                      className="group block"
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <div key={getString(item, "id", `colecao-${index}`)}>
-                      {content}
-                    </div>
-                  );
-                })}
+                {itens.map(renderGridItem)}
               </div>
             ) : null}
           </>
         ) : posicaoCabecalhoMosaico === "TOPO" ? (
           <>
             {headerContent}
-
-            {itens.length > 0 ? (
-              <div className={`mt-10 ${getMosaicGridClass(presetMosaico)}`}>
-                {itens.map((item, index) => {
-                  const tituloItem =
-                    getString(item, "titulo") || getString(item, "categoriaNome");
-                  const href = getItemHref(item);
-                  const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
-                    item,
-                    index,
-                    presetMosaico
-                  );
-                  const hasMedia = itemHasMedia(item);
-                  const labelSobreposta =
-                    exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
-                  const itemFrameClass = getMosaicItemClass(
-                    tamanhoEfetivo,
-                    index,
-                    presetMosaico
-                  );
-                  const content = (
-                    <article
-                      className="stella-reveal-card relative min-w-0"
-                      style={{ animationDelay: `${index * 80}ms` }}
-                    >
-                      {hasMedia ? (
-                        <div
-                          className={`relative overflow-hidden ${itemFrameClass}`}
-                        >
-                          <ItemMedia
-                            item={item}
-                            alt={tituloItem}
-                            className="h-full min-h-full"
-                          />
-                          {labelSobreposta ? renderItemLabel(item, true) : null}
-                        </div>
-                      ) : null}
-                      {exibirEtiqueta && !labelSobreposta
-                        ? renderItemLabel(item, false)
-                        : null}
-                    </article>
-                  );
-
-                  return href && cardInteiroClicavel ? (
-                    <Link
-                      key={getString(item, "id", `colecao-${index}`)}
-                      href={href}
-                      className="group block"
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <div key={getString(item, "id", `colecao-${index}`)}>
-                      {content}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
+            {itens.length > 0 ? renderMosaicItems() : null}
           </>
         ) : (
           <div
@@ -696,64 +754,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               </div>
             ) : null}
 
-            {itens.length > 0 ? (
-              <div className={getMosaicGridClass(presetMosaico)}>
-                {itens.map((item, index) => {
-                  const tituloItem =
-                    getString(item, "titulo") || getString(item, "categoriaNome");
-                  const href = getItemHref(item);
-                  const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
-                    item,
-                    index,
-                    presetMosaico
-                  );
-                  const hasMedia = itemHasMedia(item);
-                  const labelSobreposta =
-                    exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
-                  const itemFrameClass = getMosaicItemClass(
-                    tamanhoEfetivo,
-                    index,
-                    presetMosaico
-                  );
-                  const content = (
-                    <article
-                      className="stella-reveal-card relative min-w-0"
-                      style={{ animationDelay: `${index * 80}ms` }}
-                    >
-                      {hasMedia ? (
-                        <div
-                          className={`relative overflow-hidden ${itemFrameClass}`}
-                        >
-                          <ItemMedia
-                            item={item}
-                            alt={tituloItem}
-                            className="h-full min-h-full"
-                          />
-                          {labelSobreposta ? renderItemLabel(item, true) : null}
-                        </div>
-                      ) : null}
-                      {exibirEtiqueta && !labelSobreposta
-                        ? renderItemLabel(item, false)
-                        : null}
-                    </article>
-                  );
-
-                  return href && cardInteiroClicavel ? (
-                    <Link
-                      key={getString(item, "id", `colecao-${index}`)}
-                      href={href}
-                      className="group block"
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <div key={getString(item, "id", `colecao-${index}`)}>
-                      {content}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
+            {itens.length > 0 ? renderMosaicItems() : null}
           </div>
         )}
       </div>
