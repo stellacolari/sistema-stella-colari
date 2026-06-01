@@ -14,10 +14,12 @@ import {
   MousePointer2,
   PanelRight,
   Plus,
+  Save,
   Smartphone,
   Tablet,
   Trash2,
   Type,
+  X,
 } from "lucide-react";
 
 export type EditorVisualPagina = {
@@ -56,6 +58,31 @@ type EditorVisualPaginaClientProps = {
 };
 
 type DevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
+
+type BlocoEditandoState = {
+  bloco: EditorVisualBloco;
+  nomeInterno: string;
+  titulo: string;
+  texto: string;
+  imagemUrl: string;
+  textoBotao: string;
+  linkBotao: string;
+  corFundo: string;
+  espacamento: string;
+} | null;
+
+const COR_FUNDO_PRESETS = [
+  { value: "BRANCO", label: "Branco" },
+  { value: "CINZA", label: "Cinza claro" },
+  { value: "MARCA", label: "Azul marca" },
+  { value: "ESCURO", label: "Escuro" },
+];
+
+const ESPACAMENTO_PRESETS = [
+  { value: "COMPACTO", label: "Compacto" },
+  { value: "PADRAO", label: "Padrão" },
+  { value: "AMPLO", label: "Amplo" },
+];
 
 function getConfigObject(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -139,6 +166,21 @@ function getFrameLabel(device: DevicePreview) {
   if (device === "MOBILE") return "Mobile";
   if (device === "TABLET") return "Tablet";
   return "Desktop";
+}
+
+function getBgClass(corFundo: string) {
+  if (corFundo === "CINZA") return "bg-slate-50";
+  if (corFundo === "MARCA") return "bg-[var(--brand-blue-soft)]";
+  if (corFundo === "ESCURO") return "bg-slate-950 text-white";
+
+  return "bg-white";
+}
+
+function getPaddingClass(espacamento: string) {
+  if (espacamento === "COMPACTO") return "px-6 py-6";
+  if (espacamento === "AMPLO") return "px-6 py-16";
+
+  return "px-6 py-10";
 }
 
 async function lerRespostaApi(response: Response) {
@@ -252,10 +294,20 @@ function RenderBlocoPreview({
     getStringConfig(config, "imagem") ||
     getStringConfig(config, "backgroundImageUrl");
 
+  const textoBotao =
+    getStringConfig(config, "textoBotao") ||
+    getStringConfig(config, "botaoTexto") ||
+    "Conhecer";
+
+  const corFundo = getStringConfig(config, "corFundo") || "BRANCO";
+  const espacamento = getStringConfig(config, "espacamento") || "PADRAO";
+
   const categorias = getArrayConfig(config, "categorias");
   const produtos = getArrayConfig(config, "produtos");
 
   const isMobile = device === "MOBILE";
+  const bgClass = getBgClass(corFundo);
+  const paddingClass = getPaddingClass(espacamento);
 
   return (
     <section
@@ -323,14 +375,14 @@ function RenderBlocoPreview({
               )}
 
               <div className="mt-6 inline-flex bg-white px-5 py-3 text-sm font-semibold text-slate-950">
-                Conhecer
+                {textoBotao}
               </div>
             </div>
           </div>
         </div>
       ) : bloco.tipo === "TEXTO_IMAGEM" ? (
         <div
-          className={`grid bg-white ${
+          className={`grid ${bgClass} ${
             isMobile ? "grid-cols-1" : "grid-cols-2"
           }`}
         >
@@ -348,23 +400,45 @@ function RenderBlocoPreview({
             )}
           </div>
 
-          <div className="flex items-center p-8">
+          <div className={`flex items-center ${paddingClass}`}>
             <div>
-              <h2 className="text-3xl font-light tracking-tight text-slate-950">
-                {titulo}
-              </h2>
+              <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
 
-              <p className="mt-4 text-sm leading-7 text-slate-600">
+              <p
+                className={`mt-4 text-sm leading-7 ${
+                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
+                }`}
+              >
                 {texto || "Texto do bloco aparece aqui."}
               </p>
+
+              {textoBotao && (
+                <div
+                  className={`mt-5 inline-flex px-5 py-3 text-sm font-semibold ${
+                    corFundo === "ESCURO"
+                      ? "bg-white text-slate-950"
+                      : "bg-slate-950 text-white"
+                  }`}
+                >
+                  {textoBotao}
+                </div>
+              )}
             </div>
           </div>
         </div>
       ) : bloco.tipo.includes("PRODUTO") ? (
-        <div className="bg-white px-6 py-10">
-          <h2 className="text-2xl font-light tracking-tight text-slate-950">
-            {titulo}
-          </h2>
+        <div className={`${bgClass} ${paddingClass}`}>
+          <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+
+          {texto && (
+            <p
+              className={`mt-2 max-w-2xl text-sm leading-6 ${
+                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+              }`}
+            >
+              {texto}
+            </p>
+          )}
 
           <div
             className={`mt-6 grid gap-3 ${
@@ -388,10 +462,18 @@ function RenderBlocoPreview({
           )}
         </div>
       ) : bloco.tipo.includes("CATEGORIA") ? (
-        <div className="bg-white px-6 py-10">
-          <h2 className="text-2xl font-light tracking-tight text-slate-950">
-            {titulo}
-          </h2>
+        <div className={`${bgClass} ${paddingClass}`}>
+          <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+
+          {texto && (
+            <p
+              className={`mt-2 max-w-2xl text-sm leading-6 ${
+                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+              }`}
+            >
+              {texto}
+            </p>
+          )}
 
           <div
             className={`mt-6 grid gap-4 ${
@@ -407,26 +489,26 @@ function RenderBlocoPreview({
           </div>
         </div>
       ) : bloco.tipo === "FAQ" ? (
-        <div className="bg-white px-6 py-10">
-          <h2 className="text-2xl font-light tracking-tight text-slate-950">
-            {titulo}
-          </h2>
+        <div className={`${bgClass} ${paddingClass}`}>
+          <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
 
           <div className="mt-6 space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="border border-slate-200 px-4 py-4">
+              <div key={index} className="border border-slate-200 bg-white px-4 py-4">
                 <div className="h-3 w-2/3 bg-slate-100" />
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <div className="bg-white px-6 py-10">
-          <h2 className="text-2xl font-light tracking-tight text-slate-950">
-            {titulo}
-          </h2>
+        <div className={`${bgClass} ${paddingClass}`}>
+          <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
 
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
+          <p
+            className={`mt-4 max-w-2xl text-sm leading-7 ${
+              corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
+            }`}
+          >
             {texto || "Conteúdo do bloco será exibido aqui."}
           </p>
         </div>
@@ -435,16 +517,220 @@ function RenderBlocoPreview({
   );
 }
 
+function EditorConteudoBlocoModal({
+  estado,
+  onChange,
+  onClose,
+  onSave,
+  salvando,
+}: {
+  estado: BlocoEditandoState;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+  onClose: () => void;
+  onSave: () => void;
+  salvando: boolean;
+}) {
+  if (!estado) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Editar bloco
+            </p>
+
+            <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+              {estado.nomeInterno || getTipoLabel(estado.bloco.tipo)}
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Primeira edição visual com campos universais. Depois vamos
+              especializar por tipo de bloco.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+            aria-label="Fechar edição"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Nome interno do bloco
+            </span>
+
+            <input
+              value={estado.nomeInterno}
+              onChange={(event) => onChange({ nomeInterno: event.target.value })}
+              placeholder="Ex: Banner principal"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Título
+            </span>
+
+            <input
+              value={estado.titulo}
+              onChange={(event) => onChange({ titulo: event.target.value })}
+              placeholder="Título visível"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Texto
+            </span>
+
+            <textarea
+              value={estado.texto}
+              onChange={(event) => onChange({ texto: event.target.value })}
+              rows={5}
+              placeholder="Texto do bloco"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Imagem URL
+            </span>
+
+            <input
+              value={estado.imagemUrl}
+              onChange={(event) => onChange({ imagemUrl: event.target.value })}
+              placeholder="/uploads/imagem.jpg ou https://..."
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Texto do botão
+              </span>
+
+              <input
+                value={estado.textoBotao}
+                onChange={(event) =>
+                  onChange({ textoBotao: event.target.value })
+                }
+                placeholder="Ex: Comprar agora"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Link do botão
+              </span>
+
+              <input
+                value={estado.linkBotao}
+                onChange={(event) =>
+                  onChange({ linkBotao: event.target.value })
+                }
+                placeholder="/loja/descontos"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Cor de fundo
+              </span>
+
+              <select
+                value={estado.corFundo}
+                onChange={(event) => onChange({ corFundo: event.target.value })}
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {COR_FUNDO_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Espaçamento
+              </span>
+
+              <select
+                value={estado.espacamento}
+                onChange={(event) =>
+                  onChange({ espacamento: event.target.value })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {ESPACAMENTO_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+            Esta é a primeira camada de edição visual. Nas próximas etapas,
+            vamos adicionar imagem desktop/mobile, crop e editor rico de texto.
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={salvando}
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={salvando}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {salvando ? "Salvando..." : "Salvar conteúdo"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EditorVisualPaginaClient({
   pagina,
   blocos,
   categoriasDisponiveis,
 }: EditorVisualPaginaClientProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [ordemSalvando, setOrdemSalvando] = useState(false);
+  const [editando, setEditando] = useState<BlocoEditandoState>(null);
 
   const [blocosEditor, setBlocosEditor] = useState<EditorVisualBloco[]>(() =>
     ordenarBlocos(blocos)
@@ -693,6 +979,82 @@ export default function EditorVisualPaginaClient({
     }
   }
 
+  function abrirEdicaoBloco(bloco: EditorVisualBloco) {
+    const config = getConfigObject(bloco.configJson);
+
+    setEditando({
+      bloco,
+      nomeInterno: bloco.titulo || "",
+      titulo: getStringConfig(config, "titulo") || bloco.titulo || "",
+      texto:
+        getStringConfig(config, "texto") ||
+        getStringConfig(config, "descricao") ||
+        getStringConfig(config, "conteudo"),
+      imagemUrl:
+        getStringConfig(config, "imagemUrl") ||
+        getStringConfig(config, "imagem") ||
+        getStringConfig(config, "backgroundImageUrl"),
+      textoBotao:
+        getStringConfig(config, "textoBotao") ||
+        getStringConfig(config, "botaoTexto"),
+      linkBotao:
+        getStringConfig(config, "linkBotao") ||
+        getStringConfig(config, "botaoLink") ||
+        getStringConfig(config, "linkUrl"),
+      corFundo: getStringConfig(config, "corFundo") || "BRANCO",
+      espacamento: getStringConfig(config, "espacamento") || "PADRAO",
+    });
+  }
+
+  function atualizarEdicao(data: Partial<NonNullable<BlocoEditandoState>>) {
+    setEditando((current) =>
+      current
+        ? {
+            ...current,
+            ...data,
+          }
+        : current
+    );
+  }
+
+  async function salvarEdicaoBloco() {
+    if (!editando) return;
+
+    setErro("");
+    setSucesso("");
+    setSalvando(true);
+
+    const configAtual = getConfigObject(editando.bloco.configJson);
+
+    const novoConfig = {
+      ...configAtual,
+      titulo: editando.titulo,
+      texto: editando.texto,
+      descricao: editando.texto,
+      conteudo: editando.texto,
+      imagemUrl: editando.imagemUrl,
+      textoBotao: editando.textoBotao,
+      botaoTexto: editando.textoBotao,
+      linkBotao: editando.linkBotao,
+      botaoLink: editando.linkBotao,
+      linkUrl: editando.linkBotao,
+      corFundo: editando.corFundo,
+      espacamento: editando.espacamento,
+    };
+
+    try {
+      await atualizarBloco(editando.bloco, {
+        titulo: editando.nomeInterno || editando.titulo || editando.bloco.titulo,
+        configJson: novoConfig,
+      });
+
+      setEditando(null);
+      setSucesso("Conteúdo do bloco salvo.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {(erro || sucesso) && (
@@ -917,6 +1279,7 @@ export default function EditorVisualPaginaClient({
               <div className="grid gap-2">
                 <button
                   type="button"
+                  onClick={() => abrirEdicaoBloco(blocoSelecionado)}
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Editar conteúdo
@@ -1004,6 +1367,14 @@ export default function EditorVisualPaginaClient({
           )}
         </aside>
       </div>
+
+      <EditorConteudoBlocoModal
+        estado={editando}
+        onChange={atualizarEdicao}
+        onClose={() => setEditando(null)}
+        onSave={() => void salvarEdicaoBloco()}
+        salvando={salvando}
+      />
     </div>
   );
 }
