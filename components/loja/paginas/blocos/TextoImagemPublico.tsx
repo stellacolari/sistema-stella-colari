@@ -46,8 +46,8 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     bloco.tipo === "IMAGEM_TEXTO" ? "IMAGEM_ESQUERDA" : "IMAGEM_DIREITA"
   );
   const layoutMobile = getString(config, ["layoutMobileTextoImagem", "layoutMobile"], "IMAGEM_ACIMA");
-  const textoSobreImagem =
-    layoutDesktop === "TEXTO_SOBRE_IMAGEM" || layoutMobile === "TEXTO_SOBRE_IMAGEM";
+  const textoSobreImagemDesktop = layoutDesktop === "TEXTO_SOBRE_IMAGEM";
+  const textoSobreImagemMobile = layoutMobile === "TEXTO_SOBRE_IMAGEM";
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
   const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"]);
@@ -66,9 +66,13 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     return null;
   }
 
-  if (textoSobreImagem && hasMedia) {
+  function renderTextoSobreImagem(viewportClass = "") {
     return (
-      <section className={`relative overflow-hidden ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
+      <section
+        className={`relative overflow-hidden ${viewportClass} ${getSpacingClass(
+          getString(config, "espacamento", "PADRAO")
+        )}`}
+      >
         <div className="absolute inset-0">
           <PublicMediaRenderer
             tipoMidia={tipoMidia}
@@ -114,8 +118,13 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     );
   }
 
-  return (
-    <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
+  function renderTextoImagem(viewportClass = "") {
+    return (
+      <section
+        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(
+          getString(config, "espacamento", "PADRAO")
+        )}`}
+      >
       <div
         className={`mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:items-center lg:gap-12 lg:px-8 ${getDesktopLayoutClass(
           hasMedia ? layoutDesktop : "IMAGEM_ACIMA"
@@ -167,5 +176,25 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
         </div>
       </div>
     </section>
-  );
+    );
+  }
+
+  if (hasMedia && textoSobreImagemDesktop !== textoSobreImagemMobile) {
+    return (
+      <>
+        {textoSobreImagemMobile
+          ? renderTextoSobreImagem("lg:hidden")
+          : renderTextoImagem("lg:hidden")}
+        {textoSobreImagemDesktop
+          ? renderTextoSobreImagem("hidden lg:block")
+          : renderTextoImagem("hidden lg:block")}
+      </>
+    );
+  }
+
+  if (hasMedia && textoSobreImagemDesktop && textoSobreImagemMobile) {
+    return renderTextoSobreImagem();
+  }
+
+  return renderTextoImagem();
 }

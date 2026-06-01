@@ -6159,19 +6159,20 @@ export default function EditorVisualPaginaClient({
     const isListaProdutos = isListaProdutosTipo(blocoAtual.tipo);
     const isDestaquesCards = isDestaquesCardsTipo(blocoAtual.tipo);
     const isCta = isCtaTipo(blocoAtual.tipo);
+    const blocoUsaRichText =
+      isBanner || isTextoImagem || isListaProdutos || isDestaquesCards || isCta;
     const tituloAtual =
       getStringConfig(configAtual, "titulo") || blocoAtual.titulo || "";
     const textoAtual =
       getStringConfig(configAtual, "texto") ||
       getStringConfig(configAtual, "descricao") ||
       getStringConfig(configAtual, "conteudo");
-    const tituloTextoImagemMudou =
-      isTextoImagem && editando.titulo !== tituloAtual;
-    const textoTextoImagemMudou = isTextoImagem && editando.texto !== textoAtual;
-    const tituloTextoImagemRichText = editando.titulo.trim()
+    const tituloMudouNoModal = blocoUsaRichText && editando.titulo !== tituloAtual;
+    const textoMudouNoModal = blocoUsaRichText && editando.texto !== textoAtual;
+    const tituloModalRichText = editando.titulo.trim()
       ? getRichTextFallback(editando.titulo.trim())
       : null;
-    const textoTextoImagemRichText = editando.texto.trim()
+    const textoModalRichText = editando.texto.trim()
       ? getRichTextFallback(editando.texto.trim())
       : null;
 
@@ -6186,6 +6187,13 @@ export default function EditorVisualPaginaClient({
       linkBotao: editando.linkBotao,
       botaoLink: editando.linkBotao,
       linkUrl: editando.linkBotao,
+      ...(tituloMudouNoModal ? { tituloRichText: tituloModalRichText } : {}),
+      ...(textoMudouNoModal
+        ? {
+            textoRichText: textoModalRichText,
+            subtituloRichText: textoModalRichText,
+          }
+        : {}),
       tituloStyle: editando.tituloStyle,
       subtituloStyle: editando.subtituloStyle,
       botaoPrimarioStyle: editando.botaoPrimarioStyle,
@@ -6234,17 +6242,6 @@ export default function EditorVisualPaginaClient({
             }
         : isTextoImagem
           ? {
-              ...(tituloTextoImagemMudou
-                ? {
-                    tituloRichText: tituloTextoImagemRichText,
-                  }
-                : {}),
-              ...(textoTextoImagemMudou
-                ? {
-                    textoRichText: textoTextoImagemRichText,
-                    subtituloRichText: textoTextoImagemRichText,
-                  }
-                : {}),
               tipoMidia: editando.tipoMidia,
               exibirMidia: editando.exibirMidia,
               imagemDesktopUrl: editando.imagemDesktopUrl,
@@ -6314,6 +6311,16 @@ export default function EditorVisualPaginaClient({
             }
         : isDestaquesCards
           ? {
+              ...(tituloMudouNoModal
+                ? {
+                    tituloSecaoRichText: tituloModalRichText,
+                  }
+                : {}),
+              ...(textoMudouNoModal
+                ? {
+                    subtituloSecaoRichText: textoModalRichText,
+                  }
+                : {}),
               descricao: editando.texto,
               layoutDesktop: editando.layoutDesktopCards,
               layoutMobile: editando.layoutMobileCards,
