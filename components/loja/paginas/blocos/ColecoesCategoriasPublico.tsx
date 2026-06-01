@@ -27,6 +27,70 @@ function getContentWidthClass(value: string) {
   return "max-w-7xl";
 }
 
+function getHeaderFlexClass(value: string) {
+  if (value === "DIREITA") return "justify-end";
+  if (value === "CENTRO") return "justify-center";
+
+  return "justify-start";
+}
+
+function getResponsiveHeaderFlexClass(desktop: string, mobile: string) {
+  const desktopClass =
+    desktop === "DIREITA"
+      ? "lg:justify-end"
+      : desktop === "CENTRO"
+        ? "lg:justify-center"
+        : "lg:justify-start";
+
+  return `${getHeaderFlexClass(mobile)} ${desktopClass}`;
+}
+
+function HeaderImage({
+  desktopUrl,
+  mobileUrl,
+  alt,
+  desktopWidth,
+  mobileWidth,
+  alignDesktop,
+  alignMobile,
+}: {
+  desktopUrl: string;
+  mobileUrl: string;
+  alt: string;
+  desktopWidth: number;
+  mobileWidth: number;
+  alignDesktop: string;
+  alignMobile: string;
+}) {
+  const imageDesktop = desktopUrl || mobileUrl;
+  const imageMobile = mobileUrl || desktopUrl;
+
+  if (!imageDesktop && !imageMobile) return null;
+
+  return (
+    <div className={`flex ${getResponsiveHeaderFlexClass(alignDesktop, alignMobile)}`}>
+      {imageMobile ? (
+        <img
+          src={imageMobile}
+          alt={alt}
+          className="block h-auto max-w-full object-contain md:hidden"
+          style={{ width: `${mobileWidth}px` }}
+        />
+      ) : null}
+      {imageDesktop ? (
+        <img
+          src={imageDesktop}
+          alt={alt}
+          className={`h-auto max-w-full object-contain ${
+            imageMobile ? "hidden md:block" : "block"
+          }`}
+          style={{ width: `${desktopWidth}px` }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function getItemHref(item: Record<string, unknown>) {
   const tipoLink = getString(item, "tipoLink", "PERSONALIZADO");
 
@@ -104,6 +168,22 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
     mobile: getString(config, "alinhamentoTextoMobile", "ESQUERDA"),
     fallback: "ESQUERDA",
   });
+  const tipoCabecalho = getString(config, "tipoCabecalho", "TEXTO");
+  const alinhamentoCabecalhoDesktop = getString(
+    config,
+    "alinhamentoCabecalhoDesktop",
+    getString(config, "alinhamentoTextoDesktop", "ESQUERDA")
+  );
+  const alinhamentoCabecalhoMobile = getString(
+    config,
+    "alinhamentoCabecalhoMobile",
+    getString(config, "alinhamentoTextoMobile", alinhamentoCabecalhoDesktop)
+  );
+  const headerAlign = getResponsiveTextAlignClass({
+    desktop: alinhamentoCabecalhoDesktop,
+    mobile: alinhamentoCabecalhoMobile,
+    fallback: "ESQUERDA",
+  });
   const titulo = getString(config, "titulo");
   const subtitulo = getString(config, ["subtitulo", "descricao", "texto"]);
   const tituloRichText = getRichText(config, "tituloRichText");
@@ -113,6 +193,23 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   ]);
   const hasTitulo = hasTextContent(tituloRichText, titulo);
   const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
+  const hasLogoTitulo = Boolean(
+    getString(config, "logoTituloUrl") ||
+      getString(config, "logoTituloMobileUrl")
+  );
+  const hasImagemTitulo = Boolean(
+    getString(config, "imagemTituloUrl") ||
+      getString(config, "imagemTituloMobileUrl")
+  );
+  const hasCabecalho =
+    (tipoCabecalho === "LOGO" && (hasLogoTitulo || hasSubtitulo)) ||
+    (tipoCabecalho === "TEXTO_LOGO" &&
+      (hasTitulo || hasLogoTitulo || hasSubtitulo)) ||
+    (tipoCabecalho === "IMAGEM_TITULO" && (hasImagemTitulo || hasSubtitulo)) ||
+    (tipoCabecalho !== "LOGO" &&
+      tipoCabecalho !== "TEXTO_LOGO" &&
+      tipoCabecalho !== "IMAGEM_TITULO" &&
+      (hasTitulo || hasSubtitulo));
   const itens = getArray(config, "itens")
     .map(asConfig)
     .filter(itemHasPublicContent)
@@ -121,11 +218,96 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         getNumber(a, "ordem", 0) - getNumber(b, "ordem", 0)
     );
 
-  if (!hasTitulo && !hasSubtitulo && itens.length === 0) {
+  if (!hasCabecalho && itens.length === 0) {
     return null;
   }
 
   const widthClass = getContentWidthClass(larguraConteudo);
+  const tituloTextual = (
+    <>
+      {hasTitulo ? (
+        <PublicRichTextRenderer
+          value={tituloRichText}
+          fallback={titulo}
+          className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
+        />
+      ) : null}
+      {hasSubtitulo ? (
+        <PublicRichTextRenderer
+          value={subtituloRichText}
+          fallback={subtitulo}
+          className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+        />
+      ) : null}
+    </>
+  );
+  const logoTitulo = (
+    <HeaderImage
+      desktopUrl={getString(config, "logoTituloUrl")}
+      mobileUrl={getString(config, "logoTituloMobileUrl")}
+      alt={getString(config, "logoTituloAlt", titulo)}
+      desktopWidth={getNumber(config, "logoTituloLarguraDesktop", 420)}
+      mobileWidth={getNumber(config, "logoTituloLarguraMobile", 260)}
+      alignDesktop={alinhamentoCabecalhoDesktop}
+      alignMobile={alinhamentoCabecalhoMobile}
+    />
+  );
+  const imagemTitulo = (
+    <HeaderImage
+      desktopUrl={getString(config, "imagemTituloUrl")}
+      mobileUrl={getString(config, "imagemTituloMobileUrl")}
+      alt={getString(config, "imagemTituloAlt", titulo)}
+      desktopWidth={getNumber(config, "imagemTituloLarguraDesktop", 520)}
+      mobileWidth={getNumber(config, "imagemTituloLarguraMobile", 300)}
+      alignDesktop={alinhamentoCabecalhoDesktop}
+      alignMobile={alinhamentoCabecalhoMobile}
+    />
+  );
+  const logoPosition = getString(config, "logoTituloPosicao", "ABAIXO");
+  const headerContent = hasCabecalho ? (
+    <div className={`max-w-4xl ${headerAlign}`}>
+      {tipoCabecalho === "LOGO" ? (
+        <>
+          {logoTitulo}
+          {hasSubtitulo ? (
+            <PublicRichTextRenderer
+              value={subtituloRichText}
+              fallback={subtitulo}
+              className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+            />
+          ) : null}
+        </>
+      ) : tipoCabecalho === "IMAGEM_TITULO" ? (
+        <>
+          {imagemTitulo}
+          {hasSubtitulo ? (
+            <PublicRichTextRenderer
+              value={subtituloRichText}
+              fallback={subtitulo}
+              className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+            />
+          ) : null}
+        </>
+      ) : tipoCabecalho === "TEXTO_LOGO" ? (
+        <div
+          className={
+            logoPosition === "AO_LADO"
+              ? `flex flex-col gap-5 lg:flex-row lg:items-center ${getResponsiveHeaderFlexClass(
+                  alinhamentoCabecalhoDesktop,
+                  alinhamentoCabecalhoMobile
+                )}`
+              : "space-y-5"
+          }
+        >
+          {logoPosition === "ACIMA" ? logoTitulo : null}
+          <div>{tituloTextual}</div>
+          {logoPosition !== "ACIMA" ? logoTitulo : null}
+        </div>
+      ) : (
+        tituloTextual
+      )}
+    </div>
+  ) : null;
 
   return (
     <section
@@ -140,24 +322,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
       >
         {layoutVisual === "GRID_EDITORIAL" ? (
           <>
-            {(hasTitulo || hasSubtitulo) && (
-              <div className={`max-w-4xl ${sectionAlign}`}>
-                {hasTitulo ? (
-                  <PublicRichTextRenderer
-                    value={tituloRichText}
-                    fallback={titulo}
-                    className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
-                  />
-                ) : null}
-                {hasSubtitulo ? (
-                  <PublicRichTextRenderer
-                    value={subtituloRichText}
-                    fallback={subtitulo}
-                    className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
-                  />
-                ) : null}
-              </div>
-            )}
+            {headerContent}
 
             {itens.length > 0 ? (
               <div
@@ -224,24 +389,11 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           </>
         ) : (
           <div className="grid gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-start">
-            {(hasTitulo || hasSubtitulo) && (
+            {headerContent ? (
               <div className={`lg:sticky lg:top-24 ${sectionAlign}`}>
-                {hasTitulo ? (
-                  <PublicRichTextRenderer
-                    value={tituloRichText}
-                    fallback={titulo}
-                    className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
-                  />
-                ) : null}
-                {hasSubtitulo ? (
-                  <PublicRichTextRenderer
-                    value={subtituloRichText}
-                    fallback={subtitulo}
-                    className={`mt-4 text-base leading-7 ${colors.body}`}
-                  />
-                ) : null}
+                {headerContent}
               </div>
-            )}
+            ) : null}
 
             {itens.length > 0 ? (
               <div className="grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-5 md:grid-cols-2">

@@ -234,6 +234,20 @@ type BlocoEditandoState = {
   colunasMobileColecoes: number;
   estiloEtiquetaColecoes: string;
   itensColecoes: ColecaoCategoriaItemEditando[];
+  tipoCabecalhoColecoes: string;
+  logoTituloUrl: string;
+  logoTituloMobileUrl: string;
+  logoTituloAlt: string;
+  logoTituloLarguraDesktop: number;
+  logoTituloLarguraMobile: number;
+  logoTituloPosicao: string;
+  imagemTituloUrl: string;
+  imagemTituloMobileUrl: string;
+  imagemTituloAlt: string;
+  imagemTituloLarguraDesktop: number;
+  imagemTituloLarguraMobile: number;
+  alinhamentoCabecalhoDesktop: string;
+  alinhamentoCabecalhoMobile: string;
   exibirMidia: boolean;
   mediaCropDesktopX: number;
   mediaCropDesktopY: number;
@@ -463,6 +477,19 @@ const ESTILO_ETIQUETA_COLECOES_PRESETS = [
   { value: "SOBREPOSTA", label: "Sobreposta" },
   { value: "ABAIXO", label: "Abaixo" },
   { value: "OCULTA", label: "Oculta" },
+];
+
+const TIPO_CABECALHO_COLECOES_PRESETS = [
+  { value: "TEXTO", label: "Texto" },
+  { value: "LOGO", label: "Logo" },
+  { value: "TEXTO_LOGO", label: "Texto + logo" },
+  { value: "IMAGEM_TITULO", label: "Imagem de título" },
+];
+
+const POSICAO_LOGO_TITULO_PRESETS = [
+  { value: "ACIMA", label: "Acima" },
+  { value: "ABAIXO", label: "Abaixo" },
+  { value: "AO_LADO", label: "Ao lado" },
 ];
 
 const MEDIA_POSITION_PRESETS = [
@@ -1205,6 +1232,20 @@ function normalizarLarguraConteudoColecoes(value: string) {
 function normalizarEstiloEtiquetaColecoes(value: string) {
   if (["SOBREPOSTA", "ABAIXO", "OCULTA"].includes(value)) return value;
   return "SOBREPOSTA";
+}
+
+function normalizarTipoCabecalhoColecoes(value: string) {
+  if (["TEXTO", "LOGO", "TEXTO_LOGO", "IMAGEM_TITULO"].includes(value)) {
+    return value;
+  }
+
+  return "TEXTO";
+}
+
+function normalizarPosicaoLogoTitulo(value: string) {
+  if (["ACIMA", "ABAIXO", "AO_LADO"].includes(value)) return value;
+
+  return "ABAIXO";
 }
 
 function getItensColecoesConfig(
@@ -2855,6 +2896,66 @@ function RenderBlocoPreview({
   const estiloEtiquetaColecoes = normalizarEstiloEtiquetaColecoes(
     getStringConfig(config, "estiloEtiqueta")
   );
+  const tipoCabecalhoColecoes = normalizarTipoCabecalhoColecoes(
+    getStringConfig(config, "tipoCabecalho")
+  );
+  const logoTituloUrl = getStringConfig(config, "logoTituloUrl");
+  const logoTituloMobileUrl = getStringConfig(config, "logoTituloMobileUrl");
+  const logoTituloAlt = getStringConfig(config, "logoTituloAlt") || titulo;
+  const logoTituloLarguraDesktop = getNumberConfig(
+    config,
+    "logoTituloLarguraDesktop",
+    420
+  );
+  const logoTituloLarguraMobile = getNumberConfig(
+    config,
+    "logoTituloLarguraMobile",
+    260
+  );
+  const logoTituloPosicao = normalizarPosicaoLogoTitulo(
+    getStringConfig(config, "logoTituloPosicao")
+  );
+  const imagemTituloUrl = getStringConfig(config, "imagemTituloUrl");
+  const imagemTituloMobileUrl = getStringConfig(config, "imagemTituloMobileUrl");
+  const imagemTituloAlt = getStringConfig(config, "imagemTituloAlt") || titulo;
+  const imagemTituloLarguraDesktop = getNumberConfig(
+    config,
+    "imagemTituloLarguraDesktop",
+    520
+  );
+  const imagemTituloLarguraMobile = getNumberConfig(
+    config,
+    "imagemTituloLarguraMobile",
+    300
+  );
+  const alinhamentoCabecalhoDesktop =
+    getStringConfig(config, "alinhamentoCabecalhoDesktop") ||
+    alinhamentoTextoDesktop;
+  const alinhamentoCabecalhoMobile =
+    getStringConfig(config, "alinhamentoCabecalhoMobile") ||
+    alinhamentoTextoMobile;
+  const alinhamentoCabecalhoAtual = isMobile
+    ? alinhamentoCabecalhoMobile
+    : alinhamentoCabecalhoDesktop;
+  const headerAlignPreviewClass = getTextAlignPreviewClass(
+    alinhamentoCabecalhoAtual
+  );
+  const headerJustifyClass =
+    alinhamentoCabecalhoAtual === "DIREITA"
+      ? "justify-end"
+      : alinhamentoCabecalhoAtual === "CENTRO"
+        ? "justify-center"
+        : "justify-start";
+  const logoHeaderUrl =
+    isMobile && logoTituloMobileUrl ? logoTituloMobileUrl : logoTituloUrl;
+  const imagemTituloHeaderUrl =
+    isMobile && imagemTituloMobileUrl ? imagemTituloMobileUrl : imagemTituloUrl;
+  const logoHeaderWidth = isMobile
+    ? logoTituloLarguraMobile
+    : logoTituloLarguraDesktop;
+  const imagemTituloHeaderWidth = isMobile
+    ? imagemTituloLarguraMobile
+    : imagemTituloLarguraDesktop;
   const itensColecoes = getItensColecoesConfig(config);
   const itensColecoesPreview =
     itensColecoes.length > 0
@@ -2901,6 +3002,141 @@ function RenderBlocoPreview({
       </div>
     );
   };
+  const colecoesHeaderText = (
+    <>
+      <RichTextInlineEditor
+        value={tituloRichText}
+        fallbackText={titulo}
+        placeholder="Clique para adicionar um título"
+        className="tracking-tight"
+        style={resolveTextStyle(tituloSecaoStyle)}
+        onChange={(richText, plainText) =>
+          onInlineTextChange(bloco.id, {
+            tituloRichText: richText,
+            titulo: plainText,
+          })
+        }
+      />
+      <RichTextInlineEditor
+        value={subtituloRichText}
+        fallbackText={texto || ""}
+        placeholder="Clique para adicionar um subtítulo"
+        multiline
+        className={`mt-3 leading-7 ${
+          corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+        }`}
+        style={resolveTextStyle(subtituloSecaoStyle)}
+        onChange={(richText, plainText) =>
+          onInlineTextChange(bloco.id, {
+            subtituloRichText: richText,
+            textoRichText: richText,
+            texto: plainText,
+            descricao: plainText,
+            subtitulo: plainText,
+          })
+        }
+      />
+    </>
+  );
+  const colecoesLogoHeader = logoHeaderUrl ? (
+    <div className={`flex ${headerJustifyClass}`}>
+      <img
+        src={logoHeaderUrl}
+        alt={logoTituloAlt}
+        className="block h-auto max-w-full object-contain"
+        style={{ width: `${logoHeaderWidth}px` }}
+      />
+    </div>
+  ) : (
+    <div
+      className={`inline-flex min-h-16 w-full max-w-sm items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 text-sm text-slate-400`}
+    >
+      Logo do título
+    </div>
+  );
+  const colecoesImagemTituloHeader = imagemTituloHeaderUrl ? (
+    <div className={`flex ${headerJustifyClass}`}>
+      <img
+        src={imagemTituloHeaderUrl}
+        alt={imagemTituloAlt}
+        className="block h-auto max-w-full object-contain"
+        style={{ width: `${imagemTituloHeaderWidth}px` }}
+      />
+    </div>
+  ) : (
+    <div className="inline-flex min-h-20 w-full max-w-md items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 text-sm text-slate-400">
+      Imagem de título
+    </div>
+  );
+  const colecoesHeaderPreview = (
+    <div className={`max-w-3xl ${headerAlignPreviewClass}`}>
+      {tipoCabecalhoColecoes === "LOGO" ? (
+        <>
+          {colecoesLogoHeader}
+          {subtituloRichText || texto ? (
+            <RichTextInlineEditor
+              value={subtituloRichText}
+              fallbackText={texto || ""}
+              placeholder="Clique para adicionar um subtítulo"
+              multiline
+              className={`mt-3 leading-7 ${
+                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+              }`}
+              style={resolveTextStyle(subtituloSecaoStyle)}
+              onChange={(richText, plainText) =>
+                onInlineTextChange(bloco.id, {
+                  subtituloRichText: richText,
+                  textoRichText: richText,
+                  texto: plainText,
+                  descricao: plainText,
+                  subtitulo: plainText,
+                })
+              }
+            />
+          ) : null}
+        </>
+      ) : tipoCabecalhoColecoes === "IMAGEM_TITULO" ? (
+        <>
+          {colecoesImagemTituloHeader}
+          {subtituloRichText || texto ? (
+            <RichTextInlineEditor
+              value={subtituloRichText}
+              fallbackText={texto || ""}
+              placeholder="Clique para adicionar um subtítulo"
+              multiline
+              className={`mt-3 leading-7 ${
+                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+              }`}
+              style={resolveTextStyle(subtituloSecaoStyle)}
+              onChange={(richText, plainText) =>
+                onInlineTextChange(bloco.id, {
+                  subtituloRichText: richText,
+                  textoRichText: richText,
+                  texto: plainText,
+                  descricao: plainText,
+                  subtitulo: plainText,
+                })
+              }
+            />
+          ) : null}
+        </>
+      ) : tipoCabecalhoColecoes === "TEXTO_LOGO" ? (
+        <div
+          className={
+            logoTituloPosicao === "AO_LADO"
+              ? `flex flex-col gap-4 lg:flex-row lg:items-center ${headerJustifyClass}`
+              : "space-y-4"
+          }
+        >
+          {logoTituloPosicao === "ACIMA" && colecoesLogoHeader}
+          <div>{colecoesHeaderText}</div>
+          {logoTituloPosicao !== "ACIMA" && colecoesLogoHeader}
+        </div>
+      ) : (
+        colecoesHeaderText
+      )}
+    </div>
+  );
 
   return (
     <section
@@ -3505,40 +3741,7 @@ function RenderBlocoPreview({
           >
             {layoutVisualColecoes === "GRID_EDITORIAL" ? (
               <>
-                <div className={`max-w-3xl ${textAlignPreviewClass}`}>
-                  <RichTextInlineEditor
-                    value={tituloRichText}
-                    fallbackText={titulo}
-                    placeholder="Clique para adicionar um título"
-                    className="tracking-tight"
-                    style={resolveTextStyle(tituloSecaoStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        tituloRichText: richText,
-                        titulo: plainText,
-                      })
-                    }
-                  />
-                  <RichTextInlineEditor
-                    value={subtituloRichText}
-                    fallbackText={texto || ""}
-                    placeholder="Clique para adicionar um subtítulo"
-                    multiline
-                    className={`mt-3 leading-7 ${
-                      corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
-                    }`}
-                    style={resolveTextStyle(subtituloSecaoStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        subtituloRichText: richText,
-                        textoRichText: richText,
-                        texto: plainText,
-                        descricao: plainText,
-                        subtitulo: plainText,
-                      })
-                    }
-                  />
-                </div>
+                {colecoesHeaderPreview}
 
                 <div
                   className="mt-7 grid gap-4"
@@ -3596,40 +3799,7 @@ function RenderBlocoPreview({
               </>
             ) : (
               <div className="grid gap-7 lg:grid-cols-[0.8fr_1.2fr]">
-                <div className={textAlignPreviewClass}>
-                  <RichTextInlineEditor
-                    value={tituloRichText}
-                    fallbackText={titulo}
-                    placeholder="Clique para adicionar um título"
-                    className="tracking-tight"
-                    style={resolveTextStyle(tituloSecaoStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        tituloRichText: richText,
-                        titulo: plainText,
-                      })
-                    }
-                  />
-                  <RichTextInlineEditor
-                    value={subtituloRichText}
-                    fallbackText={texto || ""}
-                    placeholder="Clique para adicionar um subtítulo"
-                    multiline
-                    className={`mt-3 leading-7 ${
-                      corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
-                    }`}
-                    style={resolveTextStyle(subtituloSecaoStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        subtituloRichText: richText,
-                        textoRichText: richText,
-                        texto: plainText,
-                        descricao: plainText,
-                        subtitulo: plainText,
-                      })
-                    }
-                  />
-                </div>
+                {colecoesHeaderPreview}
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {itensColecoesPreview.map((item, index) => {
@@ -4091,6 +4261,191 @@ function ColecoesCategoriasModalFields({
           className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
         />
       </SecaoRecolhivel>
+
+      <PainelSecao title="Cabeçalho">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Tipo de cabeçalho
+            </span>
+            <select
+              value={estado.tipoCabecalhoColecoes}
+              onChange={(event) =>
+                onChange({ tipoCabecalhoColecoes: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {TIPO_CABECALHO_COLECOES_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Posição do logo
+            </span>
+            <select
+              value={estado.logoTituloPosicao}
+              onChange={(event) =>
+                onChange({ logoTituloPosicao: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              disabled={estado.tipoCabecalhoColecoes !== "TEXTO_LOGO"}
+            >
+              {POSICAO_LOGO_TITULO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {(estado.tipoCabecalhoColecoes === "LOGO" ||
+          estado.tipoCabecalhoColecoes === "TEXTO_LOGO") && (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <UploadMidiaCampo
+                label="Logo desktop URL"
+                value={estado.logoTituloUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ logoTituloUrl: url })}
+                orientacao="Cole uma URL ou envie PNG, JPG, WebP. SVG pode ser usado por URL."
+              />
+              <UploadMidiaCampo
+                label="Logo mobile URL"
+                value={estado.logoTituloMobileUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ logoTituloMobileUrl: url })}
+                orientacao="Opcional. Quando vazio, usa o logo desktop."
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <input
+                value={estado.logoTituloAlt}
+                onChange={(event) => onChange({ logoTituloAlt: event.target.value })}
+                placeholder="Alt do logo"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-1"
+              />
+              <input
+                type="number"
+                min={40}
+                value={estado.logoTituloLarguraDesktop}
+                onChange={(event) =>
+                  onChange({
+                    logoTituloLarguraDesktop: Number(event.target.value) || 420,
+                  })
+                }
+                aria-label="Largura desktop do logo"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+              <input
+                type="number"
+                min={40}
+                value={estado.logoTituloLarguraMobile}
+                onChange={(event) =>
+                  onChange({
+                    logoTituloLarguraMobile: Number(event.target.value) || 260,
+                  })
+                }
+                aria-label="Largura mobile do logo"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {estado.tipoCabecalhoColecoes === "IMAGEM_TITULO" && (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <UploadMidiaCampo
+                label="Imagem de título desktop URL"
+                value={estado.imagemTituloUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ imagemTituloUrl: url })}
+                orientacao="Arte completa do título. PNG, JPG, WebP ou SVG por URL."
+              />
+              <UploadMidiaCampo
+                label="Imagem de título mobile URL"
+                value={estado.imagemTituloMobileUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ imagemTituloMobileUrl: url })}
+                orientacao="Opcional. Quando vazio, usa a imagem desktop."
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <input
+                value={estado.imagemTituloAlt}
+                onChange={(event) =>
+                  onChange({ imagemTituloAlt: event.target.value })
+                }
+                placeholder="Alt da imagem de título"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+              <input
+                type="number"
+                min={40}
+                value={estado.imagemTituloLarguraDesktop}
+                onChange={(event) =>
+                  onChange({
+                    imagemTituloLarguraDesktop:
+                      Number(event.target.value) || 520,
+                  })
+                }
+                aria-label="Largura desktop da imagem de título"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+              <input
+                type="number"
+                min={40}
+                value={estado.imagemTituloLarguraMobile}
+                onChange={(event) =>
+                  onChange({
+                    imagemTituloLarguraMobile:
+                      Number(event.target.value) || 300,
+                  })
+                }
+                aria-label="Largura mobile da imagem de título"
+                className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <select
+            value={estado.alinhamentoCabecalhoDesktop}
+            onChange={(event) =>
+              onChange({ alinhamentoCabecalhoDesktop: event.target.value })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Alinhamento desktop do cabeçalho"
+          >
+            {TEXT_ALIGN_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                Desktop: {preset.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={estado.alinhamentoCabecalhoMobile}
+            onChange={(event) =>
+              onChange({ alinhamentoCabecalhoMobile: event.target.value })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Alinhamento mobile do cabeçalho"
+          >
+            {TEXT_ALIGN_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                Mobile: {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </PainelSecao>
 
       <PainelSecao title="Layout">
         <div className="grid gap-4 md:grid-cols-2">
@@ -7254,6 +7609,47 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "estiloEtiqueta")
       ),
       itensColecoes: getItensColecoesConfig(config),
+      tipoCabecalhoColecoes: normalizarTipoCabecalhoColecoes(
+        getStringConfig(config, "tipoCabecalho")
+      ),
+      logoTituloUrl: getStringConfig(config, "logoTituloUrl"),
+      logoTituloMobileUrl: getStringConfig(config, "logoTituloMobileUrl"),
+      logoTituloAlt: getStringConfig(config, "logoTituloAlt"),
+      logoTituloLarguraDesktop: getNumberConfig(
+        config,
+        "logoTituloLarguraDesktop",
+        420
+      ),
+      logoTituloLarguraMobile: getNumberConfig(
+        config,
+        "logoTituloLarguraMobile",
+        260
+      ),
+      logoTituloPosicao: normalizarPosicaoLogoTitulo(
+        getStringConfig(config, "logoTituloPosicao")
+      ),
+      imagemTituloUrl: getStringConfig(config, "imagemTituloUrl"),
+      imagemTituloMobileUrl: getStringConfig(config, "imagemTituloMobileUrl"),
+      imagemTituloAlt: getStringConfig(config, "imagemTituloAlt"),
+      imagemTituloLarguraDesktop: getNumberConfig(
+        config,
+        "imagemTituloLarguraDesktop",
+        520
+      ),
+      imagemTituloLarguraMobile: getNumberConfig(
+        config,
+        "imagemTituloLarguraMobile",
+        300
+      ),
+      alinhamentoCabecalhoDesktop:
+        getStringConfig(config, "alinhamentoCabecalhoDesktop") ||
+        getStringConfig(config, "alinhamentoTextoDesktop") ||
+        "ESQUERDA",
+      alinhamentoCabecalhoMobile:
+        getStringConfig(config, "alinhamentoCabecalhoMobile") ||
+        getStringConfig(config, "alinhamentoTextoMobile") ||
+        getStringConfig(config, "alinhamentoCabecalhoDesktop") ||
+        "ESQUERDA",
       mediaCropDesktopX: getNumberConfig(config, "mediaCropDesktopX", 50),
       mediaCropDesktopY: getNumberConfig(config, "mediaCropDesktopY", 50),
       mediaCropMobileX: getNumberConfig(config, "mediaCropMobileX", 50),
@@ -7599,6 +7995,32 @@ export default function EditorVisualPaginaClient({
               estiloEtiqueta: editando.estiloEtiquetaColecoes,
               corFundo: editando.corFundo,
               espacamento: editando.espacamento,
+              tipoCabecalho: editando.tipoCabecalhoColecoes,
+              logoTituloUrl: editando.logoTituloUrl,
+              logoTituloMobileUrl: editando.logoTituloMobileUrl,
+              logoTituloAlt: editando.logoTituloAlt,
+              logoTituloLarguraDesktop: Math.max(
+                40,
+                Number(editando.logoTituloLarguraDesktop) || 420
+              ),
+              logoTituloLarguraMobile: Math.max(
+                40,
+                Number(editando.logoTituloLarguraMobile) || 260
+              ),
+              logoTituloPosicao: editando.logoTituloPosicao,
+              imagemTituloUrl: editando.imagemTituloUrl,
+              imagemTituloMobileUrl: editando.imagemTituloMobileUrl,
+              imagemTituloAlt: editando.imagemTituloAlt,
+              imagemTituloLarguraDesktop: Math.max(
+                40,
+                Number(editando.imagemTituloLarguraDesktop) || 520
+              ),
+              imagemTituloLarguraMobile: Math.max(
+                40,
+                Number(editando.imagemTituloLarguraMobile) || 300
+              ),
+              alinhamentoCabecalhoDesktop: editando.alinhamentoCabecalhoDesktop,
+              alinhamentoCabecalhoMobile: editando.alinhamentoCabecalhoMobile,
               itens: editando.itensColecoes.map((item, index) => ({
                 id: item.id,
                 tipoLink: item.tipoLink,
