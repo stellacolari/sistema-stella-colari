@@ -1356,14 +1356,14 @@ function getColecoesCabecalhoTitleClass(tamanho: string) {
   const normalized = normalizarTamanhoCabecalhoColecoes(tamanho);
 
   if (normalized === "GIGANTE") {
-    return "text-[clamp(4rem,9vw,9.5rem)] leading-[0.92] tracking-[-0.075em]";
+    return "text-[clamp(3rem,5.2vw,5.75rem)] leading-[0.94] tracking-[-0.055em]";
   }
 
   if (normalized === "MEDIO") {
-    return "text-[clamp(2.9rem,5.8vw,6rem)] leading-[0.95] tracking-[-0.06em]";
+    return "text-[clamp(2rem,3.4vw,3.75rem)] leading-[0.97] tracking-[-0.04em]";
   }
 
-  return "text-[clamp(3.5rem,7.4vw,8rem)] leading-[0.93] tracking-[-0.07em]";
+  return "text-[clamp(2.5rem,4.2vw,4.75rem)] leading-[0.95] tracking-[-0.05em]";
 }
 
 function getColecoesMosaicGridStyle(preset: string): CSSProperties {
@@ -1373,17 +1373,17 @@ function getColecoesMosaicGridStyle(preset: string): CSSProperties {
     return {
       display: "grid",
       gridTemplateColumns: "1.12fr 0.92fr",
-      gridTemplateRows: "repeat(2, minmax(235px, 1fr))",
-      gap: "22px",
+      gridTemplateRows: "repeat(2, minmax(150px, 1fr))",
+      gap: "16px",
       alignItems: "stretch",
     };
   }
 
   return {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
-    gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
-    gap: "22px",
+    gridTemplateColumns: "1.05fr 0.9fr 0.9fr 1.05fr",
+    gridTemplateRows: "repeat(2, minmax(170px, 1fr))",
+    gap: "16px",
     alignItems: "stretch",
   };
 }
@@ -1411,11 +1411,11 @@ function getColecoesMosaicItemStyle(index: number, preset: string): CSSPropertie
       gridRow: "1 / 3",
     },
     {
-      gridColumn: "2 / 3",
+      gridColumn: "2 / 4",
       gridRow: "1 / 2",
     },
     {
-      gridColumn: "3 / 4",
+      gridColumn: "4 / 5",
       gridRow: "1 / 3",
     },
     {
@@ -1423,8 +1423,8 @@ function getColecoesMosaicItemStyle(index: number, preset: string): CSSPropertie
       gridRow: "2 / 3",
     },
     {
-      gridColumn: "1 / 2",
-      gridRow: "3 / 4",
+      gridColumn: "3 / 4",
+      gridRow: "2 / 3",
     },
   ];
 
@@ -1436,19 +1436,19 @@ function getColecoesMosaicItemClass(index: number, preset: string) {
 
   if (normalized === "MOSAICO_3_DESTAQUE") {
     return index === 0
-      ? "min-h-[560px] aspect-[4/5] lg:aspect-auto"
-      : "min-h-[265px] aspect-[4/3] lg:aspect-auto";
+      ? "min-h-[320px] aspect-[4/5] lg:aspect-auto"
+      : "min-h-[150px] aspect-[4/3] lg:aspect-auto";
   }
 
   if (index === 0 || index === 2) {
-    return "min-h-[600px] aspect-[4/5] lg:aspect-auto";
+    return "min-h-[360px] aspect-[4/5] lg:aspect-auto";
   }
 
   if (index === 4) {
-    return "min-h-[285px] aspect-[4/3] lg:aspect-auto lg:hidden";
+    return "min-h-[170px] aspect-[4/3] lg:aspect-auto";
   }
 
-  return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
+  return "min-h-[170px] aspect-[4/3] lg:aspect-auto";
 }
 
 function getColecoesMosaicMobileClass() {
@@ -1463,10 +1463,10 @@ function getColecoesGridColumnsByPreset(preset: string, fallback: number) {
 }
 
 function getColecoesHeaderWidthClass(width: number) {
-  if (width <= 25) return "lg:grid-cols-[minmax(0,0.32fr)_minmax(0,1.68fr)]";
-  if (width <= 30) return "lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1.58fr)]";
-  if (width >= 40) return "lg:grid-cols-[minmax(0,0.66fr)_minmax(0,1.34fr)]";
-  return "lg:grid-cols-[minmax(0,0.52fr)_minmax(0,1.48fr)]";
+  if (width <= 25) return "lg:grid-cols-[minmax(180px,0.3fr)_minmax(0,1fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(200px,0.34fr)_minmax(0,1fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(240px,0.44fr)_minmax(0,1fr)]";
+  return "lg:grid-cols-[minmax(220px,0.38fr)_minmax(0,1fr)]";
 }
 
 function getColecoesLabelPositionClass(posicao: string) {
@@ -3191,16 +3191,6 @@ function RenderBlocoPreview({
       "exibirEtiqueta",
       estiloEtiquetaColecoes !== "OCULTA"
     ) && estiloEtiquetaColecoes !== "OCULTA";
-  const exibirBotaoEtiquetaColecoes = getBooleanConfig(
-    config,
-    "exibirBotaoEtiqueta",
-    false
-  );
-  const cardInteiroClicavelColecoes = getBooleanConfig(
-    config,
-    "cardInteiroClicavel",
-    true
-  );
   const tipoCabecalhoColecoes = normalizarTipoCabecalhoColecoes(
     getStringConfig(config, "tipoCabecalho")
   );
@@ -3323,7 +3313,7 @@ function RenderBlocoPreview({
         fallbackText={titulo}
         placeholder="Clique para adicionar um título"
         multiline
-        className={`whitespace-pre-line font-light ${getColecoesCabecalhoTitleClass(
+        className={`max-w-full break-words whitespace-pre-line font-light ${getColecoesCabecalhoTitleClass(
           tamanhoCabecalhoColecoes
         )}`}
         style={resolveTextStyle(tituloSecaoStyle)}
@@ -4201,13 +4191,15 @@ function RenderBlocoPreview({
               </>
             ) : (
               <div
-                className={`grid gap-7 lg:items-start ${getColecoesHeaderWidthClass(
+                className={`grid gap-8 lg:gap-10 lg:items-start ${getColecoesHeaderWidthClass(
                   larguraCabecalhoDesktopColecoes
                 )}`}
               >
-                <div className="lg:sticky lg:top-6">{colecoesHeaderPreview}</div>
+                <div className="min-w-0 max-w-full lg:sticky lg:top-6">
+                  {colecoesHeaderPreview}
+                </div>
 
-                <div>
+                <div className="min-w-0 max-w-full">
                   <div
                     className="hidden lg:grid"
                     style={getColecoesMosaicGridStyle(presetMosaicoColecoes)}
@@ -4649,12 +4641,16 @@ function ColecoesCategoriasModalFields({
         />
       </label>
 
-      <SecaoRecolhivel title="Textos / conteúdo">
-        <input
+      <SecaoRecolhivel title="Cabeçalho - texto principal">
+        <p className="text-xs text-slate-500">
+          Configure o texto principal da seção. Use Enter para escolher onde o título quebra linha.
+        </p>
+        <textarea
           value={estado.titulo}
           onChange={(event) => onChange({ titulo: event.target.value })}
-          placeholder="Clique para adicionar um título"
-          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          rows={3}
+          placeholder={"Coleções /\ncategorias"}
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
         />
         <textarea
           value={estado.texto}
@@ -4666,6 +4662,9 @@ function ColecoesCategoriasModalFields({
       </SecaoRecolhivel>
 
       <PainelSecao title="Cabeçalho">
+        <p className="mb-4 text-xs leading-5 text-slate-500">
+          Escolha se o cabeçalho será texto, logo, texto com logo ou uma arte de título.
+        </p>
         <div className="grid gap-4 md:grid-cols-2">
           <label>
             <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -4850,7 +4849,10 @@ function ColecoesCategoriasModalFields({
         </div>
       </PainelSecao>
 
-      <PainelSecao title="Layout">
+      <PainelSecao title="Layout da seção">
+        <p className="mb-4 text-xs leading-5 text-slate-500">
+          O preset visual define a composição principal. O bloco deve funcionar bem sem ajustar tamanhos item por item.
+        </p>
         <div className="grid gap-4 md:grid-cols-2">
           <select value={estado.layoutVisualColecoes} onChange={(event) => onChange({ layoutVisualColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Layout visual">
             {LAYOUT_VISUAL_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
@@ -4892,18 +4894,6 @@ function ColecoesCategoriasModalFields({
           </select>
           <select value={estado.larguraConteudoColecoes} onChange={(event) => onChange({ larguraConteudoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura">
             {LARGURA_CONTEUDO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-          </select>
-          <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Etiqueta">
-            {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-          </select>
-          <select value={estado.tamanhoEtiquetaColecoes} onChange={(event) => onChange({ tamanhoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tamanho da etiqueta">
-            {TAMANHO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Etiqueta: {preset.label}</option>)}
-          </select>
-          <select value={estado.posicaoEtiquetaColecoes} onChange={(event) => onChange({ posicaoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição da etiqueta">
-            {POSICAO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-          </select>
-          <select value={estado.larguraEtiquetaColecoes} onChange={(event) => onChange({ larguraEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura da etiqueta">
-            {LARGURA_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Largura: {preset.label}</option>)}
           </select>
           <select value={estado.posicaoCabecalhoMosaicoColecoes} onChange={(event) => onChange({ posicaoCabecalhoMosaicoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição do cabeçalho no mosaico">
             {POSICAO_CABECALHO_MOSAICO_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
@@ -4962,50 +4952,6 @@ function ColecoesCategoriasModalFields({
               className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
             />
           </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.exibirLinhaEtiquetaColecoes}
-              onChange={(event) =>
-                onChange({ exibirLinhaEtiquetaColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Exibir linha decorativa na etiqueta
-          </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.exibirEtiquetaColecoes}
-              onChange={(event) =>
-                onChange({ exibirEtiquetaColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Exibir etiqueta
-          </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.exibirBotaoEtiquetaColecoes}
-              onChange={(event) =>
-                onChange({ exibirBotaoEtiquetaColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Exibir botão da etiqueta
-          </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.cardInteiroClicavelColecoes}
-              onChange={(event) =>
-                onChange({ cardInteiroClicavelColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Card inteiro clicável
-          </label>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <select
@@ -5041,6 +4987,70 @@ function ColecoesCategoriasModalFields({
         onChange={(value) => onChange({ estiloBordaBotao: value })}
       />
 
+      <PainelSecao title="Etiquetas e clique">
+        <p className="mb-4 text-xs leading-5 text-slate-500">
+          Controle a caixa de texto dos cards e se o card inteiro funciona como link na loja pública.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={estado.exibirEtiquetaColecoes}
+              onChange={(event) =>
+                onChange({ exibirEtiquetaColecoes: event.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Exibir etiqueta
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={estado.exibirBotaoEtiquetaColecoes}
+              onChange={(event) =>
+                onChange({ exibirBotaoEtiquetaColecoes: event.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Exibir botão dentro da etiqueta
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={estado.cardInteiroClicavelColecoes}
+              onChange={(event) =>
+                onChange({ cardInteiroClicavelColecoes: event.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Card inteiro clicável
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={estado.exibirLinhaEtiquetaColecoes}
+              onChange={(event) =>
+                onChange({ exibirLinhaEtiquetaColecoes: event.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Exibir linha decorativa
+          </label>
+          <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Estilo da etiqueta">
+            {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.posicaoEtiquetaColecoes} onChange={(event) => onChange({ posicaoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição da etiqueta">
+            {POSICAO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.tamanhoEtiquetaColecoes} onChange={(event) => onChange({ tamanhoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tamanho da etiqueta">
+            {TAMANHO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Tamanho: {preset.label}</option>)}
+          </select>
+          <select value={estado.larguraEtiquetaColecoes} onChange={(event) => onChange({ larguraEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura da etiqueta">
+            {LARGURA_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Largura: {preset.label}</option>)}
+          </select>
+        </div>
+      </PainelSecao>
+
       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-950">Itens</h3>
@@ -5049,15 +5059,40 @@ function ColecoesCategoriasModalFields({
           </button>
         </div>
         <div className="mt-4 space-y-4">
-          {estado.itensColecoes.map((item, index) => (
+          {estado.itensColecoes.map((item, index) => {
+            const itemTituloResumo =
+              item.titulo || item.categoriaNome || `Item ${index + 1}`;
+            const itemTemMidia = Boolean(
+              item.imagemDesktopUrl ||
+                item.imagemMobileUrl ||
+                item.videoDesktopUrl ||
+                item.videoMobileUrl
+            );
+
+            return (
             <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-slate-950">Item {index + 1}</h4>
+                <div className="min-w-0">
+                  <h4 className="truncate text-sm font-semibold text-slate-950">
+                    Item {index + 1} — {itemTituloResumo}
+                  </h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      {item.tipoLink === "CATEGORIA" ? "Categoria" : "Link personalizado"}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      {itemTemMidia ? "Com imagem" : "Sem imagem"}
+                    </span>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => moveItem(item.id, "UP")} disabled={index === 0} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Subir item"><ArrowUp className="h-4 w-4" /></button>
                   <button type="button" onClick={() => moveItem(item.id, "DOWN")} disabled={index === estado.itensColecoes.length - 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Descer item"><ArrowDown className="h-4 w-4" /></button>
                   <button type="button" onClick={() => removeItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500" aria-label="Remover item"><Trash2 className="h-4 w-4" /></button>
                 </div>
+              </div>
+              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Link / destino
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <select value={item.tipoLink} onChange={(event) => updateItem(item.id, { tipoLink: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tipo de link">
@@ -5072,15 +5107,18 @@ function ColecoesCategoriasModalFields({
                 ) : (
                   <input value={item.linkUrl} onChange={(event) => updateItem(item.id, { linkUrl: event.target.value })} placeholder="/loja/colecao" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
                 )}
-                <select value={item.tamanhoMosaico} onChange={(event) => updateItem(item.id, { tamanhoMosaico: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-2" aria-label="Tamanho no mosaico">
-                  {TAMANHO_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                </select>
+              </div>
+              <div className="mb-3 mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Conteúdo
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <input value={item.titulo} onChange={(event) => updateItem(item.id, { titulo: event.target.value })} placeholder={item.categoriaNome || "Título da coleção"} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
                 <input value={item.textoLink} onChange={(event) => updateItem(item.id, { textoLink: event.target.value })} placeholder="Explorar" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
               </div>
               <textarea value={item.subtitulo} onChange={(event) => updateItem(item.id, { subtitulo: event.target.value })} rows={3} placeholder="Chamada da coleção" className="mt-4 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500" />
+              <div className="mb-3 mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Mídia
+              </div>
               <select
                 value={item.tipoMidia}
                 onChange={(event) =>
@@ -5138,7 +5176,14 @@ function ColecoesCategoriasModalFields({
                   orientacao="Opcional. Quando vazio, usa a mídia desktop."
                 />
               </div>
+              <SecaoRecolhivel title="Avançado do item">
+                <p className="text-xs text-slate-500">
+                  O preset visual já define o mosaico. Use estes campos apenas para exceções ou ajuste fino de enquadramento.
+                </p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <select value={item.tamanhoMosaico} onChange={(event) => updateItem(item.id, { tamanhoMosaico: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-2" aria-label="Tamanho no mosaico">
+                  {TAMANHO_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                </select>
                 <select value={item.mediaPositionDesktop} onChange={(event) => updatePosition(item.id, "DESKTOP", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop desktop">
                   {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
                 </select>
@@ -5146,8 +5191,10 @@ function ColecoesCategoriasModalFields({
                   {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
                 </select>
               </div>
+              </SecaoRecolhivel>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
     </div>

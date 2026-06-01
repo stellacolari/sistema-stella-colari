@@ -84,14 +84,14 @@ function getCabecalhoTitleClass(tamanho: string) {
   const normalized = normalizarTamanhoCabecalho(tamanho);
 
   if (normalized === "GIGANTE") {
-    return "text-[clamp(4rem,9vw,9.5rem)] leading-[0.92] tracking-[-0.075em]";
+    return "text-[clamp(3.5rem,6.5vw,7.5rem)] leading-[0.92] tracking-[-0.06em]";
   }
 
   if (normalized === "MEDIO") {
-    return "text-[clamp(2.9rem,5.8vw,6rem)] leading-[0.95] tracking-[-0.06em]";
+    return "text-[clamp(2.25rem,4vw,4rem)] leading-[0.96] tracking-[-0.04em]";
   }
 
-  return "text-[clamp(3.5rem,7.4vw,8rem)] leading-[0.93] tracking-[-0.07em]";
+  return "text-[clamp(3rem,5.4vw,5.75rem)] leading-[0.94] tracking-[-0.05em]";
 }
 
 function getMosaicGridStyle(preset: string): CSSProperties {
@@ -109,7 +109,7 @@ function getMosaicGridStyle(preset: string): CSSProperties {
 
   return {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
+    gridTemplateColumns: "1.05fr 0.9fr 0.9fr 1.05fr",
     gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
     gap: "22px",
     alignItems: "stretch",
@@ -139,11 +139,11 @@ function getMosaicItemStyle(index: number, preset: string): CSSProperties {
       gridRow: "1 / 3",
     },
     {
-      gridColumn: "2 / 3",
+      gridColumn: "2 / 4",
       gridRow: "1 / 2",
     },
     {
-      gridColumn: "3 / 4",
+      gridColumn: "4 / 5",
       gridRow: "1 / 3",
     },
     {
@@ -151,8 +151,8 @@ function getMosaicItemStyle(index: number, preset: string): CSSProperties {
       gridRow: "2 / 3",
     },
     {
-      gridColumn: "1 / 2",
-      gridRow: "3 / 4",
+      gridColumn: "3 / 4",
+      gridRow: "2 / 3",
     },
   ];
 
@@ -173,7 +173,7 @@ function getMosaicItemClass(index: number, preset: string) {
   }
 
   if (index === 4) {
-    return "min-h-[285px] aspect-[4/3] lg:aspect-auto lg:hidden";
+    return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
   }
 
   return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
@@ -187,10 +187,10 @@ function getGridColumnsByPreset(preset: string, fallback: number) {
 }
 
 function getHeaderWidthClass(width: number) {
-  if (width <= 25) return "lg:grid-cols-[minmax(0,0.32fr)_minmax(0,1.68fr)]";
-  if (width <= 30) return "lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1.58fr)]";
-  if (width >= 40) return "lg:grid-cols-[minmax(0,0.66fr)_minmax(0,1.34fr)]";
-  return "lg:grid-cols-[minmax(0,0.52fr)_minmax(0,1.48fr)]";
+  if (width <= 25) return "lg:grid-cols-[minmax(260px,0.3fr)_minmax(0,1fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(280px,0.34fr)_minmax(0,1fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(340px,0.44fr)_minmax(0,1fr)]";
+  return "lg:grid-cols-[minmax(300px,0.38fr)_minmax(0,1fr)]";
 }
 
 function getLabelPositionClass(posicao: string) {
@@ -418,7 +418,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
-          className={`whitespace-pre-line font-light ${getCabecalhoTitleClass(
+          className={`max-w-full break-words whitespace-pre-line font-light ${getCabecalhoTitleClass(
             tamanhoCabecalho
           )} ${colors.title}`}
         />
@@ -744,17 +744,19 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           </>
         ) : (
           <div
-            className={`grid gap-8 lg:items-start ${getHeaderWidthClass(
+            className={`grid gap-10 lg:gap-16 lg:items-start ${getHeaderWidthClass(
               larguraCabecalhoDesktop
             )}`}
           >
             {headerContent ? (
-              <div className="lg:sticky lg:top-24">
+              <div className="min-w-0 max-w-full lg:sticky lg:top-24">
                 {headerContent}
               </div>
             ) : null}
 
-            {itens.length > 0 ? renderMosaicItems() : null}
+            <div className="min-w-0 max-w-full">
+              {itens.length > 0 ? renderMosaicItems() : null}
+            </div>
           </div>
         )}
       </div>
