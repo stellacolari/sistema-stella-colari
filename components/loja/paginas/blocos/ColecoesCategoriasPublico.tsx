@@ -87,27 +87,40 @@ function getTamanhoMosaicoPreset(preset: string, index: number) {
 }
 
 function getTamanhoMosaicoEfetivo(item: Record<string, unknown>, index: number, preset: string) {
+  const normalized = normalizarPresetMosaico(preset);
+  if (
+    (normalized === "MOSAICO_5_EDITORIAL" && index < 5) ||
+    (normalized === "MOSAICO_3_DESTAQUE" && index < 3)
+  ) {
+    return getTamanhoMosaicoPreset(preset, index);
+  }
+
   const tamanho = getString(item, "tamanhoMosaico", "AUTO");
   return tamanho && tamanho !== "AUTO" ? tamanho : getTamanhoMosaicoPreset(preset, index);
 }
 
 function getMosaicGridClass(preset: string) {
   if (normalizarPresetMosaico(preset) === "MOSAICO_3_DESTAQUE") {
-    return "grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-5 md:grid-cols-3";
+    return "grid grid-cols-1 gap-5 md:grid-cols-5 md:auto-rows-[170px] lg:auto-rows-[190px]";
   }
 
-  return "grid auto-rows-[minmax(180px,auto)] grid-cols-1 gap-5 md:grid-cols-4";
+  return "grid grid-cols-1 gap-5 md:grid-cols-8 md:auto-rows-[150px] lg:auto-rows-[170px]";
 }
 
 function getMosaicItemClass(tamanho: string, index: number, preset: string) {
   const normalizedPreset = normalizarPresetMosaico(preset);
 
   if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
-    if (index === 0 || tamanho === "DESTAQUE") {
-      return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
-    }
+    if (index === 0) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
+    if (index === 1 || index === 2) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
+  }
 
-    return "aspect-[4/5] md:min-h-[300px]";
+  if (normalizedPreset === "MOSAICO_5_EDITORIAL") {
+    if (index === 0) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
+    if (index === 1) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
+    if (index === 2) return "aspect-[4/5] md:col-span-3 md:row-span-2 md:aspect-auto";
+    if (index === 3) return "aspect-[4/3] md:col-span-2 md:aspect-auto";
+    if (index === 4) return "aspect-[16/7] md:col-span-8 md:aspect-auto";
   }
 
   if (tamanho === "DESTAQUE") {
@@ -161,6 +174,12 @@ function getLabelWidthClass(largura: string) {
   if (largura === "LARGA") return "w-[min(82%,420px)]";
   if (largura === "MEDIA") return "w-[min(68%,320px)]";
   return "w-fit max-w-[78%]";
+}
+
+function getHeaderSizeClass(value: string) {
+  if (value === "GIGANTE") return "text-6xl md:text-8xl";
+  if (value === "MEDIO") return "text-4xl md:text-5xl";
+  return "text-5xl md:text-7xl";
 }
 
 function HeaderImage({
@@ -280,7 +299,11 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const presetMosaico = normalizarPresetMosaico(
     getString(config, "presetMosaico", "MOSAICO_5_EDITORIAL")
   );
+  const layoutVisualEfetivo = presetMosaico.startsWith("GRID_")
+    ? "GRID_EDITORIAL"
+    : layoutVisual;
   const tamanhoEtiqueta = getString(config, "tamanhoEtiqueta", "PEQUENA");
+  const tamanhoCabecalho = getString(config, "tamanhoCabecalho", "GRANDE");
   const posicaoEtiqueta = getString(
     config,
     "posicaoEtiqueta",
@@ -288,6 +311,17 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   );
   const larguraEtiqueta = getString(config, "larguraEtiqueta", "AUTO");
   const exibirLinhaEtiqueta = getBoolean(config, "exibirLinhaEtiqueta", true);
+  const exibirEtiqueta = getBoolean(
+    config,
+    "exibirEtiqueta",
+    estiloEtiqueta !== "OCULTA"
+  );
+  const exibirBotaoEtiqueta = getBoolean(
+    config,
+    "exibirBotaoEtiqueta",
+    false
+  );
+  const cardInteiroClicavel = getBoolean(config, "cardInteiroClicavel", true);
   const larguraCabecalhoDesktop = getNumber(
     config,
     "larguraCabecalhoDesktop",
@@ -347,6 +381,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const itens = getArray(config, "itens")
     .map(asConfig)
     .filter(itemHasPublicContent)
+    .filter((item) => exibirEtiqueta || itemHasMedia(item))
     .sort(
       (a, b) =>
         getNumber(a, "ordem", 0) - getNumber(b, "ordem", 0)
@@ -363,7 +398,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
-          className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
+          className={`${getHeaderSizeClass(
+            tamanhoCabecalho
+          )} whitespace-pre-line font-light leading-[0.92] tracking-tight ${colors.title}`}
         />
       ) : null}
       {hasSubtitulo ? (
@@ -452,10 +489,27 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
     const subtituloItem = getString(item, "subtitulo");
     const textoLink = getString(item, "textoLink", "Explorar");
     const href = getItemHref(item);
+    const hasTituloItem = hasTextContent(
+      getRichText(item, "tituloRichText"),
+      tituloItem
+    );
+    const hasSubtituloItem = hasTextContent(
+      getRichText(item, "subtituloRichText"),
+      subtituloItem
+    );
+
+    if (
+      !hasTituloItem &&
+      !hasSubtituloItem &&
+      !(exibirBotaoEtiqueta && textoLink && href)
+    ) {
+      return null;
+    }
+
     const wrapperClass = overlay
       ? `absolute z-10 bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur ${getLabelPositionClass(
           posicaoEtiqueta
-        )} ${getLabelSizeClass(tamanhoEtiqueta)} ${getLabelWidthClass(larguraEtiqueta)}`
+        )} ${getLabelSizeClass(tamanhoEtiqueta)} ${getLabelWidthClass(larguraEtiqueta)} break-words`
       : "pt-5";
 
     return (
@@ -483,12 +537,21 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               : `mt-2 text-sm leading-6 ${colors.body}`
           }
         />
-        {textoLink && href ? (
-          <span
-            className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
-          >
-            {textoLink}
-          </span>
+        {exibirBotaoEtiqueta && textoLink && href ? (
+          cardInteiroClicavel ? (
+            <span
+              className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
+            >
+              {textoLink}
+            </span>
+          ) : (
+            <Link
+              href={href}
+              className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
+            >
+              {textoLink}
+            </Link>
+          )
         ) : null}
       </div>
     );
@@ -505,7 +568,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           larguraConteudo === "TOTAL" ? "px-0" : "px-5 sm:px-6 lg:px-8"
         }`}
       >
-        {layoutVisual === "GRID_EDITORIAL" ? (
+        {layoutVisualEfetivo === "GRID_EDITORIAL" ? (
           <>
             {headerContent}
 
@@ -525,20 +588,23 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     getString(item, "titulo") || getString(item, "categoriaNome");
                   const href = getItemHref(item);
                   const content = (
-                    <article>
+                    <article
+                      className="stella-reveal-card"
+                      style={{ animationDelay: `${index * 80}ms` }}
+                    >
                       <ItemMedia
                         item={item}
                         alt={tituloItem}
                         className="aspect-[4/5]"
                       />
 
-                      {estiloEtiqueta !== "OCULTA" ? (
+                      {exibirEtiqueta ? (
                         renderItemLabel(item, false)
                       ) : null}
                     </article>
                   );
 
-                  return href ? (
+                  return href && cardInteiroClicavel ? (
                     <Link
                       key={getString(item, "id", `colecao-${index}`)}
                       href={href}
@@ -570,22 +636,38 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     index,
                     presetMosaico
                   );
+                  const hasMedia = itemHasMedia(item);
+                  const labelSobreposta =
+                    exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+                  const itemFrameClass = getMosaicItemClass(
+                    tamanhoEfetivo,
+                    index,
+                    presetMosaico
+                  );
                   const content = (
                     <article
-                      className={`relative min-w-0 overflow-hidden ${getMosaicItemClass(
-                        tamanhoEfetivo,
-                        index,
-                        presetMosaico
-                      )}`}
+                      className="stella-reveal-card relative min-w-0"
+                      style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      <ItemMedia item={item} alt={tituloItem} className="h-full min-h-full" />
-                      {estiloEtiqueta !== "OCULTA"
-                        ? renderItemLabel(item, estiloEtiqueta === "SOBREPOSTA")
+                      {hasMedia ? (
+                        <div
+                          className={`relative overflow-hidden ${itemFrameClass}`}
+                        >
+                          <ItemMedia
+                            item={item}
+                            alt={tituloItem}
+                            className="h-full min-h-full"
+                          />
+                          {labelSobreposta ? renderItemLabel(item, true) : null}
+                        </div>
+                      ) : null}
+                      {exibirEtiqueta && !labelSobreposta
+                        ? renderItemLabel(item, false)
                         : null}
                     </article>
                   );
 
-                  return href ? (
+                  return href && cardInteiroClicavel ? (
                     <Link
                       key={getString(item, "id", `colecao-${index}`)}
                       href={href}
@@ -625,26 +707,38 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     index,
                     presetMosaico
                   );
+                  const hasMedia = itemHasMedia(item);
+                  const labelSobreposta =
+                    exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+                  const itemFrameClass = getMosaicItemClass(
+                    tamanhoEfetivo,
+                    index,
+                    presetMosaico
+                  );
                   const content = (
                     <article
-                      className={`relative min-w-0 overflow-hidden ${getMosaicItemClass(
-                        tamanhoEfetivo,
-                        index,
-                        presetMosaico
-                      )}`}
+                      className="stella-reveal-card relative min-w-0"
+                      style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      <ItemMedia
-                        item={item}
-                        alt={tituloItem}
-                        className="h-full min-h-full"
-                      />
-                      {estiloEtiqueta !== "OCULTA"
-                        ? renderItemLabel(item, estiloEtiqueta === "SOBREPOSTA")
+                      {hasMedia ? (
+                        <div
+                          className={`relative overflow-hidden ${itemFrameClass}`}
+                        >
+                          <ItemMedia
+                            item={item}
+                            alt={tituloItem}
+                            className="h-full min-h-full"
+                          />
+                          {labelSobreposta ? renderItemLabel(item, true) : null}
+                        </div>
+                      ) : null}
+                      {exibirEtiqueta && !labelSobreposta
+                        ? renderItemLabel(item, false)
                         : null}
                     </article>
                   );
 
-                  return href ? (
+                  return href && cardInteiroClicavel ? (
                     <Link
                       key={getString(item, "id", `colecao-${index}`)}
                       href={href}
