@@ -130,6 +130,9 @@ function getConfigPadrao(tipo: string) {
       mediaPositionMobile: "center center",
       alturaDesktop: 520,
       alturaMobile: 320,
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       subtituloStyle: getTextStylePadrao("subtituloStyle"),
       botaoPrimarioStyle: getTextStylePadrao("botaoPrimarioStyle"),
@@ -151,7 +154,9 @@ function getConfigPadrao(tipo: string) {
       texto: "Texto de apoio da seção.",
       alinhamento: "CENTRO",
       fundo: "BRANCO",
-      espacamento: "MEDIO",
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
@@ -191,6 +196,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "CENTRO",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       subtituloStyle: getTextStylePadrao("subtituloStyle"),
       nomeProdutoStyle: getTextStylePadrao("nomeProdutoStyle"),
@@ -242,6 +249,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "CENTRO",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       textoStyle: getTextStylePadrao("textoStyle"),
       botaoStyle: getTextStylePadrao("botaoStyle"),
@@ -283,6 +292,8 @@ function getConfigPadrao(tipo: string) {
       estiloBordaBotao: "PILULA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloSecaoStyle: getTextStylePadrao("tituloSecaoStyle"),
       subtituloSecaoStyle: getTextStylePadrao("subtituloSecaoStyle"),
       cardTituloStyle: getTextStylePadrao("cardTituloStyle"),
@@ -363,7 +374,7 @@ function getConfigPadrao(tipo: string) {
       alinhamentoCabecalhoDesktop: "ESQUERDA",
       alinhamentoCabecalhoMobile: "ESQUERDA",
       layoutVisual: "MOSAICO_EDITORIAL",
-      presetMosaico: "MOSAICO_5_EDITORIAL",
+      presetMosaico: "MOSAICO_4_EDITORIAL",
       tamanhoCabecalho: "GRANDE",
       exibirEtiqueta: true,
       exibirBotaoEtiqueta: false,
@@ -373,6 +384,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "ESQUERDA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       larguraConteudo: "LARGA",
       colunasDesktop: 4,
       colunasTablet: 2,
@@ -385,7 +398,7 @@ function getConfigPadrao(tipo: string) {
       larguraCabecalhoDesktop: 32,
       posicaoCabecalhoMosaico: "LATERAL",
       estiloBordaBotao: "RETO",
-      itens: [1, 2, 3, 4, 5].map(criarItem),
+      itens: [1, 2, 3, 4].map(criarItem),
     };
   }
 
@@ -416,6 +429,8 @@ function getConfigPadrao(tipo: string) {
       estiloBordaBotao: "PILULA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       exibirMidia: false,
       tipoMidia: "IMAGEM",
       imagemUrl: "",
@@ -449,7 +464,9 @@ function getConfigPadrao(tipo: string) {
       descricao: "",
       categorias: [],
       colunas: 3,
-      espacamento: "MEDIO",
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
@@ -469,7 +486,9 @@ function getConfigPadrao(tipo: string) {
       alinhamento: "CENTRO",
       fundo: "CLARO",
       tamanhoTitulo: "GRANDE",
-      espacamento: "GRANDE",
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       largura: "NORMAL",
     };
   }
@@ -480,7 +499,9 @@ function getConfigPadrao(tipo: string) {
       texto: "",
       alinhamento: "CENTRO",
       fundo: "BRANCO",
-      espacamento: "MEDIO",
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
@@ -489,7 +510,9 @@ function getConfigPadrao(tipo: string) {
       titulo: "Explore por categoria",
       descricao: "Veja as subcategorias disponíveis.",
       colunas: 4,
-      espacamento: "MEDIO",
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
@@ -558,7 +581,9 @@ function getConfigPadrao(tipo: string) {
     mensagemSucesso: "Recebemos suas informações com sucesso.",
     alinhamento: "CENTRO",
     fundo: "BRANCO",
-    espacamento: "MEDIO",
+    espacamento: "PADRAO",
+    espacamentoVertical: "PADRAO",
+    espacamentoHorizontal: "PADRAO",
     largura: "NORMAL",
     mostrarNome: true,
     mostrarTelefone: true,
@@ -575,7 +600,9 @@ if (tipo === "FAQ") {
     estilo: "ACORDEAO",
     alinhamento: "CENTRO",
     fundo: "BRANCO",
-    espacamento: "MEDIO",
+    espacamento: "PADRAO",
+    espacamentoVertical: "PADRAO",
+    espacamentoHorizontal: "PADRAO",
     largura: "NORMAL",
     itens: [
       {

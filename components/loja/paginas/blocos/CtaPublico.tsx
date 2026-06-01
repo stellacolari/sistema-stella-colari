@@ -222,13 +222,11 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
     if (safeLayout === "SOBRE_MIDIA" && media) {
       return (
         <section
-          className={`relative overflow-hidden ${viewportClass} ${getSpacingClass(
-            getString(config, "espacamento", "PADRAO")
-          )}`}
+          className={`relative overflow-hidden ${viewportClass} ${getSpacingClass(config)}`}
         >
           <div className="absolute inset-0">{media}</div>
           <div className="absolute inset-0 bg-slate-950/45" />
-          <div className="relative z-10 mx-auto flex min-h-[480px] max-w-7xl px-5 py-16 sm:px-6 lg:px-8">
+          <div className="relative z-10 mx-auto flex min-h-[480px] max-w-7xl py-16">
             <div
               className={`flex w-full flex-col justify-center text-white ${getAlignmentClass(
                 alinhamento
@@ -243,12 +241,10 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
 
     return (
       <section
-        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(
-          getString(config, "espacamento", "PADRAO")
-        )}`}
+        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
       >
         <div
-          className={`mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:items-center lg:gap-12 lg:px-8 ${
+          className={`mx-auto grid max-w-7xl gap-8 lg:items-center lg:gap-12 ${
             desktop && hasMedia && safeLayout !== "TEXTO_CENTRALIZADO"
               ? "lg:grid-cols-2"
               : "grid-cols-1"

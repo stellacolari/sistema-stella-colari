@@ -64,6 +64,7 @@ function normalizarPresetMosaico(value: string) {
   if (
     [
       "MOSAICO_5_EDITORIAL",
+      "MOSAICO_4_EDITORIAL",
       "MOSAICO_3_DESTAQUE",
       "GRID_4_EDITORIAL",
       "GRID_3_EDITORIAL",
@@ -72,7 +73,7 @@ function normalizarPresetMosaico(value: string) {
     return value;
   }
 
-  return "MOSAICO_5_EDITORIAL";
+  return "MOSAICO_4_EDITORIAL";
 }
 
 function normalizarTamanhoCabecalho(value: string) {
@@ -94,14 +95,24 @@ function getCabecalhoTitleClass(tamanho: string) {
   return "text-[clamp(3rem,5.4vw,5.75rem)] leading-[0.94] tracking-[-0.05em]";
 }
 
-function getMosaicGridStyle(preset: string): CSSProperties {
+function getMosaicGridStyle(preset: string, itemCount = 4): CSSProperties {
   const normalized = normalizarPresetMosaico(preset);
 
-  if (normalized === "MOSAICO_3_DESTAQUE") {
+  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
     return {
       display: "grid",
       gridTemplateColumns: "1.12fr 0.92fr",
       gridTemplateRows: "repeat(2, minmax(235px, 1fr))",
+      gap: "22px",
+      alignItems: "stretch",
+    };
+  }
+
+  if (normalized === "MOSAICO_4_EDITORIAL") {
+    return {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
       gap: "22px",
       alignItems: "stretch",
     };
@@ -116,10 +127,10 @@ function getMosaicGridStyle(preset: string): CSSProperties {
   };
 }
 
-function getMosaicItemStyle(index: number, preset: string): CSSProperties {
+function getMosaicItemStyle(index: number, preset: string, itemCount = 4): CSSProperties {
   const normalized = normalizarPresetMosaico(preset);
 
-  if (normalized === "MOSAICO_3_DESTAQUE") {
+  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
     if (index === 0) {
       return {
         gridColumn: "1 / 2",
@@ -131,6 +142,33 @@ function getMosaicItemStyle(index: number, preset: string): CSSProperties {
       gridColumn: "2 / 3",
       gridRow: `${index} / ${index + 1}`,
     };
+  }
+
+  if (normalized === "MOSAICO_4_EDITORIAL") {
+    const map: CSSProperties[] = [
+      {
+        gridColumn: "1 / 2",
+        gridRow: "1 / 3",
+      },
+      {
+        gridColumn: "2 / 3",
+        gridRow: "1 / 2",
+      },
+      {
+        gridColumn: "2 / 3",
+        gridRow: "2 / 3",
+      },
+      {
+        gridColumn: "3 / 4",
+        gridRow: "1 / 3",
+      },
+      {
+        gridColumn: "1 / 4",
+        gridRow: "3 / 4",
+      },
+    ];
+
+    return map[index] || {};
   }
 
   const map: CSSProperties[] = [
@@ -159,13 +197,25 @@ function getMosaicItemStyle(index: number, preset: string): CSSProperties {
   return map[index] || {};
 }
 
-function getMosaicItemClass(index: number, preset: string) {
+function getMosaicItemClass(index: number, preset: string, itemCount = 4) {
   const normalized = normalizarPresetMosaico(preset);
 
-  if (normalized === "MOSAICO_3_DESTAQUE") {
+  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
     return index === 0
       ? "min-h-[560px] aspect-[4/5] lg:aspect-auto"
       : "min-h-[265px] aspect-[4/3] lg:aspect-auto";
+  }
+
+  if (normalized === "MOSAICO_4_EDITORIAL") {
+    if (index === 0 || index === 3) {
+      return "min-h-[600px] aspect-[4/5] lg:aspect-auto";
+    }
+
+    if (index === 4) {
+      return "min-h-[285px] aspect-[16/7] lg:aspect-auto";
+    }
+
+    return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
   }
 
   if (index === 0 || index === 2) {
@@ -322,7 +372,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const layoutVisual = getString(config, "layoutVisual", "MOSAICO_EDITORIAL");
   const estiloEtiqueta = getString(config, "estiloEtiqueta", "SOBREPOSTA");
   const presetMosaico = normalizarPresetMosaico(
-    getString(config, "presetMosaico", "MOSAICO_5_EDITORIAL")
+    getString(config, "presetMosaico", "MOSAICO_4_EDITORIAL")
   );
   const layoutVisualEfetivo = presetMosaico.startsWith("GRID_")
     ? "GRID_EDITORIAL"
@@ -609,7 +659,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
 
   const renderMosaicItems = () => (
     <div className="mt-10 lg:mt-0">
-      <div className="hidden lg:grid" style={getMosaicGridStyle(presetMosaico)}>
+      <div className="hidden lg:grid" style={getMosaicGridStyle(presetMosaico, itens.length)}>
         {itens.map((item, index) => {
           const tituloItem =
             getString(item, "titulo") || getString(item, "categoriaNome");
@@ -621,7 +671,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             <article
               className="stella-reveal-card relative min-w-0"
               style={{
-                ...getMosaicItemStyle(index, presetMosaico),
+                ...getMosaicItemStyle(index, presetMosaico, itens.length),
                 animationDelay: `${index * 90}ms`,
               }}
             >
@@ -629,7 +679,8 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                 <div
                   className={`relative h-full overflow-hidden ${getMosaicItemClass(
                     index,
-                    presetMosaico
+                    presetMosaico,
+                    itens.length
                   )}`}
                 >
                   <ItemMedia
@@ -709,15 +760,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
 
   return (
     <section
-      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(
-        getString(config, "espacamento", "PADRAO")
-      )}`}
+      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
     >
-      <div
-        className={`mx-auto ${widthClass} ${
-          larguraConteudo === "TOTAL" ? "px-0" : "px-5 sm:px-6 lg:px-8"
-        }`}
-      >
+      <div className={`mx-auto ${widthClass}`}>
         {layoutVisualEfetivo === "GRID_EDITORIAL" ? (
           <>
             {headerContent}

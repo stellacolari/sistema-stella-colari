@@ -99,9 +99,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   function renderTextoSobreImagem(viewportClass = "") {
     return (
       <section
-        className={`relative overflow-hidden ${viewportClass} ${getSpacingClass(
-          getString(config, "espacamento", "PADRAO")
-        )}`}
+        className={`relative overflow-hidden ${viewportClass} ${getSpacingClass(config)}`}
       >
         <div className="absolute inset-0">
           <PublicMediaRenderer
@@ -118,7 +116,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
         </div>
         <div className="absolute inset-0 bg-slate-950/42" />
 
-        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-5 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center">
           <div className={`max-w-2xl text-white ${textAlignClass}`}>
             {hasTitulo ? (
               <PublicRichTextRenderer
@@ -160,13 +158,11 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
 
     return (
       <section
-        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(
-          getString(config, "espacamento", "PADRAO")
-        )}`}
+        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
       >
       <div
         className={`mx-auto grid gap-8 lg:items-center lg:gap-12 ${
-          fullBleed ? "max-w-none px-0" : "max-w-7xl px-5 sm:px-6 lg:px-8"
+          fullBleed ? "max-w-none px-0" : "max-w-7xl"
         } ${getDesktopLayoutClass(
           hasMedia ? layoutDesktop : "IMAGEM_ACIMA"
         )}`}
@@ -196,7 +192,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
           className={`${
             hasMedia
               ? fullBleed
-                ? "px-5 sm:px-6 lg:px-8"
+                ? ""
                 : ""
               : "mx-auto max-w-3xl"
           } ${textAlignClass}`}

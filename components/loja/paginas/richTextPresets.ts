@@ -45,6 +45,20 @@ export const RICH_TEXT_LETTER_SPACING_PRESETS: RichTextCssPreset[] = [
   { value: "ALTO", label: "Alto", css: "0.14em" },
 ];
 
+export const RICH_TEXT_LINE_HEIGHT_PRESETS: RichTextCssPreset[] = [
+  { value: "COMPACTO", label: "Linha compacta", css: "1" },
+  { value: "NORMAL", label: "Linha normal", css: "1.15" },
+  { value: "RESPIRADO", label: "Linha respirada", css: "1.35" },
+  { value: "AMPLO", label: "Linha ampla", css: "1.6" },
+];
+
+export const RICH_TEXT_PARAGRAPH_SPACING_PRESETS: RichTextCssPreset[] = [
+  { value: "NENHUM", label: "Parágrafo sem espaço", css: "0" },
+  { value: "PEQUENO", label: "Parágrafo pequeno", css: "0.35em" },
+  { value: "PADRAO", label: "Parágrafo padrão", css: "0.65em" },
+  { value: "GRANDE", label: "Parágrafo grande", css: "1em" },
+];
+
 export function getRichTextPresetCss(
   presets: RichTextCssPreset[],
   value: string

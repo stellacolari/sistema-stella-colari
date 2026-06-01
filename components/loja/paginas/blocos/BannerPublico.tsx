@@ -13,6 +13,7 @@ import {
   hasTextContent,
   getMediaPosition,
   getRichText,
+  getSpacingClass,
   getString,
   type BlocoPublicoProps,
 } from "@/components/loja/paginas/blocos/utils";
@@ -148,7 +149,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
       <div className={`absolute inset-0 ${getOverlayClass(overlay)}`} />
 
       {hasConteudo ? (
-        <div className="relative z-10 mx-auto flex min-h-[inherit] max-w-7xl px-5 py-16 sm:px-6 lg:px-8">
+        <div className={`relative z-10 mx-auto flex min-h-[inherit] max-w-7xl ${getSpacingClass(config)}`}>
           <div
             className={`flex w-full flex-col justify-center ${getContentAlignClass(
               alinhamento

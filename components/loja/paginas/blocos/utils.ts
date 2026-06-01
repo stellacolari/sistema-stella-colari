@@ -175,11 +175,57 @@ export function hasTextContent(richText: unknown, fallback: string) {
   return fallback.trim().length > 0;
 }
 
-export function getSpacingClass(value: string) {
-  if (value === "COMPACTO" || value === "PEQUENO") return "py-10";
-  if (value === "AMPLO" || value === "GRANDE") return "py-20";
+export function resolveSpacingValue(value: unknown, fallback = "PADRAO") {
+  if (typeof value !== "string" || !value.trim()) return fallback;
 
-  return "py-14";
+  if (value === "COMPACTO") return "PEQUENO";
+  if (value === "AMPLO") return "GRANDE";
+  if (value === "MEDIO") return "PADRAO";
+  if (["PEQUENO", "PADRAO", "GRANDE", "EXTRA"].includes(value)) return value;
+
+  return fallback;
+}
+
+export function resolveVerticalSpacingClass(value: unknown) {
+  const normalized = resolveSpacingValue(value);
+
+  if (normalized === "PEQUENO") return "py-8 md:py-10";
+  if (normalized === "GRANDE") return "py-16 md:py-24";
+  if (normalized === "EXTRA") return "py-24 md:py-32";
+
+  return "py-12 md:py-16";
+}
+
+export function resolveHorizontalSpacingClass(value: unknown) {
+  const normalized = resolveSpacingValue(value);
+
+  if (normalized === "PEQUENO") return "px-4";
+  if (normalized === "GRANDE") return "px-6 md:px-12";
+  if (normalized === "EXTRA") return "px-8 md:px-20";
+
+  return "px-5 md:px-8";
+}
+
+export function resolveSpacingClasses(config: Record<string, unknown>) {
+  const fallbackSpacing = resolveSpacingValue(config.espacamento);
+  const vertical = resolveSpacingValue(
+    config.espacamentoVertical,
+    fallbackSpacing
+  );
+  const horizontal = resolveSpacingValue(
+    config.espacamentoHorizontal,
+    fallbackSpacing
+  );
+
+  return `${resolveVerticalSpacingClass(vertical)} ${resolveHorizontalSpacingClass(horizontal)}`;
+}
+
+export function getSpacingClass(value: string | Record<string, unknown>) {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return resolveSpacingClasses(value);
+  }
+
+  return `${resolveVerticalSpacingClass(value)} ${resolveHorizontalSpacingClass("PADRAO")}`;
 }
 
 export function getBackgroundClass(value: string) {

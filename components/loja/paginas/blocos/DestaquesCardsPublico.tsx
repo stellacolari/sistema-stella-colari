@@ -128,8 +128,8 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
   }
 
   return (
-    <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
-      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+    <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}>
+      <div className="mx-auto max-w-7xl">
         <div className={`mx-auto max-w-3xl ${sectionAlign}`}>
           {hasTituloSecao ? (
             <PublicRichTextRenderer

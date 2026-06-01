@@ -3,6 +3,8 @@ import {
   RICH_TEXT_COLOR_PRESETS,
   RICH_TEXT_FONT_PRESETS,
   RICH_TEXT_LETTER_SPACING_PRESETS,
+  RICH_TEXT_LINE_HEIGHT_PRESETS,
+  RICH_TEXT_PARAGRAPH_SPACING_PRESETS,
   RICH_TEXT_SIZE_PRESETS,
   RICH_TEXT_WEIGHT_PRESETS,
   getRichTextPresetCss,
@@ -139,6 +141,29 @@ function resolveLetterSpacing(value: unknown) {
   return sanitizeCssValue(letterSpacing, /^-?\d{1,2}(\.\d{1,2})?(em|rem|px)$/);
 }
 
+function resolveLineHeight(value: unknown) {
+  const lineHeight = getString(value).trim();
+
+  const presetLineHeight = resolvePreset(RICH_TEXT_LINE_HEIGHT_PRESETS, lineHeight);
+
+  if (presetLineHeight) return presetLineHeight;
+
+  return sanitizeCssValue(lineHeight, /^(\d{1,2}(\.\d{1,2})?|normal)$/);
+}
+
+function resolveParagraphSpacing(value: unknown) {
+  const paragraphSpacing = getString(value).trim();
+
+  const presetParagraphSpacing = resolvePreset(
+    RICH_TEXT_PARAGRAPH_SPACING_PRESETS,
+    paragraphSpacing
+  );
+
+  if (presetParagraphSpacing) return presetParagraphSpacing;
+
+  return sanitizeCssValue(paragraphSpacing, /^(\d{1,2}(\.\d{1,2})?(em|rem|px)|0)$/);
+}
+
 function sanitizeHref(value: unknown) {
   const href = getString(value).trim();
 
@@ -167,12 +192,14 @@ function getTextStyleFromMark(mark: PublicRichTextMark): CSSProperties {
   const fontSize = resolveFontSize(attrs.fontSize);
   const fontWeight = resolveFontWeight(attrs.fontWeight);
   const letterSpacing = resolveLetterSpacing(attrs.letterSpacing);
+  const lineHeight = resolveLineHeight(attrs.lineHeight);
 
   if (color) style.color = color;
   if (fontFamily) style.fontFamily = fontFamily;
   if (fontSize) style.fontSize = fontSize;
   if (fontWeight) style.fontWeight = fontWeight;
   if (letterSpacing) style.letterSpacing = letterSpacing;
+  if (lineHeight) style.lineHeight = lineHeight;
 
   return style;
 }
@@ -261,8 +288,15 @@ function renderNode(
   }
 
   if (node.type === "paragraph") {
+    const attrs = isRecord(node.attrs) ? node.attrs : {};
+    const paragraphSpacing = resolveParagraphSpacing(attrs.paragraphSpacing);
+
     return (
-      <p key={key} className={paragraphClassName}>
+      <p
+        key={key}
+        className={paragraphClassName}
+        style={paragraphSpacing ? { marginBottom: paragraphSpacing } : undefined}
+      >
         {children}
       </p>
     );
