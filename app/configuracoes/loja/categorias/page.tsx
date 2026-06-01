@@ -40,5 +40,4 @@ return (
 
     <CategoriasLojaClient categoriasIniciais={categorias} />
   </main>
-);
-}
+)}

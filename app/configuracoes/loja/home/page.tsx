@@ -124,8 +124,19 @@ export default async function ConfiguracoesHomeLojaPage() {
       }
     : null;
 
-<LojaConfigHeader
-  title="Home da loja"
-  description="Configure categorias em destaque, seções de produtos, bloco promocional e textos institucionais da loja pública."
-/>
-}
+return (
+  <main className="space-y-6">
+    <LojaConfigHeader
+      title="Home da loja"
+      description="Configure categorias em destaque, seções de produtos, bloco promocional e textos institucionais da loja pública."
+    />
+
+    <HomeLojaClient
+      categoriasDisponiveis={categoriasDisponiveis}
+      categoriasHome={categoriasHome}
+      secoes={secoes}
+      bloco={bloco}
+      garantia={garantia}
+    />
+  </main>
+)}

@@ -124,9 +124,14 @@ export default async function PaginasLojaPage() {
     atualizadoEm: pagina.atualizadoEm.toISOString(),
   }));
 
-<LojaConfigHeader
-  title="Construtor de páginas"
-  description="Crie páginas gerais, páginas de categoria, landing pages, campanhas e templates reutilizáveis com blocos configuráveis."
-  actions={<CriarTemplateCategoriaButton />}
-/>
-}
+return (
+  <main className="space-y-6">
+    <LojaConfigHeader
+      title="Construtor de páginas"
+      description="Crie páginas gerais, páginas de categoria, landing pages, campanhas e templates reutilizáveis com blocos configuráveis."
+      actions={<CriarTemplateCategoriaButton />}
+    />
+
+    <PaginasLojaClient paginas={paginas} categorias={categorias} />
+  </main>
+)}
