@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent, DragEvent, ReactNode } from "react";
+import type { CSSProperties, ChangeEvent, DragEvent, ReactNode } from "react";
 import { useMemo, useRef, useState, useTransition } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -68,11 +68,34 @@ type TipoBlocoAdicionar =
   | "BANNER"
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
+  | "DESTAQUES_CARDS"
   | "CATEGORIAS"
   | "FAQ"
   | "FORMULARIO"
   | "TEXTO"
   | "ESPACADOR";
+
+type DestaqueCardEditando = {
+  id: string;
+  titulo: string;
+  texto: string;
+  exibirMidia: boolean;
+  tipoMidia: string;
+  imagemDesktopUrl: string;
+  imagemMobileUrl: string;
+  videoDesktopUrl: string;
+  videoMobileUrl: string;
+  icone: string;
+  mediaPositionDesktop: string;
+  mediaPositionMobile: string;
+  mediaCropDesktopX: number;
+  mediaCropDesktopY: number;
+  mediaCropMobileX: number;
+  mediaCropMobileY: number;
+  exibirBotao: boolean;
+  textoBotao: string;
+  linkBotao: string;
+};
 
 type BlocoEditandoState = {
   bloco: EditorVisualBloco;
@@ -91,6 +114,32 @@ type BlocoEditandoState = {
   textoBotaoSecundario: string;
   linkBotao: string;
   linkBotaoSecundario: string;
+  exibirBotao: boolean;
+  layoutDesktopTextoImagem: string;
+  layoutMobileTextoImagem: string;
+  fonteProdutos: string;
+  limiteProdutos: number;
+  layoutDesktopProdutos: string;
+  layoutMobileProdutos: string;
+  colunasDesktopProdutos: number;
+  colunasTabletProdutos: number;
+  colunasMobileProdutos: number;
+  exibirPrecoProdutos: boolean;
+  exibirSeloDescontoProdutos: boolean;
+  layoutDesktopCards: string;
+  layoutMobileCards: string;
+  colunasDesktopCards: number;
+  colunasTabletCards: number;
+  colunasMobileCards: number;
+  alinhamentoCards: string;
+  cardsDestaques: DestaqueCardEditando[];
+  exibirMidia: boolean;
+  mediaCropDesktopX: number;
+  mediaCropDesktopY: number;
+  mediaCropMobileX: number;
+  mediaCropMobileY: number;
+  mediaPositionDesktop: string;
+  mediaPositionMobile: string;
   corFundo: string;
   espacamento: string;
   alinhamentoConteudo: string;
@@ -152,6 +201,58 @@ const VIDEO_SOM_PRESETS = [
   { value: "COM_SOM", label: "Com som" },
 ];
 
+const LAYOUT_DESKTOP_TEXTO_IMAGEM_PRESETS = [
+  { value: "IMAGEM_ESQUERDA", label: "Imagem esquerda" },
+  { value: "IMAGEM_DIREITA", label: "Imagem direita" },
+  { value: "TEXTO_SOBRE_IMAGEM", label: "Texto sobre imagem" },
+  { value: "IMAGEM_ACIMA", label: "Imagem acima" },
+];
+
+const LAYOUT_MOBILE_TEXTO_IMAGEM_PRESETS = [
+  { value: "IMAGEM_ACIMA", label: "Imagem acima" },
+  { value: "TEXTO_ACIMA", label: "Texto acima" },
+  { value: "TEXTO_SOBRE_IMAGEM", label: "Texto sobre imagem" },
+];
+
+const FONTE_PRODUTOS_PRESETS = [
+  { value: "TODOS", label: "Todos" },
+  { value: "DESCONTOS", label: "Descontos" },
+  { value: "NOVOS", label: "Novos" },
+  { value: "MAIS_VENDIDOS", label: "Mais vendidos" },
+  { value: "CATEGORIA", label: "Categoria" },
+  { value: "CATEGORIAS_SELECIONADAS", label: "Categorias selecionadas" },
+  { value: "MANUAL", label: "Manual" },
+];
+
+const LAYOUT_PRODUTOS_PRESETS = [
+  { value: "GRID", label: "Grid" },
+  { value: "CARROSSEL", label: "Carrossel" },
+];
+
+const ALINHAMENTO_CARDS_PRESETS = [
+  { value: "ESQUERDA", label: "Esquerda" },
+  { value: "CENTRO", label: "Centro" },
+];
+
+const TIPO_MIDIA_CARD_PRESETS = [
+  { value: "IMAGEM", label: "Imagem" },
+  { value: "VIDEO", label: "Vídeo" },
+  { value: "ICONE", label: "Ícone" },
+  { value: "NENHUMA", label: "Nenhuma" },
+];
+
+const MEDIA_POSITION_PRESETS = [
+  { value: "center center", label: "Centro" },
+  { value: "top center", label: "Topo centro" },
+  { value: "bottom center", label: "Base centro" },
+  { value: "center left", label: "Centro esquerda" },
+  { value: "center right", label: "Centro direita" },
+  { value: "top left", label: "Topo esquerda" },
+  { value: "top right", label: "Topo direita" },
+  { value: "bottom left", label: "Base esquerda" },
+  { value: "bottom right", label: "Base direita" },
+];
+
 const MAX_IMAGEM_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_VIDEO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const ACCEPT_IMAGEM_UPLOAD = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
@@ -184,6 +285,13 @@ const TIPOS_BLOCO_ADICIONAR: {
     descricao: "Vitrine visual para organizar produtos em grade simulada.",
     tituloInicial: "Lista de produtos",
     icon: Layers,
+  },
+  {
+    tipo: "DESTAQUES_CARDS",
+    nome: "Destaques / cards",
+    descricao: "Cards manuais para benefícios, coleções e chamadas da loja.",
+    tituloInicial: "Destaques / cards",
+    icon: LayoutGrid,
   },
   {
     tipo: "CATEGORIAS",
@@ -259,6 +367,22 @@ function getBooleanConfig(
   return fallback;
 }
 
+function getNumberConfig(
+  config: Record<string, unknown>,
+  key: string,
+  fallback: number
+) {
+  const value = config[key];
+  const numberValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
 function getArrayConfig(config: Record<string, unknown>, key: string) {
   const value = config[key];
 
@@ -282,6 +406,7 @@ function getTipoLabel(tipo: string) {
   if (tipo === "TEXTO_IMAGEM") return "Texto + imagem";
   if (tipo === "PRODUTOS") return "Produtos";
   if (tipo === "LISTA_PRODUTOS") return "Lista de produtos";
+  if (tipo === "DESTAQUES_CARDS") return "Destaques / cards";
   if (tipo === "CATEGORIAS") return "Categorias";
   if (tipo === "FAQ") return "FAQ";
   if (tipo === "FORMULARIO") return "Formulário";
@@ -310,6 +435,165 @@ function getBlocoIcon(tipo: string) {
 
 function isBannerTipo(tipo: string) {
   return tipo === "BANNER" || tipo === "HERO";
+}
+
+function isTextoImagemTipo(tipo: string) {
+  return tipo === "TEXTO_IMAGEM" || tipo === "IMAGEM_TEXTO";
+}
+
+function isListaProdutosTipo(tipo: string) {
+  return tipo === "LISTA_PRODUTOS";
+}
+
+function isDestaquesCardsTipo(tipo: string) {
+  return tipo === "DESTAQUES_CARDS";
+}
+
+function normalizarLayoutCards(value: string) {
+  if (value === "CARROSSEL") return "CARROSSEL";
+  return "GRID";
+}
+
+function normalizarAlinhamentoCards(value: string) {
+  if (value === "ESQUERDA") return "ESQUERDA";
+  return "CENTRO";
+}
+
+function normalizarTipoMidiaCard(value: string) {
+  if (["IMAGEM", "VIDEO", "ICONE", "NENHUMA"].includes(value)) {
+    return value;
+  }
+
+  return "ICONE";
+}
+
+function normalizarLayoutDesktopTextoImagem(value: string) {
+  if (value === "DIREITA") return "IMAGEM_DIREITA";
+  if (value === "ESQUERDA") return "IMAGEM_ESQUERDA";
+
+  if (
+    ["IMAGEM_ESQUERDA", "IMAGEM_DIREITA", "TEXTO_SOBRE_IMAGEM", "IMAGEM_ACIMA"].includes(
+      value
+    )
+  ) {
+    return value;
+  }
+
+  return "IMAGEM_ESQUERDA";
+}
+
+function normalizarLayoutMobileTextoImagem(value: string) {
+  if (["IMAGEM_ACIMA", "TEXTO_ACIMA", "TEXTO_SOBRE_IMAGEM"].includes(value)) {
+    return value;
+  }
+
+  return "IMAGEM_ACIMA";
+}
+
+function normalizarMediaPosition(value: string) {
+  if (MEDIA_POSITION_PRESETS.some((preset) => preset.value === value)) {
+    return value;
+  }
+
+  return "center center";
+}
+
+function getMediaCropFromPosition(position: string) {
+  const [vertical = "center", horizontal = "center"] = position.split(" ");
+
+  const x = horizontal === "left" ? 0 : horizontal === "right" ? 100 : 50;
+  const y = vertical === "top" ? 0 : vertical === "bottom" ? 100 : 50;
+
+  return { x, y };
+}
+
+function criarCardDestaquePadrao(index: number): DestaqueCardEditando {
+  return {
+    id: `card-${Date.now()}-${index}`,
+    titulo: `Destaque ${index}`,
+    texto: "Texto de apoio do card.",
+    exibirMidia: true,
+    tipoMidia: "ICONE",
+    imagemDesktopUrl: "",
+    imagemMobileUrl: "",
+    videoDesktopUrl: "",
+    videoMobileUrl: "",
+    icone: "★",
+    mediaPositionDesktop: "center center",
+    mediaPositionMobile: "center center",
+    mediaCropDesktopX: 50,
+    mediaCropDesktopY: 50,
+    mediaCropMobileX: 50,
+    mediaCropMobileY: 50,
+    exibirBotao: false,
+    textoBotao: "Saiba mais",
+    linkBotao: "",
+  };
+}
+
+function criarCardDestaquePreviewPadrao(index: number): DestaqueCardEditando {
+  return {
+    ...criarCardDestaquePadrao(index),
+    id: `preview-card-${index}`,
+  };
+}
+
+function getCardsDestaquesConfig(
+  config: Record<string, unknown>
+): DestaqueCardEditando[] {
+  const value = config.cards;
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item, index) => {
+    const card = getConfigObject(item);
+    const mediaPositionDesktop = normalizarMediaPosition(
+      getStringConfig(card, "mediaPositionDesktop")
+    );
+    const mediaPositionMobile = normalizarMediaPosition(
+      getStringConfig(card, "mediaPositionMobile")
+    );
+    const desktopCrop = getMediaCropFromPosition(mediaPositionDesktop);
+    const mobileCrop = getMediaCropFromPosition(mediaPositionMobile);
+    const imagemUrl =
+      getStringConfig(card, "imagemDesktopUrl") ||
+      getStringConfig(card, "imagemUrl") ||
+      getStringConfig(card, "imagem");
+
+    return {
+      id: getStringConfig(card, "id") || `card-${index + 1}`,
+      titulo: getStringConfig(card, "titulo") || `Destaque ${index + 1}`,
+      texto: getStringConfig(card, "texto") || getStringConfig(card, "descricao"),
+      exibirMidia: getBooleanConfig(card, "exibirMidia", true),
+      tipoMidia: normalizarTipoMidiaCard(getStringConfig(card, "tipoMidia")),
+      imagemDesktopUrl: imagemUrl,
+      imagemMobileUrl:
+        getStringConfig(card, "imagemMobileUrl") ||
+        getStringConfig(card, "imagemMobile"),
+      videoDesktopUrl: getStringConfig(card, "videoDesktopUrl"),
+      videoMobileUrl: getStringConfig(card, "videoMobileUrl"),
+      icone: getStringConfig(card, "icone") || "★",
+      mediaPositionDesktop,
+      mediaPositionMobile,
+      mediaCropDesktopX: getNumberConfig(
+        card,
+        "mediaCropDesktopX",
+        desktopCrop.x
+      ),
+      mediaCropDesktopY: getNumberConfig(
+        card,
+        "mediaCropDesktopY",
+        desktopCrop.y
+      ),
+      mediaCropMobileX: getNumberConfig(card, "mediaCropMobileX", mobileCrop.x),
+      mediaCropMobileY: getNumberConfig(card, "mediaCropMobileY", mobileCrop.y),
+      exibirBotao: getBooleanConfig(card, "exibirBotao", false),
+      textoBotao: getStringConfig(card, "textoBotao") || "Saiba mais",
+      linkBotao: getStringConfig(card, "linkBotao"),
+    };
+  });
 }
 
 function getFrameClass(device: DevicePreview) {
@@ -701,6 +985,173 @@ function UploadMidiaCampo({
   );
 }
 
+function MediaPreview({
+  tipoMidia,
+  imageUrl,
+  videoUrl,
+  posterUrl,
+  alt,
+  objectPosition,
+  videoLoop = true,
+  videoMuted = true,
+  placeholder = "Sem mídia",
+}: {
+  tipoMidia: string;
+  imageUrl: string;
+  videoUrl: string;
+  posterUrl?: string;
+  alt: string;
+  objectPosition: string;
+  videoLoop?: boolean;
+  videoMuted?: boolean;
+  placeholder?: string;
+}) {
+  if (tipoMidia === "VIDEO" && videoUrl) {
+    return (
+      <video
+        src={videoUrl}
+        poster={posterUrl || undefined}
+        autoPlay
+        loop={videoLoop}
+        muted={videoMuted}
+        playsInline
+        className="block h-full w-full object-cover"
+        style={{ objectPosition }}
+      />
+    );
+  }
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="block h-full w-full object-cover"
+        style={{ objectPosition }}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-[260px] w-full items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
+      {placeholder}
+    </div>
+  );
+}
+
+function CardMediaPreview({
+  card,
+  device,
+}: {
+  card: DestaqueCardEditando;
+  device: DevicePreview;
+}) {
+  if (!card.exibirMidia || card.tipoMidia === "NENHUMA") {
+    return null;
+  }
+
+  if (card.tipoMidia === "ICONE") {
+    return (
+      <div className="flex h-full min-h-[150px] w-full items-center justify-center bg-slate-100 text-4xl font-semibold text-slate-700">
+        {card.icone || "★"}
+      </div>
+    );
+  }
+
+  const isMobile = device === "MOBILE";
+  const imageUrl =
+    isMobile && card.imagemMobileUrl
+      ? card.imagemMobileUrl
+      : card.imagemDesktopUrl;
+  const videoUrl =
+    isMobile && card.videoMobileUrl ? card.videoMobileUrl : card.videoDesktopUrl;
+  const objectPosition = isMobile
+    ? card.mediaPositionMobile
+    : card.mediaPositionDesktop;
+
+  return (
+    <MediaPreview
+      tipoMidia={card.tipoMidia}
+      imageUrl={imageUrl}
+      videoUrl={videoUrl}
+      alt={card.titulo}
+      objectPosition={objectPosition}
+      videoLoop
+      videoMuted
+      placeholder="Sem mídia"
+    />
+  );
+}
+
+function CropPositionControls({
+  desktopValue,
+  mobileValue,
+  onChange,
+}: {
+  desktopValue: string;
+  mobileValue: string;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  function updatePosition(device: "DESKTOP" | "MOBILE", value: string) {
+    const crop = getMediaCropFromPosition(value);
+
+    if (device === "DESKTOP") {
+      onChange({
+        mediaPositionDesktop: value,
+        mediaCropDesktopX: crop.x,
+        mediaCropDesktopY: crop.y,
+      });
+      return;
+    }
+
+    onChange({
+      mediaPositionMobile: value,
+      mediaCropMobileX: crop.x,
+      mediaCropMobileY: crop.y,
+    });
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Crop/posição desktop
+        </span>
+
+        <select
+          value={desktopValue}
+          onChange={(event) => updatePosition("DESKTOP", event.target.value)}
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {MEDIA_POSITION_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Crop/posição mobile
+        </span>
+
+        <select
+          value={mobileValue}
+          onChange={(event) => updatePosition("MOBILE", event.target.value)}
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {MEDIA_POSITION_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
 function PreviewShell({
   children,
   device,
@@ -785,6 +1236,59 @@ function RenderBlocoPreview({
 
   const categorias = getArrayConfig(config, "categorias");
   const produtos = getArrayConfig(config, "produtos");
+  const fonteProdutos = getStringConfig(config, "fonte") || "TODOS";
+  const limiteProdutos = Math.max(1, getNumberConfig(config, "limite", 8));
+  const layoutDesktopProdutos =
+    getStringConfig(config, "layoutDesktop") ||
+    getStringConfig(config, "modo") ||
+    "GRID";
+  const layoutMobileProdutos =
+    getStringConfig(config, "layoutMobile") || "GRID";
+  const colunasDesktopProdutos = Math.max(
+    1,
+    getNumberConfig(
+      config,
+      "colunasDesktop",
+      getNumberConfig(config, "produtosPorLinha", 4)
+    )
+  );
+  const colunasTabletProdutos = Math.max(
+    1,
+    getNumberConfig(config, "colunasTablet", 3)
+  );
+  const colunasMobileProdutos = Math.max(
+    1,
+    getNumberConfig(config, "colunasMobile", 2)
+  );
+  const exibirPrecoProdutos = getBooleanConfig(config, "exibirPreco", true);
+  const exibirBotaoProdutos = getBooleanConfig(config, "exibirBotao", true);
+  const exibirSeloDescontoProdutos = getBooleanConfig(
+    config,
+    "exibirSeloDesconto",
+    true
+  );
+  const cardsDestaques = getCardsDestaquesConfig(config);
+  const layoutDesktopCards = normalizarLayoutCards(
+    getStringConfig(config, "layoutDesktop")
+  );
+  const layoutMobileCards = normalizarLayoutCards(
+    getStringConfig(config, "layoutMobile")
+  );
+  const colunasDesktopCards = Math.max(
+    1,
+    getNumberConfig(config, "colunasDesktop", 3)
+  );
+  const colunasTabletCards = Math.max(
+    1,
+    getNumberConfig(config, "colunasTablet", 2)
+  );
+  const colunasMobileCards = Math.max(
+    1,
+    getNumberConfig(config, "colunasMobile", 1)
+  );
+  const alinhamentoCards = normalizarAlinhamentoCards(
+    getStringConfig(config, "alinhamento")
+  );
 
   const isMobile = device === "MOBILE";
   const bgClass = getBgClass(corFundo);
@@ -800,6 +1304,26 @@ function RenderBlocoPreview({
   const videoPosterUrl = getStringConfig(config, "videoPosterUrl");
   const videoLoop = getBooleanConfig(config, "videoLoop", true);
   const videoSom = getStringConfig(config, "videoSom") || "MUDO";
+  const exibirMidia = getBooleanConfig(config, "exibirMidia", true);
+  const mediaPositionDesktop = normalizarMediaPosition(
+    getStringConfig(config, "mediaPositionDesktop")
+  );
+  const mediaPositionMobile = normalizarMediaPosition(
+    getStringConfig(config, "mediaPositionMobile")
+  );
+  const mediaPositionAtual = isMobile
+    ? mediaPositionMobile
+    : mediaPositionDesktop;
+  const exibirBotaoTextoImagem = getBooleanConfig(config, "exibirBotao", true);
+  const layoutDesktopTextoImagem = normalizarLayoutDesktopTextoImagem(
+    getStringConfig(config, "layoutDesktop") ||
+      getStringConfig(config, "layoutDesktopTextoImagem") ||
+      getStringConfig(config, "posicaoImagem")
+  );
+  const layoutMobileTextoImagem = normalizarLayoutMobileTextoImagem(
+    getStringConfig(config, "layoutMobile") ||
+      getStringConfig(config, "layoutMobileTextoImagem")
+  );
   const exibirTexto = getBooleanConfig(config, "exibirTexto", true);
   const exibirSubtitulo = getBooleanConfig(config, "exibirSubtitulo", true);
   const exibirBotaoPrimario = getBooleanConfig(
@@ -817,7 +1341,68 @@ function RenderBlocoPreview({
   const videoBannerUrl =
     isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
   const bannerTextClasses = getBannerTextClasses(corTextoBanner);
-  const usarVideoBanner = tipoMidia === "VIDEO" && Boolean(videoBannerUrl);
+  const mediaTextoImagemUrl =
+    isMobile && imagemMobileUrl ? imagemMobileUrl : imagemDesktopUrl;
+  const videoTextoImagemUrl =
+    isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
+  const textoImagemSobreImagem = isMobile
+    ? layoutMobileTextoImagem === "TEXTO_SOBRE_IMAGEM"
+    : layoutDesktopTextoImagem === "TEXTO_SOBRE_IMAGEM";
+  const textoImagemMedia = exibirMidia ? (
+    <MediaPreview
+      tipoMidia={tipoMidia}
+      imageUrl={mediaTextoImagemUrl}
+      videoUrl={videoTextoImagemUrl}
+      posterUrl={videoPosterUrl}
+      alt={titulo}
+      objectPosition={mediaPositionAtual}
+      videoLoop={videoLoop}
+      videoMuted={videoSom === "MUDO"}
+      placeholder="Sem mídia"
+    />
+  ) : null;
+  const textoImagemConteudo = (
+    <div>
+      <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
+
+      <p
+        className={`mt-4 text-sm leading-7 ${
+          corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
+        }`}
+      >
+        {texto || "Texto do bloco aparece aqui."}
+      </p>
+
+      {exibirBotaoTextoImagem && textoBotao && (
+        <div
+          className={`mt-5 inline-flex px-5 py-3 text-sm font-semibold ${
+            corFundo === "ESCURO"
+              ? "bg-white text-slate-950"
+              : "bg-slate-950 text-white"
+          }`}
+        >
+          {textoBotao}
+        </div>
+      )}
+    </div>
+  );
+  const layoutAtualProdutos =
+    device === "MOBILE" ? layoutMobileProdutos : layoutDesktopProdutos;
+  const colunasProdutos =
+    device === "MOBILE"
+      ? colunasMobileProdutos
+      : device === "TABLET"
+        ? colunasTabletProdutos
+        : colunasDesktopProdutos;
+  const totalMockProdutos = Math.min(Math.max(limiteProdutos, 1), 12);
+  const layoutAtualCards =
+    device === "MOBILE" ? layoutMobileCards : layoutDesktopCards;
+  const colunasCards =
+    device === "MOBILE"
+      ? colunasMobileCards
+      : device === "TABLET"
+        ? colunasTabletCards
+        : colunasDesktopCards;
 
   return (
     <section
@@ -849,25 +1434,23 @@ function RenderBlocoPreview({
             isMobile
           )}`}
         >
-          {usarVideoBanner ? (
-            <video
-              src={videoBannerUrl}
-              poster={videoPosterUrl || undefined}
-              autoPlay
-              loop={videoLoop}
-              muted={videoSom === "MUDO"}
-              playsInline
-              className="h-full w-full object-cover"
-            />
-          ) : imagemBannerUrl ? (
-            <img
-              src={imagemBannerUrl}
-              alt={titulo}
-              className="h-full w-full object-cover"
-            />
+          {exibirMidia ? (
+            <div className="absolute inset-0">
+              <MediaPreview
+                tipoMidia={tipoMidia}
+                imageUrl={imagemBannerUrl}
+                videoUrl={videoBannerUrl}
+                posterUrl={videoPosterUrl}
+                alt={titulo}
+                objectPosition={mediaPositionAtual}
+                videoLoop={videoLoop}
+                videoMuted={videoSom === "MUDO"}
+                placeholder="Banner sem mídia"
+              />
+            </div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
-              Banner sem imagem
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
+              Mídia oculta
             </div>
           )}
 
@@ -934,50 +1517,254 @@ function RenderBlocoPreview({
         <div className="flex h-16 items-center justify-center bg-slate-50">
           <div className="h-px w-24 bg-slate-200" />
         </div>
-      ) : bloco.tipo === "TEXTO_IMAGEM" ? (
-        <div
-          className={`grid ${bgClass} ${
-            isMobile ? "grid-cols-1" : "grid-cols-2"
-          }`}
-        >
-          <div className="min-h-[260px] bg-slate-100">
-            {imagemUrl ? (
-              <img
-                src={imagemUrl}
-                alt={titulo}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full min-h-[260px] items-center justify-center text-sm text-slate-400">
-                Sem imagem
+      ) : isTextoImagemTipo(bloco.tipo) ? (
+        textoImagemSobreImagem && exibirMidia ? (
+          <div
+            className={`relative overflow-hidden ${bgClass} ${
+              isMobile ? "min-h-[520px]" : "min-h-[460px]"
+            }`}
+          >
+            <div className="absolute inset-0">{textoImagemMedia}</div>
+            <div className="absolute inset-0 bg-black/35" />
+
+            <div className="absolute inset-0 flex items-center px-6 py-10 md:px-12">
+              <div className="max-w-xl text-white">
+                <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
+
+                <p className="mt-4 text-sm leading-7 text-white/85">
+                  {texto || "Texto do bloco aparece aqui."}
+                </p>
+
+                {exibirBotaoTextoImagem && textoBotao && (
+                  <div className="mt-5 inline-flex bg-white px-5 py-3 text-sm font-semibold text-slate-950">
+                    {textoBotao}
+                  </div>
+                )}
               </div>
+            </div>
+          </div>
+        ) : isMobile ? (
+          <div className={`grid grid-cols-1 ${bgClass}`}>
+            {!exibirMidia ? (
+              <div className={`flex items-center ${paddingClass}`}>
+                {textoImagemConteudo}
+              </div>
+            ) : layoutMobileTextoImagem === "TEXTO_ACIMA" ? (
+              <>
+                <div className={`flex items-center ${paddingClass}`}>
+                  {textoImagemConteudo}
+                </div>
+                <div className="min-h-[260px] bg-slate-100">
+                  {textoImagemMedia}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="min-h-[260px] bg-slate-100">
+                  {textoImagemMedia}
+                </div>
+                <div className={`flex items-center ${paddingClass}`}>
+                  {textoImagemConteudo}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div
+            className={`grid ${bgClass} ${
+              !exibirMidia || layoutDesktopTextoImagem === "IMAGEM_ACIMA"
+                ? "grid-cols-1"
+                : "grid-cols-2"
+            }`}
+          >
+            {!exibirMidia ? (
+              <div className={`flex items-center ${paddingClass}`}>
+                {textoImagemConteudo}
+              </div>
+            ) : layoutDesktopTextoImagem === "IMAGEM_ACIMA" ? (
+              <>
+                <div className="min-h-[320px] bg-slate-100">
+                  {textoImagemMedia}
+                </div>
+                <div className={`flex items-center ${paddingClass}`}>
+                  {textoImagemConteudo}
+                </div>
+              </>
+            ) : layoutDesktopTextoImagem === "IMAGEM_DIREITA" ? (
+              <>
+                <div className={`flex items-center ${paddingClass}`}>
+                  {textoImagemConteudo}
+                </div>
+                <div className="min-h-[320px] bg-slate-100">
+                  {textoImagemMedia}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="min-h-[320px] bg-slate-100">
+                  {textoImagemMedia}
+                </div>
+                <div className={`flex items-center ${paddingClass}`}>
+                  {textoImagemConteudo}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      ) : isListaProdutosTipo(bloco.tipo) ? (
+        <div className={`${bgClass} ${paddingClass}`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+
+              {texto && (
+                <p
+                  className={`mt-2 max-w-2xl text-sm leading-6 ${
+                    corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                  }`}
+                >
+                  {texto}
+                </p>
+              )}
+            </div>
+
+            <span className="w-fit rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+              {fonteProdutos.replaceAll("_", " ")}
+            </span>
+          </div>
+
+          <div
+            className={
+              layoutAtualProdutos === "CARROSSEL"
+                ? "mt-6 flex gap-3 overflow-hidden"
+                : "mt-6 grid gap-3"
+            }
+            style={
+              layoutAtualProdutos === "CARROSSEL"
+                ? undefined
+                : {
+                    gridTemplateColumns: `repeat(${colunasProdutos}, minmax(0, 1fr))`,
+                  }
+            }
+          >
+            {Array.from({ length: totalMockProdutos }).map((_, index) => {
+              const temDesconto = index % 3 === 0;
+
+              return (
+                <div
+                  key={index}
+                  className={
+                    layoutAtualProdutos === "CARROSSEL"
+                      ? "w-40 shrink-0"
+                      : "min-w-0"
+                  }
+                >
+                  <div className="relative aspect-square bg-slate-100">
+                    {exibirSeloDescontoProdutos && temDesconto && (
+                      <span className="absolute left-2 top-2 bg-slate-950 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white">
+                        Off
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-3 h-3 w-3/4 bg-slate-100" />
+
+                  {exibirPrecoProdutos && (
+                    <div className="mt-2 h-3 w-1/2 bg-slate-100" />
+                  )}
+
+                  {exibirBotaoProdutos && textoBotao && (
+                    <div className="mt-3 h-8 bg-slate-950 text-center text-[11px] font-semibold leading-8 text-white">
+                      {textoBotao}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {(categorias.length > 0 || produtos.length > 0) && (
+            <p className="mt-5 text-xs text-slate-400">
+              Fonte configurada:{" "}
+              {[...categorias, ...produtos].slice(0, 4).join(", ")}
+            </p>
+          )}
+        </div>
+      ) : isDestaquesCardsTipo(bloco.tipo) ? (
+        <div className={`${bgClass} ${paddingClass}`}>
+          <div
+            className={
+              alinhamentoCards === "CENTRO"
+                ? "mx-auto max-w-2xl text-center"
+                : "max-w-2xl text-left"
+            }
+          >
+            <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+
+            {texto && (
+              <p
+                className={`mt-2 text-sm leading-6 ${
+                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                {texto}
+              </p>
             )}
           </div>
 
-          <div className={`flex items-center ${paddingClass}`}>
-            <div>
-              <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
-
-              <p
-                className={`mt-4 text-sm leading-7 ${
-                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
-                }`}
+          <div
+            className={
+              layoutAtualCards === "CARROSSEL"
+                ? "mt-6 flex gap-4 overflow-hidden"
+                : "mt-6 grid gap-4"
+            }
+            style={
+              layoutAtualCards === "CARROSSEL"
+                ? undefined
+                : {
+                    gridTemplateColumns: `repeat(${colunasCards}, minmax(0, 1fr))`,
+                  }
+            }
+          >
+            {(cardsDestaques.length > 0
+              ? cardsDestaques
+              : [1, 2, 3].map((index) => criarCardDestaquePreviewPadrao(index))
+            ).map((card) => (
+              <article
+                key={card.id}
+                className={`min-w-0 border border-slate-200 bg-white ${
+                  layoutAtualCards === "CARROSSEL" ? "w-64 shrink-0" : ""
+                } ${corFundo === "ESCURO" ? "text-slate-950" : ""}`}
               >
-                {texto || "Texto do bloco aparece aqui."}
-              </p>
+                {card.exibirMidia && card.tipoMidia !== "NENHUMA" && (
+                  <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                    <CardMediaPreview card={card} device={device} />
+                  </div>
+                )}
 
-              {textoBotao && (
                 <div
-                  className={`mt-5 inline-flex px-5 py-3 text-sm font-semibold ${
-                    corFundo === "ESCURO"
-                      ? "bg-white text-slate-950"
-                      : "bg-slate-950 text-white"
-                  }`}
+                  className={
+                    alinhamentoCards === "CENTRO"
+                      ? "p-5 text-center"
+                      : "p-5 text-left"
+                  }
                 >
-                  {textoBotao}
+                  <h3 className="text-base font-semibold text-slate-950">
+                    {card.titulo || "Título do card"}
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    {card.texto || "Texto de apoio do card."}
+                  </p>
+
+                  {card.exibirBotao && card.textoBotao && (
+                    <div className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+                      {card.textoBotao}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </article>
+            ))}
           </div>
         </div>
       ) : bloco.tipo.includes("PRODUTO") ? (
@@ -1088,7 +1875,82 @@ function EditorConteudoBlocoModal({
     return null;
   }
 
+  const estadoAtual = estado;
   const isBanner = isBannerTipo(estado.bloco.tipo);
+  const isTextoImagem = isTextoImagemTipo(estado.bloco.tipo);
+  const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
+  const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
+
+  function atualizarCardDestaque(
+    cardId: string,
+    data: Partial<DestaqueCardEditando>
+  ) {
+    onChange({
+      cardsDestaques: estadoAtual.cardsDestaques.map((card) =>
+        card.id === cardId ? { ...card, ...data } : card
+      ),
+    });
+  }
+
+  function atualizarPosicaoCardDestaque(
+    cardId: string,
+    device: "DESKTOP" | "MOBILE",
+    value: string
+  ) {
+    const crop = getMediaCropFromPosition(value);
+
+    atualizarCardDestaque(
+      cardId,
+      device === "DESKTOP"
+        ? {
+            mediaPositionDesktop: value,
+            mediaCropDesktopX: crop.x,
+            mediaCropDesktopY: crop.y,
+          }
+        : {
+            mediaPositionMobile: value,
+            mediaCropMobileX: crop.x,
+            mediaCropMobileY: crop.y,
+          }
+    );
+  }
+
+  function adicionarCardDestaque() {
+    onChange({
+      cardsDestaques: [
+        ...estadoAtual.cardsDestaques,
+        criarCardDestaquePadrao(estadoAtual.cardsDestaques.length + 1),
+      ],
+    });
+  }
+
+  function removerCardDestaque(cardId: string) {
+    onChange({
+      cardsDestaques: estadoAtual.cardsDestaques.filter(
+        (card) => card.id !== cardId
+      ),
+    });
+  }
+
+  function moverCardDestaque(cardId: string, direction: "UP" | "DOWN") {
+    const index = estadoAtual.cardsDestaques.findIndex(
+      (card) => card.id === cardId
+    );
+    const nextIndex = direction === "UP" ? index - 1 : index + 1;
+
+    if (
+      index < 0 ||
+      nextIndex < 0 ||
+      nextIndex >= estadoAtual.cardsDestaques.length
+    ) {
+      return;
+    }
+
+    const cards = [...estadoAtual.cardsDestaques];
+    const [card] = cards.splice(index, 1);
+    cards.splice(nextIndex, 0, card);
+    onChange({ cardsDestaques: cards });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
@@ -1106,7 +1968,13 @@ function EditorConteudoBlocoModal({
             <p className="mt-1 text-sm leading-6 text-slate-500">
               {isBanner
                 ? "Configure conteúdo, imagens e aparência do banner no preview visual."
-                : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
+                : isTextoImagem
+                  ? "Configure texto, mídia, layout e aparência do bloco texto + imagem."
+                  : isListaProdutos
+                    ? "Configure a vitrine visual de produtos no preview do editor."
+                    : isDestaquesCards
+                      ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
+                      : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -1213,6 +2081,13 @@ function EditorConteudoBlocoModal({
               </select>
             </label>
 
+            <CampoToggle
+              checked={estado.exibirMidia}
+              label="Exibir mídia"
+              description="Oculta ou mostra a imagem/vídeo do banner sem remover URLs salvas."
+              onChange={(checked) => onChange({ exibirMidia: checked })}
+            />
+
             {estado.tipoMidia === "VIDEO" ? (
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1288,6 +2163,12 @@ function EditorConteudoBlocoModal({
                 />
               </div>
             )}
+
+            <CropPositionControls
+              desktopValue={estado.mediaPositionDesktop}
+              mobileValue={estado.mediaPositionMobile}
+              onChange={onChange}
+            />
 
             <div className="grid gap-4 md:grid-cols-2">
               <label>
@@ -1438,6 +2319,958 @@ function EditorConteudoBlocoModal({
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
               Crop ainda não está ativo nesta etapa. Para vídeo, prefira MP4
               com codec H.264 para maior compatibilidade.
+            </div>
+          </div>
+        ) : isTextoImagem ? (
+          <div className="space-y-5 px-6 py-5">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Nome interno
+              </span>
+
+              <input
+                value={estado.nomeInterno}
+                onChange={(event) =>
+                  onChange({ nomeInterno: event.target.value })
+                }
+                placeholder="Ex: Texto institucional com imagem"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Título
+              </span>
+
+              <input
+                value={estado.titulo}
+                onChange={(event) => onChange({ titulo: event.target.value })}
+                placeholder="Título visível"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Texto
+              </span>
+
+              <textarea
+                value={estado.texto}
+                onChange={(event) => onChange({ texto: event.target.value })}
+                rows={5}
+                placeholder="Texto do bloco"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto do botão
+                </span>
+
+                <input
+                  value={estado.textoBotao}
+                  onChange={(event) =>
+                    onChange({ textoBotao: event.target.value })
+                  }
+                  placeholder="Ex: Saiba mais"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Link do botão
+                </span>
+
+                <input
+                  value={estado.linkBotao}
+                  onChange={(event) =>
+                    onChange({ linkBotao: event.target.value })
+                  }
+                  placeholder="/loja/quem-somos"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <CampoToggle
+              checked={estado.exibirBotao}
+              label="Exibir botão"
+              onChange={(checked) => onChange({ exibirBotao: checked })}
+            />
+
+            <CampoToggle
+              checked={estado.exibirMidia}
+              label="Exibir mídia"
+              onChange={(checked) => onChange({ exibirMidia: checked })}
+            />
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Tipo de mídia
+              </span>
+
+              <select
+                value={estado.tipoMidia}
+                onChange={(event) => onChange({ tipoMidia: event.target.value })}
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {estado.tipoMidia === "VIDEO" ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadMidiaCampo
+                  label="Vídeo desktop URL"
+                  value={estado.videoDesktopUrl}
+                  tipoMidia="VIDEO"
+                  onChange={(url) => onChange({ videoDesktopUrl: url })}
+                  orientacao="Cole uma URL ou envie MP4/WebM. MP4/H.264 é recomendado."
+                />
+
+                <UploadMidiaCampo
+                  label="Vídeo mobile URL"
+                  value={estado.videoMobileUrl}
+                  tipoMidia="VIDEO"
+                  onChange={(url) => onChange({ videoMobileUrl: url })}
+                  orientacao="Opcional. Quando vazio, o mobile usa o vídeo desktop."
+                />
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadMidiaCampo
+                  label="Imagem desktop URL"
+                  value={estado.imagemDesktopUrl}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) => onChange({ imagemDesktopUrl: url })}
+                  orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
+                />
+
+                <UploadMidiaCampo
+                  label="Imagem mobile URL"
+                  value={estado.imagemMobileUrl}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) => onChange({ imagemMobileUrl: url })}
+                  orientacao="Opcional. Quando vazio, o mobile usa a imagem desktop."
+                />
+              </div>
+            )}
+
+            <CropPositionControls
+              desktopValue={estado.mediaPositionDesktop}
+              mobileValue={estado.mediaPositionMobile}
+              onChange={onChange}
+            />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout desktop
+                </span>
+
+                <select
+                  value={estado.layoutDesktopTextoImagem}
+                  onChange={(event) =>
+                    onChange({ layoutDesktopTextoImagem: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_DESKTOP_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout mobile
+                </span>
+
+                <select
+                  value={estado.layoutMobileTextoImagem}
+                  onChange={(event) =>
+                    onChange({ layoutMobileTextoImagem: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_MOBILE_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor de fundo
+                </span>
+
+                <select
+                  value={estado.corFundo}
+                  onChange={(event) =>
+                    onChange({ corFundo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_FUNDO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              Editor rico de texto e crop ainda não estão ativos nesta etapa.
+            </div>
+          </div>
+        ) : isListaProdutos ? (
+          <div className="space-y-5 px-6 py-5">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Nome interno
+              </span>
+
+              <input
+                value={estado.nomeInterno}
+                onChange={(event) =>
+                  onChange({ nomeInterno: event.target.value })
+                }
+                placeholder="Ex: Produtos em destaque"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Título
+              </span>
+
+              <input
+                value={estado.titulo}
+                onChange={(event) => onChange({ titulo: event.target.value })}
+                placeholder="Título da vitrine"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Subtítulo
+              </span>
+
+              <textarea
+                value={estado.texto}
+                onChange={(event) => onChange({ texto: event.target.value })}
+                rows={3}
+                placeholder="Texto de apoio da vitrine"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Fonte/origem dos produtos
+                </span>
+
+                <select
+                  value={estado.fonteProdutos}
+                  onChange={(event) =>
+                    onChange({ fonteProdutos: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {FONTE_PRODUTOS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Limite de produtos
+                </span>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={48}
+                  value={estado.limiteProdutos}
+                  onChange={(event) =>
+                    onChange({ limiteProdutos: Number(event.target.value) || 1 })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout desktop
+                </span>
+
+                <select
+                  value={estado.layoutDesktopProdutos}
+                  onChange={(event) =>
+                    onChange({ layoutDesktopProdutos: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_PRODUTOS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout mobile
+                </span>
+
+                <select
+                  value={estado.layoutMobileProdutos}
+                  onChange={(event) =>
+                    onChange({ layoutMobileProdutos: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_PRODUTOS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Colunas desktop
+                </span>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={estado.colunasDesktopProdutos}
+                  onChange={(event) =>
+                    onChange({
+                      colunasDesktopProdutos: Number(event.target.value) || 1,
+                    })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Colunas tablet
+                </span>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={4}
+                  value={estado.colunasTabletProdutos}
+                  onChange={(event) =>
+                    onChange({
+                      colunasTabletProdutos: Number(event.target.value) || 1,
+                    })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Colunas mobile
+                </span>
+
+                <input
+                  type="number"
+                  min={1}
+                  max={3}
+                  value={estado.colunasMobileProdutos}
+                  onChange={(event) =>
+                    onChange({
+                      colunasMobileProdutos: Number(event.target.value) || 1,
+                    })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <CampoToggle
+                checked={estado.exibirPrecoProdutos}
+                label="Exibir preço"
+                onChange={(checked) =>
+                  onChange({ exibirPrecoProdutos: checked })
+                }
+              />
+
+              <CampoToggle
+                checked={estado.exibirBotao}
+                label="Exibir botão"
+                onChange={(checked) => onChange({ exibirBotao: checked })}
+              />
+
+              <CampoToggle
+                checked={estado.exibirSeloDescontoProdutos}
+                label="Exibir selo/desconto"
+                onChange={(checked) =>
+                  onChange({ exibirSeloDescontoProdutos: checked })
+                }
+              />
+            </div>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Texto do botão
+              </span>
+
+              <input
+                value={estado.textoBotao}
+                onChange={(event) =>
+                  onChange({ textoBotao: event.target.value })
+                }
+                placeholder="Ex: Comprar"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor de fundo
+                </span>
+
+                <select
+                  value={estado.corFundo}
+                  onChange={(event) =>
+                    onChange({ corFundo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_FUNDO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+        ) : isDestaquesCards ? (
+          <div className="space-y-5 px-6 py-5">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Nome interno
+              </span>
+              <input
+                value={estado.nomeInterno}
+                onChange={(event) =>
+                  onChange({ nomeInterno: event.target.value })
+                }
+                placeholder="Ex: Diferenciais da loja"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Título
+                </span>
+                <input
+                  value={estado.titulo}
+                  onChange={(event) => onChange({ titulo: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Alinhamento
+                </span>
+                <select
+                  value={estado.alinhamentoCards}
+                  onChange={(event) =>
+                    onChange({ alinhamentoCards: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALINHAMENTO_CARDS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Subtítulo
+              </span>
+              <textarea
+                value={estado.texto}
+                onChange={(event) => onChange({ texto: event.target.value })}
+                rows={3}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout desktop
+                </span>
+                <select
+                  value={estado.layoutDesktopCards}
+                  onChange={(event) =>
+                    onChange({ layoutDesktopCards: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_PRODUTOS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Layout mobile
+                </span>
+                <select
+                  value={estado.layoutMobileCards}
+                  onChange={(event) =>
+                    onChange({ layoutMobileCards: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LAYOUT_PRODUTOS_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                ["Colunas desktop", "colunasDesktopCards", estado.colunasDesktopCards, 6],
+                ["Colunas tablet", "colunasTabletCards", estado.colunasTabletCards, 4],
+                ["Colunas mobile", "colunasMobileCards", estado.colunasMobileCards, 3],
+              ].map(([label, key, value, max]) => (
+                <label key={String(key)}>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    {label}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Number(max)}
+                    value={Number(value)}
+                    onChange={(event) =>
+                      onChange({
+                        [String(key)]: Number(event.target.value) || 1,
+                      } as Partial<NonNullable<BlocoEditandoState>>)
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor de fundo
+                </span>
+                <select
+                  value={estado.corFundo}
+                  onChange={(event) =>
+                    onChange({ corFundo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_FUNDO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-950">Cards</h3>
+                <button
+                  type="button"
+                  onClick={adicionarCardDestaque}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar card
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {estado.cardsDestaques.map((card, index) => (
+                  <div
+                    key={card.id}
+                    className="rounded-3xl border border-slate-200 bg-white p-4"
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-semibold text-slate-950">
+                        Card {index + 1}
+                      </h4>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moverCardDestaque(card.id, "UP")}
+                          disabled={index === 0}
+                          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                          aria-label="Subir card"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moverCardDestaque(card.id, "DOWN")}
+                          disabled={index === estado.cardsDestaques.length - 1}
+                          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                          aria-label="Descer card"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removerCardDestaque(card.id)}
+                          className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500"
+                          aria-label="Remover card"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Título
+                        </span>
+                        <input
+                          value={card.titulo}
+                          onChange={(event) =>
+                            atualizarCardDestaque(card.id, {
+                              titulo: event.target.value,
+                            })
+                          }
+                          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                        />
+                      </label>
+
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Tipo de mídia
+                        </span>
+                        <select
+                          value={card.tipoMidia}
+                          onChange={(event) =>
+                            atualizarCardDestaque(card.id, {
+                              tipoMidia: event.target.value,
+                            })
+                          }
+                          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                        >
+                          {TIPO_MIDIA_CARD_PRESETS.map((preset) => (
+                            <option key={preset.value} value={preset.value}>
+                              {preset.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="mt-4 block">
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        Texto
+                      </span>
+                      <textarea
+                        value={card.texto}
+                        onChange={(event) =>
+                          atualizarCardDestaque(card.id, {
+                            texto: event.target.value,
+                          })
+                        }
+                        rows={3}
+                        className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+                      />
+                    </label>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <CampoToggle
+                        checked={card.exibirMidia}
+                        label="Exibir mídia"
+                        onChange={(checked) =>
+                          atualizarCardDestaque(card.id, {
+                            exibirMidia: checked,
+                          })
+                        }
+                      />
+                      <CampoToggle
+                        checked={card.exibirBotao}
+                        label="Exibir botão"
+                        onChange={(checked) =>
+                          atualizarCardDestaque(card.id, {
+                            exibirBotao: checked,
+                          })
+                        }
+                      />
+                    </div>
+
+                    {card.tipoMidia === "IMAGEM" && (
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <UploadMidiaCampo
+                          label="Imagem desktop URL"
+                          value={card.imagemDesktopUrl}
+                          tipoMidia="IMAGEM"
+                          onChange={(url) =>
+                            atualizarCardDestaque(card.id, {
+                              imagemDesktopUrl: url,
+                            })
+                          }
+                          orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
+                        />
+                        <UploadMidiaCampo
+                          label="Imagem mobile URL"
+                          value={card.imagemMobileUrl}
+                          tipoMidia="IMAGEM"
+                          onChange={(url) =>
+                            atualizarCardDestaque(card.id, {
+                              imagemMobileUrl: url,
+                            })
+                          }
+                          orientacao="Opcional. Quando vazio, usa a imagem desktop."
+                        />
+                      </div>
+                    )}
+
+                    {card.tipoMidia === "VIDEO" && (
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <UploadMidiaCampo
+                          label="Vídeo desktop URL"
+                          value={card.videoDesktopUrl}
+                          tipoMidia="VIDEO"
+                          onChange={(url) =>
+                            atualizarCardDestaque(card.id, {
+                              videoDesktopUrl: url,
+                            })
+                          }
+                          orientacao="Cole uma URL ou envie MP4/WebM. MP4/H.264 é recomendado."
+                        />
+                        <UploadMidiaCampo
+                          label="Vídeo mobile URL"
+                          value={card.videoMobileUrl}
+                          tipoMidia="VIDEO"
+                          onChange={(url) =>
+                            atualizarCardDestaque(card.id, {
+                              videoMobileUrl: url,
+                            })
+                          }
+                          orientacao="Opcional. Quando vazio, usa o vídeo desktop."
+                        />
+                      </div>
+                    )}
+
+                    {card.tipoMidia === "ICONE" && (
+                      <label className="mt-4 block">
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Ícone
+                        </span>
+                        <input
+                          value={card.icone}
+                          onChange={(event) =>
+                            atualizarCardDestaque(card.id, {
+                              icone: event.target.value,
+                            })
+                          }
+                          placeholder="Ex: estrela, frete, premium"
+                          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                        />
+                      </label>
+                    )}
+
+                    {(card.tipoMidia === "IMAGEM" || card.tipoMidia === "VIDEO") && (
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <label>
+                          <span className="mb-2 block text-sm font-medium text-slate-700">
+                            Crop/posição desktop
+                          </span>
+                          <select
+                            value={card.mediaPositionDesktop}
+                            onChange={(event) =>
+                              atualizarPosicaoCardDestaque(
+                                card.id,
+                                "DESKTOP",
+                                event.target.value
+                              )
+                            }
+                            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                          >
+                            {MEDIA_POSITION_PRESETS.map((preset) => (
+                              <option key={preset.value} value={preset.value}>
+                                {preset.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          <span className="mb-2 block text-sm font-medium text-slate-700">
+                            Crop/posição mobile
+                          </span>
+                          <select
+                            value={card.mediaPositionMobile}
+                            onChange={(event) =>
+                              atualizarPosicaoCardDestaque(
+                                card.id,
+                                "MOBILE",
+                                event.target.value
+                              )
+                            }
+                            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                          >
+                            {MEDIA_POSITION_PRESETS.map((preset) => (
+                              <option key={preset.value} value={preset.value}>
+                                {preset.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    )}
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Texto do botão
+                        </span>
+                        <input
+                          value={card.textoBotao}
+                          onChange={(event) =>
+                            atualizarCardDestaque(card.id, {
+                              textoBotao: event.target.value,
+                            })
+                          }
+                          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                        />
+                      </label>
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Link do botão
+                        </span>
+                        <input
+                          value={card.linkBotao}
+                          onChange={(event) =>
+                            atualizarCardDestaque(card.id, {
+                              linkBotao: event.target.value,
+                            })
+                          }
+                          placeholder="/loja/colecao"
+                          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -1982,6 +3815,7 @@ export default function EditorVisualPaginaClient({
       videoPosterUrl: getStringConfig(config, "videoPosterUrl"),
       videoLoop: getBooleanConfig(config, "videoLoop", true),
       videoSom: getStringConfig(config, "videoSom") || "MUDO",
+      exibirMidia: getBooleanConfig(config, "exibirMidia", true),
       textoBotao:
         getStringConfig(config, "textoBotao") ||
         getStringConfig(config, "botaoTexto"),
@@ -1995,6 +3829,59 @@ export default function EditorVisualPaginaClient({
       linkBotaoSecundario:
         getStringConfig(config, "linkBotaoSecundario") ||
         getStringConfig(config, "botaoSecundarioLink"),
+      exibirBotao: getBooleanConfig(config, "exibirBotao", true),
+      layoutDesktopTextoImagem: normalizarLayoutDesktopTextoImagem(
+        getStringConfig(config, "layoutDesktop") ||
+          getStringConfig(config, "layoutDesktopTextoImagem") ||
+          getStringConfig(config, "posicaoImagem")
+      ),
+      layoutMobileTextoImagem: normalizarLayoutMobileTextoImagem(
+        getStringConfig(config, "layoutMobile") ||
+          getStringConfig(config, "layoutMobileTextoImagem")
+      ),
+      fonteProdutos: getStringConfig(config, "fonte") || "TODOS",
+      limiteProdutos: getNumberConfig(config, "limite", 8),
+      layoutDesktopProdutos:
+        getStringConfig(config, "layoutDesktop") ||
+        getStringConfig(config, "modo") ||
+        "GRID",
+      layoutMobileProdutos: getStringConfig(config, "layoutMobile") || "GRID",
+      colunasDesktopProdutos: getNumberConfig(
+        config,
+        "colunasDesktop",
+        getNumberConfig(config, "produtosPorLinha", 4)
+      ),
+      colunasTabletProdutos: getNumberConfig(config, "colunasTablet", 3),
+      colunasMobileProdutos: getNumberConfig(config, "colunasMobile", 2),
+      exibirPrecoProdutos: getBooleanConfig(config, "exibirPreco", true),
+      exibirSeloDescontoProdutos: getBooleanConfig(
+        config,
+        "exibirSeloDesconto",
+        true
+      ),
+      layoutDesktopCards: normalizarLayoutCards(
+        getStringConfig(config, "layoutDesktop")
+      ),
+      layoutMobileCards: normalizarLayoutCards(
+        getStringConfig(config, "layoutMobile")
+      ),
+      colunasDesktopCards: getNumberConfig(config, "colunasDesktop", 3),
+      colunasTabletCards: getNumberConfig(config, "colunasTablet", 2),
+      colunasMobileCards: getNumberConfig(config, "colunasMobile", 1),
+      alinhamentoCards: normalizarAlinhamentoCards(
+        getStringConfig(config, "alinhamento")
+      ),
+      cardsDestaques: getCardsDestaquesConfig(config),
+      mediaCropDesktopX: getNumberConfig(config, "mediaCropDesktopX", 50),
+      mediaCropDesktopY: getNumberConfig(config, "mediaCropDesktopY", 50),
+      mediaCropMobileX: getNumberConfig(config, "mediaCropMobileX", 50),
+      mediaCropMobileY: getNumberConfig(config, "mediaCropMobileY", 50),
+      mediaPositionDesktop: normalizarMediaPosition(
+        getStringConfig(config, "mediaPositionDesktop")
+      ),
+      mediaPositionMobile: normalizarMediaPosition(
+        getStringConfig(config, "mediaPositionMobile")
+      ),
       corFundo: getStringConfig(config, "corFundo") || "BRANCO",
       espacamento: getStringConfig(config, "espacamento") || "PADRAO",
       alinhamentoConteudo:
@@ -2039,6 +3926,9 @@ export default function EditorVisualPaginaClient({
     const configAtual = getConfigObject(editando.bloco.configJson);
 
     const isBanner = isBannerTipo(editando.bloco.tipo);
+    const isTextoImagem = isTextoImagemTipo(editando.bloco.tipo);
+    const isListaProdutos = isListaProdutosTipo(editando.bloco.tipo);
+    const isDestaquesCards = isDestaquesCardsTipo(editando.bloco.tipo);
 
     const novoConfig = {
       ...configAtual,
@@ -2052,10 +3942,11 @@ export default function EditorVisualPaginaClient({
       botaoLink: editando.linkBotao,
       linkUrl: editando.linkBotao,
       ...(isBanner
-        ? {
-            tipoMidia: editando.tipoMidia,
-            exibirTexto: editando.exibirTexto,
-            exibirSubtitulo: editando.exibirSubtitulo,
+          ? {
+              tipoMidia: editando.tipoMidia,
+              exibirMidia: editando.exibirMidia,
+              exibirTexto: editando.exibirTexto,
+              exibirSubtitulo: editando.exibirSubtitulo,
             exibirBotaoPrimario: editando.exibirBotaoPrimario,
             exibirBotaoSecundario: editando.exibirBotaoSecundario,
             imagemDesktopUrl: editando.imagemDesktopUrl,
@@ -2072,11 +3963,121 @@ export default function EditorVisualPaginaClient({
             botaoSecundarioTexto: editando.textoBotaoSecundario,
             linkBotaoSecundario: editando.linkBotaoSecundario,
             botaoSecundarioLink: editando.linkBotaoSecundario,
-            alinhamentoConteudo: editando.alinhamentoConteudo,
-            alturaBanner: editando.alturaBanner,
-            overlayBanner: editando.overlayBanner,
-            corTextoBanner: editando.corTextoBanner,
-          }
+              alinhamentoConteudo: editando.alinhamentoConteudo,
+              alturaBanner: editando.alturaBanner,
+              overlayBanner: editando.overlayBanner,
+              corTextoBanner: editando.corTextoBanner,
+              mediaCropDesktopX: editando.mediaCropDesktopX,
+              mediaCropDesktopY: editando.mediaCropDesktopY,
+              mediaCropMobileX: editando.mediaCropMobileX,
+              mediaCropMobileY: editando.mediaCropMobileY,
+              mediaPositionDesktop: editando.mediaPositionDesktop,
+              mediaPositionMobile: editando.mediaPositionMobile,
+            }
+        : isTextoImagem
+          ? {
+              tipoMidia: editando.tipoMidia,
+              exibirMidia: editando.exibirMidia,
+              imagemDesktopUrl: editando.imagemDesktopUrl,
+              imagemDesktop: editando.imagemDesktopUrl,
+              imagemMobileUrl: editando.imagemMobileUrl,
+              imagemMobile: editando.imagemMobileUrl,
+              imagemUrl: editando.imagemDesktopUrl,
+              videoDesktopUrl: editando.videoDesktopUrl,
+              videoMobileUrl: editando.videoMobileUrl,
+              exibirBotao: editando.exibirBotao,
+              layoutDesktop: editando.layoutDesktopTextoImagem,
+              layoutDesktopTextoImagem: editando.layoutDesktopTextoImagem,
+              layoutMobile: editando.layoutMobileTextoImagem,
+              layoutMobileTextoImagem: editando.layoutMobileTextoImagem,
+              posicaoImagem:
+                editando.layoutDesktopTextoImagem === "IMAGEM_DIREITA"
+                  ? "DIREITA"
+                  : "ESQUERDA",
+              corFundo: editando.corFundo,
+              espacamento: editando.espacamento,
+              mediaCropDesktopX: editando.mediaCropDesktopX,
+              mediaCropDesktopY: editando.mediaCropDesktopY,
+              mediaCropMobileX: editando.mediaCropMobileX,
+              mediaCropMobileY: editando.mediaCropMobileY,
+              mediaPositionDesktop: editando.mediaPositionDesktop,
+              mediaPositionMobile: editando.mediaPositionMobile,
+            }
+        : isListaProdutos
+          ? {
+              descricao: editando.texto,
+              fonte: editando.fonteProdutos,
+              limite: Math.max(1, Number(editando.limiteProdutos) || 1),
+              modo: editando.layoutDesktopProdutos,
+              layoutDesktop: editando.layoutDesktopProdutos,
+              layoutMobile: editando.layoutMobileProdutos,
+              colunasDesktop: Math.max(
+                1,
+                Number(editando.colunasDesktopProdutos) || 1
+              ),
+              colunasTablet: Math.max(
+                1,
+                Number(editando.colunasTabletProdutos) || 1
+              ),
+              colunasMobile: Math.max(
+                1,
+                Number(editando.colunasMobileProdutos) || 1
+              ),
+              produtosPorLinha: Math.max(
+                1,
+                Number(editando.colunasDesktopProdutos) || 1
+              ),
+              exibirPreco: editando.exibirPrecoProdutos,
+              exibirBotao: editando.exibirBotao,
+              textoBotao: editando.textoBotao,
+              botaoTexto: editando.textoBotao,
+              exibirSeloDesconto: editando.exibirSeloDescontoProdutos,
+              corFundo: editando.corFundo,
+              espacamento: editando.espacamento,
+            }
+        : isDestaquesCards
+          ? {
+              descricao: editando.texto,
+              layoutDesktop: editando.layoutDesktopCards,
+              layoutMobile: editando.layoutMobileCards,
+              colunasDesktop: Math.max(
+                1,
+                Number(editando.colunasDesktopCards) || 1
+              ),
+              colunasTablet: Math.max(
+                1,
+                Number(editando.colunasTabletCards) || 1
+              ),
+              colunasMobile: Math.max(
+                1,
+                Number(editando.colunasMobileCards) || 1
+              ),
+              alinhamento: editando.alinhamentoCards,
+              corFundo: editando.corFundo,
+              espacamento: editando.espacamento,
+              cards: editando.cardsDestaques.map((card) => ({
+                id: card.id,
+                titulo: card.titulo,
+                texto: card.texto,
+                exibirMidia: card.exibirMidia,
+                tipoMidia: card.tipoMidia,
+                imagemUrl: card.imagemDesktopUrl,
+                imagemDesktopUrl: card.imagemDesktopUrl,
+                imagemMobileUrl: card.imagemMobileUrl,
+                videoDesktopUrl: card.videoDesktopUrl,
+                videoMobileUrl: card.videoMobileUrl,
+                icone: card.icone,
+                mediaPositionDesktop: card.mediaPositionDesktop,
+                mediaPositionMobile: card.mediaPositionMobile,
+                mediaCropDesktopX: card.mediaCropDesktopX,
+                mediaCropDesktopY: card.mediaCropDesktopY,
+                mediaCropMobileX: card.mediaCropMobileX,
+                mediaCropMobileY: card.mediaCropMobileY,
+                exibirBotao: card.exibirBotao,
+                textoBotao: card.textoBotao,
+                linkBotao: card.linkBotao,
+              })),
+            }
         : {
             imagemUrl: editando.imagemUrl,
             corFundo: editando.corFundo,
