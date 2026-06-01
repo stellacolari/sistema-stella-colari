@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
+  EyeOff,
   GripVertical,
   ImageIcon,
   LinkIcon,
+  Maximize2,
   Menu,
   Monitor,
   Plus,
