@@ -168,6 +168,18 @@ function getFrameLabel(device: DevicePreview) {
   return "Desktop";
 }
 
+function getDeviceDescription(device: DevicePreview) {
+  if (device === "MOBILE") {
+    return "Ajustes mobile serão separados nas próximas etapas. Por enquanto, estes campos continuam salvando o conteúdo base do bloco.";
+  }
+
+  if (device === "TABLET") {
+    return "Ajustes tablet serão separados nas próximas etapas. Por enquanto, estes campos continuam salvando o conteúdo base do bloco.";
+  }
+
+  return "Ajustes gerais e desktop. As alterações abaixo atualizam o conteúdo base usado no preview.";
+}
+
 function getBgClass(corFundo: string) {
   if (corFundo === "CINZA") return "bg-slate-50";
   if (corFundo === "MARCA") return "bg-[var(--brand-blue-soft)]";
@@ -230,6 +242,24 @@ function BlocoActionsPopup({ ativo }: { ativo: boolean }) {
         {ativo ? "Ocultar" : "Mostrar"}
       </button>
     </div>
+  );
+}
+
+function PainelSecao({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {title}
+      </h3>
+
+      <div className="mt-3">{children}</div>
+    </section>
   );
 }
 
@@ -767,7 +797,7 @@ export default function EditorVisualPaginaClient({
   async function atualizarBloco(
     bloco: EditorVisualBloco,
     data: Partial<EditorVisualBloco>
-  ) {
+  ): Promise<boolean> {
     setErro("");
     setSucesso("");
 
@@ -791,7 +821,7 @@ export default function EditorVisualPaginaClient({
       if (!response.ok) {
         atualizarBlocoLocal(bloco.id, blocoAnterior);
         setErro(result.error || result.message || "Erro ao atualizar bloco.");
-        return;
+        return false;
       }
 
       if (result.bloco) {
@@ -808,9 +838,11 @@ export default function EditorVisualPaginaClient({
       }
 
       setSucesso("Bloco atualizado.");
+      return true;
     } catch {
       atualizarBlocoLocal(bloco.id, blocoAnterior);
       setErro("Erro ao atualizar bloco.");
+      return false;
     }
   }
 
@@ -1043,13 +1075,15 @@ export default function EditorVisualPaginaClient({
     };
 
     try {
-      await atualizarBloco(editando.bloco, {
+      const salvo = await atualizarBloco(editando.bloco, {
         titulo: editando.nomeInterno || editando.titulo || editando.bloco.titulo,
         configJson: novoConfig,
       });
 
-      setEditando(null);
-      setSucesso("Conteúdo do bloco salvo.");
+      if (salvo) {
+        setEditando(null);
+        setSucesso("Conteúdo do bloco salvo.");
+      }
     } finally {
       setSalvando(false);
     }
@@ -1247,7 +1281,7 @@ export default function EditorVisualPaginaClient({
 
           {blocoSelecionado ? (
             <div className="mt-5 space-y-5">
-              <div>
+              <PainelSecao title="Conteúdo">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Bloco selecionado
                 </p>
@@ -1261,84 +1295,88 @@ export default function EditorVisualPaginaClient({
                   {getTipoLabel(blocoSelecionado.tipo)} · Ordem{" "}
                   {blocoSelecionado.ordem}
                 </p>
-              </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Ajustes do modo atual
-                </p>
-
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Você está editando em modo{" "}
-                  <strong>{getFrameLabel(device)}</strong>. Nas próximas etapas,
-                  este painel terá controles específicos para desktop, tablet e
-                  mobile.
-                </p>
-              </div>
-
-              <div className="grid gap-2">
                 <button
                   type="button"
                   onClick={() => abrirEdicaoBloco(blocoSelecionado)}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  Editar conteúdo
+                  <Type className="h-4 w-4" />
+                  Editar conteúdo básico
                 </button>
+              </PainelSecao>
 
-                <button
-                  type="button"
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  Duplicar bloco
-                </button>
+              <PainelSecao title="Aparência">
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Cor de fundo e espaçamento ficam no modal de conteúdo nesta
+                  etapa. Eles são salvos junto com as configurações existentes do
+                  bloco.
+                </p>
+              </PainelSecao>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    void atualizarBloco(blocoSelecionado, {
-                      ativo: !blocoSelecionado.ativo,
-                    })
-                  }
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  {blocoSelecionado.ativo ? "Ocultar bloco" : "Ativar bloco"}
-                </button>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void moverBlocoPorSeta(blocoSelecionado.id, "CIMA")
-                    }
-                    disabled={ordemSalvando}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                    Subir
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void moverBlocoPorSeta(blocoSelecionado.id, "BAIXO")
-                    }
-                    disabled={ordemSalvando}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                    Descer
-                  </button>
+              <PainelSecao title="Dispositivo atual">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                  {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
+                  {device === "TABLET" && <Tablet className="h-4 w-4" />}
+                  {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
+                  {getFrameLabel(device)}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => void excluirBloco(blocoSelecionado)}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Excluir bloco
-                </button>
-              </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {getDeviceDescription(device)}
+                </p>
+              </PainelSecao>
+
+              <PainelSecao title="Ações do bloco">
+                <div className="grid gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void atualizarBloco(blocoSelecionado, {
+                        ativo: !blocoSelecionado.ativo,
+                      })
+                    }
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {blocoSelecionado.ativo ? "Ocultar bloco" : "Ativar bloco"}
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void moverBlocoPorSeta(blocoSelecionado.id, "CIMA")
+                      }
+                      disabled={ordemSalvando}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                      Subir
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void moverBlocoPorSeta(blocoSelecionado.id, "BAIXO")
+                      }
+                      disabled={ordemSalvando}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      Descer
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void excluirBloco(blocoSelecionado)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir bloco
+                  </button>
+                </div>
+              </PainelSecao>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
