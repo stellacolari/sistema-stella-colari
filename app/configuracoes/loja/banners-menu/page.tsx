@@ -141,8 +141,20 @@ export default async function BannersMenuLojaPage() {
     atualizadoEm: menu.atualizadoEm.toISOString(),
   }));
 
-<LojaConfigHeader
-  title="Banners e menu público"
-  description="Configure banners desktop/mobile, links, páginas especiais e itens do menu público da loja."
-/>
+  return (
+    <main className="space-y-6">
+      <LojaConfigHeader
+        title="Banners e menu público"
+        description="Configure banners desktop/mobile, links, páginas especiais e itens do menu público da loja."
+      />
+
+      <ConfiguracoesLojaClient
+        produtos={produtos}
+        categorias={categoriasLegadas}
+        categoriasNovas={categorias}
+        banners={banners}
+        menus={menus}
+      />
+    </main>
+  );
 }
