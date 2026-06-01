@@ -49,6 +49,42 @@ function getTituloPadrao(tipo: string) {
   return titulos[tipo] || tipo;
 }
 
+function getTextStylePadrao(kind: string) {
+  if (kind.includes("botao") || kind.includes("Botao")) {
+    return {
+      fontSizePreset: "PEQUENO",
+      fontWeight: "SEMIBOLD",
+      colorPreset: "PADRAO",
+      colorCustom: "",
+      letterSpacing: "NORMAL",
+      textTransform: "NORMAL",
+      textAlign: "CENTRO",
+    };
+  }
+
+  if (kind.includes("subtitulo") || kind.includes("texto") || kind.includes("Texto")) {
+    return {
+      fontSizePreset: "MEDIO",
+      fontWeight: "REGULAR",
+      colorPreset: "PADRAO",
+      colorCustom: "",
+      letterSpacing: "NORMAL",
+      textTransform: "NORMAL",
+      textAlign: "ESQUERDA",
+    };
+  }
+
+  return {
+    fontSizePreset: "GRANDE",
+    fontWeight: "LIGHT",
+    colorPreset: "PADRAO",
+    colorCustom: "",
+    letterSpacing: "NORMAL",
+    textTransform: "NORMAL",
+    textAlign: "ESQUERDA",
+  };
+}
+
 function getConfigPadrao(tipo: string) {
   if (tipo === "BANNER") {
     return {
@@ -83,6 +119,10 @@ function getConfigPadrao(tipo: string) {
       mediaPositionMobile: "center center",
       alturaDesktop: 520,
       alturaMobile: 320,
+      tituloStyle: getTextStylePadrao("tituloStyle"),
+      subtituloStyle: getTextStylePadrao("subtituloStyle"),
+      botaoPrimarioStyle: getTextStylePadrao("botaoPrimarioStyle"),
+      botaoSecundarioStyle: getTextStylePadrao("botaoSecundarioStyle"),
     };
   }
 
@@ -128,6 +168,11 @@ function getConfigPadrao(tipo: string) {
       exibirSeloDesconto: true,
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      tituloStyle: getTextStylePadrao("tituloStyle"),
+      subtituloStyle: getTextStylePadrao("subtituloStyle"),
+      nomeProdutoStyle: getTextStylePadrao("nomeProdutoStyle"),
+      precoProdutoStyle: getTextStylePadrao("precoProdutoStyle"),
+      botaoStyle: getTextStylePadrao("botaoStyle"),
       mostrarSetas: true,
       produtosPorLinha: 4,
       linhasPorPagina: 2,
@@ -169,6 +214,9 @@ function getConfigPadrao(tipo: string) {
       exibirBotao: true,
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      tituloStyle: getTextStylePadrao("tituloStyle"),
+      textoStyle: getTextStylePadrao("textoStyle"),
+      botaoStyle: getTextStylePadrao("botaoStyle"),
       altura: 420,
     };
   }
@@ -204,6 +252,11 @@ function getConfigPadrao(tipo: string) {
       alinhamento: "CENTRO",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      tituloSecaoStyle: getTextStylePadrao("tituloSecaoStyle"),
+      subtituloSecaoStyle: getTextStylePadrao("subtituloSecaoStyle"),
+      cardTituloStyle: getTextStylePadrao("cardTituloStyle"),
+      cardTextoStyle: getTextStylePadrao("cardTextoStyle"),
+      cardBotaoStyle: getTextStylePadrao("cardBotaoStyle"),
       cards: [
         {
           ...cardBase,

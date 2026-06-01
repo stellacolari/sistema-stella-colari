@@ -97,6 +97,16 @@ type DestaqueCardEditando = {
   linkBotao: string;
 };
 
+type TextStyleConfig = {
+  fontSizePreset: string;
+  fontWeight: string;
+  colorPreset: string;
+  colorCustom: string;
+  letterSpacing: string;
+  textTransform: string;
+  textAlign: string;
+};
+
 type BlocoEditandoState = {
   bloco: EditorVisualBloco;
   nomeInterno: string;
@@ -151,6 +161,19 @@ type BlocoEditandoState = {
   exibirSubtitulo: boolean;
   exibirBotaoPrimario: boolean;
   exibirBotaoSecundario: boolean;
+  tituloStyle: TextStyleConfig;
+  subtituloStyle: TextStyleConfig;
+  botaoPrimarioStyle: TextStyleConfig;
+  botaoSecundarioStyle: TextStyleConfig;
+  textoStyle: TextStyleConfig;
+  botaoStyle: TextStyleConfig;
+  nomeProdutoStyle: TextStyleConfig;
+  precoProdutoStyle: TextStyleConfig;
+  tituloSecaoStyle: TextStyleConfig;
+  subtituloSecaoStyle: TextStyleConfig;
+  cardTituloStyle: TextStyleConfig;
+  cardTextoStyle: TextStyleConfig;
+  cardBotaoStyle: TextStyleConfig;
 } | null;
 
 type MediaKind = "IMAGEM" | "VIDEO";
@@ -166,6 +189,48 @@ const ESPACAMENTO_PRESETS = [
   { value: "COMPACTO", label: "Compacto" },
   { value: "PADRAO", label: "Padrão" },
   { value: "AMPLO", label: "Amplo" },
+];
+
+const TEXT_FONT_SIZE_PRESETS = [
+  { value: "PEQUENO", label: "Pequeno" },
+  { value: "MEDIO", label: "Médio" },
+  { value: "GRANDE", label: "Grande" },
+  { value: "EXTRA_GRANDE", label: "Extra grande" },
+];
+
+const TEXT_FONT_WEIGHT_PRESETS = [
+  { value: "LIGHT", label: "Light" },
+  { value: "REGULAR", label: "Regular" },
+  { value: "MEDIUM", label: "Medium" },
+  { value: "SEMIBOLD", label: "Semibold" },
+  { value: "BOLD", label: "Bold" },
+];
+
+const TEXT_COLOR_PRESETS = [
+  { value: "PADRAO", label: "Padrão" },
+  { value: "CLARO", label: "Claro" },
+  { value: "ESCURO", label: "Escuro" },
+  { value: "DOURADO", label: "Dourado" },
+  { value: "PERSONALIZADO", label: "Personalizado" },
+];
+
+const TEXT_LETTER_SPACING_PRESETS = [
+  { value: "NORMAL", label: "Normal" },
+  { value: "LEVE", label: "Leve" },
+  { value: "MEDIO", label: "Médio" },
+  { value: "ALTO", label: "Alto" },
+];
+
+const TEXT_TRANSFORM_PRESETS = [
+  { value: "NORMAL", label: "Normal" },
+  { value: "UPPERCASE", label: "Uppercase" },
+  { value: "CAPITALIZE", label: "Capitalize" },
+];
+
+const TEXT_ALIGN_PRESETS = [
+  { value: "ESQUERDA", label: "Esquerda" },
+  { value: "CENTRO", label: "Centro" },
+  { value: "DIREITA", label: "Direita" },
 ];
 
 const ALINHAMENTO_BANNER_PRESETS = [
@@ -398,6 +463,139 @@ function getArrayConfig(config: Record<string, unknown>, key: string) {
   }
 
   return [];
+}
+
+function getTextStyleDefaults(kind: string): TextStyleConfig {
+  if (kind.includes("botao") || kind.includes("Botao")) {
+    return {
+      fontSizePreset: "PEQUENO",
+      fontWeight: "SEMIBOLD",
+      colorPreset: "PADRAO",
+      colorCustom: "",
+      letterSpacing: "NORMAL",
+      textTransform: "NORMAL",
+      textAlign: "CENTRO",
+    };
+  }
+
+  if (kind.includes("subtitulo") || kind.includes("texto") || kind.includes("Texto")) {
+    return {
+      fontSizePreset: "MEDIO",
+      fontWeight: "REGULAR",
+      colorPreset: "PADRAO",
+      colorCustom: "",
+      letterSpacing: "NORMAL",
+      textTransform: "NORMAL",
+      textAlign: "ESQUERDA",
+    };
+  }
+
+  return {
+    fontSizePreset: "GRANDE",
+    fontWeight: "LIGHT",
+    colorPreset: "PADRAO",
+    colorCustom: "",
+    letterSpacing: "NORMAL",
+    textTransform: "NORMAL",
+    textAlign: "ESQUERDA",
+  };
+}
+
+function normalizeTextStyle(
+  value: unknown,
+  defaults: TextStyleConfig
+): TextStyleConfig {
+  const style = getConfigObject(value);
+  const fontSizePreset = getStringConfig(style, "fontSizePreset");
+  const fontWeight = getStringConfig(style, "fontWeight");
+  const colorPreset = getStringConfig(style, "colorPreset");
+  const letterSpacing = getStringConfig(style, "letterSpacing");
+  const textTransform = getStringConfig(style, "textTransform");
+  const textAlign = getStringConfig(style, "textAlign");
+
+  return {
+    fontSizePreset: TEXT_FONT_SIZE_PRESETS.some(
+      (preset) => preset.value === fontSizePreset
+    )
+      ? fontSizePreset
+      : defaults.fontSizePreset,
+    fontWeight: TEXT_FONT_WEIGHT_PRESETS.some(
+      (preset) => preset.value === fontWeight
+    )
+      ? fontWeight
+      : defaults.fontWeight,
+    colorPreset: TEXT_COLOR_PRESETS.some((preset) => preset.value === colorPreset)
+      ? colorPreset
+      : defaults.colorPreset,
+    colorCustom: getStringConfig(style, "colorCustom") || defaults.colorCustom,
+    letterSpacing: TEXT_LETTER_SPACING_PRESETS.some(
+      (preset) => preset.value === letterSpacing
+    )
+      ? letterSpacing
+      : defaults.letterSpacing,
+    textTransform: TEXT_TRANSFORM_PRESETS.some(
+      (preset) => preset.value === textTransform
+    )
+      ? textTransform
+      : defaults.textTransform,
+    textAlign: TEXT_ALIGN_PRESETS.some((preset) => preset.value === textAlign)
+      ? textAlign
+      : defaults.textAlign,
+  };
+}
+
+function getTextStyleConfig(config: Record<string, unknown>, key: string) {
+  return normalizeTextStyle(config[key], getTextStyleDefaults(key));
+}
+
+function resolveTextStyle(style: TextStyleConfig): CSSProperties {
+  const fontSizeMap: Record<string, string> = {
+    PEQUENO: "0.875rem",
+    MEDIO: "1rem",
+    GRANDE: "1.5rem",
+    EXTRA_GRANDE: "2.75rem",
+  };
+  const fontWeightMap: Record<string, number> = {
+    LIGHT: 300,
+    REGULAR: 400,
+    MEDIUM: 500,
+    SEMIBOLD: 600,
+    BOLD: 700,
+  };
+  const colorMap: Record<string, string> = {
+    CLARO: "#ffffff",
+    ESCURO: "#0f172a",
+    DOURADO: "#b8892e",
+  };
+  const letterSpacingMap: Record<string, string> = {
+    NORMAL: "0",
+    LEVE: "0.02em",
+    MEDIO: "0.08em",
+    ALTO: "0.14em",
+  };
+  const textAlignMap: Record<string, CSSProperties["textAlign"]> = {
+    ESQUERDA: "left",
+    CENTRO: "center",
+    DIREITA: "right",
+  };
+
+  return {
+    fontSize: fontSizeMap[style.fontSizePreset] || fontSizeMap.MEDIO,
+    fontWeight: fontWeightMap[style.fontWeight] || fontWeightMap.REGULAR,
+    color:
+      style.colorPreset === "PERSONALIZADO" && style.colorCustom
+        ? style.colorCustom
+        : colorMap[style.colorPreset],
+    letterSpacing:
+      letterSpacingMap[style.letterSpacing] || letterSpacingMap.NORMAL,
+    textTransform:
+      style.textTransform === "NORMAL"
+        ? "none"
+        : style.textTransform === "UPPERCASE"
+          ? "uppercase"
+          : "capitalize",
+    textAlign: textAlignMap[style.textAlign] || "left",
+  };
 }
 
 function getTipoLabel(tipo: string) {
@@ -827,6 +1025,147 @@ function CampoToggle({
   );
 }
 
+function TextStyleControls({
+  title,
+  value,
+  onChange,
+}: {
+  title: string;
+  value: TextStyleConfig;
+  onChange: (style: TextStyleConfig) => void;
+}) {
+  function update(data: Partial<TextStyleConfig>) {
+    onChange({
+      ...value,
+      ...data,
+    });
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h4 className="text-sm font-semibold text-slate-950">{title}</h4>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Tamanho
+          </span>
+          <select
+            value={value.fontSizePreset}
+            onChange={(event) => update({ fontSizePreset: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_FONT_SIZE_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Peso
+          </span>
+          <select
+            value={value.fontWeight}
+            onChange={(event) => update({ fontWeight: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_FONT_WEIGHT_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Cor
+          </span>
+          <select
+            value={value.colorPreset}
+            onChange={(event) => update({ colorPreset: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_COLOR_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {value.colorPreset === "PERSONALIZADO" && (
+          <label>
+            <span className="mb-2 block text-xs font-medium text-slate-600">
+              Cor personalizada
+            </span>
+            <input
+              value={value.colorCustom}
+              onChange={(event) => update({ colorCustom: event.target.value })}
+              placeholder="#0f172a"
+              className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+        )}
+
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Espaçamento
+          </span>
+          <select
+            value={value.letterSpacing}
+            onChange={(event) => update({ letterSpacing: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_LETTER_SPACING_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Transformação
+          </span>
+          <select
+            value={value.textTransform}
+            onChange={(event) => update({ textTransform: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_TRANSFORM_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-xs font-medium text-slate-600">
+            Alinhamento
+          </span>
+          <select
+            value={value.textAlign}
+            onChange={(event) => update({ textAlign: event.target.value })}
+            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_ALIGN_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function UploadMidiaCampo({
   label,
   value,
@@ -1207,6 +1546,19 @@ function RenderBlocoPreview({
     getStringConfig(config, "texto") ||
     getStringConfig(config, "descricao") ||
     getStringConfig(config, "conteudo");
+  const tituloStyle = getTextStyleConfig(config, "tituloStyle");
+  const subtituloStyle = getTextStyleConfig(config, "subtituloStyle");
+  const botaoPrimarioStyle = getTextStyleConfig(config, "botaoPrimarioStyle");
+  const botaoSecundarioStyle = getTextStyleConfig(config, "botaoSecundarioStyle");
+  const textoStyle = getTextStyleConfig(config, "textoStyle");
+  const botaoStyle = getTextStyleConfig(config, "botaoStyle");
+  const nomeProdutoStyle = getTextStyleConfig(config, "nomeProdutoStyle");
+  const precoProdutoStyle = getTextStyleConfig(config, "precoProdutoStyle");
+  const tituloSecaoStyle = getTextStyleConfig(config, "tituloSecaoStyle");
+  const subtituloSecaoStyle = getTextStyleConfig(config, "subtituloSecaoStyle");
+  const cardTituloStyle = getTextStyleConfig(config, "cardTituloStyle");
+  const cardTextoStyle = getTextStyleConfig(config, "cardTextoStyle");
+  const cardBotaoStyle = getTextStyleConfig(config, "cardBotaoStyle");
 
   const imagemUrl =
     getStringConfig(config, "imagemUrl") ||
@@ -1363,23 +1715,27 @@ function RenderBlocoPreview({
   ) : null;
   const textoImagemConteudo = (
     <div>
-      <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
+      <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
+        {titulo}
+      </h2>
 
       <p
-        className={`mt-4 text-sm leading-7 ${
+        className={`mt-4 leading-7 ${
           corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
         }`}
+        style={resolveTextStyle(textoStyle)}
       >
         {texto || "Texto do bloco aparece aqui."}
       </p>
 
       {exibirBotaoTextoImagem && textoBotao && (
         <div
-          className={`mt-5 inline-flex px-5 py-3 text-sm font-semibold ${
+          className={`mt-5 inline-flex px-5 py-3 ${
             corFundo === "ESCURO"
               ? "bg-white text-slate-950"
               : "bg-slate-950 text-white"
           }`}
+          style={resolveTextStyle(botaoStyle)}
         >
           {textoBotao}
         </div>
@@ -1474,6 +1830,7 @@ function RenderBlocoPreview({
                   className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${
                     isMobile ? "text-4xl" : "text-5xl"
                   }`}
+                  style={resolveTextStyle(tituloStyle)}
                 >
                   {titulo}
                 </h2>
@@ -1481,6 +1838,7 @@ function RenderBlocoPreview({
                 {exibirSubtitulo && texto && (
                   <p
                     className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
+                    style={resolveTextStyle(subtituloStyle)}
                   >
                     {texto}
                   </p>
@@ -1491,6 +1849,7 @@ function RenderBlocoPreview({
                     {exibirBotaoPrimario && textoBotao && (
                       <div
                         className={`inline-flex px-5 py-3 text-sm font-semibold ${bannerTextClasses.button}`}
+                        style={resolveTextStyle(botaoPrimarioStyle)}
                       >
                         {textoBotao}
                       </div>
@@ -1503,6 +1862,7 @@ function RenderBlocoPreview({
                             ? "border-slate-950 text-slate-950"
                             : "border-white text-white"
                         }`}
+                        style={resolveTextStyle(botaoSecundarioStyle)}
                       >
                         {textoBotaoSecundario}
                       </div>
@@ -1529,14 +1889,22 @@ function RenderBlocoPreview({
 
             <div className="absolute inset-0 flex items-center px-6 py-10 md:px-12">
               <div className="max-w-xl text-white">
-                <h2 className="text-3xl font-light tracking-tight">{titulo}</h2>
+                <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
+                  {titulo}
+                </h2>
 
-                <p className="mt-4 text-sm leading-7 text-white/85">
+                <p
+                  className="mt-4 leading-7 text-white/85"
+                  style={resolveTextStyle(textoStyle)}
+                >
                   {texto || "Texto do bloco aparece aqui."}
                 </p>
 
                 {exibirBotaoTextoImagem && textoBotao && (
-                  <div className="mt-5 inline-flex bg-white px-5 py-3 text-sm font-semibold text-slate-950">
+                  <div
+                    className="mt-5 inline-flex bg-white px-5 py-3 text-slate-950"
+                    style={resolveTextStyle(botaoStyle)}
+                  >
                     {textoBotao}
                   </div>
                 )}
@@ -1615,13 +1983,16 @@ function RenderBlocoPreview({
         <div className={`${bgClass} ${paddingClass}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+              <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
+                {titulo}
+              </h2>
 
               {texto && (
                 <p
-                  className={`mt-2 max-w-2xl text-sm leading-6 ${
+                  className={`mt-2 max-w-2xl leading-6 ${
                     corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
                   }`}
+                  style={resolveTextStyle(subtituloStyle)}
                 >
                   {texto}
                 </p>
@@ -1667,14 +2038,24 @@ function RenderBlocoPreview({
                     )}
                   </div>
 
-                  <div className="mt-3 h-3 w-3/4 bg-slate-100" />
+                  <p
+                    className="mt-3 truncate"
+                    style={resolveTextStyle(nomeProdutoStyle)}
+                  >
+                    Produto exemplo
+                  </p>
 
                   {exibirPrecoProdutos && (
-                    <div className="mt-2 h-3 w-1/2 bg-slate-100" />
+                    <p className="mt-2" style={resolveTextStyle(precoProdutoStyle)}>
+                      R$ 129,90
+                    </p>
                   )}
 
                   {exibirBotaoProdutos && textoBotao && (
-                    <div className="mt-3 h-8 bg-slate-950 text-center text-[11px] font-semibold leading-8 text-white">
+                    <div
+                      className="mt-3 bg-slate-950 px-3 py-2 text-center text-white"
+                      style={resolveTextStyle(botaoStyle)}
+                    >
                       {textoBotao}
                     </div>
                   )}
@@ -1699,13 +2080,19 @@ function RenderBlocoPreview({
                 : "max-w-2xl text-left"
             }
           >
-            <h2 className="text-2xl font-light tracking-tight">{titulo}</h2>
+            <h2
+              className="tracking-tight"
+              style={resolveTextStyle(tituloSecaoStyle)}
+            >
+              {titulo}
+            </h2>
 
             {texto && (
               <p
-                className={`mt-2 text-sm leading-6 ${
+                className={`mt-2 leading-6 ${
                   corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
                 }`}
+                style={resolveTextStyle(subtituloSecaoStyle)}
               >
                 {texto}
               </p>
@@ -1749,16 +2136,25 @@ function RenderBlocoPreview({
                       : "p-5 text-left"
                   }
                 >
-                  <h3 className="text-base font-semibold text-slate-950">
+                  <h3
+                    className="text-slate-950"
+                    style={resolveTextStyle(cardTituloStyle)}
+                  >
                     {card.titulo || "Título do card"}
                   </h3>
 
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                  <p
+                    className="mt-2 leading-6 text-slate-500"
+                    style={resolveTextStyle(cardTextoStyle)}
+                  >
                     {card.texto || "Texto de apoio do card."}
                   </p>
 
                   {card.exibirBotao && card.textoBotao && (
-                    <div className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+                    <div
+                      className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-white"
+                      style={resolveTextStyle(cardBotaoStyle)}
+                    >
                       {card.textoBotao}
                     </div>
                   )}
@@ -2234,6 +2630,35 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
+            <PainelSecao title="Tipografia">
+              <div className="space-y-3">
+                <TextStyleControls
+                  title="Título"
+                  value={estado.tituloStyle}
+                  onChange={(style) => onChange({ tituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Subtítulo"
+                  value={estado.subtituloStyle}
+                  onChange={(style) => onChange({ subtituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão primário"
+                  value={estado.botaoPrimarioStyle}
+                  onChange={(style) =>
+                    onChange({ botaoPrimarioStyle: style })
+                  }
+                />
+                <TextStyleControls
+                  title="Botão secundário"
+                  value={estado.botaoSecundarioStyle}
+                  onChange={(style) =>
+                    onChange({ botaoSecundarioStyle: style })
+                  }
+                />
+              </div>
+            </PainelSecao>
+
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -2408,6 +2833,26 @@ function EditorConteudoBlocoModal({
               label="Exibir mídia"
               onChange={(checked) => onChange({ exibirMidia: checked })}
             />
+
+            <PainelSecao title="Tipografia">
+              <div className="space-y-3">
+                <TextStyleControls
+                  title="Título"
+                  value={estado.tituloStyle}
+                  onChange={(style) => onChange({ tituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Texto"
+                  value={estado.textoStyle}
+                  onChange={(style) => onChange({ textoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão"
+                  value={estado.botaoStyle}
+                  onChange={(style) => onChange({ botaoStyle: style })}
+                />
+              </div>
+            </PainelSecao>
 
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -2780,6 +3225,36 @@ function EditorConteudoBlocoModal({
               />
             </label>
 
+            <PainelSecao title="Tipografia">
+              <div className="space-y-3">
+                <TextStyleControls
+                  title="Título"
+                  value={estado.tituloStyle}
+                  onChange={(style) => onChange({ tituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Subtítulo"
+                  value={estado.subtituloStyle}
+                  onChange={(style) => onChange({ subtituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Nome do produto"
+                  value={estado.nomeProdutoStyle}
+                  onChange={(style) => onChange({ nomeProdutoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Preço"
+                  value={estado.precoProdutoStyle}
+                  onChange={(style) => onChange({ precoProdutoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão"
+                  value={estado.botaoStyle}
+                  onChange={(style) => onChange({ botaoStyle: style })}
+                />
+              </div>
+            </PainelSecao>
+
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -2987,6 +3462,38 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
             </div>
+
+            <PainelSecao title="Tipografia">
+              <div className="space-y-3">
+                <TextStyleControls
+                  title="Título da seção"
+                  value={estado.tituloSecaoStyle}
+                  onChange={(style) => onChange({ tituloSecaoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Subtítulo da seção"
+                  value={estado.subtituloSecaoStyle}
+                  onChange={(style) =>
+                    onChange({ subtituloSecaoStyle: style })
+                  }
+                />
+                <TextStyleControls
+                  title="Título do card"
+                  value={estado.cardTituloStyle}
+                  onChange={(style) => onChange({ cardTituloStyle: style })}
+                />
+                <TextStyleControls
+                  title="Texto do card"
+                  value={estado.cardTextoStyle}
+                  onChange={(style) => onChange({ cardTextoStyle: style })}
+                />
+                <TextStyleControls
+                  title="Botão do card"
+                  value={estado.cardBotaoStyle}
+                  onChange={(style) => onChange({ cardBotaoStyle: style })}
+                />
+              </div>
+            </PainelSecao>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -3902,6 +4409,19 @@ export default function EditorVisualPaginaClient({
         "exibirBotaoSecundario",
         false
       ),
+      tituloStyle: getTextStyleConfig(config, "tituloStyle"),
+      subtituloStyle: getTextStyleConfig(config, "subtituloStyle"),
+      botaoPrimarioStyle: getTextStyleConfig(config, "botaoPrimarioStyle"),
+      botaoSecundarioStyle: getTextStyleConfig(config, "botaoSecundarioStyle"),
+      textoStyle: getTextStyleConfig(config, "textoStyle"),
+      botaoStyle: getTextStyleConfig(config, "botaoStyle"),
+      nomeProdutoStyle: getTextStyleConfig(config, "nomeProdutoStyle"),
+      precoProdutoStyle: getTextStyleConfig(config, "precoProdutoStyle"),
+      tituloSecaoStyle: getTextStyleConfig(config, "tituloSecaoStyle"),
+      subtituloSecaoStyle: getTextStyleConfig(config, "subtituloSecaoStyle"),
+      cardTituloStyle: getTextStyleConfig(config, "cardTituloStyle"),
+      cardTextoStyle: getTextStyleConfig(config, "cardTextoStyle"),
+      cardBotaoStyle: getTextStyleConfig(config, "cardBotaoStyle"),
     });
   }
 
@@ -3941,6 +4461,19 @@ export default function EditorVisualPaginaClient({
       linkBotao: editando.linkBotao,
       botaoLink: editando.linkBotao,
       linkUrl: editando.linkBotao,
+      tituloStyle: editando.tituloStyle,
+      subtituloStyle: editando.subtituloStyle,
+      botaoPrimarioStyle: editando.botaoPrimarioStyle,
+      botaoSecundarioStyle: editando.botaoSecundarioStyle,
+      textoStyle: editando.textoStyle,
+      botaoStyle: editando.botaoStyle,
+      nomeProdutoStyle: editando.nomeProdutoStyle,
+      precoProdutoStyle: editando.precoProdutoStyle,
+      tituloSecaoStyle: editando.tituloSecaoStyle,
+      subtituloSecaoStyle: editando.subtituloSecaoStyle,
+      cardTituloStyle: editando.cardTituloStyle,
+      cardTextoStyle: editando.cardTextoStyle,
+      cardBotaoStyle: editando.cardBotaoStyle,
       ...(isBanner
           ? {
               tipoMidia: editando.tipoMidia,
