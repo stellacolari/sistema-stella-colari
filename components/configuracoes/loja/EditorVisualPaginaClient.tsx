@@ -5705,6 +5705,10 @@ export default function EditorVisualPaginaClient({
   const blocoSelecionado =
     blocosOrdenados.find((bloco) => bloco.id === blocoSelecionadoId) || null;
 
+  function getBlocoEditorAtual(blocoId: string) {
+    return blocosEditor.find((bloco) => bloco.id === blocoId) || null;
+  }
+
   function atualizarBlocoLocal(
     blocoId: string,
     data: Partial<EditorVisualBloco>
@@ -5935,8 +5939,10 @@ export default function EditorVisualPaginaClient({
   }
 
   async function salvarTextosInline(bloco: EditorVisualBloco) {
-    const salvo = await atualizarBloco(bloco, {
-      configJson: bloco.configJson,
+    const blocoAtual = getBlocoEditorAtual(bloco.id) || bloco;
+
+    const salvo = await atualizarBloco(blocoAtual, {
+      configJson: getConfigObject(blocoAtual.configJson),
     });
 
     if (salvo) {
@@ -6011,12 +6017,14 @@ export default function EditorVisualPaginaClient({
   }
 
   function abrirEdicaoBloco(bloco: EditorVisualBloco) {
-    const config = getConfigObject(bloco.configJson);
+    const blocoAtual = getBlocoEditorAtual(bloco.id) || bloco;
+    const config = getConfigObject(blocoAtual.configJson);
+    const textoBotaoFallback = isBannerTipo(blocoAtual.tipo) ? "Conhecer" : "";
 
     setEditando({
-      bloco,
-      nomeInterno: bloco.titulo || "",
-      titulo: getStringConfig(config, "titulo") || bloco.titulo || "",
+      bloco: blocoAtual,
+      nomeInterno: blocoAtual.titulo || "",
+      titulo: getStringConfig(config, "titulo") || blocoAtual.titulo || "",
       texto:
         getStringConfig(config, "texto") ||
         getStringConfig(config, "descricao") ||
@@ -6040,19 +6048,26 @@ export default function EditorVisualPaginaClient({
       videoLoop: getBooleanConfig(config, "videoLoop", true),
       videoSom: getStringConfig(config, "videoSom") || "MUDO",
       exibirMidia: getBooleanConfig(config, "exibirMidia", true),
-      textoBotao:
-        getStringConfig(config, "textoBotao") ||
-        getStringConfig(config, "botaoTexto"),
-      textoBotaoSecundario:
-        getStringConfig(config, "textoBotaoSecundario") ||
-        getStringConfig(config, "botaoSecundarioTexto"),
-      linkBotao:
-        getStringConfig(config, "linkBotao") ||
-        getStringConfig(config, "botaoLink") ||
-        getStringConfig(config, "linkUrl"),
-      linkBotaoSecundario:
-        getStringConfig(config, "linkBotaoSecundario") ||
-        getStringConfig(config, "botaoSecundarioLink"),
+      textoBotao: getStringConfigWithDefault(
+        config,
+        ["textoBotao", "botaoTexto", "textoBotaoPrimario"],
+        textoBotaoFallback
+      ),
+      textoBotaoSecundario: getStringConfigWithDefault(
+        config,
+        ["textoBotaoSecundario", "botaoSecundarioTexto"],
+        ""
+      ),
+      linkBotao: getStringConfigWithDefault(
+        config,
+        ["linkBotao", "botaoLink", "linkUrl", "linkBotaoPrimario"],
+        ""
+      ),
+      linkBotaoSecundario: getStringConfigWithDefault(
+        config,
+        ["linkBotaoSecundario", "botaoSecundarioLink"],
+        ""
+      ),
       exibirBotao: getBooleanConfig(config, "exibirBotao", true),
       layoutDesktopTextoImagem: normalizarLayoutDesktopTextoImagem(
         getStringConfig(config, "layoutDesktop") ||
@@ -6178,13 +6193,29 @@ export default function EditorVisualPaginaClient({
     setSucesso("");
     setSalvando(true);
 
-    const configAtual = getConfigObject(editando.bloco.configJson);
+    const blocoAtual = getBlocoEditorAtual(editando.bloco.id) || editando.bloco;
+    const configAtual = getConfigObject(blocoAtual.configJson);
 
-    const isBanner = isBannerTipo(editando.bloco.tipo);
-    const isTextoImagem = isTextoImagemTipo(editando.bloco.tipo);
-    const isListaProdutos = isListaProdutosTipo(editando.bloco.tipo);
-    const isDestaquesCards = isDestaquesCardsTipo(editando.bloco.tipo);
-    const isCta = isCtaTipo(editando.bloco.tipo);
+    const isBanner = isBannerTipo(blocoAtual.tipo);
+    const isTextoImagem = isTextoImagemTipo(blocoAtual.tipo);
+    const isListaProdutos = isListaProdutosTipo(blocoAtual.tipo);
+    const isDestaquesCards = isDestaquesCardsTipo(blocoAtual.tipo);
+    const isCta = isCtaTipo(blocoAtual.tipo);
+    const tituloAtual =
+      getStringConfig(configAtual, "titulo") || blocoAtual.titulo || "";
+    const textoAtual =
+      getStringConfig(configAtual, "texto") ||
+      getStringConfig(configAtual, "descricao") ||
+      getStringConfig(configAtual, "conteudo");
+    const tituloTextoImagemMudou =
+      isTextoImagem && editando.titulo !== tituloAtual;
+    const textoTextoImagemMudou = isTextoImagem && editando.texto !== textoAtual;
+    const tituloTextoImagemRichText = editando.titulo.trim()
+      ? getRichTextFallback(editando.titulo.trim())
+      : null;
+    const textoTextoImagemRichText = editando.texto.trim()
+      ? getRichTextFallback(editando.texto.trim())
+      : null;
 
     const novoConfig = {
       ...configAtual,
@@ -6245,6 +6276,17 @@ export default function EditorVisualPaginaClient({
             }
         : isTextoImagem
           ? {
+              ...(tituloTextoImagemMudou
+                ? {
+                    tituloRichText: tituloTextoImagemRichText,
+                  }
+                : {}),
+              ...(textoTextoImagemMudou
+                ? {
+                    textoRichText: textoTextoImagemRichText,
+                    subtituloRichText: textoTextoImagemRichText,
+                  }
+                : {}),
               tipoMidia: editando.tipoMidia,
               exibirMidia: editando.exibirMidia,
               imagemDesktopUrl: editando.imagemDesktopUrl,
@@ -6408,8 +6450,8 @@ export default function EditorVisualPaginaClient({
     };
 
     try {
-      const salvo = await atualizarBloco(editando.bloco, {
-        titulo: editando.nomeInterno || editando.titulo || editando.bloco.titulo,
+      const salvo = await atualizarBloco(blocoAtual, {
+        titulo: editando.nomeInterno || editando.titulo || blocoAtual.titulo,
         configJson: novoConfig,
       });
 
