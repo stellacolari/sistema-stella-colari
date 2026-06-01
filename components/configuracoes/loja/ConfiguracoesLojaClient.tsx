@@ -4,17 +4,16 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
-  EyeOff,
   GripVertical,
   ImageIcon,
   LinkIcon,
-  Maximize2,
   Menu,
   Monitor,
   Plus,
   Smartphone,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 import LinkSugestoesInput from "@/components/configuracoes/loja/LinkSugestoesInput";
 
@@ -80,7 +79,12 @@ type ApiResult = {
   error?: string;
   message?: string;
 };
+type BannerPreviewModo = "DESKTOP" | "MOBILE";
 
+type BannerPreviewState = {
+  banner: BannerLojaItem;
+  modo: BannerPreviewModo;
+} | null;
 function ordenarPorOrdem<T extends { ordem: number; criadoEm: string }>(
   items: T[]
 ) {
@@ -291,6 +295,128 @@ function BannerPreviewCard({
     </div>
   );
 }
+function BannerPreviewModal({
+  preview,
+  onClose,
+}: {
+  preview: BannerPreviewState;
+  onClose: () => void;
+}) {
+  if (!preview) {
+    return null;
+  }
+
+  const { banner, modo } = preview;
+  const imagemPreview =
+    modo === "MOBILE" ? banner.imagemMobileUrl || banner.imagemUrl : banner.imagemUrl;
+
+  const usandoDesktopNoMobile = modo === "MOBILE" && !banner.imagemMobileUrl;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+      <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+        <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Prévia {modo === "MOBILE" ? "mobile" : "desktop"}
+            </p>
+
+            <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+              {banner.titulo || "Banner da loja"}
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Visualização simulada dentro da estrutura da loja pública.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+            aria-label="Fechar prévia"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {usandoDesktopNoMobile && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              Este banner não possui versão mobile. A loja usará a imagem desktop
+              como fallback no celular.
+            </div>
+          )}
+
+          {modo === "DESKTOP" ? (
+            <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <div className="flex h-16 items-center justify-between border-b border-slate-100 px-8">
+                <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-950">
+                  STELLA
+                </div>
+
+                <div className="hidden gap-6 text-sm font-medium text-slate-500 md:flex">
+                  <span>Home</span>
+                  <span>Categorias</span>
+                  <span>Descontos</span>
+                  <span>Quem somos</span>
+                </div>
+
+                <div className="text-sm text-slate-400">Busca · Conta · Carrinho</div>
+              </div>
+
+              <div className="relative h-[360px] overflow-hidden bg-slate-100">
+                <img
+                  src={imagemPreview}
+                  alt={banner.titulo || "Prévia desktop"}
+                  className="h-full w-full object-cover"
+                />
+
+                <div className="pointer-events-none absolute inset-0 bg-black/5" />
+              </div>
+
+              <div className="grid gap-4 px-8 py-8 md:grid-cols-3">
+                <div className="h-24 bg-slate-50" />
+                <div className="h-24 bg-slate-50" />
+                <div className="h-24 bg-slate-50" />
+              </div>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-[390px] overflow-hidden border border-slate-200 bg-white shadow-sm">
+              <div className="flex h-14 items-center justify-between border-b border-slate-100 px-4">
+                <Menu className="h-5 w-5 text-slate-700" />
+
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-950">
+                  STELLA
+                </div>
+
+                <div className="flex gap-2 text-slate-500">
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                </div>
+              </div>
+
+              <div className="relative h-[70vh] max-h-[640px] min-h-[420px] overflow-hidden bg-slate-100">
+                <img
+                  src={imagemPreview}
+                  alt={banner.titulo || "Prévia mobile"}
+                  className="h-full w-full object-cover"
+                />
+
+                <div className="pointer-events-none absolute inset-0 bg-black/5" />
+              </div>
+
+              <div className="space-y-3 px-4 py-5">
+                <div className="h-20 bg-slate-50" />
+                <div className="h-20 bg-slate-50" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function ConfiguracoesLojaClient({
   banners,
   menus,
@@ -336,6 +462,7 @@ export default function ConfiguracoesLojaClient({
   );
   const [bannersPreviewAberto, setBannersPreviewAberto] = useState<string[]>([]);
   const [menuArrastandoId, setMenuArrastandoId] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<BannerPreviewState>(null);
 
   const [bannerTitulo, setBannerTitulo] = useState("");
   const [bannerLinkUrl, setBannerLinkUrl] = useState("");
@@ -1021,7 +1148,7 @@ if (bannerArquivoMobile) {
                     event.stopPropagation();
                     void reordenarBanner(banner.id);
                   }}
-                  className={`grid cursor-grab gap-4 px-5 py-4 transition active:cursor-grabbing lg:grid-cols-[32px_220px_1fr_auto] ${
+                  className={`grid cursor-grab gap-4 px-5 py-4 transition active:cursor-grabbing lg:grid-cols-[32px_180px_1fr_auto] ${
                     bannerArrastandoId === banner.id
                       ? "bg-slate-50 opacity-60"
                       : "bg-white"
@@ -1031,37 +1158,27 @@ if (bannerArquivoMobile) {
                     <GripVertical className="h-5 w-5" />
                   </div>
 
-                <div className="grid gap-2">
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      Desktop
-                    </p>
-
-                    <img
-                      src={banner.imagemUrl}
-                      alt={banner.titulo || "Banner da loja"}
-                      className="h-24 w-full rounded-2xl object-cover ring-1 ring-slate-200"
-                    />
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      Mobile
-                    </p>
-
-                    {banner.imagemMobileUrl ? (
+                  <div className="grid gap-2">
+                    <div className="relative h-20 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200">
                       <img
-                        src={banner.imagemMobileUrl}
-                        alt={`${banner.titulo || "Banner da loja"} mobile`}
-                        className="h-28 w-full rounded-2xl object-cover ring-1 ring-slate-200"
+                        src={banner.imagemUrl}
+                        alt={banner.titulo || "Banner da loja"}
+                        className="h-full w-full object-cover"
                       />
-                    ) : (
-                      <div className="flex h-20 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400">
-                        Sem mobile
+
+                      <div className="pointer-events-none absolute inset-0 bg-black/5" />
+
+                      <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                        <Monitor className="h-3 w-3" />
+                        Desktop
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Smartphone className="h-3.5 w-3.5" />
+                      {banner.imagemMobileUrl ? "Mobile configurado" : "Sem versão mobile"}
+                    </div>
                   </div>
-                </div>
 
                   <div className="space-y-2">
                     <input
@@ -1092,6 +1209,39 @@ if (bannerArquivoMobile) {
                           onToggle={() => alternarPreviewBanner(banner.id)}
                         />
                   <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      draggable={false}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setBannerPreview({
+                          banner,
+                          modo: "DESKTOP",
+                        });
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Monitor className="h-4 w-4" />
+                      Desktop
+                    </button>
+
+                    <button
+                      type="button"
+                      draggable={false}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setBannerPreview({
+                          banner,
+                          modo: "MOBILE",
+                        });
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Smartphone className="h-4 w-4" />
+                      Mobile
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -1547,6 +1697,10 @@ if (bannerArquivoMobile) {
         </div>
       </section>
 )}
+      <BannerPreviewModal
+        preview={bannerPreview}
+        onClose={() => setBannerPreview(null)}
+      />
     </main>
   );
 }
