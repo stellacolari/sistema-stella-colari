@@ -45,6 +45,19 @@ function getResponsiveHeaderFlexClass(desktop: string, mobile: string) {
   return `${getHeaderFlexClass(mobile)} ${desktopClass}`;
 }
 
+function getHeaderBlockAlignClass(desktop: string, mobile: string) {
+  const mobileClass =
+    mobile === "DIREITA" ? "ml-auto" : mobile === "CENTRO" ? "mx-auto" : "";
+  const desktopClass =
+    desktop === "DIREITA"
+      ? "lg:ml-auto lg:mr-0"
+      : desktop === "CENTRO"
+        ? "lg:mx-auto"
+        : "lg:mx-0";
+
+  return `${mobileClass} ${desktopClass}`;
+}
+
 function HeaderImage({
   desktopUrl,
   mobileUrl,
@@ -163,11 +176,6 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const buttonRadiusClass = getButtonRadiusClass(
     getString(config, "estiloBordaBotao", "RETO")
   );
-  const sectionAlign = getResponsiveTextAlignClass({
-    desktop: getString(config, "alinhamentoTextoDesktop", "ESQUERDA"),
-    mobile: getString(config, "alinhamentoTextoMobile", "ESQUERDA"),
-    fallback: "ESQUERDA",
-  });
   const tipoCabecalho = getString(config, "tipoCabecalho", "TEXTO");
   const alinhamentoCabecalhoDesktop = getString(
     config,
@@ -265,7 +273,12 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   );
   const logoPosition = getString(config, "logoTituloPosicao", "ABAIXO");
   const headerContent = hasCabecalho ? (
-    <div className={`max-w-4xl ${headerAlign}`}>
+    <div
+      className={`w-full max-w-4xl ${getHeaderBlockAlignClass(
+        alinhamentoCabecalhoDesktop,
+        alinhamentoCabecalhoMobile
+      )} ${headerAlign}`}
+    >
       {tipoCabecalho === "LOGO" ? (
         <>
           {logoTitulo}
@@ -390,7 +403,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         ) : (
           <div className="grid gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-start">
             {headerContent ? (
-              <div className={`lg:sticky lg:top-24 ${sectionAlign}`}>
+              <div className="lg:sticky lg:top-24">
                 {headerContent}
               </div>
             ) : null}

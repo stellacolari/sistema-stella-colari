@@ -2940,6 +2940,12 @@ function RenderBlocoPreview({
   const headerAlignPreviewClass = getTextAlignPreviewClass(
     alinhamentoCabecalhoAtual
   );
+  const headerBlockAlignPreviewClass =
+    alinhamentoCabecalhoAtual === "DIREITA"
+      ? "ml-auto"
+      : alinhamentoCabecalhoAtual === "CENTRO"
+        ? "mx-auto"
+        : "";
   const headerJustifyClass =
     alinhamentoCabecalhoAtual === "DIREITA"
       ? "justify-end"
@@ -3069,7 +3075,9 @@ function RenderBlocoPreview({
     </div>
   );
   const colecoesHeaderPreview = (
-    <div className={`max-w-3xl ${headerAlignPreviewClass}`}>
+    <div
+      className={`w-full max-w-3xl ${headerBlockAlignPreviewClass} ${headerAlignPreviewClass}`}
+    >
       {tipoCabecalhoColecoes === "LOGO" ? (
         <>
           {colecoesLogoHeader}
