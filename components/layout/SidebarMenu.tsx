@@ -284,6 +284,12 @@ const menuSections: MenuSection[] = [
         links: [
           {
             href: "/configuracoes/loja",
+            label: "Central da loja",
+            icon: Store,
+            tone: "site",
+          },
+          {
+            href: "/configuracoes/loja/banners-menu",
             label: "Banners e menu",
             icon: SlidersHorizontal,
             tone: "site",
