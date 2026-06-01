@@ -1,7 +1,18 @@
 "use client";
 
 import type { CSSProperties, ChangeEvent, DragEvent, ReactNode } from "react";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { Editor, JSONContent } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
+import StarterKit from "@tiptap/starter-kit";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import FontFamily from "@tiptap/extension-font-family";
+import Underline from "@tiptap/extension-underline";
+import Link from "@tiptap/extension-link";
+import Highlight from "@tiptap/extension-highlight";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowDown,
@@ -106,6 +117,8 @@ type TextStyleConfig = {
   textTransform: string;
   textAlign: string;
 };
+
+type RichTextValue = JSONContent;
 
 type BlocoEditandoState = {
   bloco: EditorVisualBloco;
@@ -231,6 +244,55 @@ const TEXT_ALIGN_PRESETS = [
   { value: "ESQUERDA", label: "Esquerda" },
   { value: "CENTRO", label: "Centro" },
   { value: "DIREITA", label: "Direita" },
+];
+
+const RICH_TEXT_FONT_PRESETS = [
+  { value: "PADRAO", label: "Padrão", css: "inherit" },
+  { value: "SERIF_ELEGANTE", label: "Serif", css: "Georgia, serif" },
+  {
+    value: "SANS_CLEAN",
+    label: "Sans",
+    css: "Inter, ui-sans-serif, system-ui, sans-serif",
+  },
+  {
+    value: "DISPLAY_LUXO",
+    label: "Display",
+    css: "Didot, 'Bodoni 72', 'Playfair Display', serif",
+  },
+  { value: "ASSINATURA", label: "Assinatura", css: "'Snell Roundhand', cursive" },
+];
+
+const RICH_TEXT_SIZE_PRESETS = [
+  { value: "PP", label: "PP", css: "0.75rem" },
+  { value: "P", label: "P", css: "0.875rem" },
+  { value: "M", label: "M", css: "1rem" },
+  { value: "G", label: "G", css: "1.5rem" },
+  { value: "GG", label: "GG", css: "2.25rem" },
+  { value: "XG", label: "XG", css: "3rem" },
+];
+
+const RICH_TEXT_COLOR_PRESETS = [
+  { value: "PADRAO", label: "Padrão", css: "" },
+  { value: "PRETO", label: "Preto", css: "#0f172a" },
+  { value: "BRANCO", label: "Branco", css: "#ffffff" },
+  { value: "CINZA", label: "Cinza", css: "#64748b" },
+  { value: "DOURADO", label: "Dourado", css: "#b8892e" },
+  { value: "PERSONALIZADO", label: "Personalizado", css: "" },
+];
+
+const RICH_TEXT_LETTER_SPACING_PRESETS = [
+  { value: "NORMAL", label: "Normal", css: "0" },
+  { value: "LEVE", label: "Leve", css: "0.02em" },
+  { value: "MEDIO", label: "Médio", css: "0.08em" },
+  { value: "ALTO", label: "Alto", css: "0.14em" },
+];
+
+const RICH_TEXT_WEIGHT_PRESETS = [
+  { value: "LIGHT", label: "Light", css: "300" },
+  { value: "REGULAR", label: "Regular", css: "400" },
+  { value: "MEDIUM", label: "Medium", css: "500" },
+  { value: "SEMIBOLD", label: "Semibold", css: "600" },
+  { value: "BOLD", label: "Bold", css: "700" },
 ];
 
 const ALINHAMENTO_BANNER_PRESETS = [
@@ -548,6 +610,54 @@ function getTextStyleConfig(config: Record<string, unknown>, key: string) {
   return normalizeTextStyle(config[key], getTextStyleDefaults(key));
 }
 
+function getRichTextConfig(config: Record<string, unknown>, key: string) {
+  const value = config[key];
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as RichTextValue;
+  }
+
+  return null;
+}
+
+function getRichTextFallback(text: string): RichTextValue {
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: text
+          ? [
+              {
+                type: "text",
+                text,
+              },
+            ]
+          : [],
+      },
+    ],
+  };
+}
+
+function extractRichTextPlainText(value: RichTextValue): string {
+  if (typeof value.text === "string") {
+    return value.text;
+  }
+
+  if (Array.isArray(value.content)) {
+    return value.content.map((item) => extractRichTextPlainText(item)).join("\n");
+  }
+
+  return "";
+}
+
+function getRichTextPresetCss(
+  presets: { value: string; css: string }[],
+  value: string
+) {
+  return presets.find((preset) => preset.value === value)?.css || "";
+}
+
 function resolveTextStyle(style: TextStyleConfig): CSSProperties {
   const fontSizeMap: Record<string, string> = {
     PEQUENO: "0.875rem",
@@ -597,6 +707,44 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
     textAlign: textAlignMap[style.textAlign] || "left",
   };
 }
+
+const RichTextTypography = Extension.create({
+  name: "richTextTypography",
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize || null,
+            renderHTML: (attributes) =>
+              attributes.fontSize
+                ? { style: `font-size: ${attributes.fontSize}` }
+                : {},
+          },
+          fontWeight: {
+            default: null,
+            parseHTML: (element) => element.style.fontWeight || null,
+            renderHTML: (attributes) =>
+              attributes.fontWeight
+                ? { style: `font-weight: ${attributes.fontWeight}` }
+                : {},
+          },
+          letterSpacing: {
+            default: null,
+            parseHTML: (element) => element.style.letterSpacing || null,
+            renderHTML: (attributes) =>
+              attributes.letterSpacing
+                ? { style: `letter-spacing: ${attributes.letterSpacing}` }
+                : {},
+          },
+        },
+      },
+    ];
+  },
+});
 
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
@@ -1524,16 +1672,369 @@ function PreviewShell({
   );
 }
 
+function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
+  function setLink() {
+    const previousUrl = editor.getAttributes("link").href as string | undefined;
+    const url = window.prompt("Link", previousUrl || "");
+
+    if (url === null) return;
+
+    if (!url.trim()) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      return;
+    }
+
+    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }
+
+  return (
+    <BubbleMenu
+      editor={editor}
+      className="z-50 flex max-w-[min(92vw,720px)] flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-xl"
+    >
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        className={`rounded-xl px-2 py-1 font-bold ${
+          editor.isActive("bold") ? "bg-slate-950 text-white" : "bg-slate-100"
+        }`}
+      >
+        B
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        className={`rounded-xl px-2 py-1 italic ${
+          editor.isActive("italic") ? "bg-slate-950 text-white" : "bg-slate-100"
+        }`}
+      >
+        I
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={`rounded-xl px-2 py-1 underline ${
+          editor.isActive("underline")
+            ? "bg-slate-950 text-white"
+            : "bg-slate-100"
+        }`}
+      >
+        U
+      </button>
+
+      <select
+        aria-label="Fonte"
+        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onChange={(event) => {
+          const fontFamily = getRichTextPresetCss(
+            RICH_TEXT_FONT_PRESETS,
+            event.target.value
+          );
+
+          if (!fontFamily || event.target.value === "PADRAO") {
+            editor.chain().focus().unsetFontFamily().run();
+            return;
+          }
+
+          editor.chain().focus().setFontFamily(fontFamily).run();
+        }}
+        defaultValue="PADRAO"
+      >
+        {RICH_TEXT_FONT_PRESETS.map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Tamanho"
+        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onChange={(event) => {
+          const fontSize = getRichTextPresetCss(
+            RICH_TEXT_SIZE_PRESETS,
+            event.target.value
+          );
+          editor.chain().focus().setMark("textStyle", { fontSize }).run();
+        }}
+        defaultValue="M"
+      >
+        {RICH_TEXT_SIZE_PRESETS.map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Peso"
+        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onChange={(event) => {
+          const fontWeight = getRichTextPresetCss(
+            RICH_TEXT_WEIGHT_PRESETS,
+            event.target.value
+          );
+          editor.chain().focus().setMark("textStyle", { fontWeight }).run();
+        }}
+        defaultValue="REGULAR"
+      >
+        {RICH_TEXT_WEIGHT_PRESETS.map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        aria-label="Cor"
+        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onChange={(event) => {
+          const color = getRichTextPresetCss(
+            RICH_TEXT_COLOR_PRESETS,
+            event.target.value
+          );
+
+          if (!color || event.target.value === "PADRAO") {
+            editor.chain().focus().unsetColor().run();
+            return;
+          }
+
+          editor.chain().focus().setColor(color).run();
+        }}
+        defaultValue="PADRAO"
+      >
+        {RICH_TEXT_COLOR_PRESETS.filter(
+          (preset) => preset.value !== "PERSONALIZADO"
+        ).map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="color"
+        aria-label="Cor personalizada"
+        className="h-7 w-8 rounded border border-slate-200 bg-white"
+        onChange={(event) =>
+          editor.chain().focus().setColor(event.target.value).run()
+        }
+      />
+
+      <select
+        aria-label="Espaçamento"
+        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onChange={(event) => {
+          const letterSpacing = getRichTextPresetCss(
+            RICH_TEXT_LETTER_SPACING_PRESETS,
+            event.target.value
+          );
+          editor.chain().focus().setMark("textStyle", { letterSpacing }).run();
+        }}
+        defaultValue="NORMAL"
+      >
+        {RICH_TEXT_LETTER_SPACING_PRESETS.map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        onClick={setLink}
+        className={`rounded-xl px-2 py-1 ${
+          editor.isActive("link") ? "bg-slate-950 text-white" : "bg-slate-100"
+        }`}
+      >
+        Link
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          editor.chain().focus().unsetAllMarks().removeEmptyTextStyle().run()
+        }
+        className="rounded-xl bg-slate-100 px-2 py-1"
+      >
+        Limpar
+      </button>
+    </BubbleMenu>
+  );
+}
+
+function RichTextInlineEditor({
+  value,
+  fallbackText,
+  placeholder,
+  multiline = false,
+  className = "",
+  style,
+  onChange,
+}: {
+  value: RichTextValue | null;
+  fallbackText: string;
+  placeholder: string;
+  multiline?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  onChange: (richText: RichTextValue, plainText: string) => void;
+}) {
+  const initialContent = useMemo(
+    () => value || getRichTextFallback(fallbackText),
+    [fallbackText, value]
+  );
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        blockquote: false,
+        bulletList: false,
+        codeBlock: false,
+        heading: false,
+        horizontalRule: false,
+        link: false,
+        orderedList: false,
+        underline: false,
+      }),
+      TextStyle,
+      RichTextTypography,
+      Color,
+      FontFamily,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        autolink: false,
+        linkOnPaste: true,
+      }),
+      Highlight.configure({ multicolor: true }),
+    ],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class:
+          "outline-none [&_p]:m-0 [&_a]:underline [&_a]:underline-offset-2",
+      },
+      handleKeyDown: (_view, event) => {
+        if (!multiline && event.key === "Enter") {
+          event.preventDefault();
+          return true;
+        }
+
+        return false;
+      },
+    },
+    onUpdate: ({ editor: currentEditor }) => {
+      const richText = currentEditor.getJSON();
+      onChange(richText, extractRichTextPlainText(richText).trim());
+    },
+  });
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const nextContent = value || getRichTextFallback(fallbackText);
+
+    if (JSON.stringify(editor.getJSON()) !== JSON.stringify(nextContent)) {
+      editor.commands.setContent(nextContent, { emitUpdate: false });
+    }
+  }, [editor, fallbackText, value]);
+
+  if (!editor) {
+    return (
+      <span className={className} style={style}>
+        {fallbackText || placeholder}
+      </span>
+    );
+  }
+
+  return (
+    <div
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      className={`min-w-0 rounded-md bg-transparent outline-none transition hover:ring-1 hover:ring-indigo-300 focus-within:ring-2 focus-within:ring-indigo-500 ${className}`}
+      style={style}
+      data-placeholder={placeholder}
+    >
+      <RichTextBubbleToolbar editor={editor} />
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+
+function InlineTextEditor({
+  value,
+  placeholder,
+  multiline = false,
+  className = "",
+  style,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  multiline?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  onChange: (value: string) => void;
+}) {
+  const baseClass =
+    "min-w-0 rounded-md bg-transparent outline-none transition hover:ring-1 hover:ring-indigo-300 focus:ring-2 focus:ring-indigo-500";
+
+  if (multiline) {
+    return (
+      <textarea
+        value={value}
+        rows={3}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className={`${baseClass} block w-full resize-none ${className}`}
+        style={style}
+        aria-label={placeholder}
+      />
+    );
+  }
+
+  return (
+    <input
+      value={value}
+      size={Math.max(value.length, placeholder.length, 8)}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      className={`${baseClass} max-w-full ${className}`}
+      style={style}
+      aria-label={placeholder}
+    />
+  );
+}
+
 function RenderBlocoPreview({
   bloco,
   selecionado,
   onSelect,
   device,
+  onInlineTextChange,
+  onInlineCardChange,
 }: {
   bloco: EditorVisualBloco;
   selecionado: boolean;
   onSelect: () => void;
   device: DevicePreview;
+  onInlineTextChange: (blocoId: string, patch: Record<string, unknown>) => void;
+  onInlineCardChange: (
+    blocoId: string,
+    cardId: string,
+    patch: Partial<DestaqueCardEditando>
+  ) => void;
 }) {
   const config = getConfigObject(bloco.configJson);
 
@@ -1546,6 +2047,10 @@ function RenderBlocoPreview({
     getStringConfig(config, "texto") ||
     getStringConfig(config, "descricao") ||
     getStringConfig(config, "conteudo");
+  const tituloRichText = getRichTextConfig(config, "tituloRichText");
+  const subtituloRichText =
+    getRichTextConfig(config, "subtituloRichText") ||
+    getRichTextConfig(config, "textoRichText");
   const tituloStyle = getTextStyleConfig(config, "tituloStyle");
   const subtituloStyle = getTextStyleConfig(config, "subtituloStyle");
   const botaoPrimarioStyle = getTextStyleConfig(config, "botaoPrimarioStyle");
@@ -1715,18 +2220,34 @@ function RenderBlocoPreview({
   ) : null;
   const textoImagemConteudo = (
     <div>
-      <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
-        {titulo}
-      </h2>
+      <InlineTextEditor
+        value={titulo}
+        placeholder="Título"
+        className="tracking-tight"
+        style={resolveTextStyle(tituloStyle)}
+        onChange={(value) =>
+          onInlineTextChange(bloco.id, {
+            titulo: value,
+          })
+        }
+      />
 
-      <p
+      <InlineTextEditor
+        value={texto || ""}
+        placeholder="Texto do bloco"
+        multiline
         className={`mt-4 leading-7 ${
           corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
         }`}
         style={resolveTextStyle(textoStyle)}
-      >
-        {texto || "Texto do bloco aparece aqui."}
-      </p>
+        onChange={(value) =>
+          onInlineTextChange(bloco.id, {
+            texto: value,
+            descricao: value,
+            conteudo: value,
+          })
+        }
+      />
 
       {exibirBotaoTextoImagem && textoBotao && (
         <div
@@ -1737,7 +2258,18 @@ function RenderBlocoPreview({
           }`}
           style={resolveTextStyle(botaoStyle)}
         >
-          {textoBotao}
+          <InlineTextEditor
+            value={textoBotao}
+            placeholder="Texto do botão"
+            className="text-center"
+            style={resolveTextStyle(botaoStyle)}
+            onChange={(value) =>
+              onInlineTextChange(bloco.id, {
+                textoBotao: value,
+                botaoTexto: value,
+              })
+            }
+          />
         </div>
       )}
     </div>
@@ -1826,22 +2358,45 @@ function RenderBlocoPreview({
                   Stella
                 </p>
 
-                <h2
+                <div
                   className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${
                     isMobile ? "text-4xl" : "text-5xl"
                   }`}
                   style={resolveTextStyle(tituloStyle)}
                 >
-                  {titulo}
-                </h2>
+                  <RichTextInlineEditor
+                    value={tituloRichText}
+                    fallbackText={titulo}
+                    placeholder="Título do banner"
+                    className="w-full"
+                    style={resolveTextStyle(tituloStyle)}
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        tituloRichText: richText,
+                        titulo: plainText,
+                      })
+                    }
+                  />
+                </div>
 
-                {exibirSubtitulo && texto && (
-                  <p
+                {exibirSubtitulo && (
+                  <RichTextInlineEditor
+                    value={subtituloRichText}
+                    fallbackText={texto || ""}
+                    placeholder="Subtítulo do banner"
+                    multiline
                     className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
                     style={resolveTextStyle(subtituloStyle)}
-                  >
-                    {texto}
-                  </p>
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        subtituloRichText: richText,
+                        textoRichText: richText,
+                        texto: plainText,
+                        descricao: plainText,
+                        conteudo: plainText,
+                      })
+                    }
+                  />
                 )}
 
                 {(exibirBotaoPrimario || exibirBotaoSecundario) && (
@@ -1851,7 +2406,18 @@ function RenderBlocoPreview({
                         className={`inline-flex px-5 py-3 text-sm font-semibold ${bannerTextClasses.button}`}
                         style={resolveTextStyle(botaoPrimarioStyle)}
                       >
-                        {textoBotao}
+                        <InlineTextEditor
+                          value={textoBotao}
+                          placeholder="Botão primário"
+                          className="text-center"
+                          style={resolveTextStyle(botaoPrimarioStyle)}
+                          onChange={(value) =>
+                            onInlineTextChange(bloco.id, {
+                              textoBotao: value,
+                              botaoTexto: value,
+                            })
+                          }
+                        />
                       </div>
                     )}
 
@@ -1864,7 +2430,18 @@ function RenderBlocoPreview({
                         }`}
                         style={resolveTextStyle(botaoSecundarioStyle)}
                       >
-                        {textoBotaoSecundario}
+                        <InlineTextEditor
+                          value={textoBotaoSecundario}
+                          placeholder="Botão secundário"
+                          className="text-center"
+                          style={resolveTextStyle(botaoSecundarioStyle)}
+                          onChange={(value) =>
+                            onInlineTextChange(bloco.id, {
+                              textoBotaoSecundario: value,
+                              botaoSecundarioTexto: value,
+                            })
+                          }
+                        />
                       </div>
                     )}
                   </div>
@@ -1889,23 +2466,50 @@ function RenderBlocoPreview({
 
             <div className="absolute inset-0 flex items-center px-6 py-10 md:px-12">
               <div className="max-w-xl text-white">
-                <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
-                  {titulo}
-                </h2>
+                <InlineTextEditor
+                  value={titulo}
+                  placeholder="Título"
+                  className="tracking-tight"
+                  style={resolveTextStyle(tituloStyle)}
+                  onChange={(value) =>
+                    onInlineTextChange(bloco.id, {
+                      titulo: value,
+                    })
+                  }
+                />
 
-                <p
+                <InlineTextEditor
+                  value={texto || ""}
+                  placeholder="Texto do bloco"
+                  multiline
                   className="mt-4 leading-7 text-white/85"
                   style={resolveTextStyle(textoStyle)}
-                >
-                  {texto || "Texto do bloco aparece aqui."}
-                </p>
+                  onChange={(value) =>
+                    onInlineTextChange(bloco.id, {
+                      texto: value,
+                      descricao: value,
+                      conteudo: value,
+                    })
+                  }
+                />
 
                 {exibirBotaoTextoImagem && textoBotao && (
                   <div
                     className="mt-5 inline-flex bg-white px-5 py-3 text-slate-950"
                     style={resolveTextStyle(botaoStyle)}
                   >
-                    {textoBotao}
+                    <InlineTextEditor
+                      value={textoBotao}
+                      placeholder="Texto do botão"
+                      className="text-center"
+                      style={resolveTextStyle(botaoStyle)}
+                      onChange={(value) =>
+                        onInlineTextChange(bloco.id, {
+                          textoBotao: value,
+                          botaoTexto: value,
+                        })
+                      }
+                    />
                   </div>
                 )}
               </div>
@@ -1983,20 +2587,34 @@ function RenderBlocoPreview({
         <div className={`${bgClass} ${paddingClass}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="tracking-tight" style={resolveTextStyle(tituloStyle)}>
-                {titulo}
-              </h2>
+              <InlineTextEditor
+                value={titulo}
+                placeholder="Título da vitrine"
+                className="tracking-tight"
+                style={resolveTextStyle(tituloStyle)}
+                onChange={(value) =>
+                  onInlineTextChange(bloco.id, {
+                    titulo: value,
+                  })
+                }
+              />
 
-              {texto && (
-                <p
-                  className={`mt-2 max-w-2xl leading-6 ${
-                    corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
-                  }`}
-                  style={resolveTextStyle(subtituloStyle)}
-                >
-                  {texto}
-                </p>
-              )}
+              <InlineTextEditor
+                value={texto || ""}
+                placeholder="Subtítulo da vitrine"
+                multiline
+                className={`mt-2 max-w-2xl leading-6 ${
+                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                }`}
+                style={resolveTextStyle(subtituloStyle)}
+                onChange={(value) =>
+                  onInlineTextChange(bloco.id, {
+                    texto: value,
+                    descricao: value,
+                    conteudo: value,
+                  })
+                }
+              />
             </div>
 
             <span className="w-fit rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
@@ -2056,7 +2674,18 @@ function RenderBlocoPreview({
                       className="mt-3 bg-slate-950 px-3 py-2 text-center text-white"
                       style={resolveTextStyle(botaoStyle)}
                     >
-                      {textoBotao}
+                      <InlineTextEditor
+                        value={textoBotao}
+                        placeholder="Texto do botão"
+                        className="text-center"
+                        style={resolveTextStyle(botaoStyle)}
+                        onChange={(value) =>
+                          onInlineTextChange(bloco.id, {
+                            textoBotao: value,
+                            botaoTexto: value,
+                          })
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -2080,23 +2709,34 @@ function RenderBlocoPreview({
                 : "max-w-2xl text-left"
             }
           >
-            <h2
+            <InlineTextEditor
+              value={titulo}
+              placeholder="Título da seção"
               className="tracking-tight"
               style={resolveTextStyle(tituloSecaoStyle)}
-            >
-              {titulo}
-            </h2>
+              onChange={(value) =>
+                onInlineTextChange(bloco.id, {
+                  titulo: value,
+                })
+              }
+            />
 
-            {texto && (
-              <p
-                className={`mt-2 leading-6 ${
-                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
-                }`}
-                style={resolveTextStyle(subtituloSecaoStyle)}
-              >
-                {texto}
-              </p>
-            )}
+            <InlineTextEditor
+              value={texto || ""}
+              placeholder="Subtítulo da seção"
+              multiline
+              className={`mt-2 leading-6 ${
+                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+              }`}
+              style={resolveTextStyle(subtituloSecaoStyle)}
+              onChange={(value) =>
+                onInlineTextChange(bloco.id, {
+                  texto: value,
+                  descricao: value,
+                  conteudo: value,
+                })
+              }
+            />
           </div>
 
           <div
@@ -2136,27 +2776,61 @@ function RenderBlocoPreview({
                       : "p-5 text-left"
                   }
                 >
-                  <h3
+                  <InlineTextEditor
+                    value={card.titulo || ""}
+                    placeholder="Título do card"
                     className="text-slate-950"
                     style={resolveTextStyle(cardTituloStyle)}
-                  >
-                    {card.titulo || "Título do card"}
-                  </h3>
+                    onChange={(value) =>
+                      onInlineCardChange(bloco.id, card.id, {
+                        titulo: value,
+                      })
+                    }
+                  />
 
-                  <p
+                  <InlineTextEditor
+                    value={card.texto || ""}
+                    placeholder="Texto do card"
+                    multiline
                     className="mt-2 leading-6 text-slate-500"
                     style={resolveTextStyle(cardTextoStyle)}
-                  >
-                    {card.texto || "Texto de apoio do card."}
-                  </p>
+                    onChange={(value) =>
+                      onInlineCardChange(bloco.id, card.id, {
+                        texto: value,
+                      })
+                    }
+                  />
 
                   {card.exibirBotao && card.textoBotao && (
-                    <div
-                      className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-white"
-                      style={resolveTextStyle(cardBotaoStyle)}
-                    >
-                      {card.textoBotao}
-                    </div>
+                    <>
+                      <div
+                        className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-white"
+                        style={resolveTextStyle(cardBotaoStyle)}
+                      >
+                        <InlineTextEditor
+                          value={card.textoBotao}
+                          placeholder="Texto do botão"
+                          className="text-center"
+                          style={resolveTextStyle(cardBotaoStyle)}
+                          onChange={(value) =>
+                            onInlineCardChange(bloco.id, card.id, {
+                              textoBotao: value,
+                            })
+                          }
+                        />
+                      </div>
+
+                      <InlineTextEditor
+                        value={card.linkBotao}
+                        placeholder="Link do card"
+                        className="mt-2 block w-full text-xs text-slate-400"
+                        onChange={(value) =>
+                          onInlineCardChange(bloco.id, card.id, {
+                            linkBotao: value,
+                          })
+                        }
+                      />
+                    </>
                   )}
                 </div>
               </article>
@@ -4036,6 +4710,9 @@ export default function EditorVisualPaginaClient({
   const [ordemSalvando, setOrdemSalvando] = useState(false);
   const [editando, setEditando] = useState<BlocoEditandoState>(null);
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
+  const [blocosComTextoPendente, setBlocosComTextoPendente] = useState<string[]>(
+    []
+  );
 
   const [blocosEditor, setBlocosEditor] = useState<EditorVisualBloco[]>(() =>
     ordenarBlocos(blocos)
@@ -4066,6 +4743,58 @@ export default function EditorVisualPaginaClient({
             }
           : bloco
       )
+    );
+  }
+
+  function marcarTextoPendente(blocoId: string) {
+    setBlocosComTextoPendente((current) =>
+      current.includes(blocoId) ? current : [...current, blocoId]
+    );
+  }
+
+  function atualizarTextoInline(
+    blocoId: string,
+    patch: Record<string, unknown>
+  ) {
+    marcarTextoPendente(blocoId);
+    setBlocosEditor((current) =>
+      current.map((bloco) =>
+        bloco.id === blocoId
+          ? {
+              ...bloco,
+              configJson: {
+                ...getConfigObject(bloco.configJson),
+                ...patch,
+              },
+            }
+          : bloco
+      )
+    );
+  }
+
+  function atualizarCardInline(
+    blocoId: string,
+    cardId: string,
+    patch: Partial<DestaqueCardEditando>
+  ) {
+    marcarTextoPendente(blocoId);
+    setBlocosEditor((current) =>
+      current.map((bloco) => {
+        if (bloco.id !== blocoId) return bloco;
+
+        const config = getConfigObject(bloco.configJson);
+        const cards = getCardsDestaquesConfig(config).map((card) =>
+          card.id === cardId ? { ...card, ...patch } : card
+        );
+
+        return {
+          ...bloco,
+          configJson: {
+            ...config,
+            cards,
+          },
+        };
+      })
     );
   }
 
@@ -4227,6 +4956,19 @@ export default function EditorVisualPaginaClient({
     } catch {
       setBlocosEditor(listaAnterior);
       setErro("Erro ao excluir bloco.");
+    }
+  }
+
+  async function salvarTextosInline(bloco: EditorVisualBloco) {
+    const salvo = await atualizarBloco(bloco, {
+      configJson: bloco.configJson,
+    });
+
+    if (salvo) {
+      setBlocosComTextoPendente((current) =>
+        current.filter((blocoId) => blocoId !== bloco.id)
+      );
+      setSucesso("Textos do bloco salvos.");
     }
   }
 
@@ -4625,6 +5367,9 @@ export default function EditorVisualPaginaClient({
       });
 
       if (salvo) {
+        setBlocosComTextoPendente((current) =>
+          current.filter((blocoId) => blocoId !== editando.bloco.id)
+        );
         setEditando(null);
         setSucesso("Conteúdo do bloco salvo.");
       }
@@ -4795,6 +5540,8 @@ export default function EditorVisualPaginaClient({
                 selecionado={bloco.id === blocoSelecionadoId}
                 onSelect={() => setBlocoSelecionadoId(bloco.id)}
                 device={device}
+                onInlineTextChange={atualizarTextoInline}
+                onInlineCardChange={atualizarCardInline}
               />
             ))}
 
@@ -4848,6 +5595,18 @@ export default function EditorVisualPaginaClient({
                   <Type className="h-4 w-4" />
                   Editar conteúdo básico
                 </button>
+
+                {blocosComTextoPendente.includes(blocoSelecionado.id) && (
+                  <button
+                    type="button"
+                    onClick={() => void salvarTextosInline(blocoSelecionado)}
+                    disabled={salvando}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Save className="h-4 w-4" />
+                    {salvando ? "Salvando..." : "Salvar textos do preview"}
+                  </button>
+                )}
               </PainelSecao>
 
               <PainelSecao title="Aparência">
