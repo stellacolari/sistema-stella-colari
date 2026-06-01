@@ -1560,7 +1560,7 @@ export default function LojaPaginaBuilderClient({
   }));
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="stella-storefront-render min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}

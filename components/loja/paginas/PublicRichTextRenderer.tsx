@@ -1,4 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
+import {
+  RICH_TEXT_COLOR_PRESETS,
+  RICH_TEXT_FONT_PRESETS,
+  RICH_TEXT_LETTER_SPACING_PRESETS,
+  RICH_TEXT_SIZE_PRESETS,
+  RICH_TEXT_WEIGHT_PRESETS,
+  getRichTextPresetCss,
+  type RichTextCssPreset,
+} from "@/components/loja/paginas/richTextPresets";
 
 export type PublicRichTextValue = {
   type?: string;
@@ -26,51 +35,9 @@ type PublicRichTextRendererProps = {
   paragraphClassName?: string;
 };
 
-const FONT_FAMILY_PRESETS: Record<string, string> = {
-  PADRAO: "inherit",
-  SERIF_ELEGANTE: "Georgia, 'Times New Roman', serif",
-  SANS_CLEAN: "Inter, Arial, sans-serif",
-  DISPLAY_LUXO: "'Playfair Display', Georgia, serif",
-  ASSINATURA: "'Brush Script MT', 'Segoe Script', cursive",
-};
-
-const FONT_SIZE_PRESETS: Record<string, string> = {
-  PP: "0.75rem",
-  P: "0.875rem",
-  M: "1rem",
-  G: "1.25rem",
-  GG: "1.5rem",
-  XG: "2rem",
-  PEQUENO: "0.875rem",
-  MEDIO: "1rem",
-  GRANDE: "1.5rem",
-  EXTRA_GRANDE: "2rem",
-};
-
-const FONT_WEIGHT_PRESETS: Record<string, number> = {
-  LIGHT: 300,
-  REGULAR: 400,
-  MEDIUM: 500,
-  SEMIBOLD: 600,
-  BOLD: 700,
-};
-
-const LETTER_SPACING_PRESETS: Record<string, string> = {
-  NORMAL: "0",
-  LEVE: "0.02em",
-  MEDIO: "0.06em",
-  ALTO: "0.1em",
-};
-
-const COLOR_PRESETS: Record<string, string> = {
-  PADRAO: "inherit",
-  PRETO: "#0f172a",
-  BRANCO: "#ffffff",
-  CINZA: "#64748b",
-  CLARO: "#ffffff",
-  ESCURO: "#0f172a",
-  DOURADO: "#b8893a",
-};
+function resolvePreset(presets: RichTextCssPreset[], value: string) {
+  return getRichTextPresetCss(presets, value);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -111,7 +78,11 @@ function sanitizeCssValue(value: unknown, allowedPattern: RegExp) {
 function resolveColor(value: unknown) {
   const color = getString(value).trim();
 
-  if (COLOR_PRESETS[color]) return COLOR_PRESETS[color];
+  const presetColor = resolvePreset(RICH_TEXT_COLOR_PRESETS, color);
+
+  if (presetColor) return presetColor;
+  if (color === "CLARO") return "#ffffff";
+  if (color === "ESCURO") return "#0f172a";
 
   return sanitizeCssValue(
     color,
@@ -122,7 +93,10 @@ function resolveColor(value: unknown) {
 function resolveFontFamily(value: unknown) {
   const fontFamily = getString(value).trim();
 
-  if (FONT_FAMILY_PRESETS[fontFamily]) return FONT_FAMILY_PRESETS[fontFamily];
+  const presetFontFamily = resolvePreset(RICH_TEXT_FONT_PRESETS, fontFamily);
+
+  if (presetFontFamily) return presetFontFamily;
+  if (fontFamily === "var(--font-primary)") return fontFamily;
 
   return sanitizeCssValue(fontFamily, /^[a-zA-Z0-9\s'",-]+$/);
 }
@@ -130,7 +104,13 @@ function resolveFontFamily(value: unknown) {
 function resolveFontSize(value: unknown) {
   const fontSize = getString(value).trim();
 
-  if (FONT_SIZE_PRESETS[fontSize]) return FONT_SIZE_PRESETS[fontSize];
+  const presetFontSize = resolvePreset(RICH_TEXT_SIZE_PRESETS, fontSize);
+
+  if (presetFontSize) return presetFontSize;
+  if (fontSize === "PEQUENO") return "0.875rem";
+  if (fontSize === "MEDIO") return "1rem";
+  if (fontSize === "GRANDE") return "1.5rem";
+  if (fontSize === "EXTRA_GRANDE") return "2.75rem";
 
   return sanitizeCssValue(fontSize, /^(\d{1,2}(\.\d{1,2})?(rem|em|px|%)|inherit)$/);
 }
@@ -138,7 +118,9 @@ function resolveFontSize(value: unknown) {
 function resolveFontWeight(value: unknown) {
   const fontWeight = getString(value).trim();
 
-  if (FONT_WEIGHT_PRESETS[fontWeight]) return FONT_WEIGHT_PRESETS[fontWeight];
+  const presetFontWeight = resolvePreset(RICH_TEXT_WEIGHT_PRESETS, fontWeight);
+
+  if (presetFontWeight) return Number(presetFontWeight);
   if (/^[1-9]00$/.test(fontWeight)) return Number(fontWeight);
 
   return undefined;
@@ -147,9 +129,12 @@ function resolveFontWeight(value: unknown) {
 function resolveLetterSpacing(value: unknown) {
   const letterSpacing = getString(value).trim();
 
-  if (LETTER_SPACING_PRESETS[letterSpacing]) {
-    return LETTER_SPACING_PRESETS[letterSpacing];
-  }
+  const presetLetterSpacing = resolvePreset(
+    RICH_TEXT_LETTER_SPACING_PRESETS,
+    letterSpacing
+  );
+
+  if (presetLetterSpacing) return presetLetterSpacing;
 
   return sanitizeCssValue(letterSpacing, /^-?\d{1,2}(\.\d{1,2})?(em|rem|px)$/);
 }

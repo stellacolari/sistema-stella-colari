@@ -42,6 +42,14 @@ import {
   X,
 } from "lucide-react";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
+import {
+  RICH_TEXT_COLOR_PRESETS,
+  RICH_TEXT_FONT_PRESETS,
+  RICH_TEXT_LETTER_SPACING_PRESETS,
+  RICH_TEXT_SIZE_PRESETS,
+  RICH_TEXT_WEIGHT_PRESETS,
+  getRichTextPresetCss,
+} from "@/components/loja/paginas/richTextPresets";
 
 export type EditorVisualPagina = {
   id: string;
@@ -275,55 +283,6 @@ const TEXT_ALIGN_PRESETS = [
   { value: "ESQUERDA", label: "Esquerda" },
   { value: "CENTRO", label: "Centro" },
   { value: "DIREITA", label: "Direita" },
-];
-
-const RICH_TEXT_FONT_PRESETS = [
-  { value: "PADRAO", label: "Padrão", css: "inherit" },
-  { value: "SERIF_ELEGANTE", label: "Serif", css: "Georgia, serif" },
-  {
-    value: "SANS_CLEAN",
-    label: "Sans",
-    css: "Inter, ui-sans-serif, system-ui, sans-serif",
-  },
-  {
-    value: "DISPLAY_LUXO",
-    label: "Display",
-    css: "Didot, 'Bodoni 72', 'Playfair Display', serif",
-  },
-  { value: "ASSINATURA", label: "Assinatura", css: "'Snell Roundhand', cursive" },
-];
-
-const RICH_TEXT_SIZE_PRESETS = [
-  { value: "PP", label: "PP", css: "0.75rem" },
-  { value: "P", label: "P", css: "0.875rem" },
-  { value: "M", label: "M", css: "1rem" },
-  { value: "G", label: "G", css: "1.5rem" },
-  { value: "GG", label: "GG", css: "2.25rem" },
-  { value: "XG", label: "XG", css: "3rem" },
-];
-
-const RICH_TEXT_COLOR_PRESETS = [
-  { value: "PADRAO", label: "Padrão", css: "" },
-  { value: "PRETO", label: "Preto", css: "#0f172a" },
-  { value: "BRANCO", label: "Branco", css: "#ffffff" },
-  { value: "CINZA", label: "Cinza", css: "#64748b" },
-  { value: "DOURADO", label: "Dourado", css: "#b8892e" },
-  { value: "PERSONALIZADO", label: "Personalizado", css: "" },
-];
-
-const RICH_TEXT_LETTER_SPACING_PRESETS = [
-  { value: "NORMAL", label: "Normal", css: "0" },
-  { value: "LEVE", label: "Leve", css: "0.02em" },
-  { value: "MEDIO", label: "Médio", css: "0.08em" },
-  { value: "ALTO", label: "Alto", css: "0.14em" },
-];
-
-const RICH_TEXT_WEIGHT_PRESETS = [
-  { value: "LIGHT", label: "Light", css: "300" },
-  { value: "REGULAR", label: "Regular", css: "400" },
-  { value: "MEDIUM", label: "Medium", css: "500" },
-  { value: "SEMIBOLD", label: "Semibold", css: "600" },
-  { value: "BOLD", label: "Bold", css: "700" },
 ];
 
 const ALINHAMENTO_BANNER_PRESETS = [
@@ -758,13 +717,6 @@ function getEditableRichTextContent(
   const normalizedFallback = fallbackText.trim();
 
   return getRichTextFallback(normalizedFallback);
-}
-
-function getRichTextPresetCss(
-  presets: { value: string; css: string }[],
-  value: string
-) {
-  return presets.find((preset) => preset.value === value)?.css || "";
 }
 
 function resolveTextStyle(style: TextStyleConfig): CSSProperties {
@@ -1682,7 +1634,7 @@ function PreviewShell({
       </div>
 
       <div
-        className={`overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 ${getFrameClass(
+        className={`loja-publica stella-storefront-render overflow-hidden bg-white text-slate-900 antialiased shadow-sm ring-1 ring-slate-200 ${getFrameClass(
           device
         )}`}
       >

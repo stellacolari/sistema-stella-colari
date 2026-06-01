@@ -22,6 +22,23 @@ body {
   font-family: var(--font-primary);
 }
 
+.stella-storefront-render {
+  color: #0f172a;
+  font-family: var(--font-primary);
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+
+.stella-storefront-render,
+.stella-storefront-render input,
+.stella-storefront-render textarea,
+.stella-storefront-render select,
+.stella-storefront-render button {
+  font-family: var(--font-primary);
+}
+
 ::selection {
   background: var(--brand-blue);
   color: #ffffff;
