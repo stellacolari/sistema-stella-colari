@@ -3,11 +3,16 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Eye,
+  EyeOff,
   GripVertical,
   ImageIcon,
   LinkIcon,
+  Maximize2,
   Menu,
+  Monitor,
   Plus,
+  Smartphone,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -191,7 +196,101 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+function BannerPreviewCard({
+  banner,
+  expandido,
+  onToggle,
+}: {
+  banner: BannerLojaItem;
+  expandido: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            Prévia do banner
+          </p>
 
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Confira rapidamente as versões desktop e mobile deste banner.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggle}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+        >
+          {expandido ? (
+            <>
+              <EyeOff className="h-4 w-4" />
+              Ocultar prévia
+            </>
+          ) : (
+            <>
+              <Maximize2 className="h-4 w-4" />
+              Expandir prévia
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_220px]">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Monitor className="h-4 w-4" />
+            Desktop
+          </div>
+
+          <div
+            className={`relative overflow-hidden border border-slate-200 bg-white ${
+              expandido ? "h-64" : "h-24"
+            }`}
+          >
+            <img
+              src={banner.imagemUrl}
+              alt={banner.titulo || "Banner desktop"}
+              className="h-full w-full object-cover"
+            />
+
+            <div className="pointer-events-none absolute inset-0 bg-black/5" />
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Smartphone className="h-4 w-4" />
+            Mobile
+          </div>
+
+          <div
+            className={`relative overflow-hidden border border-slate-200 bg-white ${
+              expandido ? "h-64" : "h-24"
+            }`}
+          >
+            {banner.imagemMobileUrl ? (
+              <img
+                src={banner.imagemMobileUrl}
+                alt={banner.titulo || "Banner mobile"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-amber-50 px-4 text-center text-xs font-medium leading-5 text-amber-700">
+                Sem imagem mobile. A loja usará a imagem desktop.
+              </div>
+            )}
+
+            {banner.imagemMobileUrl && (
+              <div className="pointer-events-none absolute inset-0 bg-black/5" />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function ConfiguracoesLojaClient({
   banners,
   menus,
@@ -235,7 +334,7 @@ export default function ConfiguracoesLojaClient({
   const [bannerArrastandoId, setBannerArrastandoId] = useState<string | null>(
     null
   );
-
+  const [bannersPreviewAberto, setBannersPreviewAberto] = useState<string[]>([]);
   const [menuArrastandoId, setMenuArrastandoId] = useState<string | null>(null);
 
   const [bannerTitulo, setBannerTitulo] = useState("");
@@ -309,7 +408,15 @@ function selecionarBannerMobile(file: File | null) {
       router.refresh();
     });
   }
+  function alternarPreviewBanner(bannerId: string) {
+  setBannersPreviewAberto((atuais) => {
+    if (atuais.includes(bannerId)) {
+      return atuais.filter((id) => id !== bannerId);
+    }
 
+    return [...atuais, bannerId];
+  });
+}
   function aplicarCategoriaNoMenu(categoriaNome: string) {
     setMenuCategoria(categoriaNome);
 
@@ -979,7 +1086,11 @@ if (bannerArquivoMobile) {
                       className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
                     />
                   </div>
-
+                      <BannerPreviewCard
+                          banner={banner}
+                          expandido={bannersPreviewAberto.includes(banner.id)}
+                          onToggle={() => alternarPreviewBanner(banner.id)}
+                        />
                   <div className="flex flex-col gap-2">
                     <button
                       type="button"
