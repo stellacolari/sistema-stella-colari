@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import CategoriasLojaClient from "@/components/configuracoes/loja/CategoriasLojaClient";
 import { prisma } from "@/lib/prisma";
-
+import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
 export const metadata: Metadata = {
   title: "Categorias da Loja | Sistema Stella",
 };
@@ -31,5 +31,14 @@ export default async function CategoriasLojaPage() {
     },
   });
 
-  return <CategoriasLojaClient categoriasIniciais={categorias} />;
+return (
+  <main className="space-y-6">
+    <LojaConfigHeader
+      title="Categorias da loja"
+      description="Organize categorias, subcategorias, imagens, descrições e exibição no menu público."
+    />
+
+    <CategoriasLojaClient categoriasIniciais={categorias} />
+  </main>
+);
 }
