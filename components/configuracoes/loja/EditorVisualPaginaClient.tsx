@@ -90,6 +90,8 @@ type DestaqueCardEditando = {
   id: string;
   titulo: string;
   texto: string;
+  tituloRichText: RichTextValue | null;
+  textoRichText: RichTextValue | null;
   exibirMidia: boolean;
   tipoMidia: string;
   imagemDesktopUrl: string;
@@ -858,6 +860,8 @@ function criarCardDestaquePadrao(index: number): DestaqueCardEditando {
     id: `card-${Date.now()}-${index}`,
     titulo: `Destaque ${index}`,
     texto: "Texto de apoio do card.",
+    tituloRichText: null,
+    textoRichText: null,
     exibirMidia: true,
     tipoMidia: "ICONE",
     imagemDesktopUrl: "",
@@ -912,6 +916,8 @@ function getCardsDestaquesConfig(
       id: getStringConfig(card, "id") || `card-${index + 1}`,
       titulo: getStringConfig(card, "titulo") || `Destaque ${index + 1}`,
       texto: getStringConfig(card, "texto") || getStringConfig(card, "descricao"),
+      tituloRichText: getRichTextConfig(card, "tituloRichText"),
+      textoRichText: getRichTextConfig(card, "textoRichText"),
       exibirMidia: getBooleanConfig(card, "exibirMidia", true),
       tipoMidia: normalizarTipoMidiaCard(getStringConfig(card, "tipoMidia")),
       imagemDesktopUrl: imagemUrl,
@@ -2051,6 +2057,10 @@ function RenderBlocoPreview({
   const subtituloRichText =
     getRichTextConfig(config, "subtituloRichText") ||
     getRichTextConfig(config, "textoRichText");
+  const tituloSecaoRichText =
+    getRichTextConfig(config, "tituloSecaoRichText") || tituloRichText;
+  const subtituloSecaoRichText =
+    getRichTextConfig(config, "subtituloSecaoRichText") || subtituloRichText;
   const tituloStyle = getTextStyleConfig(config, "tituloStyle");
   const subtituloStyle = getTextStyleConfig(config, "subtituloStyle");
   const botaoPrimarioStyle = getTextStyleConfig(config, "botaoPrimarioStyle");
@@ -2220,31 +2230,36 @@ function RenderBlocoPreview({
   ) : null;
   const textoImagemConteudo = (
     <div>
-      <InlineTextEditor
-        value={titulo}
+      <RichTextInlineEditor
+        value={tituloRichText}
+        fallbackText={titulo}
         placeholder="Título"
         className="tracking-tight"
         style={resolveTextStyle(tituloStyle)}
-        onChange={(value) =>
+        onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
-            titulo: value,
+            tituloRichText: richText,
+            titulo: plainText,
           })
         }
       />
 
-      <InlineTextEditor
-        value={texto || ""}
+      <RichTextInlineEditor
+        value={subtituloRichText}
+        fallbackText={texto || ""}
         placeholder="Texto do bloco"
         multiline
         className={`mt-4 leading-7 ${
           corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
         }`}
         style={resolveTextStyle(textoStyle)}
-        onChange={(value) =>
+        onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
-            texto: value,
-            descricao: value,
-            conteudo: value,
+            textoRichText: richText,
+            subtituloRichText: richText,
+            texto: plainText,
+            descricao: plainText,
+            conteudo: plainText,
           })
         }
       />
@@ -2466,29 +2481,34 @@ function RenderBlocoPreview({
 
             <div className="absolute inset-0 flex items-center px-6 py-10 md:px-12">
               <div className="max-w-xl text-white">
-                <InlineTextEditor
-                  value={titulo}
+                <RichTextInlineEditor
+                  value={tituloRichText}
+                  fallbackText={titulo}
                   placeholder="Título"
                   className="tracking-tight"
                   style={resolveTextStyle(tituloStyle)}
-                  onChange={(value) =>
+                  onChange={(richText, plainText) =>
                     onInlineTextChange(bloco.id, {
-                      titulo: value,
+                      tituloRichText: richText,
+                      titulo: plainText,
                     })
                   }
                 />
 
-                <InlineTextEditor
-                  value={texto || ""}
+                <RichTextInlineEditor
+                  value={subtituloRichText}
+                  fallbackText={texto || ""}
                   placeholder="Texto do bloco"
                   multiline
                   className="mt-4 leading-7 text-white/85"
                   style={resolveTextStyle(textoStyle)}
-                  onChange={(value) =>
+                  onChange={(richText, plainText) =>
                     onInlineTextChange(bloco.id, {
-                      texto: value,
-                      descricao: value,
-                      conteudo: value,
+                      textoRichText: richText,
+                      subtituloRichText: richText,
+                      texto: plainText,
+                      descricao: plainText,
+                      conteudo: plainText,
                     })
                   }
                 />
@@ -2587,31 +2607,36 @@ function RenderBlocoPreview({
         <div className={`${bgClass} ${paddingClass}`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <InlineTextEditor
-                value={titulo}
+              <RichTextInlineEditor
+                value={tituloRichText}
+                fallbackText={titulo}
                 placeholder="Título da vitrine"
                 className="tracking-tight"
                 style={resolveTextStyle(tituloStyle)}
-                onChange={(value) =>
+                onChange={(richText, plainText) =>
                   onInlineTextChange(bloco.id, {
-                    titulo: value,
+                    tituloRichText: richText,
+                    titulo: plainText,
                   })
                 }
               />
 
-              <InlineTextEditor
-                value={texto || ""}
+              <RichTextInlineEditor
+                value={subtituloRichText}
+                fallbackText={texto || ""}
                 placeholder="Subtítulo da vitrine"
                 multiline
                 className={`mt-2 max-w-2xl leading-6 ${
                   corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
                 }`}
                 style={resolveTextStyle(subtituloStyle)}
-                onChange={(value) =>
+                onChange={(richText, plainText) =>
                   onInlineTextChange(bloco.id, {
-                    texto: value,
-                    descricao: value,
-                    conteudo: value,
+                    subtituloRichText: richText,
+                    textoRichText: richText,
+                    texto: plainText,
+                    descricao: plainText,
+                    conteudo: plainText,
                   })
                 }
               />
@@ -2709,31 +2734,38 @@ function RenderBlocoPreview({
                 : "max-w-2xl text-left"
             }
           >
-            <InlineTextEditor
-              value={titulo}
+            <RichTextInlineEditor
+              value={tituloSecaoRichText}
+              fallbackText={titulo}
               placeholder="Título da seção"
               className="tracking-tight"
               style={resolveTextStyle(tituloSecaoStyle)}
-              onChange={(value) =>
+              onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
-                  titulo: value,
+                  tituloSecaoRichText: richText,
+                  tituloRichText: richText,
+                  titulo: plainText,
                 })
               }
             />
 
-            <InlineTextEditor
-              value={texto || ""}
+            <RichTextInlineEditor
+              value={subtituloSecaoRichText}
+              fallbackText={texto || ""}
               placeholder="Subtítulo da seção"
               multiline
               className={`mt-2 leading-6 ${
                 corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
               }`}
               style={resolveTextStyle(subtituloSecaoStyle)}
-              onChange={(value) =>
+              onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
-                  texto: value,
-                  descricao: value,
-                  conteudo: value,
+                  subtituloSecaoRichText: richText,
+                  subtituloRichText: richText,
+                  textoRichText: richText,
+                  texto: plainText,
+                  descricao: plainText,
+                  conteudo: plainText,
                 })
               }
             />
@@ -2776,27 +2808,31 @@ function RenderBlocoPreview({
                       : "p-5 text-left"
                   }
                 >
-                  <InlineTextEditor
-                    value={card.titulo || ""}
+                  <RichTextInlineEditor
+                    value={card.tituloRichText}
+                    fallbackText={card.titulo || ""}
                     placeholder="Título do card"
                     className="text-slate-950"
                     style={resolveTextStyle(cardTituloStyle)}
-                    onChange={(value) =>
+                    onChange={(richText, plainText) =>
                       onInlineCardChange(bloco.id, card.id, {
-                        titulo: value,
+                        tituloRichText: richText,
+                        titulo: plainText,
                       })
                     }
                   />
 
-                  <InlineTextEditor
-                    value={card.texto || ""}
+                  <RichTextInlineEditor
+                    value={card.textoRichText}
+                    fallbackText={card.texto || ""}
                     placeholder="Texto do card"
                     multiline
                     className="mt-2 leading-6 text-slate-500"
                     style={resolveTextStyle(cardTextoStyle)}
-                    onChange={(value) =>
+                    onChange={(richText, plainText) =>
                       onInlineCardChange(bloco.id, card.id, {
-                        texto: value,
+                        textoRichText: richText,
+                        texto: plainText,
                       })
                     }
                   />
@@ -5334,6 +5370,8 @@ export default function EditorVisualPaginaClient({
                 id: card.id,
                 titulo: card.titulo,
                 texto: card.texto,
+                tituloRichText: card.tituloRichText,
+                textoRichText: card.textoRichText,
                 exibirMidia: card.exibirMidia,
                 tipoMidia: card.tipoMidia,
                 imagemUrl: card.imagemDesktopUrl,
