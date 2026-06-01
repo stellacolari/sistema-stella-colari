@@ -8,6 +8,8 @@ import {
   getButtonHref,
   getImageDesktop,
   getImageMobile,
+  getStringWithDefault,
+  hasTextContent,
   getMediaPosition,
   getRichText,
   getSpacingClass,
@@ -33,7 +35,7 @@ function getMediaOrderClass(layout: string, tipo: string) {
 
 export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
-  const titulo = getString(config, "titulo", bloco.titulo || "");
+  const titulo = getString(config, "titulo");
   const texto = getString(config, ["texto", "descricao", "conteudo"]);
   const tituloRichText = getRichText(config, "tituloRichText");
   const textoRichText = getRichText(config, "textoRichText");
@@ -48,7 +50,21 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     layoutDesktop === "TEXTO_SOBRE_IMAGEM" || layoutMobile === "TEXTO_SOBRE_IMAGEM";
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
-  const textoBotao = getString(config, ["textoBotao", "botaoTexto"]);
+  const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"]);
+  const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
+  const imageDesktop = getImageDesktop(config);
+  const imageMobile = getImageMobile(config);
+  const videoDesktop = getString(config, "videoDesktopUrl");
+  const videoMobile = getString(config, "videoMobileUrl");
+  const exibirMidia = getBoolean(config, "exibirMidia", true);
+  const hasTitulo = hasTextContent(tituloRichText, titulo);
+  const hasTexto = hasTextContent(textoRichText, texto);
+  const hasBotao = getBoolean(config, "exibirBotao", true) && textoBotao && linkBotao;
+  const hasMedia = exibirMidia && Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
+
+  if (!hasTitulo && !hasTexto && !hasBotao && !hasMedia) {
+    return null;
+  }
 
   if (textoSobreImagem) {
     return (
@@ -56,11 +72,11 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
         <div className="absolute inset-0">
           <PublicMediaRenderer
             tipoMidia={tipoMidia}
-            exibirMidia={getBoolean(config, "exibirMidia", true)}
-            imagemDesktopUrl={getImageDesktop(config)}
-            imagemMobileUrl={getImageMobile(config)}
-            videoDesktopUrl={getString(config, "videoDesktopUrl")}
-            videoMobileUrl={getString(config, "videoMobileUrl")}
+            exibirMidia={hasMedia}
+            imagemDesktopUrl={imageDesktop}
+            imagemMobileUrl={imageMobile}
+            videoDesktopUrl={videoDesktop}
+            videoMobileUrl={videoMobile}
             objectPositionDesktop={getMediaPosition(config, "Desktop")}
             objectPositionMobile={getMediaPosition(config, "Mobile")}
             alt={titulo}
@@ -70,19 +86,23 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
 
         <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-5 sm:px-6 lg:px-8">
           <div className="max-w-2xl text-white">
-            <PublicRichTextRenderer
-              value={tituloRichText}
-              fallback={titulo}
-              className="text-3xl font-light leading-tight md:text-5xl"
-            />
-            <PublicRichTextRenderer
-              value={textoRichText}
-              fallback={texto}
-              className="mt-5 text-base leading-7 text-white/82"
-            />
-            {getBoolean(config, "exibirBotao", true) && textoBotao ? (
+            {hasTitulo ? (
+              <PublicRichTextRenderer
+                value={tituloRichText}
+                fallback={titulo}
+                className="text-3xl font-light leading-tight md:text-5xl"
+              />
+            ) : null}
+            {hasTexto ? (
+              <PublicRichTextRenderer
+                value={textoRichText}
+                fallback={texto}
+                className="mt-5 text-base leading-7 text-white/82"
+              />
+            ) : null}
+            {hasBotao ? (
               <Link
-                href={getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"])}
+                href={linkBotao}
                 className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/90"
               >
                 {textoBotao}
@@ -98,10 +118,10 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
       <div
         className={`mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:items-center lg:gap-12 lg:px-8 ${getDesktopLayoutClass(
-          layoutDesktop
+          hasMedia ? layoutDesktop : "IMAGEM_ACIMA"
         )}`}
       >
-        {getBoolean(config, "exibirMidia", true) ? (
+        {hasMedia ? (
           <div
             className={`relative h-[340px] overflow-hidden rounded-sm bg-slate-100 md:h-[460px] ${
               layoutMobile === "TEXTO_ACIMA" ? "order-last" : "order-first"
@@ -109,10 +129,10 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
           >
             <PublicMediaRenderer
               tipoMidia={tipoMidia}
-              imagemDesktopUrl={getImageDesktop(config)}
-              imagemMobileUrl={getImageMobile(config)}
-              videoDesktopUrl={getString(config, "videoDesktopUrl")}
-              videoMobileUrl={getString(config, "videoMobileUrl")}
+              imagemDesktopUrl={imageDesktop}
+              imagemMobileUrl={imageMobile}
+              videoDesktopUrl={videoDesktop}
+              videoMobileUrl={videoMobile}
               objectPositionDesktop={getMediaPosition(config, "Desktop")}
               objectPositionMobile={getMediaPosition(config, "Mobile")}
               alt={titulo}
@@ -120,21 +140,25 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
           </div>
         ) : null}
 
-        <div className={getBoolean(config, "exibirMidia", true) ? "" : "mx-auto max-w-3xl text-center"}>
-          <PublicRichTextRenderer
-            value={tituloRichText}
-            fallback={titulo}
-            className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
-          />
-          <PublicRichTextRenderer
-            value={textoRichText}
-            fallback={texto}
-            className={`mt-5 text-base leading-7 ${colors.body}`}
-          />
+        <div className={hasMedia ? "" : "mx-auto max-w-3xl text-center"}>
+          {hasTitulo ? (
+            <PublicRichTextRenderer
+              value={tituloRichText}
+              fallback={titulo}
+              className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+            />
+          ) : null}
+          {hasTexto ? (
+            <PublicRichTextRenderer
+              value={textoRichText}
+              fallback={texto}
+              className={`mt-5 text-base leading-7 ${colors.body}`}
+            />
+          ) : null}
 
-          {getBoolean(config, "exibirBotao", true) && textoBotao ? (
+          {hasBotao ? (
             <Link
-              href={getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"])}
+              href={linkBotao}
               className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               {textoBotao}

@@ -9,6 +9,8 @@ import {
   getRichText,
   getSpacingClass,
   getString,
+  getStringWithDefault,
+  hasTextContent,
   getTextColorForBackground,
   moeda,
   produtoTemDesconto,
@@ -101,7 +103,7 @@ function ProdutoCard({
         ) : null}
       </Link>
 
-      {exibirBotao ? (
+      {exibirBotao && textoBotao ? (
         <Link
           href={`/loja/produto/${produto.id}`}
           className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -124,21 +126,35 @@ export default function ListaProdutosPublico({
   const layoutMobile = getString(config, "layoutMobile", "GRID");
   const layoutDesktop = getString(config, "layoutDesktop", "GRID");
   const isCarousel = layoutMobile === "CARROSSEL" || layoutDesktop === "CARROSSEL";
+  const tituloRichText = getRichText(config, "tituloRichText");
+  const subtituloRichText = getRichText(config, [
+    "subtituloRichText",
+    "textoRichText",
+  ]);
+  const titulo = getString(config, "titulo");
+  const subtitulo = getString(config, ["subtitulo", "descricao", "texto"]);
+  const hasTitulo = hasTextContent(tituloRichText, titulo);
+  const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
+  const textoBotao = getStringWithDefault(config, "textoBotao", "Comprar");
 
   return (
     <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <PublicRichTextRenderer
-            value={getRichText(config, "tituloRichText")}
-            fallback={getString(config, "titulo", bloco.titulo || "Produtos")}
-            className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
-          />
-          <PublicRichTextRenderer
-            value={getRichText(config, ["subtituloRichText", "textoRichText"])}
-            fallback={getString(config, ["subtitulo", "descricao", "texto"])}
-            className={`mt-4 text-base leading-7 ${colors.body}`}
-          />
+          {hasTitulo ? (
+            <PublicRichTextRenderer
+              value={tituloRichText}
+              fallback={titulo}
+              className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+            />
+          ) : null}
+          {hasSubtitulo ? (
+            <PublicRichTextRenderer
+              value={subtituloRichText}
+              fallback={subtitulo}
+              className={`mt-4 text-base leading-7 ${colors.body}`}
+            />
+          ) : null}
         </div>
 
         {produtosFiltrados.length > 0 ? (
@@ -163,7 +179,7 @@ export default function ListaProdutosPublico({
                   exibirPreco={getBoolean(config, "exibirPreco", true)}
                   exibirBotao={getBoolean(config, "exibirBotao", true)}
                   exibirSeloDesconto={getBoolean(config, "exibirSeloDesconto", true)}
-                  textoBotao={getString(config, "textoBotao", "Comprar")}
+                  textoBotao={textoBotao}
                 />
               </div>
             ))}

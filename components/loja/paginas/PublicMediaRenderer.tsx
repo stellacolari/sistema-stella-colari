@@ -57,7 +57,7 @@ export default function PublicMediaRenderer({
   alt = "",
   className = "",
   mediaClassName = "",
-  placeholder = "Sem mídia",
+  placeholder = "",
 }: PublicMediaRendererProps) {
   if (!exibirMidia) return null;
 
@@ -128,7 +128,7 @@ export default function PublicMediaRenderer({
     <div
       className={`flex h-full w-full items-center justify-center bg-slate-100 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 ${className}`}
     >
-      {placeholder}
+      {placeholder || null}
     </div>
   );
 }

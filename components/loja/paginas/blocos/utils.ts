@@ -69,6 +69,28 @@ export function getString(
   return fallback;
 }
 
+export function hasConfigKey(config: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(config, key);
+}
+
+export function getStringWithDefault(
+  config: Record<string, unknown>,
+  keys: string | string[],
+  fallback = ""
+) {
+  const keysList = Array.isArray(keys) ? keys : [keys];
+
+  for (const key of keysList) {
+    if (!hasConfigKey(config, key)) continue;
+
+    const value = config[key];
+
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  return fallback;
+}
+
 export function getBoolean(
   config: Record<string, unknown>,
   key: string,
@@ -109,13 +131,41 @@ export function getRichText(config: Record<string, unknown>, keys: string | stri
       typeof value === "object" &&
       value !== null &&
       !Array.isArray(value) &&
-      (value as { type?: unknown }).type === "doc"
+      (value as { type?: unknown }).type === "doc" &&
+      !isRichTextEmpty(value)
     ) {
       return value;
     }
   }
 
   return null;
+}
+
+export function getPlainTextFromRichText(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+
+  const node = value as {
+    text?: unknown;
+    content?: unknown;
+  };
+
+  if (typeof node.text === "string") return node.text;
+
+  if (Array.isArray(node.content)) {
+    return node.content.map(getPlainTextFromRichText).join("\n");
+  }
+
+  return "";
+}
+
+export function isRichTextEmpty(value: unknown) {
+  return getPlainTextFromRichText(value).trim().length === 0;
+}
+
+export function hasTextContent(richText: unknown, fallback: string) {
+  if (richText && !isRichTextEmpty(richText)) return true;
+
+  return fallback.trim().length > 0;
 }
 
 export function getSpacingClass(value: string) {
@@ -205,9 +255,9 @@ export function getImageMobile(config: Record<string, unknown>) {
 }
 
 export function getButtonHref(config: Record<string, unknown>, keys: string | string[]) {
-  const href = getString(config, keys, "#");
+  const href = getString(config, keys);
 
-  return href || "#";
+  return href;
 }
 
 export function moeda(valor: number) {

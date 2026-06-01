@@ -80,6 +80,21 @@ function isRichTextValue(value: unknown): value is PublicRichTextValue {
   return isRecord(value) && value.type === "doc" && Array.isArray(value.content);
 }
 
+function getPlainTextFromNode(node: unknown): string {
+  if (!isRecord(node)) return "";
+  if (typeof node.text === "string") return node.text;
+
+  if (Array.isArray(node.content)) {
+    return node.content.map(getPlainTextFromNode).join("\n");
+  }
+
+  return "";
+}
+
+function isRichTextEmpty(value: PublicRichTextValue) {
+  return getPlainTextFromNode(value).trim().length === 0;
+}
+
 function getString(value: unknown) {
   return typeof value === "string" ? value : "";
 }
@@ -286,7 +301,7 @@ export default function PublicRichTextRenderer({
   style,
   paragraphClassName,
 }: PublicRichTextRendererProps) {
-  if (isRichTextValue(value)) {
+  if (isRichTextValue(value) && !isRichTextEmpty(value)) {
     const rendered = value.content?.map((node, index) =>
       renderNode(node, `rt-${index}`, paragraphClassName)
     );
@@ -298,7 +313,7 @@ export default function PublicRichTextRenderer({
     );
   }
 
-  if (!fallback) return null;
+  if (!fallback?.trim()) return null;
 
   return (
     <div className={className} style={style}>

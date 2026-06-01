@@ -5,8 +5,10 @@ import {
   asConfig,
   getBoolean,
   getButtonHref,
+  getStringWithDefault,
   getImageDesktop,
   getImageMobile,
+  hasTextContent,
   getMediaPosition,
   getRichText,
   getString,
@@ -61,7 +63,7 @@ function getTextClass(corTexto: string) {
 
 export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
-  const titulo = getString(config, ["titulo", "nome"], bloco.titulo || "");
+  const titulo = getString(config, ["titulo", "nome"]);
   const subtitulo = getString(config, ["subtitulo", "texto", "descricao", "conteudo"]);
   const tituloRichText = getRichText(config, "tituloRichText");
   const subtituloRichText = getRichText(config, ["subtituloRichText", "textoRichText"]);
@@ -70,16 +72,28 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   const exibirSubtitulo = getBoolean(config, "exibirSubtitulo", true);
   const exibirBotaoPrimario = getBoolean(config, "exibirBotaoPrimario", true);
   const exibirBotaoSecundario = getBoolean(config, "exibirBotaoSecundario", false);
-  const textoBotao = getString(config, ["textoBotao", "botaoTexto"], "Conhecer");
-  const textoBotaoSecundario = getString(config, [
+  const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"], "Conhecer");
+  const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
+  const textoBotaoSecundario = getStringWithDefault(config, [
     "textoBotaoSecundario",
     "botaoSecundarioTexto",
+  ]);
+  const linkBotaoSecundario = getButtonHref(config, [
+    "linkBotaoSecundario",
+    "botaoSecundarioLink",
   ]);
   const altura = getString(config, "alturaBanner", "PADRAO");
   const alinhamento = getString(config, "alinhamentoConteudo", "ESQUERDA");
   const overlay = getString(config, "overlayBanner", "LEVE");
   const corTexto = getString(config, "corTextoBanner", "CLARO");
   const textClass = getTextClass(corTexto);
+  const hasTitulo = hasTextContent(tituloRichText, titulo);
+  const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
+  const hasBotaoPrimario = exibirBotaoPrimario && textoBotao && linkBotao;
+  const hasBotaoSecundario =
+    exibirBotaoSecundario && textoBotaoSecundario && linkBotaoSecundario;
+  const hasConteudo =
+    exibirTexto && (hasTitulo || (exibirSubtitulo && hasSubtitulo) || hasBotaoPrimario || hasBotaoSecundario);
 
   return (
     <section className={`relative overflow-hidden bg-slate-950 ${getHeightClass(altura)}`}>
@@ -97,13 +111,12 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
           objectPositionDesktop={getMediaPosition(config, "Desktop")}
           objectPositionMobile={getMediaPosition(config, "Mobile")}
           alt={titulo}
-          placeholder="Banner sem mídia"
         />
       </div>
 
       <div className={`absolute inset-0 ${getOverlayClass(overlay)}`} />
 
-      {exibirTexto ? (
+      {hasConteudo ? (
         <div className="relative z-10 mx-auto flex min-h-[inherit] max-w-7xl px-5 py-16 sm:px-6 lg:px-8">
           <div
             className={`flex w-full flex-col justify-center ${getContentAlignClass(
@@ -111,14 +124,16 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
             )}`}
           >
             <div className="max-w-3xl">
-              <PublicRichTextRenderer
-                value={tituloRichText}
-                fallback={titulo}
-                className={`text-4xl font-light leading-[1.05] tracking-normal md:text-6xl ${textClass.title}`}
-                paragraphClassName="mb-0"
-              />
+              {hasTitulo ? (
+                <PublicRichTextRenderer
+                  value={tituloRichText}
+                  fallback={titulo}
+                  className={`text-4xl font-light leading-[1.05] tracking-normal md:text-6xl ${textClass.title}`}
+                  paragraphClassName="mb-0"
+                />
+              ) : null}
 
-              {exibirSubtitulo ? (
+              {exibirSubtitulo && hasSubtitulo ? (
                 <PublicRichTextRenderer
                   value={subtituloRichText}
                   fallback={subtitulo}
@@ -127,8 +142,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
                 />
               ) : null}
 
-              {(exibirBotaoPrimario && textoBotao) ||
-              (exibirBotaoSecundario && textoBotaoSecundario) ? (
+              {hasBotaoPrimario || hasBotaoSecundario ? (
                 <div
                   className={`mt-8 flex flex-wrap gap-3 ${
                     alinhamento === "CENTRO"
@@ -138,21 +152,18 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
                         : "justify-start"
                   }`}
                 >
-                  {exibirBotaoPrimario && textoBotao ? (
+                  {hasBotaoPrimario ? (
                     <Link
-                      href={getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"])}
+                      href={linkBotao}
                       className={`inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold transition ${textClass.primary}`}
                     >
                       {textoBotao}
                     </Link>
                   ) : null}
 
-                  {exibirBotaoSecundario && textoBotaoSecundario ? (
+                  {hasBotaoSecundario ? (
                     <Link
-                      href={getButtonHref(config, [
-                        "linkBotaoSecundario",
-                        "botaoSecundarioLink",
-                      ])}
+                      href={linkBotaoSecundario}
                       className={`inline-flex min-h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition ${textClass.secondary}`}
                     >
                       {textoBotaoSecundario}
