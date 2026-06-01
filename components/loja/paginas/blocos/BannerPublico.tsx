@@ -4,7 +4,9 @@ import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRend
 import {
   asConfig,
   getBoolean,
+  getButtonRadiusClass,
   getButtonHref,
+  getResponsiveTextAlignClass,
   getStringWithDefault,
   getImageDesktop,
   getImageMobile,
@@ -84,6 +86,24 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   ]);
   const altura = getString(config, "alturaBanner", "PADRAO");
   const alinhamento = getString(config, "alinhamentoConteudo", "ESQUERDA");
+  const alinhamentoTextoDesktop = getString(
+    config,
+    "alinhamentoTextoDesktop",
+    alinhamento
+  );
+  const alinhamentoTextoMobile = getString(
+    config,
+    "alinhamentoTextoMobile",
+    alinhamentoTextoDesktop
+  );
+  const textAlignClass = getResponsiveTextAlignClass({
+    desktop: alinhamentoTextoDesktop,
+    mobile: alinhamentoTextoMobile,
+    fallback: alinhamento,
+  });
+  const buttonRadiusClass = getButtonRadiusClass(
+    getString(config, "estiloBordaBotao", "PILULA")
+  );
   const overlay = getString(config, "overlayBanner", "LEVE");
   const corTexto = getString(config, "corTextoBanner", "CLARO");
   const textClass = getTextClass(corTexto);
@@ -134,7 +154,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
               alinhamento
             )}`}
           >
-            <div className="max-w-3xl">
+            <div className={`max-w-3xl ${textAlignClass}`}>
               {hasTitulo ? (
                 <PublicRichTextRenderer
                   value={tituloRichText}
@@ -166,7 +186,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
                   {hasBotaoPrimario ? (
                     <Link
                       href={linkBotao}
-                      className={`inline-flex min-h-11 items-center justify-center rounded-full px-6 text-sm font-semibold transition ${textClass.primary}`}
+                      className={`inline-flex min-h-11 items-center justify-center px-6 text-sm font-semibold transition ${buttonRadiusClass} ${textClass.primary}`}
                     >
                       {textoBotao}
                     </Link>
@@ -175,7 +195,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
                   {hasBotaoSecundario ? (
                     <Link
                       href={linkBotaoSecundario}
-                      className={`inline-flex min-h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition ${textClass.secondary}`}
+                      className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${textClass.secondary}`}
                     >
                       {textoBotaoSecundario}
                     </Link>

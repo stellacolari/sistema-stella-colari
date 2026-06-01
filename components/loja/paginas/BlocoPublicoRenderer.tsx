@@ -1,4 +1,5 @@
 import BannerPublico from "@/components/loja/paginas/blocos/BannerPublico";
+import ColecoesCategoriasPublico from "@/components/loja/paginas/blocos/ColecoesCategoriasPublico";
 import CtaPublico from "@/components/loja/paginas/blocos/CtaPublico";
 import CtaSimplesPublico from "@/components/loja/paginas/blocos/CtaSimplesPublico";
 import DestaquesCardsPublico from "@/components/loja/paginas/blocos/DestaquesCardsPublico";
@@ -29,6 +30,10 @@ export default function BlocoPublicoRenderer({
 
   if (bloco.tipo === "DESTAQUES_CARDS") {
     return <DestaquesCardsPublico bloco={bloco} produtos={produtos} />;
+  }
+
+  if (bloco.tipo === "COLECOES_CATEGORIAS" || bloco.tipo === "MOSAICO_COLECOES") {
+    return <ColecoesCategoriasPublico bloco={bloco} produtos={produtos} />;
   }
 
   if (bloco.tipo === "LISTA_PRODUTOS") {

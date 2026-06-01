@@ -179,6 +179,10 @@ type BlocoEditandoState = {
   limiteProdutos: number;
   layoutDesktopProdutos: string;
   layoutMobileProdutos: string;
+  exibirSetasCarrossel: boolean;
+  posicaoSetasCarrossel: string;
+  estiloSetasCarrossel: string;
+  navegarPor: string;
   colunasDesktopProdutos: number;
   colunasTabletProdutos: number;
   colunasMobileProdutos: number;
@@ -205,6 +209,8 @@ type BlocoEditandoState = {
   corFundo: string;
   espacamento: string;
   alinhamentoConteudo: string;
+  alinhamentoTextoDesktop: string;
+  alinhamentoTextoMobile: string;
   alturaBanner: string;
   overlayBanner: string;
   corTextoBanner: string;
@@ -213,6 +219,9 @@ type BlocoEditandoState = {
   exibirSubtitulo: boolean;
   exibirBotaoPrimario: boolean;
   exibirBotaoSecundario: boolean;
+  estiloBordaBotao: string;
+  larguraMidiaDesktop: string;
+  larguraMidiaMobile: string;
   tituloStyle: TextStyleConfig;
   subtituloStyle: TextStyleConfig;
   botaoPrimarioStyle: TextStyleConfig;
@@ -344,6 +353,34 @@ const FONTE_PRODUTOS_PRESETS = [
 const LAYOUT_PRODUTOS_PRESETS = [
   { value: "GRID", label: "Grid" },
   { value: "CARROSSEL", label: "Carrossel" },
+];
+
+const POSICAO_SETAS_CARROSSEL_PRESETS = [
+  { value: "LATERAIS", label: "Laterais" },
+  { value: "TOPO_DIREITA", label: "Topo direita" },
+  { value: "INFERIOR", label: "Inferior" },
+];
+
+const ESTILO_SETAS_CARROSSEL_PRESETS = [
+  { value: "CIRCULO", label: "Círculo" },
+  { value: "MINIMALISTA", label: "Minimalista" },
+];
+
+const NAVEGAR_POR_PRESETS = [
+  { value: "PAGINA", label: "Página" },
+  { value: "ITEM", label: "Item" },
+];
+
+const ESTILO_BORDA_BOTAO_PRESETS = [
+  { value: "RETO", label: "Reto" },
+  { value: "SUAVE", label: "Suave" },
+  { value: "ARREDONDADO", label: "Arredondado" },
+  { value: "PILULA", label: "Pílula" },
+];
+
+const LARGURA_MIDIA_PRESETS = [
+  { value: "CONTIDA", label: "Contida" },
+  { value: "FULL_BLEED", label: "Até o canto" },
 ];
 
 const ALINHAMENTO_CARDS_PRESETS = [
@@ -1159,6 +1196,21 @@ function getCtaDesktopGridClass(layout: string, hasMedia: boolean) {
   return "grid-cols-2";
 }
 
+function getButtonRadiusPreviewClass(value: string) {
+  if (value === "RETO") return "rounded-none";
+  if (value === "SUAVE") return "rounded-md";
+  if (value === "ARREDONDADO") return "rounded-2xl";
+
+  return "rounded-full";
+}
+
+function getTextAlignPreviewClass(value: string) {
+  if (value === "ESQUERDA") return "text-left";
+  if (value === "DIREITA") return "text-right";
+
+  return "text-center";
+}
+
 async function lerRespostaApi(response: Response) {
   try {
     return await response.json();
@@ -1601,6 +1653,135 @@ function CropPositionControls({
           className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
         >
           {MEDIA_POSITION_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function ButtonRadiusControl({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label>
+      <span className="mb-2 block text-sm font-medium text-slate-700">
+        Borda dos botões
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+      >
+        {ESTILO_BORDA_BOTAO_PRESETS.map((preset) => (
+          <option key={preset.value} value={preset.value}>
+            {preset.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ResponsiveTextAlignControls({
+  desktopValue,
+  mobileValue,
+  onChange,
+}: {
+  desktopValue: string;
+  mobileValue: string;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Alinhamento do texto desktop
+        </span>
+        <select
+          value={desktopValue}
+          onChange={(event) =>
+            onChange({ alinhamentoTextoDesktop: event.target.value })
+          }
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Alinhamento do texto mobile
+        </span>
+        <select
+          value={mobileValue}
+          onChange={(event) =>
+            onChange({ alinhamentoTextoMobile: event.target.value })
+          }
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function MediaWidthControls({
+  desktopValue,
+  mobileValue,
+  onChange,
+}: {
+  desktopValue: string;
+  mobileValue: string;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Largura da mídia desktop
+        </span>
+        <select
+          value={desktopValue}
+          onChange={(event) =>
+            onChange({ larguraMidiaDesktop: event.target.value })
+          }
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {LARGURA_MIDIA_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Largura da mídia mobile
+        </span>
+        <select
+          value={mobileValue}
+          onChange={(event) =>
+            onChange({ larguraMidiaMobile: event.target.value })
+          }
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        >
+          {LARGURA_MIDIA_PRESETS.map((preset) => (
             <option key={preset.value} value={preset.value}>
               {preset.label}
             </option>
@@ -2203,6 +2384,15 @@ function RenderBlocoPreview({
     "GRID";
   const layoutMobileProdutos =
     getStringConfig(config, "layoutMobile") || "GRID";
+  const exibirSetasCarrossel = getBooleanConfig(
+    config,
+    "exibirSetasCarrossel",
+    true
+  );
+  const posicaoSetasCarrossel =
+    getStringConfig(config, "posicaoSetasCarrossel") || "LATERAIS";
+  const estiloSetasCarrossel =
+    getStringConfig(config, "estiloSetasCarrossel") || "CIRCULO";
   const colunasDesktopProdutos = Math.max(
     1,
     getNumberConfig(
@@ -2266,6 +2456,29 @@ function RenderBlocoPreview({
   const paddingClass = getPaddingClass(espacamento);
   const alinhamentoBanner =
     getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA";
+  const alinhamentoTextoDesktop =
+    getStringConfig(config, "alinhamentoTextoDesktop") ||
+    getStringConfig(config, "alinhamento") ||
+    alinhamentoBanner ||
+    "CENTRO";
+  const alinhamentoTextoMobile =
+    getStringConfig(config, "alinhamentoTextoMobile") ||
+    alinhamentoTextoDesktop;
+  const alinhamentoTextoAtual =
+    device === "MOBILE" ? alinhamentoTextoMobile : alinhamentoTextoDesktop;
+  const textAlignPreviewClass = getTextAlignPreviewClass(alinhamentoTextoAtual);
+  const estiloBordaBotao =
+    getStringConfig(config, "estiloBordaBotao") || "PILULA";
+  const buttonRadiusPreviewClass = getButtonRadiusPreviewClass(estiloBordaBotao);
+  const larguraMidiaDesktop =
+    getStringConfig(config, "larguraMidiaDesktop") ||
+    getStringConfig(config, "larguraMidia") ||
+    "CONTIDA";
+  const larguraMidiaMobile =
+    getStringConfig(config, "larguraMidiaMobile") || larguraMidiaDesktop;
+  const larguraMidiaAtual =
+    device === "MOBILE" ? larguraMidiaMobile : larguraMidiaDesktop;
+  const textoImagemFullBleed = larguraMidiaAtual === "FULL_BLEED";
   const alturaBanner = getStringConfig(config, "alturaBanner") || "PADRAO";
   const overlayBanner = getStringConfig(config, "overlayBanner") || "LEVE";
   const corTextoBanner = getStringConfig(config, "corTextoBanner") || "CLARO";
@@ -2347,7 +2560,7 @@ function RenderBlocoPreview({
     />
   ) : null;
   const textoImagemConteudo = (
-    <div>
+    <div className={textAlignPreviewClass}>
       <RichTextInlineEditor
         value={tituloRichText}
         fallbackText={titulo}
@@ -2388,7 +2601,7 @@ function RenderBlocoPreview({
             corFundo === "ESCURO"
               ? "bg-white text-slate-950"
               : "bg-slate-950 text-white"
-          }`}
+          } ${buttonRadiusPreviewClass}`}
           style={resolveTextStyle(botaoStyle)}
         >
           <InlineTextEditor
@@ -2512,7 +2725,7 @@ function RenderBlocoPreview({
                 </p>
 
                 <div
-                  className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${
+                  className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${textAlignPreviewClass} ${
                     isMobile ? "text-4xl" : "text-5xl"
                   }`}
                   style={resolveTextStyle(tituloStyle)}
@@ -2556,7 +2769,7 @@ function RenderBlocoPreview({
                   <div className="mt-6 flex flex-wrap gap-3">
                     {exibirBotaoPrimario && (
                       <div
-                        className={`inline-flex px-5 py-3 text-sm font-semibold ${bannerTextClasses.button}`}
+                        className={`inline-flex px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${bannerTextClasses.button}`}
                         style={resolveTextStyle(botaoPrimarioStyle)}
                       >
                         <InlineTextEditor
@@ -2576,7 +2789,7 @@ function RenderBlocoPreview({
 
                     {exibirBotaoSecundario && (
                       <div
-                        className={`inline-flex border px-5 py-3 text-sm font-semibold ${
+                        className={`inline-flex border px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${
                           corTextoBanner === "ESCURO"
                             ? "border-slate-950 text-slate-950"
                             : "border-white text-white"
@@ -2653,7 +2866,7 @@ function RenderBlocoPreview({
 
                 {exibirBotaoTextoImagem && (
                   <div
-                    className="mt-5 inline-flex bg-white px-5 py-3 text-slate-950"
+                    className={`mt-5 inline-flex bg-white px-5 py-3 text-slate-950 ${buttonRadiusPreviewClass}`}
                     style={resolveTextStyle(botaoStyle)}
                   >
                     <InlineTextEditor
@@ -2713,7 +2926,7 @@ function RenderBlocoPreview({
               </div>
             ) : layoutDesktopTextoImagem === "IMAGEM_ACIMA" ? (
               <>
-                <div className="min-h-[320px] bg-slate-100">
+                <div className={`min-h-[320px] bg-slate-100 ${textoImagemFullBleed ? "-mx-6 md:-mx-12" : ""}`}>
                   {textoImagemMedia}
                 </div>
                 <div className={`flex items-center ${paddingClass}`}>
@@ -2725,13 +2938,13 @@ function RenderBlocoPreview({
                 <div className={`flex items-center ${paddingClass}`}>
                   {textoImagemConteudo}
                 </div>
-                <div className="min-h-[320px] bg-slate-100">
+                <div className={`min-h-[320px] bg-slate-100 ${textoImagemFullBleed ? "-mx-6 md:-mx-12" : ""}`}>
                   {textoImagemMedia}
                 </div>
               </>
             ) : (
               <>
-                <div className="min-h-[320px] bg-slate-100">
+                <div className={`min-h-[320px] bg-slate-100 ${textoImagemFullBleed ? "-mx-6 md:-mx-12" : ""}`}>
                   {textoImagemMedia}
                 </div>
                 <div className={`flex items-center ${paddingClass}`}>
@@ -2843,6 +3056,35 @@ function RenderBlocoPreview({
               })
             )}
           </div>
+
+          {layoutAtualProdutos === "CARROSSEL" && exibirSetasCarrossel ? (
+            <div
+              className={`mt-4 flex gap-2 ${
+                posicaoSetasCarrossel === "INFERIOR"
+                  ? "justify-center"
+                  : "justify-end"
+              }`}
+            >
+              <span
+                className={`inline-flex h-9 w-9 items-center justify-center border text-sm ${
+                  estiloSetasCarrossel === "MINIMALISTA"
+                    ? "border-transparent bg-transparent text-slate-600"
+                    : "rounded-full border-slate-200 bg-white text-slate-700 shadow-sm"
+                }`}
+              >
+                ←
+              </span>
+              <span
+                className={`inline-flex h-9 w-9 items-center justify-center border text-sm ${
+                  estiloSetasCarrossel === "MINIMALISTA"
+                    ? "border-transparent bg-transparent text-slate-600"
+                    : "rounded-full border-slate-200 bg-white text-slate-700 shadow-sm"
+                }`}
+              >
+                →
+              </span>
+            </div>
+          ) : null}
 
           {(categorias.length > 0 || produtos.length > 0) && (
             <p className="mt-5 text-xs text-slate-400">
@@ -2966,7 +3208,7 @@ function RenderBlocoPreview({
                   {card.exibirBotao && (
                     <>
                       <div
-                        className="mt-4 inline-flex bg-slate-950 px-4 py-2 text-white"
+                        className={`mt-4 inline-flex bg-slate-950 px-4 py-2 text-white ${buttonRadiusPreviewClass}`}
                         style={resolveTextStyle(cardBotaoStyle)}
                       >
                         <InlineTextEditor
@@ -3064,7 +3306,7 @@ function RenderBlocoPreview({
                       {(exibirBotaoPrimario || exibirBotaoSecundario) && (
                         <div className="mt-6 flex flex-wrap gap-3">
                           {exibirBotaoPrimario && (
-                            <div className="inline-flex bg-white px-5 py-3 text-slate-950">
+                            <div className={`inline-flex bg-white px-5 py-3 text-slate-950 ${buttonRadiusPreviewClass}`}>
                               <InlineTextEditor
                                 value={textoBotao}
                                 placeholder="Botão primário"
@@ -3081,7 +3323,7 @@ function RenderBlocoPreview({
                             </div>
                           )}
                           {exibirBotaoSecundario && (
-                            <div className="inline-flex border border-white px-5 py-3 text-white">
+                            <div className={`inline-flex border border-white px-5 py-3 text-white ${buttonRadiusPreviewClass}`}>
                               <InlineTextEditor
                                 value={textoBotaoSecundario}
                                 placeholder="Botão secundário"
@@ -3161,7 +3403,7 @@ function RenderBlocoPreview({
                         <div className="mt-6 flex flex-wrap gap-3">
                           {exibirBotaoPrimario && (
                             <div
-                              className={`inline-flex px-5 py-3 ${ctaTextColors.button}`}
+                              className={`inline-flex px-5 py-3 ${buttonRadiusPreviewClass} ${ctaTextColors.button}`}
                             >
                               <InlineTextEditor
                                 value={textoBotao}
@@ -3179,7 +3421,7 @@ function RenderBlocoPreview({
                             </div>
                           )}
                           {exibirBotaoSecundario && (
-                            <div className="inline-flex border border-current px-5 py-3">
+                            <div className={`inline-flex border border-current px-5 py-3 ${buttonRadiusPreviewClass}`}>
                               <InlineTextEditor
                                 value={textoBotaoSecundario}
                                 placeholder="Botão secundário"
@@ -3725,7 +3967,18 @@ function EditorConteudoBlocoModal({
               onChange={onChange}
             />
 
+            <ResponsiveTextAlignControls
+              desktopValue={estado.alinhamentoTextoDesktop}
+              mobileValue={estado.alinhamentoTextoMobile}
+              onChange={onChange}
+            />
+
             <div className="grid gap-4 md:grid-cols-2">
+              <ButtonRadiusControl
+                value={estado.estiloBordaBotao}
+                onChange={(value) => onChange({ estiloBordaBotao: value })}
+              />
+
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
                   Texto do botão
@@ -4031,6 +4284,18 @@ function EditorConteudoBlocoModal({
               onChange={onChange}
             />
 
+            <MediaWidthControls
+              desktopValue={estado.larguraMidiaDesktop}
+              mobileValue={estado.larguraMidiaMobile}
+              onChange={onChange}
+            />
+
+            <ResponsiveTextAlignControls
+              desktopValue={estado.alinhamentoTextoDesktop}
+              mobileValue={estado.alinhamentoTextoMobile}
+              onChange={onChange}
+            />
+
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -4111,6 +4376,11 @@ function EditorConteudoBlocoModal({
                   ))}
                 </select>
               </label>
+
+              <ButtonRadiusControl
+                value={estado.estiloBordaBotao}
+                onChange={(value) => onChange({ estiloBordaBotao: value })}
+              />
             </div>
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
@@ -4278,6 +4548,19 @@ function EditorConteudoBlocoModal({
                     ))}
                   </select>
                 </label>
+
+                <ButtonRadiusControl
+                  value={estado.estiloBordaBotao}
+                  onChange={(value) => onChange({ estiloBordaBotao: value })}
+                />
+              </div>
+
+              <div className="mt-4">
+                <ResponsiveTextAlignControls
+                  desktopValue={estado.alinhamentoTextoDesktop}
+                  mobileValue={estado.alinhamentoTextoMobile}
+                  onChange={onChange}
+                />
               </div>
             </PainelSecao>
 
@@ -4536,6 +4819,84 @@ function EditorConteudoBlocoModal({
                 />
               </label>
             </div>
+
+            <PainelSecao title="Carrossel">
+              <div className="space-y-4">
+                <CampoToggle
+                  checked={estado.exibirSetasCarrossel}
+                  label="Exibir setas no carrossel"
+                  description="As setas aparecem apenas quando desktop ou mobile está em modo carrossel."
+                  onChange={(checked) =>
+                    onChange({ exibirSetasCarrossel: checked })
+                  }
+                />
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Posição
+                    </span>
+                    <select
+                      value={estado.posicaoSetasCarrossel}
+                      onChange={(event) =>
+                        onChange({ posicaoSetasCarrossel: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {POSICAO_SETAS_CARROSSEL_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Estilo
+                    </span>
+                    <select
+                      value={estado.estiloSetasCarrossel}
+                      onChange={(event) =>
+                        onChange({ estiloSetasCarrossel: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {ESTILO_SETAS_CARROSSEL_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Navegar por
+                    </span>
+                    <select
+                      value={estado.navegarPor}
+                      onChange={(event) =>
+                        onChange({ navegarPor: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {NAVEGAR_POR_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </PainelSecao>
+
+            <ResponsiveTextAlignControls
+              desktopValue={estado.alinhamentoTextoDesktop}
+              mobileValue={estado.alinhamentoTextoMobile}
+              onChange={onChange}
+            />
 
             {(estado.fonteProdutos === "CATEGORIA" ||
               estado.fonteProdutos === "CATEGORIAS_SELECIONADAS" ||
@@ -4966,6 +5327,17 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
             </div>
+
+            <ResponsiveTextAlignControls
+              desktopValue={estado.alinhamentoTextoDesktop}
+              mobileValue={estado.alinhamentoTextoMobile}
+              onChange={onChange}
+            />
+
+            <ButtonRadiusControl
+              value={estado.estiloBordaBotao}
+              onChange={(value) => onChange({ estiloBordaBotao: value })}
+            />
 
             <SecaoRecolhivel
               title="Textos / conteúdo"
@@ -6053,6 +6425,16 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "modo") ||
         "GRID",
       layoutMobileProdutos: getStringConfig(config, "layoutMobile") || "GRID",
+      exibirSetasCarrossel: getBooleanConfig(
+        config,
+        "exibirSetasCarrossel",
+        true
+      ),
+      posicaoSetasCarrossel:
+        getStringConfig(config, "posicaoSetasCarrossel") || "LATERAIS",
+      estiloSetasCarrossel:
+        getStringConfig(config, "estiloSetasCarrossel") || "CIRCULO",
+      navegarPor: getStringConfig(config, "navegarPor") || "PAGINA",
       colunasDesktopProdutos: getNumberConfig(
         config,
         "colunasDesktop",
@@ -6101,6 +6483,17 @@ export default function EditorVisualPaginaClient({
       espacamento: getStringConfig(config, "espacamento") || "PADRAO",
       alinhamentoConteudo:
         getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA",
+      alinhamentoTextoDesktop:
+        getStringConfig(config, "alinhamentoTextoDesktop") ||
+        getStringConfig(config, "alinhamento") ||
+        getStringConfig(config, "alinhamentoConteudo") ||
+        "CENTRO",
+      alinhamentoTextoMobile:
+        getStringConfig(config, "alinhamentoTextoMobile") ||
+        getStringConfig(config, "alinhamentoTextoDesktop") ||
+        getStringConfig(config, "alinhamento") ||
+        getStringConfig(config, "alinhamentoConteudo") ||
+        "CENTRO",
       alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
       overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
       corTextoBanner: getStringConfig(config, "corTextoBanner") || "CLARO",
@@ -6117,6 +6510,16 @@ export default function EditorVisualPaginaClient({
         "exibirBotaoSecundario",
         false
       ),
+      estiloBordaBotao: getStringConfig(config, "estiloBordaBotao") || "PILULA",
+      larguraMidiaDesktop:
+        getStringConfig(config, "larguraMidiaDesktop") ||
+        getStringConfig(config, "larguraMidia") ||
+        "CONTIDA",
+      larguraMidiaMobile:
+        getStringConfig(config, "larguraMidiaMobile") ||
+        getStringConfig(config, "larguraMidiaDesktop") ||
+        getStringConfig(config, "larguraMidia") ||
+        "CONTIDA",
       tituloStyle: getTextStyleConfig(config, "tituloStyle"),
       subtituloStyle: getTextStyleConfig(config, "subtituloStyle"),
       botaoPrimarioStyle: getTextStyleConfig(config, "botaoPrimarioStyle"),
@@ -6187,6 +6590,9 @@ export default function EditorVisualPaginaClient({
       linkBotao: editando.linkBotao,
       botaoLink: editando.linkBotao,
       linkUrl: editando.linkBotao,
+      estiloBordaBotao: editando.estiloBordaBotao,
+      alinhamentoTextoDesktop: editando.alinhamentoTextoDesktop,
+      alinhamentoTextoMobile: editando.alinhamentoTextoMobile,
       ...(tituloMudouNoModal ? { tituloRichText: tituloModalRichText } : {}),
       ...(textoMudouNoModal
         ? {
@@ -6256,6 +6662,8 @@ export default function EditorVisualPaginaClient({
               layoutDesktopTextoImagem: editando.layoutDesktopTextoImagem,
               layoutMobile: editando.layoutMobileTextoImagem,
               layoutMobileTextoImagem: editando.layoutMobileTextoImagem,
+              larguraMidiaDesktop: editando.larguraMidiaDesktop,
+              larguraMidiaMobile: editando.larguraMidiaMobile,
               posicaoImagem:
                 editando.layoutDesktopTextoImagem === "IMAGEM_DIREITA"
                   ? "DIREITA"
@@ -6285,6 +6693,10 @@ export default function EditorVisualPaginaClient({
               modo: editando.layoutDesktopProdutos,
               layoutDesktop: editando.layoutDesktopProdutos,
               layoutMobile: editando.layoutMobileProdutos,
+              exibirSetasCarrossel: editando.exibirSetasCarrossel,
+              posicaoSetasCarrossel: editando.posicaoSetasCarrossel,
+              estiloSetasCarrossel: editando.estiloSetasCarrossel,
+              navegarPor: editando.navegarPor,
               colunasDesktop: Math.max(
                 1,
                 Number(editando.colunasDesktopProdutos) || 1

@@ -41,6 +41,8 @@ export const TIPOS_BLOCOS_VISUAIS_PUBLICOS = new Set([
   "TEXTO_IMAGEM",
   "IMAGEM_TEXTO",
   "DESTAQUES_CARDS",
+  "COLECOES_CATEGORIAS",
+  "MOSAICO_COLECOES",
   "LISTA_PRODUTOS",
   "CTA",
   "CTA_SIMPLES",
@@ -263,6 +265,39 @@ export function getButtonHref(config: Record<string, unknown>, keys: string | st
   const href = getString(config, keys);
 
   return href;
+}
+
+export function getButtonRadiusClass(value: string) {
+  if (value === "RETO") return "rounded-none";
+  if (value === "SUAVE") return "rounded-md";
+  if (value === "ARREDONDADO") return "rounded-2xl";
+
+  return "rounded-full";
+}
+
+function getTextAlignClass(value: string, prefix = "") {
+  if (value === "ESQUERDA") return `${prefix}text-left`;
+  if (value === "DIREITA") return `${prefix}text-right`;
+
+  return `${prefix}text-center`;
+}
+
+export function getResponsiveTextAlignClass({
+  desktop,
+  mobile,
+  fallback = "CENTRO",
+}: {
+  desktop?: string;
+  mobile?: string;
+  fallback?: string;
+}) {
+  const mobileValue = mobile || fallback;
+  const desktopValue = desktop || fallback;
+
+  return `${getTextAlignClass(mobileValue)} ${getTextAlignClass(
+    desktopValue,
+    "lg:"
+  )}`;
 }
 
 export function moeda(valor: number) {

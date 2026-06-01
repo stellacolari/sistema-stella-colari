@@ -1,4 +1,5 @@
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
+import CarouselScrollArea from "@/components/loja/paginas/CarouselScrollArea";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
   asConfig,
@@ -7,6 +8,7 @@ import {
   getGridColumnsClass,
   getNumber,
   getRichText,
+  getResponsiveTextAlignClass,
   getSpacingClass,
   getArray,
   getString,
@@ -112,6 +114,27 @@ export default function ListaProdutosPublico({
   const layoutMobile = getString(config, "layoutMobile", "GRID");
   const layoutDesktop = getString(config, "layoutDesktop", "GRID");
   const isCarousel = layoutMobile === "CARROSSEL" || layoutDesktop === "CARROSSEL";
+  const exibirSetasCarrossel = getBoolean(config, "exibirSetasCarrossel", true);
+  const posicaoSetasCarrossel = getString(
+    config,
+    "posicaoSetasCarrossel",
+    "LATERAIS"
+  );
+  const estiloSetasCarrossel = getString(
+    config,
+    "estiloSetasCarrossel",
+    "CIRCULO"
+  );
+  const navegarPor = getString(config, "navegarPor", "PAGINA");
+  const sectionAlign = getResponsiveTextAlignClass({
+    desktop: getString(config, "alinhamentoTextoDesktop", "CENTRO"),
+    mobile: getString(
+      config,
+      "alinhamentoTextoMobile",
+      getString(config, "alinhamentoTextoDesktop", "CENTRO")
+    ),
+    fallback: "CENTRO",
+  });
   const tituloRichText = getRichText(config, "tituloRichText");
   const subtituloRichText = getRichText(config, [
     "subtituloRichText",
@@ -130,7 +153,7 @@ export default function ListaProdutosPublico({
   return (
     <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className={`mx-auto max-w-3xl ${sectionAlign}`}>
           {hasTitulo ? (
             <PublicRichTextRenderer
               value={tituloRichText}
@@ -148,10 +171,16 @@ export default function ListaProdutosPublico({
         </div>
 
         {produtosFiltrados.length > 0 ? (
-          <div
-            className={
+          <CarouselScrollArea
+            enabled={isCarousel}
+            showArrows={exibirSetasCarrossel}
+            arrowPosition={posicaoSetasCarrossel}
+            arrowStyle={estiloSetasCarrossel}
+            scrollMode={navegarPor}
+            itemLabel="produtos"
+            containerClassName={
               isCarousel
-                ? "mt-10 flex snap-x gap-5 overflow-x-auto pb-4"
+                ? "mt-10 flex snap-x gap-5 overflow-x-auto scroll-smooth pb-4"
                 : `mt-10 grid gap-x-5 gap-y-10 ${getGridColumnsClass(
                     getNumber(config, "colunasMobile", 2),
                     getNumber(config, "colunasTablet", 3),
@@ -173,7 +202,7 @@ export default function ListaProdutosPublico({
                 />
               </div>
             ))}
-          </div>
+          </CarouselScrollArea>
         ) : null}
       </div>
     </section>

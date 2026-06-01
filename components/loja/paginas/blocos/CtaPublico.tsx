@@ -5,10 +5,12 @@ import {
   asConfig,
   getBackgroundClass,
   getBoolean,
+  getButtonRadiusClass,
   getButtonHref,
   getImageDesktop,
   getImageMobile,
   getMediaPosition,
+  getResponsiveTextAlignClass,
   getRichText,
   getSpacingClass,
   getString,
@@ -60,6 +62,24 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
   const alinhamento = getString(config, "alinhamento", "CENTRO");
+  const alinhamentoTextoDesktop = getString(
+    config,
+    "alinhamentoTextoDesktop",
+    alinhamento
+  );
+  const alinhamentoTextoMobile = getString(
+    config,
+    "alinhamentoTextoMobile",
+    alinhamentoTextoDesktop
+  );
+  const textAlignClass = getResponsiveTextAlignClass({
+    desktop: alinhamentoTextoDesktop,
+    mobile: alinhamentoTextoMobile,
+    fallback: alinhamento,
+  });
+  const buttonRadiusClass = getButtonRadiusClass(
+    getString(config, "estiloBordaBotao", "PILULA")
+  );
   const larguraConteudo = getString(config, "larguraConteudo", "MEDIA");
   const layoutDesktop = getLayout(getString(config, "layoutDesktop"));
   const layoutMobile = getLayout(getString(config, "layoutMobile"));
@@ -152,6 +172,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
           layout === "TEXTO_CENTRALIZADO" ? getWidthClass(larguraConteudo) : ""
         }`}
       >
+        <div className={textAlignClass}>
         {hasTitulo ? (
           <PublicRichTextRenderer
             value={tituloRichText}
@@ -173,7 +194,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             {hasBotaoPrimario ? (
               <Link
                 href={linkBotaoPrimario}
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className={`inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
               >
                 {textoBotaoPrimario}
               </Link>
@@ -181,13 +202,14 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             {hasBotaoSecundario ? (
               <Link
                 href={linkBotaoSecundario}
-                className={`inline-flex min-h-11 items-center justify-center rounded-full border px-6 text-sm font-semibold transition ${displayColors.border} ${displayColors.title}`}
+                className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${displayColors.border} ${displayColors.title}`}
               >
                 {textoBotaoSecundario}
               </Link>
             ) : null}
           </div>
         ) : null}
+        </div>
       </div>
     );
   }

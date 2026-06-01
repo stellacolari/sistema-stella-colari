@@ -5,9 +5,11 @@ import {
   asConfig,
   getBackgroundClass,
   getBoolean,
+  getButtonRadiusClass,
   getButtonHref,
   getImageDesktop,
   getImageMobile,
+  getResponsiveTextAlignClass,
   getStringWithDefault,
   hasTextContent,
   getMediaPosition,
@@ -50,6 +52,34 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const textoSobreImagemMobile = layoutMobile === "TEXTO_SOBRE_IMAGEM";
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
+  const alinhamentoTextoDesktop = getString(
+    config,
+    "alinhamentoTextoDesktop",
+    "ESQUERDA"
+  );
+  const alinhamentoTextoMobile = getString(
+    config,
+    "alinhamentoTextoMobile",
+    alinhamentoTextoDesktop
+  );
+  const textAlignClass = getResponsiveTextAlignClass({
+    desktop: alinhamentoTextoDesktop,
+    mobile: alinhamentoTextoMobile,
+    fallback: "ESQUERDA",
+  });
+  const buttonRadiusClass = getButtonRadiusClass(
+    getString(config, "estiloBordaBotao", "PILULA")
+  );
+  const larguraMidiaDesktop = getString(
+    config,
+    "larguraMidiaDesktop",
+    getString(config, "larguraMidia", "CONTIDA")
+  );
+  const larguraMidiaMobile = getString(
+    config,
+    "larguraMidiaMobile",
+    larguraMidiaDesktop
+  );
   const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"]);
   const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
   const imageDesktop = getImageDesktop(config);
@@ -89,7 +119,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
         <div className="absolute inset-0 bg-slate-950/42" />
 
         <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-center px-5 sm:px-6 lg:px-8">
-          <div className="max-w-2xl text-white">
+          <div className={`max-w-2xl text-white ${textAlignClass}`}>
             {hasTitulo ? (
               <PublicRichTextRenderer
                 value={tituloRichText}
@@ -107,7 +137,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
             {hasBotao ? (
               <Link
                 href={linkBotao}
-                className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/90"
+                className={`mt-8 inline-flex min-h-11 items-center justify-center bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/90 ${buttonRadiusClass}`}
               >
                 {textoBotao}
               </Link>
@@ -119,6 +149,15 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   }
 
   function renderTextoImagem(viewportClass = "") {
+    const isDesktopViewport = viewportClass.includes("lg:block");
+    const isMobileViewport = viewportClass.includes("lg:hidden");
+    const fullBleedDesktop = hasMedia && larguraMidiaDesktop === "FULL_BLEED";
+    const fullBleedMobile = hasMedia && larguraMidiaMobile === "FULL_BLEED";
+    const fullBleed =
+      (isDesktopViewport && fullBleedDesktop) ||
+      (isMobileViewport && fullBleedMobile) ||
+      (!isDesktopViewport && !isMobileViewport && (fullBleedDesktop || fullBleedMobile));
+
     return (
       <section
         className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(
@@ -126,13 +165,17 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
         )}`}
       >
       <div
-        className={`mx-auto grid max-w-7xl gap-8 px-5 sm:px-6 lg:items-center lg:gap-12 lg:px-8 ${getDesktopLayoutClass(
+        className={`mx-auto grid gap-8 lg:items-center lg:gap-12 ${
+          fullBleed ? "max-w-none px-0" : "max-w-7xl px-5 sm:px-6 lg:px-8"
+        } ${getDesktopLayoutClass(
           hasMedia ? layoutDesktop : "IMAGEM_ACIMA"
         )}`}
       >
         {hasMedia ? (
           <div
-            className={`relative h-[340px] overflow-hidden rounded-sm bg-slate-100 md:h-[460px] ${
+            className={`relative h-[340px] overflow-hidden bg-slate-100 md:h-[460px] ${
+              fullBleed ? "" : "rounded-sm"
+            } ${
               layoutMobile === "TEXTO_ACIMA" ? "order-last" : "order-first"
             } ${getMediaOrderClass(layoutDesktop, bloco.tipo)}`}
           >
@@ -149,7 +192,15 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
           </div>
         ) : null}
 
-        <div className={hasMedia ? "" : "mx-auto max-w-3xl text-center"}>
+        <div
+          className={`${
+            hasMedia
+              ? fullBleed
+                ? "px-5 sm:px-6 lg:px-8"
+                : ""
+              : "mx-auto max-w-3xl"
+          } ${textAlignClass}`}
+        >
           {hasTitulo ? (
             <PublicRichTextRenderer
               value={tituloRichText}
@@ -168,7 +219,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
           {hasBotao ? (
             <Link
               href={linkBotao}
-              className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className={`mt-8 inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
             >
               {textoBotao}
             </Link>

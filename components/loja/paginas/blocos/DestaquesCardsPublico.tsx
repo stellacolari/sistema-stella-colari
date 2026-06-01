@@ -6,6 +6,7 @@ import {
   getArray,
   getBackgroundClass,
   getBoolean,
+  getButtonRadiusClass,
   getButtonHref,
   getGridColumnsClass,
   getImageDesktop,
@@ -13,6 +14,7 @@ import {
   getMediaPosition,
   getNumber,
   getRichText,
+  getResponsiveTextAlignClass,
   getSpacingClass,
   getString,
   getStringWithDefault,
@@ -88,7 +90,18 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
   const alinhamento = getString(config, "alinhamento", "CENTRO");
-  const sectionAlign = alinhamento === "ESQUERDA" ? "text-left" : "text-center";
+  const sectionAlign = getResponsiveTextAlignClass({
+    desktop: getString(config, "alinhamentoTextoDesktop", alinhamento),
+    mobile: getString(
+      config,
+      "alinhamentoTextoMobile",
+      getString(config, "alinhamentoTextoDesktop", alinhamento)
+    ),
+    fallback: alinhamento,
+  });
+  const buttonRadiusClass = getButtonRadiusClass(
+    getString(config, "estiloBordaBotao", "PILULA")
+  );
   const cards = getArray(config, "cards").map(asCard).filter(cardHasPublicContent);
   const layoutMobile = getString(config, "layoutMobile", "GRID");
   const layoutDesktop = getString(config, "layoutDesktop", "GRID");
@@ -190,7 +203,7 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
                   {getBoolean(card, "exibirBotao", false) && textoBotao && linkBotao ? (
                     <Link
                       href={linkBotao}
-                      className="mt-5 inline-flex min-h-10 items-center justify-center rounded-full border border-slate-950/15 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950"
+                      className={`mt-5 inline-flex min-h-10 items-center justify-center border border-slate-950/15 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950 ${buttonRadiusClass}`}
                     >
                       {textoBotao}
                     </Link>
