@@ -8,6 +8,7 @@ import {
   getNumber,
   getRichText,
   getSpacingClass,
+  getArray,
   getString,
   getStringWithDefault,
   hasTextContent,
@@ -20,6 +21,13 @@ import {
 
 function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unknown>) {
   const fonte = getString(config, "fonte", "TODOS");
+  const categoriaId = getString(config, "categoriaId");
+  const categoriaSlug = getString(config, "categoriaSlug");
+  const categoriaNome = getString(config, "categoriaNome");
+  const categoriasIds = getArray(config, "categoriasIds").map(String);
+  const categoriasLegadas = getArray(config, "categorias").map(String);
+  const categoriasSlugs = getArray(config, "categoriasSlugs").map(String);
+  const produtosIds = getArray(config, "produtosIds").map(String);
   let resultado = [...produtos];
 
   if (fonte === "DESCONTOS") {
@@ -34,6 +42,52 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
 
   if (fonte === "MAIS_VENDIDOS") {
     resultado = resultado.sort((a, b) => b.vendidosTotal - a.vendidosTotal);
+  }
+
+  if (fonte === "CATEGORIA") {
+    if (!categoriaId && !categoriaSlug && !categoriaNome) {
+      return [];
+    }
+
+    resultado = resultado.filter((produto) => {
+      return (
+        Boolean(categoriaId && produto.categoriaIds?.includes(categoriaId)) ||
+        Boolean(categoriaSlug && produto.categoriaSlugs?.includes(categoriaSlug)) ||
+        Boolean(
+          categoriaNome &&
+            (produto.categoria === categoriaNome ||
+              produto.categoriaNomes?.includes(categoriaNome))
+        )
+      );
+    });
+  }
+
+  if (fonte === "CATEGORIAS_SELECIONADAS") {
+    const ids = categoriasIds.length > 0 ? categoriasIds : categoriasLegadas;
+
+    if (ids.length === 0 && categoriasSlugs.length === 0) {
+      return [];
+    }
+
+    resultado = resultado.filter((produto) => {
+      return (
+        ids.some((id) => produto.categoriaIds?.includes(id)) ||
+        categoriasSlugs.some((slug) => produto.categoriaSlugs?.includes(slug)) ||
+        categoriasLegadas.includes(produto.categoria)
+      );
+    });
+  }
+
+  if (fonte === "MANUAL") {
+    if (produtosIds.length === 0) return [];
+
+    const ordem = new Map(produtosIds.map((id, index) => [id, index]));
+
+    resultado = resultado
+      .filter((produto) => ordem.has(produto.id))
+      .sort(
+        (a, b) => Number(ordem.get(a.id) ?? 0) - Number(ordem.get(b.id) ?? 0)
+      );
   }
 
   return resultado.slice(0, Math.max(1, getNumber(config, "limite", 8)));
@@ -137,6 +191,10 @@ export default function ListaProdutosPublico({
   const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
   const textoBotao = getStringWithDefault(config, "textoBotao", "Comprar");
 
+  if (!hasTitulo && !hasSubtitulo && produtosFiltrados.length === 0) {
+    return null;
+  }
+
   return (
     <section className={`${getBackgroundClass(corFundo)} ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -184,11 +242,7 @@ export default function ListaProdutosPublico({
               </div>
             ))}
           </div>
-        ) : (
-          <div className="mt-10 rounded-sm border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-            Nenhum produto disponível para esta seção.
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

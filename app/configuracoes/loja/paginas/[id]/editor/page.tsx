@@ -7,6 +7,7 @@ import EditorVisualPaginaClient, {
   type EditorVisualBloco,
   type EditorVisualCategoria,
   type EditorVisualPagina,
+  type EditorVisualProduto,
 } from "@/components/configuracoes/loja/EditorVisualPaginaClient";
 
 export const metadata: Metadata = {
@@ -62,7 +63,7 @@ function getUrlPublicaPagina(pagina: {
 export default async function EditorVisualPaginaPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [paginaRaw, categoriasRaw] = await Promise.all([
+  const [paginaRaw, categoriasRaw, produtosRaw] = await Promise.all([
     prisma.lojaPagina.findUnique({
       where: { id },
       include: {
@@ -83,6 +84,37 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         categoriaMaeId: true,
       },
       orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+    }),
+
+    prisma.produto.findMany({
+      where: {
+        ativo: true,
+        status: {
+          not: "NA_LIXEIRA",
+        },
+      },
+      select: {
+        id: true,
+        codigoInterno: true,
+        nome: true,
+        imagemUrl: true,
+        categoria: true,
+        categoriasProduto: {
+          select: {
+            categoria: {
+              select: {
+                id: true,
+                nome: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      take: 240,
     }),
   ]);
 
@@ -118,6 +150,22 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
       slug: categoria.slug,
       categoriaMaeId: categoria.categoriaMaeId,
       caminho: montarCaminhoCategoria(categoria, categoriasRaw),
+    })
+  );
+
+  const produtosDisponiveis: EditorVisualProduto[] = produtosRaw.map(
+    (produto) => ({
+      id: produto.id,
+      codigoInterno: produto.codigoInterno,
+      nome: produto.nome,
+      imagemUrl: produto.imagemUrl,
+      categoria: produto.categoria,
+      categoriaIds: produto.categoriasProduto.map(
+        (item) => item.categoria.id
+      ),
+      categoriaNomes: produto.categoriasProduto.map(
+        (item) => item.categoria.nome
+      ),
     })
   );
 
@@ -195,6 +243,7 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         pagina={pagina}
         blocos={blocos}
         categoriasDisponiveis={categoriasDisponiveis}
+        produtosDisponiveis={produtosDisponiveis}
       />
     </main>
   );

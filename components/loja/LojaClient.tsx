@@ -16,6 +16,9 @@ export type LojaProdutoItem = {
   imagemUrl?: string | null;
   imagemHoverUrl?: string | null;
   categoria: string;
+  categoriaIds?: string[];
+  categoriaSlugs?: string[];
+  categoriaNomes?: string[];
   precoVenda: number;
   descontoAtivo: boolean;
   precoPromocional: number | null;

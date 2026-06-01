@@ -42,6 +42,17 @@ async function buscarProdutosPublicosRaw() {
           },
         },
       },
+      categoriasProduto: {
+        select: {
+          categoria: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -61,6 +72,9 @@ function formatarProdutoPublico(produto: ProdutoPublicoRaw): LojaProdutoItem {
     imagemUrl: produto.imagemUrl,
     imagemHoverUrl: produto.imagemHoverUrl,
     categoria: produto.categoria,
+    categoriaIds: produto.categoriasProduto.map((item) => item.categoria.id),
+    categoriaSlugs: produto.categoriasProduto.map((item) => item.categoria.slug),
+    categoriaNomes: produto.categoriasProduto.map((item) => item.categoria.nome),
     precoVenda: Number(produto.precoVenda),
     descontoAtivo: produto.descontoAtivo,
     precoPromocional: produto.precoPromocional
@@ -124,6 +138,17 @@ export async function buscarProdutosPublicosPorCategoriaIds(
                   quantidadeAtual: true,
                 },
               },
+            },
+          },
+        },
+      },
+      categoriasProduto: {
+        select: {
+          categoria: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
             },
           },
         },

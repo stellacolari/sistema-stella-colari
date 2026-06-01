@@ -80,6 +80,9 @@ function serializarProdutosBuilder(
     imagemUrl: string | null;
     imagemHoverUrl: string | null;
     categoria: string;
+    categoriaIds?: string[];
+    categoriaSlugs?: string[];
+    categoriaNomes?: string[];
     precoVenda: number;
     descontoAtivo: boolean;
     precoPromocional: number | null;
@@ -99,6 +102,9 @@ function serializarProdutosBuilder(
     imagemUrl: produto.imagemUrl,
     imagemHoverUrl: produto.imagemHoverUrl,
     categoria: produto.categoria,
+    categoriaIds: produto.categoriaIds,
+    categoriaSlugs: produto.categoriaSlugs,
+    categoriaNomes: produto.categoriaNomes,
     precoVenda: produto.precoVenda,
     descontoAtivo: produto.descontoAtivo,
     precoPromocional: produto.precoPromocional,

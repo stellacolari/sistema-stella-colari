@@ -67,10 +67,21 @@ export type EditorVisualCategoria = {
   caminho: string;
 };
 
+export type EditorVisualProduto = {
+  id: string;
+  codigoInterno: string;
+  nome: string;
+  imagemUrl: string | null;
+  categoria: string;
+  categoriaIds: string[];
+  categoriaNomes: string[];
+};
+
 type EditorVisualPaginaClientProps = {
   pagina: EditorVisualPagina;
   blocos: EditorVisualBloco[];
   categoriasDisponiveis: EditorVisualCategoria[];
+  produtosDisponiveis: EditorVisualProduto[];
 };
 
 type DevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
@@ -143,6 +154,12 @@ type BlocoEditandoState = {
   layoutDesktopTextoImagem: string;
   layoutMobileTextoImagem: string;
   fonteProdutos: string;
+  categoriaProdutoId: string;
+  categoriaProdutoSlug: string;
+  categoriaProdutoNome: string;
+  categoriasProdutosIds: string[];
+  categoriasProdutosSlugs: string[];
+  produtosSelecionadosIds: string[];
   limiteProdutos: number;
   layoutDesktopProdutos: string;
   layoutMobileProdutos: string;
@@ -545,6 +562,27 @@ function getArrayConfig(config: Record<string, unknown>, key: string) {
   }
 
   return [];
+}
+
+function getStringArrayConfig(config: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = getArrayConfig(config, key);
+
+    if (value.length > 0) return value;
+  }
+
+  return [];
+}
+
+function getCategoriaResumo(
+  categoriaId: string,
+  categorias: EditorVisualCategoria[]
+) {
+  return categorias.find((categoria) => categoria.id === categoriaId) || null;
+}
+
+function getProdutoResumo(produtoId: string, produtos: EditorVisualProduto[]) {
+  return produtos.find((produto) => produto.id === produtoId) || null;
 }
 
 function getTextStyleDefaults(kind: string): TextStyleConfig {
@@ -2202,6 +2240,12 @@ function RenderBlocoPreview({
   const categorias = getArrayConfig(config, "categorias");
   const produtos = getArrayConfig(config, "produtos");
   const fonteProdutos = getStringConfig(config, "fonte") || "TODOS";
+  const categoriaProdutoId = getStringConfig(config, "categoriaId");
+  const categoriasProdutosIds = getStringArrayConfig(config, [
+    "categoriasIds",
+    "categorias",
+  ]);
+  const produtosSelecionadosIds = getStringArrayConfig(config, ["produtosIds"]);
   const limiteProdutos = Math.max(1, getNumberConfig(config, "limite", 8));
   const layoutDesktopProdutos =
     getStringConfig(config, "layoutDesktop") ||
@@ -2396,6 +2440,15 @@ function RenderBlocoPreview({
         ? colunasTabletProdutos
         : colunasDesktopProdutos;
   const totalMockProdutos = Math.min(Math.max(limiteProdutos, 1), 12);
+  const avisoFonteProdutos =
+    fonteProdutos === "CATEGORIA" && !categoriaProdutoId
+      ? "Selecione uma categoria para exibir produtos."
+      : fonteProdutos === "CATEGORIAS_SELECIONADAS" &&
+          categoriasProdutosIds.length === 0
+        ? "Selecione categorias para exibir produtos."
+        : fonteProdutos === "MANUAL" && produtosSelecionadosIds.length === 0
+          ? "Selecione produtos para montar esta vitrine."
+          : "";
   const layoutAtualCards =
     device === "MOBILE" ? layoutMobileCards : layoutDesktopCards;
   const colunasCards =
@@ -2759,7 +2812,12 @@ function RenderBlocoPreview({
                   }
             }
           >
-            {Array.from({ length: totalMockProdutos }).map((_, index) => {
+            {avisoFonteProdutos ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-6 text-sm font-medium text-amber-800">
+                {avisoFonteProdutos}
+              </div>
+            ) : (
+              Array.from({ length: totalMockProdutos }).map((_, index) => {
               const temDesconto = index % 3 === 0;
 
               return (
@@ -2813,7 +2871,8 @@ function RenderBlocoPreview({
                   )}
                 </div>
               );
-            })}
+              })
+            )}
           </div>
 
           {(categorias.length > 0 || produtos.length > 0) && (
@@ -3064,17 +3123,23 @@ function RenderBlocoPreview({
 
 function EditorConteudoBlocoModal({
   estado,
+  categoriasDisponiveis,
+  produtosDisponiveis,
   onChange,
   onClose,
   onSave,
   salvando,
 }: {
   estado: BlocoEditandoState;
+  categoriasDisponiveis: EditorVisualCategoria[];
+  produtosDisponiveis: EditorVisualProduto[];
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onClose: () => void;
   onSave: () => void;
   salvando: boolean;
 }) {
+  const [buscaProdutoManual, setBuscaProdutoManual] = useState("");
+
   if (!estado) {
     return null;
   }
@@ -3084,6 +3149,94 @@ function EditorConteudoBlocoModal({
   const isTextoImagem = isTextoImagemTipo(estado.bloco.tipo);
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
+  const produtosFiltradosManual = produtosDisponiveis
+    .filter((produto) => {
+      const termo = buscaProdutoManual.trim().toLowerCase();
+
+      if (!termo) return true;
+
+      return (
+        produto.nome.toLowerCase().includes(termo) ||
+        produto.codigoInterno.toLowerCase().includes(termo) ||
+        produto.categoria.toLowerCase().includes(termo) ||
+        produto.categoriaNomes.some((categoria) =>
+          categoria.toLowerCase().includes(termo)
+        )
+      );
+    })
+    .filter((produto) => !estadoAtual.produtosSelecionadosIds.includes(produto.id))
+    .slice(0, 30);
+
+  function selecionarCategoriaProduto(categoriaId: string) {
+    const categoria = getCategoriaResumo(categoriaId, categoriasDisponiveis);
+
+    onChange({
+      categoriaProdutoId: categoria?.id || "",
+      categoriaProdutoSlug: categoria?.slug || "",
+      categoriaProdutoNome: categoria?.caminho || categoria?.nome || "",
+    });
+  }
+
+  function selecionarCategoriasProdutos(categoriaId: string, checked: boolean) {
+    const categoria = getCategoriaResumo(categoriaId, categoriasDisponiveis);
+
+    const nextIds = checked
+      ? [...estadoAtual.categoriasProdutosIds, categoriaId]
+      : estadoAtual.categoriasProdutosIds.filter((id) => id !== categoriaId);
+
+    const categoriasSelecionadas = nextIds
+      .map((id) => getCategoriaResumo(id, categoriasDisponiveis))
+      .filter((item): item is EditorVisualCategoria => Boolean(item));
+
+    onChange({
+      categoriasProdutosIds: nextIds,
+      categoriasProdutosSlugs: categoriasSelecionadas.map((item) => item.slug),
+      ...(categoria && checked && !estadoAtual.categoriaProdutoId
+        ? {
+            categoriaProdutoId: categoria.id,
+            categoriaProdutoSlug: categoria.slug,
+            categoriaProdutoNome: categoria.caminho || categoria.nome,
+          }
+        : {}),
+    });
+  }
+
+  function adicionarProdutoManual(produtoId: string) {
+    if (estadoAtual.produtosSelecionadosIds.includes(produtoId)) return;
+
+    onChange({
+      produtosSelecionadosIds: [
+        ...estadoAtual.produtosSelecionadosIds,
+        produtoId,
+      ],
+    });
+  }
+
+  function removerProdutoManual(produtoId: string) {
+    onChange({
+      produtosSelecionadosIds: estadoAtual.produtosSelecionadosIds.filter(
+        (id) => id !== produtoId
+      ),
+    });
+  }
+
+  function moverProdutoManual(produtoId: string, direction: "UP" | "DOWN") {
+    const index = estadoAtual.produtosSelecionadosIds.indexOf(produtoId);
+    const nextIndex = direction === "UP" ? index - 1 : index + 1;
+
+    if (
+      index < 0 ||
+      nextIndex < 0 ||
+      nextIndex >= estadoAtual.produtosSelecionadosIds.length
+    ) {
+      return;
+    }
+
+    const ids = [...estadoAtual.produtosSelecionadosIds];
+    const [produtoMovido] = ids.splice(index, 1);
+    ids.splice(nextIndex, 0, produtoMovido);
+    onChange({ produtosSelecionadosIds: ids });
+  }
 
   function atualizarCardDestaque(
     cardId: string,
@@ -3907,6 +4060,217 @@ function EditorConteudoBlocoModal({
                 />
               </label>
             </div>
+
+            {(estado.fonteProdutos === "CATEGORIA" ||
+              estado.fonteProdutos === "CATEGORIAS_SELECIONADAS" ||
+              estado.fonteProdutos === "MANUAL") && (
+              <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Origem dos produtos
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Salva apenas IDs e slugs no configJson para manter o bloco leve.
+                  </p>
+                </div>
+
+                {estado.fonteProdutos === "CATEGORIA" && (
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Categoria
+                    </span>
+                    <select
+                      value={estado.categoriaProdutoId}
+                      onChange={(event) =>
+                        selecionarCategoriaProduto(event.target.value)
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      <option value="">Selecione uma categoria</option>
+                      {categoriasDisponiveis.map((categoria) => (
+                        <option key={categoria.id} value={categoria.id}>
+                          {categoria.caminho}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {estado.fonteProdutos === "CATEGORIAS_SELECIONADAS" && (
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Categorias
+                    </p>
+                    <div className="mt-3 max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                      {categoriasDisponiveis.map((categoria) => (
+                        <label
+                          key={categoria.id}
+                          className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={estado.categoriasProdutosIds.includes(
+                              categoria.id
+                            )}
+                            onChange={(event) =>
+                              selecionarCategoriasProdutos(
+                                categoria.id,
+                                event.target.checked
+                              )
+                            }
+                            className="mt-1 h-4 w-4 rounded border-slate-300"
+                          />
+                          <span>
+                            <span className="block font-medium text-slate-800">
+                              {categoria.caminho}
+                            </span>
+                            <span className="block text-xs text-slate-400">
+                              {categoria.slug}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {estado.fonteProdutos === "MANUAL" && (
+                  <div className="space-y-4">
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        Buscar produto
+                      </span>
+                      <input
+                        value={buscaProdutoManual}
+                        onChange={(event) =>
+                          setBuscaProdutoManual(event.target.value)
+                        }
+                        placeholder="Digite nome, código ou categoria"
+                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                      />
+                    </label>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Disponíveis
+                        </p>
+                        <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                          {produtosFiltradosManual.map((produto) => (
+                            <button
+                              key={produto.id}
+                              type="button"
+                              onClick={() => adicionarProdutoManual(produto.id)}
+                              className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-slate-50"
+                            >
+                              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                                {produto.imagemUrl ? (
+                                  <img
+                                    src={produto.imagemUrl}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-semibold text-slate-800">
+                                  {produto.nome}
+                                </span>
+                                <span className="block truncate text-xs text-slate-400">
+                                  {produto.codigoInterno} · {produto.categoria}
+                                </span>
+                              </span>
+                            </button>
+                          ))}
+
+                          {produtosFiltradosManual.length === 0 && (
+                            <p className="px-2 py-4 text-sm text-slate-500">
+                              Nenhum produto encontrado.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Selecionados
+                        </p>
+                        <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                          {estado.produtosSelecionadosIds.map(
+                            (produtoId, index) => {
+                              const produto = getProdutoResumo(
+                                produtoId,
+                                produtosDisponiveis
+                              );
+
+                              return (
+                                <div
+                                  key={produtoId}
+                                  className="flex items-center gap-2 rounded-xl border border-slate-100 px-2 py-2"
+                                >
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                                    {index + 1}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-semibold text-slate-800">
+                                      {produto?.nome || "Produto indisponível"}
+                                    </span>
+                                    <span className="block truncate text-xs text-slate-400">
+                                      {produto?.codigoInterno || produtoId}
+                                    </span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moverProdutoManual(produtoId, "UP")
+                                    }
+                                    disabled={index === 0}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                                    aria-label="Subir produto"
+                                  >
+                                    <ArrowUp className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moverProdutoManual(produtoId, "DOWN")
+                                    }
+                                    disabled={
+                                      index ===
+                                      estado.produtosSelecionadosIds.length - 1
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                                    aria-label="Descer produto"
+                                  >
+                                    <ArrowDown className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removerProdutoManual(produtoId)
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-red-500"
+                                    aria-label="Remover produto"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              );
+                            }
+                          )}
+
+                          {estado.produtosSelecionadosIds.length === 0 && (
+                            <p className="px-2 py-4 text-sm text-slate-500">
+                              Selecione produtos para montar esta vitrine.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <label>
@@ -4856,6 +5220,7 @@ export default function EditorVisualPaginaClient({
   pagina,
   blocos,
   categoriasDisponiveis,
+  produtosDisponiveis,
 }: EditorVisualPaginaClientProps) {
   const [isPending] = useTransition();
   const [erro, setErro] = useState("");
@@ -5243,6 +5608,15 @@ export default function EditorVisualPaginaClient({
           getStringConfig(config, "layoutMobileTextoImagem")
       ),
       fonteProdutos: getStringConfig(config, "fonte") || "TODOS",
+      categoriaProdutoId: getStringConfig(config, "categoriaId"),
+      categoriaProdutoSlug: getStringConfig(config, "categoriaSlug"),
+      categoriaProdutoNome: getStringConfig(config, "categoriaNome"),
+      categoriasProdutosIds: getStringArrayConfig(config, [
+        "categoriasIds",
+        "categorias",
+      ]),
+      categoriasProdutosSlugs: getStringArrayConfig(config, ["categoriasSlugs"]),
+      produtosSelecionadosIds: getStringArrayConfig(config, ["produtosIds"]),
       limiteProdutos: getNumberConfig(config, "limite", 8),
       layoutDesktopProdutos:
         getStringConfig(config, "layoutDesktop") ||
@@ -5436,6 +5810,13 @@ export default function EditorVisualPaginaClient({
           ? {
               descricao: editando.texto,
               fonte: editando.fonteProdutos,
+              categoriaId: editando.categoriaProdutoId,
+              categoriaSlug: editando.categoriaProdutoSlug,
+              categoriaNome: editando.categoriaProdutoNome,
+              categoriasIds: editando.categoriasProdutosIds,
+              categoriasSlugs: editando.categoriasProdutosSlugs,
+              categorias: editando.categoriasProdutosIds,
+              produtosIds: editando.produtosSelecionadosIds,
               limite: Math.max(1, Number(editando.limiteProdutos) || 1),
               modo: editando.layoutDesktopProdutos,
               layoutDesktop: editando.layoutDesktopProdutos,
@@ -5867,6 +6248,8 @@ export default function EditorVisualPaginaClient({
 
       <EditorConteudoBlocoModal
         estado={editando}
+        categoriasDisponiveis={categoriasDisponiveis}
+        produtosDisponiveis={produtosDisponiveis}
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}
         onSave={() => void salvarEdicaoBloco()}
