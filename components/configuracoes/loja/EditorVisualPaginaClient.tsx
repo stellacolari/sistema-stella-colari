@@ -1,6 +1,12 @@
 "use client";
 
-import type { CSSProperties, ChangeEvent, DragEvent, ReactNode } from "react";
+import type {
+  CSSProperties,
+  ChangeEvent,
+  DragEvent,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+} from "react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
@@ -1322,147 +1328,6 @@ function CampoToggle({
   );
 }
 
-function TextStyleControls({
-  title,
-  value,
-  onChange,
-}: {
-  title: string;
-  value: TextStyleConfig;
-  onChange: (style: TextStyleConfig) => void;
-}) {
-  function update(data: Partial<TextStyleConfig>) {
-    onChange({
-      ...value,
-      ...data,
-    });
-  }
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <h4 className="text-sm font-semibold text-slate-950">{title}</h4>
-
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Tamanho
-          </span>
-          <select
-            value={value.fontSizePreset}
-            onChange={(event) => update({ fontSizePreset: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_FONT_SIZE_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Peso
-          </span>
-          <select
-            value={value.fontWeight}
-            onChange={(event) => update({ fontWeight: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_FONT_WEIGHT_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Cor
-          </span>
-          <select
-            value={value.colorPreset}
-            onChange={(event) => update({ colorPreset: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_COLOR_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {value.colorPreset === "PERSONALIZADO" && (
-          <label>
-            <span className="mb-2 block text-xs font-medium text-slate-600">
-              Cor personalizada
-            </span>
-            <input
-              value={value.colorCustom}
-              onChange={(event) => update({ colorCustom: event.target.value })}
-              placeholder="#0f172a"
-              className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-            />
-          </label>
-        )}
-
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Espaçamento
-          </span>
-          <select
-            value={value.letterSpacing}
-            onChange={(event) => update({ letterSpacing: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_LETTER_SPACING_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Transformação
-          </span>
-          <select
-            value={value.textTransform}
-            onChange={(event) => update({ textTransform: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_TRANSFORM_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="mb-2 block text-xs font-medium text-slate-600">
-            Alinhamento
-          </span>
-          <select
-            value={value.textAlign}
-            onChange={(event) => update({ textAlign: event.target.value })}
-            className="h-10 w-full rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
-          >
-            {TEXT_ALIGN_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-}
-
 function UploadMidiaCampo({
   label,
   value,
@@ -1822,6 +1687,28 @@ function PreviewShell({
 }
 
 function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
+  const selectionRef = useRef<{ from: number; to: number } | null>(null);
+
+  function keepSelection(event: ReactMouseEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function rememberSelection() {
+    const { from, to } = editor.state.selection;
+    selectionRef.current = { from, to };
+  }
+
+  function applyWithSelection(callback: () => void) {
+    const selection = selectionRef.current;
+
+    if (selection) {
+      editor.commands.setTextSelection(selection);
+    }
+
+    callback();
+  }
+
   function setLink() {
     const previousUrl = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt("Link", previousUrl || "");
@@ -1856,9 +1743,11 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
         inline: true,
       }}
       className="z-[9999] flex max-w-[min(92vw,720px)] flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-2xl"
+      onClick={(event) => event.stopPropagation()}
     >
       <button
         type="button"
+        onMouseDown={keepSelection}
         onClick={() => editor.chain().focus().toggleBold().run()}
         className={`rounded-xl px-2 py-1 font-bold ${
           editor.isActive("bold") ? "bg-slate-950 text-white" : "bg-slate-100"
@@ -1868,6 +1757,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       </button>
       <button
         type="button"
+        onMouseDown={keepSelection}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         className={`rounded-xl px-2 py-1 italic ${
           editor.isActive("italic") ? "bg-slate-950 text-white" : "bg-slate-100"
@@ -1877,6 +1767,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       </button>
       <button
         type="button"
+        onMouseDown={keepSelection}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         className={`rounded-xl px-2 py-1 underline ${
           editor.isActive("underline")
@@ -1890,6 +1781,11 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       <select
         aria-label="Fonte"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) => {
           const fontFamily = getRichTextPresetCss(
             RICH_TEXT_FONT_PRESETS,
@@ -1897,11 +1793,13 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
           );
 
           if (!fontFamily || event.target.value === "PADRAO") {
-            editor.chain().focus().unsetFontFamily().run();
+            applyWithSelection(() => editor.chain().focus().unsetFontFamily().run());
             return;
           }
 
-          editor.chain().focus().setFontFamily(fontFamily).run();
+          applyWithSelection(() =>
+            editor.chain().focus().setFontFamily(fontFamily).run()
+          );
         }}
         defaultValue="PADRAO"
       >
@@ -1915,12 +1813,19 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       <select
         aria-label="Tamanho"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) => {
           const fontSize = getRichTextPresetCss(
             RICH_TEXT_SIZE_PRESETS,
             event.target.value
           );
-          editor.chain().focus().setMark("textStyle", { fontSize }).run();
+          applyWithSelection(() =>
+            editor.chain().focus().setMark("textStyle", { fontSize }).run()
+          );
         }}
         defaultValue="M"
       >
@@ -1934,12 +1839,19 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       <select
         aria-label="Peso"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) => {
           const fontWeight = getRichTextPresetCss(
             RICH_TEXT_WEIGHT_PRESETS,
             event.target.value
           );
-          editor.chain().focus().setMark("textStyle", { fontWeight }).run();
+          applyWithSelection(() =>
+            editor.chain().focus().setMark("textStyle", { fontWeight }).run()
+          );
         }}
         defaultValue="REGULAR"
       >
@@ -1953,6 +1865,11 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       <select
         aria-label="Cor"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) => {
           const color = getRichTextPresetCss(
             RICH_TEXT_COLOR_PRESETS,
@@ -1960,11 +1877,11 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
           );
 
           if (!color || event.target.value === "PADRAO") {
-            editor.chain().focus().unsetColor().run();
+            applyWithSelection(() => editor.chain().focus().unsetColor().run());
             return;
           }
 
-          editor.chain().focus().setColor(color).run();
+          applyWithSelection(() => editor.chain().focus().setColor(color).run());
         }}
         defaultValue="PADRAO"
       >
@@ -1981,20 +1898,34 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
         type="color"
         aria-label="Cor personalizada"
         className="h-7 w-8 rounded border border-slate-200 bg-white"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) =>
-          editor.chain().focus().setColor(event.target.value).run()
+          applyWithSelection(() =>
+            editor.chain().focus().setColor(event.target.value).run()
+          )
         }
       />
 
       <select
         aria-label="Espaçamento"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
+        onMouseDown={(event) => {
+          event.stopPropagation();
+          rememberSelection();
+        }}
+        onClick={(event) => event.stopPropagation()}
         onChange={(event) => {
           const letterSpacing = getRichTextPresetCss(
             RICH_TEXT_LETTER_SPACING_PRESETS,
             event.target.value
           );
-          editor.chain().focus().setMark("textStyle", { letterSpacing }).run();
+          applyWithSelection(() =>
+            editor.chain().focus().setMark("textStyle", { letterSpacing }).run()
+          );
         }}
         defaultValue="NORMAL"
       >
@@ -2007,6 +1938,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
 
       <button
         type="button"
+        onMouseDown={keepSelection}
         onClick={setLink}
         className={`rounded-xl px-2 py-1 ${
           editor.isActive("link") ? "bg-slate-950 text-white" : "bg-slate-100"
@@ -2017,6 +1949,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
 
       <button
         type="button"
+        onMouseDown={keepSelection}
         onClick={() =>
           editor.chain().focus().unsetAllMarks().removeEmptyTextStyle().run()
         }
@@ -2052,6 +1985,7 @@ function RichTextInlineEditor({
   );
   const [isFocused, setIsFocused] = useState(false);
   const [isEmpty, setIsEmpty] = useState(() => isRichTextEmpty(initialContent));
+  const isFocusedRef = useRef(false);
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -2101,15 +2035,18 @@ function RichTextInlineEditor({
       onChange(nextIsEmpty ? null : richText, plainText);
     },
     onFocus: () => {
+      isFocusedRef.current = true;
       setIsFocused(true);
     },
     onBlur: () => {
+      isFocusedRef.current = false;
       setIsFocused(false);
     },
   });
 
   useEffect(() => {
     if (!editor) return;
+    if (isFocusedRef.current || editor.isFocused) return;
 
     const nextContent = getEditableRichTextContent(value, normalizedFallbackText);
 
@@ -2130,10 +2067,11 @@ function RichTextInlineEditor({
 
   return (
     <div
-      onClick={(event) => {
+      onPointerDown={(event) => {
         event.stopPropagation();
-        editor.commands.focus("end");
       }}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
       className={`relative min-w-0 rounded-md bg-transparent outline-none transition hover:ring-1 hover:ring-indigo-300 focus-within:ring-2 focus-within:ring-indigo-500 ${
         isEmpty ? "ring-1 ring-dashed ring-slate-300/80" : ""
@@ -2175,6 +2113,8 @@ function InlineTextEditor({
       <textarea
         value={value}
         rows={3}
+        onPointerDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
         onChange={(event) => onChange(event.target.value)}
@@ -2190,6 +2130,8 @@ function InlineTextEditor({
     <input
       value={value}
       size={Math.max(value.length, placeholder.length, 8)}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         event.stopPropagation();
@@ -2211,6 +2153,7 @@ function RenderBlocoPreview({
   bloco,
   selecionado,
   onSelect,
+  onEdit,
   device,
   onInlineTextChange,
   onInlineCardChange,
@@ -2218,6 +2161,7 @@ function RenderBlocoPreview({
   bloco: EditorVisualBloco;
   selecionado: boolean;
   onSelect: () => void;
+  onEdit: () => void;
   device: DevicePreview;
   onInlineTextChange: (blocoId: string, patch: Record<string, unknown>) => void;
   onInlineCardChange: (
@@ -2227,6 +2171,12 @@ function RenderBlocoPreview({
   ) => void;
 }) {
   const config = getConfigObject(bloco.configJson);
+  function handleEditClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect();
+    onEdit();
+  }
 
   const titulo = getStringConfig(config, "titulo");
   const nomeBloco = bloco.titulo || getTipoLabel(bloco.tipo);
@@ -2542,6 +2492,19 @@ function RenderBlocoPreview({
           : "border-transparent hover:border-indigo-200"
       } ${bloco.ativo ? "" : "opacity-50"}`}
     >
+      <button
+        type="button"
+        onMouseDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onClick={handleEditClick}
+        className="absolute right-3 top-3 z-30 hidden items-center gap-1.5 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur transition hover:bg-slate-50 group-hover:inline-flex focus:inline-flex"
+      >
+        <Type className="h-3.5 w-3.5" />
+        Editar
+      </button>
+
       <div className="absolute left-3 top-3 z-10 hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm group-hover:flex">
         <GripVertical className="h-3.5 w-3.5 text-slate-400" />
         {getTipoLabel(bloco.tipo)}
@@ -3868,35 +3831,6 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <PainelSecao title="Tipografia">
-              <div className="space-y-3">
-                <TextStyleControls
-                  title="Título"
-                  value={estado.tituloStyle}
-                  onChange={(style) => onChange({ tituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Subtítulo"
-                  value={estado.subtituloStyle}
-                  onChange={(style) => onChange({ subtituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão primário"
-                  value={estado.botaoPrimarioStyle}
-                  onChange={(style) =>
-                    onChange({ botaoPrimarioStyle: style })
-                  }
-                />
-                <TextStyleControls
-                  title="Botão secundário"
-                  value={estado.botaoSecundarioStyle}
-                  onChange={(style) =>
-                    onChange({ botaoSecundarioStyle: style })
-                  }
-                />
-              </div>
-            </PainelSecao>
-
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -4076,26 +4010,6 @@ function EditorConteudoBlocoModal({
               label="Exibir mídia"
               onChange={(checked) => onChange({ exibirMidia: checked })}
             />
-
-            <PainelSecao title="Tipografia">
-              <div className="space-y-3">
-                <TextStyleControls
-                  title="Título"
-                  value={estado.tituloStyle}
-                  onChange={(style) => onChange({ tituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Texto"
-                  value={estado.textoStyle}
-                  onChange={(style) => onChange({ textoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão"
-                  value={estado.botaoStyle}
-                  onChange={(style) => onChange({ botaoStyle: style })}
-                />
-              </div>
-            </PainelSecao>
 
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -4576,32 +4490,6 @@ function EditorConteudoBlocoModal({
               </div>
             </PainelSecao>
 
-            <PainelSecao title="Tipografia">
-              <div className="space-y-3">
-                <TextStyleControls
-                  title="Título"
-                  value={estado.tituloStyle}
-                  onChange={(style) => onChange({ tituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Texto"
-                  value={estado.textoStyle}
-                  onChange={(style) => onChange({ textoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão primário"
-                  value={estado.botaoPrimarioStyle}
-                  onChange={(style) => onChange({ botaoPrimarioStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão secundário"
-                  value={estado.botaoSecundarioStyle}
-                  onChange={(style) =>
-                    onChange({ botaoSecundarioStyle: style })
-                  }
-                />
-              </div>
-            </PainelSecao>
           </div>
         ) : isListaProdutos ? (
           <div className="space-y-5 px-6 py-5">
@@ -5042,36 +4930,6 @@ function EditorConteudoBlocoModal({
               />
             </label>
 
-            <PainelSecao title="Tipografia">
-              <div className="space-y-3">
-                <TextStyleControls
-                  title="Título"
-                  value={estado.tituloStyle}
-                  onChange={(style) => onChange({ tituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Subtítulo"
-                  value={estado.subtituloStyle}
-                  onChange={(style) => onChange({ subtituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Nome do produto"
-                  value={estado.nomeProdutoStyle}
-                  onChange={(style) => onChange({ nomeProdutoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Preço"
-                  value={estado.precoProdutoStyle}
-                  onChange={(style) => onChange({ precoProdutoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão"
-                  value={estado.botaoStyle}
-                  onChange={(style) => onChange({ botaoStyle: style })}
-                />
-              </div>
-            </PainelSecao>
-
             <div className="grid gap-4 md:grid-cols-2">
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -5284,38 +5142,6 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
             </div>
-
-            <PainelSecao title="Tipografia">
-              <div className="space-y-3">
-                <TextStyleControls
-                  title="Título da seção"
-                  value={estado.tituloSecaoStyle}
-                  onChange={(style) => onChange({ tituloSecaoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Subtítulo da seção"
-                  value={estado.subtituloSecaoStyle}
-                  onChange={(style) =>
-                    onChange({ subtituloSecaoStyle: style })
-                  }
-                />
-                <TextStyleControls
-                  title="Título do card"
-                  value={estado.cardTituloStyle}
-                  onChange={(style) => onChange({ cardTituloStyle: style })}
-                />
-                <TextStyleControls
-                  title="Texto do card"
-                  value={estado.cardTextoStyle}
-                  onChange={(style) => onChange({ cardTextoStyle: style })}
-                />
-                <TextStyleControls
-                  title="Botão do card"
-                  value={estado.cardBotaoStyle}
-                  onChange={(style) => onChange({ cardBotaoStyle: style })}
-                />
-              </div>
-            </PainelSecao>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -6760,6 +6586,7 @@ export default function EditorVisualPaginaClient({
                 bloco={bloco}
                 selecionado={bloco.id === blocoSelecionadoId}
                 onSelect={() => setBlocoSelecionadoId(bloco.id)}
+                onEdit={() => abrirEdicaoBloco(bloco)}
                 device={device}
                 onInlineTextChange={atualizarTextoInline}
                 onInlineCardChange={atualizarCardInline}
