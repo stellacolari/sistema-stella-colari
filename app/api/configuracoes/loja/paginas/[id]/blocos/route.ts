@@ -9,6 +9,8 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "PRODUTOS",
   "LISTA_PRODUTOS",
   "DESTAQUES_CARDS",
+  "COLECOES_CATEGORIAS",
+  "MOSAICO_COLECOES",
   "CTA",
   "CTA_SIMPLES",
   "CATEGORIAS",
@@ -34,6 +36,8 @@ function getTituloPadrao(tipo: string) {
     PRODUTOS: "Produtos",
     LISTA_PRODUTOS: "Lista de produtos",
     DESTAQUES_CARDS: "Destaques / cards",
+    COLECOES_CATEGORIAS: "Coleções / categorias",
+    MOSAICO_COLECOES: "Mosaico de coleções",
     CTA: "Chamada para ação",
     CTA_SIMPLES: "CTA simples",
     CATEGORIAS: "Categorias",
@@ -307,6 +311,55 @@ function getConfigPadrao(tipo: string) {
           icone: "+",
         },
       ],
+    };
+  }
+
+  if (tipo === "COLECOES_CATEGORIAS" || tipo === "MOSAICO_COLECOES") {
+    const criarItem = (index: number) => ({
+      id: `colecao-${index}`,
+      tipoLink: "PERSONALIZADO",
+      categoriaId: "",
+      categoriaSlug: "",
+      categoriaNome: "",
+      titulo: "",
+      subtitulo: "",
+      tituloRichText: null,
+      subtituloRichText: null,
+      textoLink: "Explorar",
+      linkUrl: "",
+      imagemDesktopUrl: "",
+      imagemMobileUrl: "",
+      tipoMidia: "IMAGEM",
+      videoDesktopUrl: "",
+      videoMobileUrl: "",
+      mediaPositionDesktop: "center center",
+      mediaPositionMobile: "center center",
+      mediaCropDesktopX: 50,
+      mediaCropDesktopY: 50,
+      mediaCropMobileX: 50,
+      mediaCropMobileY: 50,
+      ordem: index - 1,
+    });
+
+    return {
+      titulo: "",
+      subtitulo: "",
+      descricao: "",
+      tituloRichText: null,
+      subtituloRichText: null,
+      layoutVisual: "MOSAICO_EDITORIAL",
+      origemItens: "PERSONALIZADO",
+      alinhamentoTextoDesktop: "ESQUERDA",
+      alinhamentoTextoMobile: "ESQUERDA",
+      corFundo: "BRANCO",
+      espacamento: "PADRAO",
+      larguraConteudo: "LARGA",
+      colunasDesktop: 4,
+      colunasTablet: 2,
+      colunasMobile: 1,
+      estiloEtiqueta: "SOBREPOSTA",
+      estiloBordaBotao: "RETO",
+      itens: [1, 2, 3, 4, 5].map(criarItem),
     };
   }
 

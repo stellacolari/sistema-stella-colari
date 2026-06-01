@@ -71,6 +71,8 @@ function ItemMedia({
   alt: string;
   className: string;
 }) {
+  if (!itemHasMedia(item)) return null;
+
   return (
     <div className={`overflow-hidden bg-slate-100 ${className}`}>
       <PublicMediaRenderer

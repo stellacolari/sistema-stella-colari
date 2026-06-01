@@ -104,6 +104,7 @@ type TipoBlocoAdicionar =
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
+  | "COLECOES_CATEGORIAS"
   | "CTA_SIMPLES"
   | "CTA"
   | "CATEGORIAS"
@@ -134,6 +135,32 @@ type DestaqueCardEditando = {
   exibirBotao: boolean;
   textoBotao: string;
   linkBotao: string;
+};
+
+type ColecaoCategoriaItemEditando = {
+  id: string;
+  tipoLink: string;
+  categoriaId: string;
+  categoriaSlug: string;
+  categoriaNome: string;
+  titulo: string;
+  subtitulo: string;
+  tituloRichText: RichTextValue | null;
+  subtituloRichText: RichTextValue | null;
+  textoLink: string;
+  linkUrl: string;
+  imagemDesktopUrl: string;
+  imagemMobileUrl: string;
+  tipoMidia: string;
+  videoDesktopUrl: string;
+  videoMobileUrl: string;
+  mediaPositionDesktop: string;
+  mediaPositionMobile: string;
+  mediaCropDesktopX: number;
+  mediaCropDesktopY: number;
+  mediaCropMobileX: number;
+  mediaCropMobileY: number;
+  ordem: number;
 };
 
 type TextStyleConfig = {
@@ -199,6 +226,14 @@ type BlocoEditandoState = {
   colunasMobileCards: number;
   alinhamentoCards: string;
   cardsDestaques: DestaqueCardEditando[];
+  layoutVisualColecoes: string;
+  origemItensColecoes: string;
+  larguraConteudoColecoes: string;
+  colunasDesktopColecoes: number;
+  colunasTabletColecoes: number;
+  colunasMobileColecoes: number;
+  estiloEtiquetaColecoes: string;
+  itensColecoes: ColecaoCategoriaItemEditando[];
   exibirMidia: boolean;
   mediaCropDesktopX: number;
   mediaCropDesktopY: number;
@@ -408,6 +443,28 @@ const LARGURA_CONTEUDO_CTA_PRESETS = [
   { value: "LARGA", label: "Larga" },
 ];
 
+const LAYOUT_VISUAL_COLECOES_PRESETS = [
+  { value: "MOSAICO_EDITORIAL", label: "Mosaico editorial" },
+  { value: "GRID_EDITORIAL", label: "Grid editorial" },
+];
+
+const ORIGEM_ITENS_COLECOES_PRESETS = [
+  { value: "PERSONALIZADO", label: "Personalizado" },
+  { value: "CATEGORIAS", label: "Categorias" },
+];
+
+const LARGURA_CONTEUDO_COLECOES_PRESETS = [
+  { value: "CONTIDA", label: "Contida" },
+  { value: "LARGA", label: "Larga" },
+  { value: "TOTAL", label: "Total" },
+];
+
+const ESTILO_ETIQUETA_COLECOES_PRESETS = [
+  { value: "SOBREPOSTA", label: "Sobreposta" },
+  { value: "ABAIXO", label: "Abaixo" },
+  { value: "OCULTA", label: "Oculta" },
+];
+
 const MEDIA_POSITION_PRESETS = [
   { value: "center center", label: "Centro" },
   { value: "top center", label: "Topo centro" },
@@ -458,6 +515,13 @@ const TIPOS_BLOCO_ADICIONAR: {
     nome: "Destaques / cards",
     descricao: "Cards manuais para benefícios, coleções e chamadas da loja.",
     tituloInicial: "Destaques / cards",
+    icon: LayoutGrid,
+  },
+  {
+    tipo: "COLECOES_CATEGORIAS",
+    nome: "Coleções / categorias",
+    descricao: "Mosaico editorial para coleções, campanhas e categorias.",
+    tituloInicial: "Coleções / categorias",
     icon: LayoutGrid,
   },
   {
@@ -853,6 +917,9 @@ function getTipoLabel(tipo: string) {
   if (tipo === "PRODUTOS") return "Produtos";
   if (tipo === "LISTA_PRODUTOS") return "Lista de produtos";
   if (tipo === "DESTAQUES_CARDS") return "Destaques / cards";
+  if (tipo === "COLECOES_CATEGORIAS" || tipo === "MOSAICO_COLECOES") {
+    return "Coleções / categorias";
+  }
   if (tipo === "CATEGORIAS") return "Categorias";
   if (tipo === "FAQ") return "FAQ";
   if (tipo === "FORMULARIO") return "Formulário";
@@ -897,6 +964,10 @@ function isListaProdutosTipo(tipo: string) {
 
 function isDestaquesCardsTipo(tipo: string) {
   return tipo === "DESTAQUES_CARDS";
+}
+
+function isColecoesCategoriasTipo(tipo: string) {
+  return tipo === "COLECOES_CATEGORIAS" || tipo === "MOSAICO_COLECOES";
 }
 
 function isCtaTipo(tipo: string) {
@@ -1074,6 +1145,129 @@ function getCardsDestaquesConfig(
       exibirBotao: getBooleanConfig(card, "exibirBotao", false),
       textoBotao: getStringConfig(card, "textoBotao") || "Saiba mais",
       linkBotao: getStringConfig(card, "linkBotao"),
+    };
+  });
+}
+
+function criarItemColecaoPadrao(index: number): ColecaoCategoriaItemEditando {
+  return {
+    id: `colecao-${Date.now()}-${index}`,
+    tipoLink: "PERSONALIZADO",
+    categoriaId: "",
+    categoriaSlug: "",
+    categoriaNome: "",
+    titulo: "",
+    subtitulo: "",
+    tituloRichText: null,
+    subtituloRichText: null,
+    textoLink: "Explorar",
+    linkUrl: "",
+    imagemDesktopUrl: "",
+    imagemMobileUrl: "",
+    tipoMidia: "IMAGEM",
+    videoDesktopUrl: "",
+    videoMobileUrl: "",
+    mediaPositionDesktop: "center center",
+    mediaPositionMobile: "center center",
+    mediaCropDesktopX: 50,
+    mediaCropDesktopY: 50,
+    mediaCropMobileX: 50,
+    mediaCropMobileY: 50,
+    ordem: index - 1,
+  };
+}
+
+function criarItemColecaoPreviewPadrao(index: number): ColecaoCategoriaItemEditando {
+  return {
+    ...criarItemColecaoPadrao(index),
+    id: `preview-colecao-${index}`,
+    titulo: `Coleção ${index}`,
+    subtitulo: "Chamada editorial da coleção.",
+    textoLink: "Explorar",
+  };
+}
+
+function normalizarLayoutVisualColecoes(value: string) {
+  if (value === "GRID_EDITORIAL") return "GRID_EDITORIAL";
+  return "MOSAICO_EDITORIAL";
+}
+
+function normalizarOrigemItensColecoes(value: string) {
+  if (value === "CATEGORIAS") return "CATEGORIAS";
+  return "PERSONALIZADO";
+}
+
+function normalizarLarguraConteudoColecoes(value: string) {
+  if (["CONTIDA", "LARGA", "TOTAL"].includes(value)) return value;
+  return "LARGA";
+}
+
+function normalizarEstiloEtiquetaColecoes(value: string) {
+  if (["SOBREPOSTA", "ABAIXO", "OCULTA"].includes(value)) return value;
+  return "SOBREPOSTA";
+}
+
+function getItensColecoesConfig(
+  config: Record<string, unknown>
+): ColecaoCategoriaItemEditando[] {
+  const value = config.itens;
+
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item, index) => {
+    const data = getConfigObject(item);
+    const mediaPositionDesktop = normalizarMediaPosition(
+      getStringConfig(data, "mediaPositionDesktop")
+    );
+    const mediaPositionMobile = normalizarMediaPosition(
+      getStringConfig(data, "mediaPositionMobile")
+    );
+    const desktopCrop = getMediaCropFromPosition(mediaPositionDesktop);
+    const mobileCrop = getMediaCropFromPosition(mediaPositionMobile);
+    const imagemUrl =
+      getStringConfig(data, "imagemDesktopUrl") ||
+      getStringConfig(data, "imagemUrl") ||
+      getStringConfig(data, "imagem");
+
+    return {
+      id: getStringConfig(data, "id") || `colecao-${index + 1}`,
+      tipoLink: getStringConfig(data, "tipoLink") || "PERSONALIZADO",
+      categoriaId: getStringConfig(data, "categoriaId"),
+      categoriaSlug: getStringConfig(data, "categoriaSlug"),
+      categoriaNome: getStringConfig(data, "categoriaNome"),
+      titulo: getStringConfig(data, "titulo"),
+      subtitulo:
+        getStringConfig(data, "subtitulo") ||
+        getStringConfig(data, "descricao") ||
+        getStringConfig(data, "texto"),
+      tituloRichText: getRichTextConfig(data, "tituloRichText"),
+      subtituloRichText:
+        getRichTextConfig(data, "subtituloRichText") ||
+        getRichTextConfig(data, "textoRichText"),
+      textoLink: getStringConfig(data, "textoLink") || "Explorar",
+      linkUrl: getStringConfig(data, "linkUrl") || getStringConfig(data, "linkBotao"),
+      imagemDesktopUrl: imagemUrl,
+      imagemMobileUrl:
+        getStringConfig(data, "imagemMobileUrl") ||
+        getStringConfig(data, "imagemMobile"),
+      tipoMidia: getStringConfig(data, "tipoMidia") === "VIDEO" ? "VIDEO" : "IMAGEM",
+      videoDesktopUrl: getStringConfig(data, "videoDesktopUrl"),
+      videoMobileUrl: getStringConfig(data, "videoMobileUrl"),
+      mediaPositionDesktop,
+      mediaPositionMobile,
+      mediaCropDesktopX: getNumberConfig(
+        data,
+        "mediaCropDesktopX",
+        desktopCrop.x
+      ),
+      mediaCropDesktopY: getNumberConfig(
+        data,
+        "mediaCropDesktopY",
+        desktopCrop.y
+      ),
+      mediaCropMobileX: getNumberConfig(data, "mediaCropMobileX", mobileCrop.x),
+      mediaCropMobileY: getNumberConfig(data, "mediaCropMobileY", mobileCrop.y),
+      ordem: getNumberConfig(data, "ordem", index),
     };
   });
 }
@@ -2296,6 +2490,7 @@ function RenderBlocoPreview({
   device,
   onInlineTextChange,
   onInlineCardChange,
+  onInlineColecaoItemChange,
 }: {
   bloco: EditorVisualBloco;
   selecionado: boolean;
@@ -2307,6 +2502,11 @@ function RenderBlocoPreview({
     blocoId: string,
     cardId: string,
     patch: Partial<DestaqueCardEditando>
+  ) => void;
+  onInlineColecaoItemChange: (
+    blocoId: string,
+    itemId: string,
+    patch: Partial<ColecaoCategoriaItemEditando>
   ) => void;
 }) {
   const config = getConfigObject(bloco.configJson);
@@ -2646,6 +2846,61 @@ function RenderBlocoPreview({
       : device === "TABLET"
         ? colunasTabletCards
         : colunasDesktopCards;
+  const layoutVisualColecoes = normalizarLayoutVisualColecoes(
+    getStringConfig(config, "layoutVisual")
+  );
+  const larguraConteudoColecoes = normalizarLarguraConteudoColecoes(
+    getStringConfig(config, "larguraConteudo")
+  );
+  const estiloEtiquetaColecoes = normalizarEstiloEtiquetaColecoes(
+    getStringConfig(config, "estiloEtiqueta")
+  );
+  const itensColecoes = getItensColecoesConfig(config);
+  const itensColecoesPreview =
+    itensColecoes.length > 0
+      ? itensColecoes
+      : [1, 2, 3, 4].map((index) => criarItemColecaoPreviewPadrao(index));
+  const colunasColecoes =
+    device === "MOBILE"
+      ? Math.max(1, getNumberConfig(config, "colunasMobile", 1))
+      : device === "TABLET"
+        ? Math.max(1, getNumberConfig(config, "colunasTablet", 2))
+        : Math.max(1, getNumberConfig(config, "colunasDesktop", 4));
+  const colecoesWidthClass =
+    larguraConteudoColecoes === "CONTIDA"
+      ? "max-w-5xl"
+      : larguraConteudoColecoes === "TOTAL"
+        ? "max-w-none"
+        : "max-w-7xl";
+  const renderColecaoItemMedia = (
+    item: ColecaoCategoriaItemEditando,
+    className: string
+  ) => {
+    const imageUrl =
+      isMobile && item.imagemMobileUrl
+        ? item.imagemMobileUrl
+        : item.imagemDesktopUrl;
+    const videoUrl =
+      isMobile && item.videoMobileUrl
+        ? item.videoMobileUrl
+        : item.videoDesktopUrl;
+    const objectPosition = isMobile
+      ? item.mediaPositionMobile
+      : item.mediaPositionDesktop;
+
+    return (
+      <div className={`overflow-hidden bg-slate-100 ${className}`}>
+        <MediaPreview
+          tipoMidia={item.tipoMidia}
+          imageUrl={imageUrl}
+          videoUrl={videoUrl}
+          alt={item.titulo || item.categoriaNome || "Coleção"}
+          objectPosition={objectPosition}
+          placeholder="Sem mídia"
+        />
+      </div>
+    );
+  };
 
   return (
     <section
@@ -3241,6 +3496,199 @@ function RenderBlocoPreview({
             ))}
           </div>
         </div>
+      ) : isColecoesCategoriasTipo(bloco.tipo) ? (
+        <div className={`${bgClass} ${paddingClass}`}>
+          <div
+            className={`mx-auto ${colecoesWidthClass} ${
+              larguraConteudoColecoes === "TOTAL" ? "" : "px-0"
+            }`}
+          >
+            {layoutVisualColecoes === "GRID_EDITORIAL" ? (
+              <>
+                <div className={`max-w-3xl ${textAlignPreviewClass}`}>
+                  <RichTextInlineEditor
+                    value={tituloRichText}
+                    fallbackText={titulo}
+                    placeholder="Clique para adicionar um título"
+                    className="tracking-tight"
+                    style={resolveTextStyle(tituloSecaoStyle)}
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        tituloRichText: richText,
+                        titulo: plainText,
+                      })
+                    }
+                  />
+                  <RichTextInlineEditor
+                    value={subtituloRichText}
+                    fallbackText={texto || ""}
+                    placeholder="Clique para adicionar um subtítulo"
+                    multiline
+                    className={`mt-3 leading-7 ${
+                      corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                    }`}
+                    style={resolveTextStyle(subtituloSecaoStyle)}
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        subtituloRichText: richText,
+                        textoRichText: richText,
+                        texto: plainText,
+                        descricao: plainText,
+                        subtitulo: plainText,
+                      })
+                    }
+                  />
+                </div>
+
+                <div
+                  className="mt-7 grid gap-4"
+                  style={{
+                    gridTemplateColumns: `repeat(${colunasColecoes}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {itensColecoesPreview.map((item) => {
+                    const tituloItem = item.titulo || item.categoriaNome;
+                    return (
+                      <article key={item.id} className="min-w-0">
+                        {renderColecaoItemMedia(item, "aspect-[4/5]")}
+                        {estiloEtiquetaColecoes !== "OCULTA" && (
+                          <div className="pt-4">
+                            <RichTextInlineEditor
+                              value={item.tituloRichText}
+                              fallbackText={tituloItem}
+                              placeholder="Título da coleção"
+                              className="text-slate-950"
+                              style={resolveTextStyle(cardTituloStyle)}
+                              onChange={(richText, plainText) =>
+                                onInlineColecaoItemChange(bloco.id, item.id, {
+                                  tituloRichText: richText,
+                                  titulo: plainText,
+                                })
+                              }
+                            />
+                            <RichTextInlineEditor
+                              value={item.subtituloRichText}
+                              fallbackText={item.subtitulo}
+                              placeholder="Chamada da coleção"
+                              multiline
+                              className="mt-2 leading-6 text-slate-500"
+                              style={resolveTextStyle(cardTextoStyle)}
+                              onChange={(richText, plainText) =>
+                                onInlineColecaoItemChange(bloco.id, item.id, {
+                                  subtituloRichText: richText,
+                                  subtitulo: plainText,
+                                })
+                              }
+                            />
+                            {item.textoLink && (
+                              <span
+                                className={`mt-3 inline-flex border border-slate-950 px-4 py-2 text-xs font-semibold text-slate-950 ${buttonRadiusPreviewClass}`}
+                              >
+                                {item.textoLink}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-7 lg:grid-cols-[0.8fr_1.2fr]">
+                <div className={textAlignPreviewClass}>
+                  <RichTextInlineEditor
+                    value={tituloRichText}
+                    fallbackText={titulo}
+                    placeholder="Clique para adicionar um título"
+                    className="tracking-tight"
+                    style={resolveTextStyle(tituloSecaoStyle)}
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        tituloRichText: richText,
+                        titulo: plainText,
+                      })
+                    }
+                  />
+                  <RichTextInlineEditor
+                    value={subtituloRichText}
+                    fallbackText={texto || ""}
+                    placeholder="Clique para adicionar um subtítulo"
+                    multiline
+                    className={`mt-3 leading-7 ${
+                      corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                    }`}
+                    style={resolveTextStyle(subtituloSecaoStyle)}
+                    onChange={(richText, plainText) =>
+                      onInlineTextChange(bloco.id, {
+                        subtituloRichText: richText,
+                        textoRichText: richText,
+                        texto: plainText,
+                        descricao: plainText,
+                        subtitulo: plainText,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {itensColecoesPreview.map((item, index) => {
+                    const tituloItem = item.titulo || item.categoriaNome;
+                    const featured = index === 0 || index === 3;
+                    return (
+                      <article
+                        key={item.id}
+                        className={`relative min-w-0 ${featured ? "md:row-span-2" : ""}`}
+                      >
+                        {renderColecaoItemMedia(
+                          item,
+                          featured ? "aspect-[3/4] h-full" : "aspect-[4/3]"
+                        )}
+                        {estiloEtiquetaColecoes !== "OCULTA" && (
+                          <div
+                            className={
+                              estiloEtiquetaColecoes === "SOBREPOSTA"
+                                ? "absolute bottom-3 left-3 right-3 bg-white/95 p-4 shadow-sm"
+                                : "pt-4"
+                            }
+                          >
+                            <RichTextInlineEditor
+                              value={item.tituloRichText}
+                              fallbackText={tituloItem}
+                              placeholder="Título da coleção"
+                              className="text-slate-950"
+                              style={resolveTextStyle(cardTituloStyle)}
+                              onChange={(richText, plainText) =>
+                                onInlineColecaoItemChange(bloco.id, item.id, {
+                                  tituloRichText: richText,
+                                  titulo: plainText,
+                                })
+                              }
+                            />
+                            <RichTextInlineEditor
+                              value={item.subtituloRichText}
+                              fallbackText={item.subtitulo}
+                              placeholder="Chamada da coleção"
+                              multiline
+                              className="mt-2 leading-6 text-slate-500"
+                              style={resolveTextStyle(cardTextoStyle)}
+                              onChange={(richText, plainText) =>
+                                onInlineColecaoItemChange(bloco.id, item.id, {
+                                  subtituloRichText: richText,
+                                  subtitulo: plainText,
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       ) : isCtaTipo(bloco.tipo) ? (
         <div className={`${bgClass} ${paddingClass}`}>
           <div
@@ -3552,6 +4000,292 @@ function RenderBlocoPreview({
   );
 }
 
+function ColecoesCategoriasModalFields({
+  estado,
+  categoriasDisponiveis,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  categoriasDisponiveis: EditorVisualCategoria[];
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  function updateItem(itemId: string, data: Partial<ColecaoCategoriaItemEditando>) {
+    onChange({
+      itensColecoes: estado.itensColecoes.map((item) =>
+        item.id === itemId ? { ...item, ...data } : item
+      ),
+    });
+  }
+
+  function addItem() {
+    onChange({
+      itensColecoes: [
+        ...estado.itensColecoes,
+        criarItemColecaoPadrao(estado.itensColecoes.length + 1),
+      ],
+    });
+  }
+
+  function removeItem(itemId: string) {
+    onChange({
+      itensColecoes: estado.itensColecoes.filter((item) => item.id !== itemId),
+    });
+  }
+
+  function moveItem(itemId: string, direction: "UP" | "DOWN") {
+    const index = estado.itensColecoes.findIndex((item) => item.id === itemId);
+    const nextIndex = direction === "UP" ? index - 1 : index + 1;
+    if (index < 0 || nextIndex < 0 || nextIndex >= estado.itensColecoes.length) return;
+    const itens = [...estado.itensColecoes];
+    const [item] = itens.splice(index, 1);
+    itens.splice(nextIndex, 0, item);
+    onChange({ itensColecoes: itens.map((entry, ordem) => ({ ...entry, ordem })) });
+  }
+
+  function selectCategory(itemId: string, categoriaId: string) {
+    const categoria = getCategoriaResumo(categoriaId, categoriasDisponiveis);
+    const itemAtual = estado.itensColecoes.find((item) => item.id === itemId);
+    updateItem(itemId, {
+      tipoLink: "CATEGORIA",
+      categoriaId: categoria?.id || "",
+      categoriaSlug: categoria?.slug || "",
+      categoriaNome: categoria?.nome || "",
+      titulo: itemAtual?.titulo || categoria?.nome || "",
+      linkUrl: categoria?.slug ? `/loja/categoria/${categoria.slug}` : "",
+    });
+  }
+
+  function updatePosition(itemId: string, device: "DESKTOP" | "MOBILE", value: string) {
+    const crop = getMediaCropFromPosition(value);
+    updateItem(
+      itemId,
+      device === "DESKTOP"
+        ? { mediaPositionDesktop: value, mediaCropDesktopX: crop.x, mediaCropDesktopY: crop.y }
+        : { mediaPositionMobile: value, mediaCropMobileX: crop.x, mediaCropMobileY: crop.y }
+    );
+  }
+
+  return (
+    <div className="space-y-5 px-6 py-5">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">Nome interno</span>
+        <input
+          value={estado.nomeInterno}
+          onChange={(event) => onChange({ nomeInterno: event.target.value })}
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        />
+      </label>
+
+      <SecaoRecolhivel title="Textos / conteúdo">
+        <input
+          value={estado.titulo}
+          onChange={(event) => onChange({ titulo: event.target.value })}
+          placeholder="Clique para adicionar um título"
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        />
+        <textarea
+          value={estado.texto}
+          onChange={(event) => onChange({ texto: event.target.value })}
+          rows={3}
+          placeholder="Clique para adicionar um subtítulo"
+          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+        />
+      </SecaoRecolhivel>
+
+      <PainelSecao title="Layout">
+        <div className="grid gap-4 md:grid-cols-2">
+          <select value={estado.layoutVisualColecoes} onChange={(event) => onChange({ layoutVisualColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Layout visual">
+            {LAYOUT_VISUAL_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.origemItensColecoes} onChange={(event) => onChange({ origemItensColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Origem dos itens">
+            {ORIGEM_ITENS_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.larguraConteudoColecoes} onChange={(event) => onChange({ larguraConteudoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura">
+            {LARGURA_CONTEUDO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Etiqueta">
+            {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={estado.colunasDesktopColecoes}
+            onChange={(event) =>
+              onChange({ colunasDesktopColecoes: Number(event.target.value) || 1 })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Colunas desktop"
+          />
+          <input
+            type="number"
+            min={1}
+            max={4}
+            value={estado.colunasTabletColecoes}
+            onChange={(event) =>
+              onChange({ colunasTabletColecoes: Number(event.target.value) || 1 })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Colunas tablet"
+          />
+          <input
+            type="number"
+            min={1}
+            max={3}
+            value={estado.colunasMobileColecoes}
+            onChange={(event) =>
+              onChange({ colunasMobileColecoes: Number(event.target.value) || 1 })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Colunas mobile"
+          />
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <select
+            value={estado.corFundo}
+            onChange={(event) => onChange({ corFundo: event.target.value })}
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Cor de fundo"
+          >
+            {COR_FUNDO_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={estado.espacamento}
+            onChange={(event) => onChange({ espacamento: event.target.value })}
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Espaçamento"
+          >
+            {ESPACAMENTO_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </PainelSecao>
+
+      <ResponsiveTextAlignControls desktopValue={estado.alinhamentoTextoDesktop} mobileValue={estado.alinhamentoTextoMobile} onChange={onChange} />
+      <ButtonRadiusControl
+        value={estado.estiloBordaBotao}
+        onChange={(value) => onChange({ estiloBordaBotao: value })}
+      />
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-950">Itens</h3>
+          <button type="button" onClick={addItem} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
+            <Plus className="h-4 w-4" /> Adicionar item
+          </button>
+        </div>
+        <div className="mt-4 space-y-4">
+          {estado.itensColecoes.map((item, index) => (
+            <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h4 className="text-sm font-semibold text-slate-950">Item {index + 1}</h4>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => moveItem(item.id, "UP")} disabled={index === 0} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Subir item"><ArrowUp className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => moveItem(item.id, "DOWN")} disabled={index === estado.itensColecoes.length - 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Descer item"><ArrowDown className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => removeItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500" aria-label="Remover item"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <select value={item.tipoLink} onChange={(event) => updateItem(item.id, { tipoLink: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tipo de link">
+                  <option value="PERSONALIZADO">Personalizado</option>
+                  <option value="CATEGORIA">Categoria</option>
+                </select>
+                {item.tipoLink === "CATEGORIA" ? (
+                  <select value={item.categoriaId} onChange={(event) => selectCategory(item.id, event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Categoria">
+                    <option value="">Selecione uma categoria</option>
+                    {categoriasDisponiveis.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.caminho}</option>)}
+                  </select>
+                ) : (
+                  <input value={item.linkUrl} onChange={(event) => updateItem(item.id, { linkUrl: event.target.value })} placeholder="/loja/colecao" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
+                )}
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <input value={item.titulo} onChange={(event) => updateItem(item.id, { titulo: event.target.value })} placeholder={item.categoriaNome || "Título da coleção"} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
+                <input value={item.textoLink} onChange={(event) => updateItem(item.id, { textoLink: event.target.value })} placeholder="Explorar" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
+              </div>
+              <textarea value={item.subtitulo} onChange={(event) => updateItem(item.id, { subtitulo: event.target.value })} rows={3} placeholder="Chamada da coleção" className="mt-4 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500" />
+              <select
+                value={item.tipoMidia}
+                onChange={(event) =>
+                  updateItem(item.id, { tipoMidia: event.target.value })
+                }
+                className="mt-4 h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                aria-label="Tipo de mídia"
+              >
+                <option value="IMAGEM">Imagem</option>
+                <option value="VIDEO">Vídeo</option>
+              </select>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <UploadMidiaCampo
+                  label={
+                    item.tipoMidia === "VIDEO"
+                      ? "Vídeo desktop URL"
+                      : "Imagem desktop URL"
+                  }
+                  value={
+                    item.tipoMidia === "VIDEO"
+                      ? item.videoDesktopUrl
+                      : item.imagemDesktopUrl
+                  }
+                  tipoMidia={item.tipoMidia === "VIDEO" ? "VIDEO" : "IMAGEM"}
+                  onChange={(url) =>
+                    updateItem(
+                      item.id,
+                      item.tipoMidia === "VIDEO"
+                        ? { videoDesktopUrl: url }
+                        : { imagemDesktopUrl: url }
+                    )
+                  }
+                  orientacao="Cole uma URL ou envie arquivo pelo navegador."
+                />
+                <UploadMidiaCampo
+                  label={
+                    item.tipoMidia === "VIDEO"
+                      ? "Vídeo mobile URL"
+                      : "Imagem mobile URL"
+                  }
+                  value={
+                    item.tipoMidia === "VIDEO"
+                      ? item.videoMobileUrl
+                      : item.imagemMobileUrl
+                  }
+                  tipoMidia={item.tipoMidia === "VIDEO" ? "VIDEO" : "IMAGEM"}
+                  onChange={(url) =>
+                    updateItem(
+                      item.id,
+                      item.tipoMidia === "VIDEO"
+                        ? { videoMobileUrl: url }
+                        : { imagemMobileUrl: url }
+                    )
+                  }
+                  orientacao="Opcional. Quando vazio, usa a mídia desktop."
+                />
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <select value={item.mediaPositionDesktop} onChange={(event) => updatePosition(item.id, "DESKTOP", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop desktop">
+                  {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                </select>
+                <select value={item.mediaPositionMobile} onChange={(event) => updatePosition(item.id, "MOBILE", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop mobile">
+                  {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EditorConteudoBlocoModal({
   estado,
   categoriasDisponiveis,
@@ -3580,6 +4314,7 @@ function EditorConteudoBlocoModal({
   const isTextoImagem = isTextoImagemTipo(estado.bloco.tipo);
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
+  const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
   const produtosFiltradosManual = produtosDisponiveis
     .filter((produto) => {
@@ -3764,6 +4499,8 @@ function EditorConteudoBlocoModal({
                     ? "Configure a vitrine visual de produtos no preview do editor."
                     : isDestaquesCards
                       ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
+                      : isColecoesCategorias
+                        ? "Configure mosaicos editoriais com coleções, categorias, mídia e links."
                       : isCta
                         ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
                         : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
@@ -5758,6 +6495,12 @@ function EditorConteudoBlocoModal({
               </div>
             </div>
           </div>
+        ) : isColecoesCategorias ? (
+          <ColecoesCategoriasModalFields
+            estado={estado}
+            categoriasDisponiveis={categoriasDisponiveis}
+            onChange={onChange}
+          />
         ) : (
           <div className="space-y-5 px-6 py-5">
             <label>
@@ -6101,6 +6844,32 @@ export default function EditorVisualPaginaClient({
           configJson: {
             ...config,
             cards,
+          },
+        };
+      })
+    );
+  }
+
+  function atualizarColecaoItemInline(
+    blocoId: string,
+    itemId: string,
+    patch: Partial<ColecaoCategoriaItemEditando>
+  ) {
+    marcarTextoPendente(blocoId);
+    setBlocosEditor((current) =>
+      current.map((bloco) => {
+        if (bloco.id !== blocoId) return bloco;
+
+        const config = getConfigObject(bloco.configJson);
+        const itens = getItensColecoesConfig(config).map((item) =>
+          item.id === itemId ? { ...item, ...patch } : item
+        );
+
+        return {
+          ...bloco,
+          configJson: {
+            ...config,
+            itens,
           },
         };
       })
@@ -6469,6 +7238,22 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "alinhamento")
       ),
       cardsDestaques: getCardsDestaquesConfig(config),
+      layoutVisualColecoes: normalizarLayoutVisualColecoes(
+        getStringConfig(config, "layoutVisual")
+      ),
+      origemItensColecoes: normalizarOrigemItensColecoes(
+        getStringConfig(config, "origemItens")
+      ),
+      larguraConteudoColecoes: normalizarLarguraConteudoColecoes(
+        getStringConfig(config, "larguraConteudo")
+      ),
+      colunasDesktopColecoes: getNumberConfig(config, "colunasDesktop", 4),
+      colunasTabletColecoes: getNumberConfig(config, "colunasTablet", 2),
+      colunasMobileColecoes: getNumberConfig(config, "colunasMobile", 1),
+      estiloEtiquetaColecoes: normalizarEstiloEtiquetaColecoes(
+        getStringConfig(config, "estiloEtiqueta")
+      ),
+      itensColecoes: getItensColecoesConfig(config),
       mediaCropDesktopX: getNumberConfig(config, "mediaCropDesktopX", 50),
       mediaCropDesktopY: getNumberConfig(config, "mediaCropDesktopY", 50),
       mediaCropMobileX: getNumberConfig(config, "mediaCropMobileX", 50),
@@ -6561,9 +7346,15 @@ export default function EditorVisualPaginaClient({
     const isTextoImagem = isTextoImagemTipo(blocoAtual.tipo);
     const isListaProdutos = isListaProdutosTipo(blocoAtual.tipo);
     const isDestaquesCards = isDestaquesCardsTipo(blocoAtual.tipo);
+    const isColecoesCategorias = isColecoesCategoriasTipo(blocoAtual.tipo);
     const isCta = isCtaTipo(blocoAtual.tipo);
     const blocoUsaRichText =
-      isBanner || isTextoImagem || isListaProdutos || isDestaquesCards || isCta;
+      isBanner ||
+      isTextoImagem ||
+      isListaProdutos ||
+      isDestaquesCards ||
+      isColecoesCategorias ||
+      isCta;
     const tituloAtual =
       getStringConfig(configAtual, "titulo") || blocoAtual.titulo || "";
     const textoAtual =
@@ -6774,6 +7565,65 @@ export default function EditorVisualPaginaClient({
                 exibirBotao: card.exibirBotao,
                 textoBotao: card.textoBotao,
                 linkBotao: card.linkBotao,
+              })),
+            }
+        : isColecoesCategorias
+          ? {
+              ...(tituloMudouNoModal
+                ? {
+                    tituloRichText: tituloModalRichText,
+                  }
+                : {}),
+              ...(textoMudouNoModal
+                ? {
+                    subtituloRichText: textoModalRichText,
+                  }
+                : {}),
+              subtitulo: editando.texto,
+              descricao: editando.texto,
+              layoutVisual: editando.layoutVisualColecoes,
+              origemItens: editando.origemItensColecoes,
+              larguraConteudo: editando.larguraConteudoColecoes,
+              colunasDesktop: Math.max(
+                1,
+                Number(editando.colunasDesktopColecoes) || 1
+              ),
+              colunasTablet: Math.max(
+                1,
+                Number(editando.colunasTabletColecoes) || 1
+              ),
+              colunasMobile: Math.max(
+                1,
+                Number(editando.colunasMobileColecoes) || 1
+              ),
+              estiloEtiqueta: editando.estiloEtiquetaColecoes,
+              corFundo: editando.corFundo,
+              espacamento: editando.espacamento,
+              itens: editando.itensColecoes.map((item, index) => ({
+                id: item.id,
+                tipoLink: item.tipoLink,
+                categoriaId: item.categoriaId,
+                categoriaSlug: item.categoriaSlug,
+                categoriaNome: item.categoriaNome,
+                titulo: item.titulo,
+                subtitulo: item.subtitulo,
+                tituloRichText: item.tituloRichText,
+                subtituloRichText: item.subtituloRichText,
+                textoLink: item.textoLink,
+                linkUrl: item.linkUrl,
+                imagemDesktopUrl: item.imagemDesktopUrl,
+                imagemUrl: item.imagemDesktopUrl,
+                imagemMobileUrl: item.imagemMobileUrl,
+                tipoMidia: item.tipoMidia,
+                videoDesktopUrl: item.videoDesktopUrl,
+                videoMobileUrl: item.videoMobileUrl,
+                mediaPositionDesktop: item.mediaPositionDesktop,
+                mediaPositionMobile: item.mediaPositionMobile,
+                mediaCropDesktopX: item.mediaCropDesktopX,
+                mediaCropDesktopY: item.mediaCropDesktopY,
+                mediaCropMobileX: item.mediaCropMobileX,
+                mediaCropMobileY: item.mediaCropMobileY,
+                ordem: index,
               })),
             }
         : isCta
@@ -7009,6 +7859,7 @@ export default function EditorVisualPaginaClient({
                 device={device}
                 onInlineTextChange={atualizarTextoInline}
                 onInlineCardChange={atualizarCardInline}
+                onInlineColecaoItemChange={atualizarColecaoItemInline}
               />
             ))}
 
