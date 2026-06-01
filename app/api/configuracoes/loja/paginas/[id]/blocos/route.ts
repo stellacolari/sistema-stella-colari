@@ -50,9 +50,28 @@ function getTituloPadrao(tipo: string) {
 function getConfigPadrao(tipo: string) {
   if (tipo === "BANNER") {
     return {
+      tipoMidia: "IMAGEM",
+      exibirTexto: true,
+      exibirSubtitulo: true,
+      exibirBotaoPrimario: true,
+      exibirBotaoSecundario: false,
       imagemDesktop: "",
+      imagemDesktopUrl: "",
       imagemMobile: "",
+      imagemMobileUrl: "",
+      videoDesktopUrl: "",
+      videoMobileUrl: "",
+      videoPosterUrl: "",
+      videoLoop: true,
+      videoSom: "MUDO",
       linkUrl: "",
+      textoBotao: "Conhecer",
+      textoBotaoSecundario: "",
+      linkBotaoSecundario: "",
+      alinhamentoConteudo: "ESQUERDA",
+      alturaBanner: "PADRAO",
+      overlayBanner: "LEVE",
+      corTextoBanner: "CLARO",
       alturaDesktop: 520,
       alturaMobile: 320,
     };

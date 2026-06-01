@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import type { ChangeEvent, DragEvent, ReactNode } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowDown,
@@ -80,11 +80,31 @@ type BlocoEditandoState = {
   titulo: string;
   texto: string;
   imagemUrl: string;
+  imagemDesktopUrl: string;
+  imagemMobileUrl: string;
+  videoDesktopUrl: string;
+  videoMobileUrl: string;
+  videoPosterUrl: string;
+  videoLoop: boolean;
+  videoSom: string;
   textoBotao: string;
+  textoBotaoSecundario: string;
   linkBotao: string;
+  linkBotaoSecundario: string;
   corFundo: string;
   espacamento: string;
+  alinhamentoConteudo: string;
+  alturaBanner: string;
+  overlayBanner: string;
+  corTextoBanner: string;
+  tipoMidia: string;
+  exibirTexto: boolean;
+  exibirSubtitulo: boolean;
+  exibirBotaoPrimario: boolean;
+  exibirBotaoSecundario: boolean;
 } | null;
+
+type MediaKind = "IMAGEM" | "VIDEO";
 
 const COR_FUNDO_PRESETS = [
   { value: "BRANCO", label: "Branco" },
@@ -98,6 +118,44 @@ const ESPACAMENTO_PRESETS = [
   { value: "PADRAO", label: "Padrão" },
   { value: "AMPLO", label: "Amplo" },
 ];
+
+const ALINHAMENTO_BANNER_PRESETS = [
+  { value: "ESQUERDA", label: "Esquerda" },
+  { value: "CENTRO", label: "Centro" },
+  { value: "DIREITA", label: "Direita" },
+];
+
+const ALTURA_BANNER_PRESETS = [
+  { value: "COMPACTA", label: "Compacta" },
+  { value: "PADRAO", label: "Padrão" },
+  { value: "TELA_CHEIA", label: "Tela cheia" },
+];
+
+const OVERLAY_BANNER_PRESETS = [
+  { value: "NENHUM", label: "Nenhum" },
+  { value: "LEVE", label: "Leve" },
+  { value: "MEDIO", label: "Médio" },
+];
+
+const COR_TEXTO_BANNER_PRESETS = [
+  { value: "CLARO", label: "Claro" },
+  { value: "ESCURO", label: "Escuro" },
+];
+
+const TIPO_MIDIA_BANNER_PRESETS = [
+  { value: "IMAGEM", label: "Imagem" },
+  { value: "VIDEO", label: "Vídeo" },
+];
+
+const VIDEO_SOM_PRESETS = [
+  { value: "MUDO", label: "Mudo" },
+  { value: "COM_SOM", label: "Com som" },
+];
+
+const MAX_IMAGEM_UPLOAD_BYTES = 4 * 1024 * 1024;
+const MAX_VIDEO_UPLOAD_BYTES = 15 * 1024 * 1024;
+const ACCEPT_IMAGEM_UPLOAD = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
+const ACCEPT_VIDEO_UPLOAD = ".mp4,.webm,video/mp4,video/webm";
 
 const TIPOS_BLOCO_ADICIONAR: {
   tipo: TipoBlocoAdicionar;
@@ -182,6 +240,25 @@ function getStringConfig(config: Record<string, unknown>, key: string) {
   return "";
 }
 
+function getBooleanConfig(
+  config: Record<string, unknown>,
+  key: string,
+  fallback: boolean
+) {
+  const value = config[key];
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    if (value === "true") return true;
+    if (value === "false") return false;
+  }
+
+  return fallback;
+}
+
 function getArrayConfig(config: Record<string, unknown>, key: string) {
   const value = config[key];
 
@@ -231,6 +308,10 @@ function getBlocoIcon(tipo: string) {
   return LayoutGrid;
 }
 
+function isBannerTipo(tipo: string) {
+  return tipo === "BANNER" || tipo === "HERO";
+}
+
 function getFrameClass(device: DevicePreview) {
   if (device === "MOBILE") {
     return "mx-auto max-w-[390px]";
@@ -274,6 +355,57 @@ function getPaddingClass(espacamento: string) {
   if (espacamento === "AMPLO") return "px-6 py-16";
 
   return "px-6 py-10";
+}
+
+function getBannerHeightClass(altura: string, isMobile: boolean) {
+  if (altura === "COMPACTA") {
+    return isMobile ? "h-[360px]" : "h-[320px]";
+  }
+
+  if (altura === "TELA_CHEIA") {
+    return isMobile ? "h-[640px]" : "h-[720px]";
+  }
+
+  return isMobile ? "h-[520px]" : "h-[420px]";
+}
+
+function getBannerAlignmentClass(alinhamento: string, isMobile: boolean) {
+  if (alinhamento === "CENTRO") {
+    return "justify-center px-6 text-center";
+  }
+
+  if (alinhamento === "DIREITA") {
+    return isMobile
+      ? "justify-center px-6 text-center"
+      : "justify-end px-12 text-right";
+  }
+
+  return isMobile ? "justify-center px-6 text-center" : "justify-start px-12";
+}
+
+function getBannerOverlayClass(overlay: string) {
+  if (overlay === "MEDIO") return "bg-black/45";
+  if (overlay === "LEVE") return "bg-black/20";
+
+  return "bg-transparent";
+}
+
+function getBannerTextClasses(corTexto: string) {
+  if (corTexto === "ESCURO") {
+    return {
+      eyebrow: "text-slate-700",
+      title: "text-slate-950",
+      text: "text-slate-700",
+      button: "bg-slate-950 text-white",
+    };
+  }
+
+  return {
+    eyebrow: "text-white/70",
+    title: "text-white",
+    text: "text-white/80",
+    button: "bg-white text-slate-950",
+  };
 }
 
 async function lerRespostaApi(response: Response) {
@@ -344,6 +476,231 @@ function PainelSecao({
   );
 }
 
+function formatarTamanhoMb(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+}
+
+function validarArquivoMidia(file: File, tipoMidia: MediaKind) {
+  if (tipoMidia === "IMAGEM") {
+    const tiposValidos = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!tiposValidos.includes(file.type)) {
+      return "Use uma imagem JPG, PNG ou WebP.";
+    }
+
+    if (file.size > MAX_IMAGEM_UPLOAD_BYTES) {
+      return "A imagem deve ter no máximo 4 MB.";
+    }
+
+    return "";
+  }
+
+  const tiposValidos = ["video/mp4", "video/webm"];
+
+  if (!tiposValidos.includes(file.type)) {
+    return "Use um vídeo MP4 ou WebM. Recomendado: MP4/H.264.";
+  }
+
+  if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
+    return "O vídeo deve ter no máximo 15 MB.";
+  }
+
+  return "";
+}
+
+function CampoToggle({
+  checked,
+  label,
+  description,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description?: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-slate-300"
+      />
+
+      <span>
+        <span className="block text-sm font-semibold text-slate-800">
+          {label}
+        </span>
+
+        {description && (
+          <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+            {description}
+          </span>
+        )}
+      </span>
+    </label>
+  );
+}
+
+function UploadMidiaCampo({
+  label,
+  value,
+  tipoMidia,
+  onChange,
+  orientacao,
+}: {
+  label: string;
+  value: string;
+  tipoMidia: MediaKind;
+  onChange: (url: string) => void;
+  orientacao: string;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [arrastando, setArrastando] = useState(false);
+
+  const accept =
+    tipoMidia === "IMAGEM" ? ACCEPT_IMAGEM_UPLOAD : ACCEPT_VIDEO_UPLOAD;
+
+  async function enviarArquivo(file: File | null) {
+    setErro("");
+
+    if (!file) return;
+
+    const erroValidacao = validarArquivoMidia(file, tipoMidia);
+
+    if (erroValidacao) {
+      setErro(erroValidacao);
+      return;
+    }
+
+    setEnviando(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("arquivo", file);
+      formData.append("tipoMidia", tipoMidia);
+
+      const response = await fetch("/api/configuracoes/loja/uploads", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await lerRespostaApi(response);
+
+      if (!response.ok) {
+        setErro(data.error || data.erro || "Erro ao enviar arquivo.");
+        return;
+      }
+
+      if (typeof data.url !== "string" || !data.url) {
+        setErro("Upload concluído, mas a URL do arquivo não foi retornada.");
+        return;
+      }
+
+      onChange(data.url);
+    } catch {
+      setErro("Erro ao enviar arquivo.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  function onInputChange(event: ChangeEvent<HTMLInputElement>) {
+    void enviarArquivo(event.target.files?.[0] ?? null);
+    event.target.value = "";
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setArrastando(false);
+    void enviarArquivo(event.dataTransfer.files?.[0] ?? null);
+  }
+
+  return (
+    <div>
+      <div className="mb-2">
+        <p className="text-sm font-medium text-slate-700">{label}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{orientacao}</p>
+      </div>
+
+      <div
+        onDragOver={(event) => {
+          event.preventDefault();
+          setArrastando(true);
+        }}
+        onDragLeave={() => setArrastando(false)}
+        onDrop={onDrop}
+        className={`rounded-2xl border border-dashed p-4 transition ${
+          arrastando
+            ? "border-indigo-300 bg-indigo-50"
+            : "border-slate-300 bg-slate-50"
+        }`}
+      >
+        {value ? (
+          <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {tipoMidia === "VIDEO" ? (
+              <video src={value} className="h-36 w-full object-cover" controls />
+            ) : (
+              <img src={value} alt={label} className="h-36 w-full object-cover" />
+            )}
+          </div>
+        ) : (
+          <div className="mb-3 flex h-28 items-center justify-center rounded-2xl bg-white text-sm text-slate-400 ring-1 ring-slate-200">
+            Arraste um arquivo aqui
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={enviando}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" />
+            {enviando ? "Enviando..." : "Selecionar arquivo"}
+          </button>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            onChange={onInputChange}
+            disabled={enviando}
+            className="hidden"
+          />
+
+          <input
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="Cole ou digite uma URL"
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          />
+
+          <p className="text-xs leading-5 text-slate-500">
+            {tipoMidia === "VIDEO"
+              ? `MP4/H.264 recomendado. Limite: ${formatarTamanhoMb(
+                  MAX_VIDEO_UPLOAD_BYTES
+                )}.`
+              : `JPG, PNG ou WebP. Limite: ${formatarTamanhoMb(
+                  MAX_IMAGEM_UPLOAD_BYTES
+                )}.`}
+          </p>
+        </div>
+
+        {erro && (
+          <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {erro}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PreviewShell({
   children,
   device,
@@ -405,10 +762,23 @@ function RenderBlocoPreview({
     getStringConfig(config, "imagem") ||
     getStringConfig(config, "backgroundImageUrl");
 
+  const imagemDesktopUrl =
+    getStringConfig(config, "imagemDesktopUrl") ||
+    getStringConfig(config, "imagemDesktop") ||
+    imagemUrl;
+
+  const imagemMobileUrl =
+    getStringConfig(config, "imagemMobileUrl") ||
+    getStringConfig(config, "imagemMobile");
+
   const textoBotao =
     getStringConfig(config, "textoBotao") ||
     getStringConfig(config, "botaoTexto") ||
     "Conhecer";
+
+  const textoBotaoSecundario =
+    getStringConfig(config, "textoBotaoSecundario") ||
+    getStringConfig(config, "botaoSecundarioTexto");
 
   const corFundo = getStringConfig(config, "corFundo") || "BRANCO";
   const espacamento = getStringConfig(config, "espacamento") || "PADRAO";
@@ -419,6 +789,35 @@ function RenderBlocoPreview({
   const isMobile = device === "MOBILE";
   const bgClass = getBgClass(corFundo);
   const paddingClass = getPaddingClass(espacamento);
+  const alinhamentoBanner =
+    getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA";
+  const alturaBanner = getStringConfig(config, "alturaBanner") || "PADRAO";
+  const overlayBanner = getStringConfig(config, "overlayBanner") || "LEVE";
+  const corTextoBanner = getStringConfig(config, "corTextoBanner") || "CLARO";
+  const tipoMidia = getStringConfig(config, "tipoMidia") || "IMAGEM";
+  const videoDesktopUrl = getStringConfig(config, "videoDesktopUrl");
+  const videoMobileUrl = getStringConfig(config, "videoMobileUrl");
+  const videoPosterUrl = getStringConfig(config, "videoPosterUrl");
+  const videoLoop = getBooleanConfig(config, "videoLoop", true);
+  const videoSom = getStringConfig(config, "videoSom") || "MUDO";
+  const exibirTexto = getBooleanConfig(config, "exibirTexto", true);
+  const exibirSubtitulo = getBooleanConfig(config, "exibirSubtitulo", true);
+  const exibirBotaoPrimario = getBooleanConfig(
+    config,
+    "exibirBotaoPrimario",
+    true
+  );
+  const exibirBotaoSecundario = getBooleanConfig(
+    config,
+    "exibirBotaoSecundario",
+    false
+  );
+  const imagemBannerUrl =
+    isMobile && imagemMobileUrl ? imagemMobileUrl : imagemDesktopUrl;
+  const videoBannerUrl =
+    isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
+  const bannerTextClasses = getBannerTextClasses(corTextoBanner);
+  const usarVideoBanner = tipoMidia === "VIDEO" && Boolean(videoBannerUrl);
 
   return (
     <section
@@ -443,17 +842,28 @@ function RenderBlocoPreview({
         {getTipoLabel(bloco.tipo)}
       </div>
 
-      {bloco.tipo === "HERO" || bloco.tipo.includes("BANNER") ? (
+      {isBannerTipo(bloco.tipo) ? (
         <div
-          className={`relative overflow-hidden bg-slate-900 ${
-            isMobile ? "h-[520px]" : "h-[420px]"
-          }`}
+          className={`relative overflow-hidden bg-slate-900 ${getBannerHeightClass(
+            alturaBanner,
+            isMobile
+          )}`}
         >
-          {imagemUrl ? (
+          {usarVideoBanner ? (
+            <video
+              src={videoBannerUrl}
+              poster={videoPosterUrl || undefined}
+              autoPlay
+              loop={videoLoop}
+              muted={videoSom === "MUDO"}
+              playsInline
+              className="h-full w-full object-cover"
+            />
+          ) : imagemBannerUrl ? (
             <img
-              src={imagemUrl}
+              src={imagemBannerUrl}
               alt={titulo}
-              className="h-full w-full object-cover opacity-80"
+              className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
@@ -461,35 +871,64 @@ function RenderBlocoPreview({
             </div>
           )}
 
-          <div className="absolute inset-0 bg-black/20" />
+          <div className={`absolute inset-0 ${getBannerOverlayClass(overlayBanner)}`} />
 
-          <div
-            className={`absolute inset-0 flex items-center ${
-              isMobile ? "justify-center px-6 text-center" : "px-12"
-            }`}
-          >
-            <div className={isMobile ? "max-w-sm" : "max-w-xl"}>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
-                Stella
-              </p>
+          {exibirTexto && (
+            <div
+              className={`absolute inset-0 flex items-center ${getBannerAlignmentClass(
+                alinhamentoBanner,
+                isMobile
+              )}`}
+            >
+              <div className={isMobile ? "max-w-sm" : "max-w-xl"}>
+                <p
+                  className={`text-xs font-semibold uppercase tracking-[0.22em] ${bannerTextClasses.eyebrow}`}
+                >
+                  Stella
+                </p>
 
-              <h2
-                className={`mt-3 font-light tracking-tight text-white ${
-                  isMobile ? "text-4xl" : "text-5xl"
-                }`}
-              >
-                {titulo}
-              </h2>
+                <h2
+                  className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${
+                    isMobile ? "text-4xl" : "text-5xl"
+                  }`}
+                >
+                  {titulo}
+                </h2>
 
-              {texto && (
-                <p className="mt-4 text-sm leading-6 text-white/80">{texto}</p>
-              )}
+                {exibirSubtitulo && texto && (
+                  <p
+                    className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
+                  >
+                    {texto}
+                  </p>
+                )}
 
-              <div className="mt-6 inline-flex bg-white px-5 py-3 text-sm font-semibold text-slate-950">
-                {textoBotao}
+                {(exibirBotaoPrimario || exibirBotaoSecundario) && (
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {exibirBotaoPrimario && textoBotao && (
+                      <div
+                        className={`inline-flex px-5 py-3 text-sm font-semibold ${bannerTextClasses.button}`}
+                      >
+                        {textoBotao}
+                      </div>
+                    )}
+
+                    {exibirBotaoSecundario && textoBotaoSecundario && (
+                      <div
+                        className={`inline-flex border px-5 py-3 text-sm font-semibold ${
+                          corTextoBanner === "ESCURO"
+                            ? "border-slate-950 text-slate-950"
+                            : "border-white text-white"
+                        }`}
+                      >
+                        {textoBotaoSecundario}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       ) : bloco.tipo === "ESPACADOR" ? (
         <div className="flex h-16 items-center justify-center bg-slate-50">
@@ -649,6 +1088,8 @@ function EditorConteudoBlocoModal({
     return null;
   }
 
+  const isBanner = isBannerTipo(estado.bloco.tipo);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
@@ -663,8 +1104,9 @@ function EditorConteudoBlocoModal({
             </h2>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Primeira edição visual com campos universais. Depois vamos
-              especializar por tipo de bloco.
+              {isBanner
+                ? "Configure conteúdo, imagens e aparência do banner no preview visual."
+                : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -678,104 +1120,92 @@ function EditorConteudoBlocoModal({
           </button>
         </div>
 
-        <div className="space-y-5 px-6 py-5">
-          <label>
-            <span className="mb-2 block text-sm font-medium text-slate-700">
-              Nome interno do bloco
-            </span>
-
-            <input
-              value={estado.nomeInterno}
-              onChange={(event) => onChange({ nomeInterno: event.target.value })}
-              placeholder="Ex: Banner principal"
-              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-            />
-          </label>
-
-          <label>
-            <span className="mb-2 block text-sm font-medium text-slate-700">
-              Título
-            </span>
-
-            <input
-              value={estado.titulo}
-              onChange={(event) => onChange({ titulo: event.target.value })}
-              placeholder="Título visível"
-              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-            />
-          </label>
-
-          <label>
-            <span className="mb-2 block text-sm font-medium text-slate-700">
-              Texto
-            </span>
-
-            <textarea
-              value={estado.texto}
-              onChange={(event) => onChange({ texto: event.target.value })}
-              rows={5}
-              placeholder="Texto do bloco"
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-            />
-          </label>
-
-          <label>
-            <span className="mb-2 block text-sm font-medium text-slate-700">
-              Imagem URL
-            </span>
-
-            <input
-              value={estado.imagemUrl}
-              onChange={(event) => onChange({ imagemUrl: event.target.value })}
-              placeholder="/uploads/imagem.jpg ou https://..."
-              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-            />
-          </label>
-
-          <div className="grid gap-4 md:grid-cols-2">
+        {isBanner ? (
+          <div className="space-y-5 px-6 py-5">
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
-                Texto do botão
+                Nome interno
               </span>
 
               <input
-                value={estado.textoBotao}
+                value={estado.nomeInterno}
                 onChange={(event) =>
-                  onChange({ textoBotao: event.target.value })
+                  onChange({ nomeInterno: event.target.value })
                 }
-                placeholder="Ex: Comprar agora"
+                placeholder="Ex: Banner principal"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <CampoToggle
+                checked={estado.exibirTexto}
+                label="Exibir texto"
+                description="Controla título, subtítulo e botões do banner."
+                onChange={(checked) => onChange({ exibirTexto: checked })}
+              />
+
+              <CampoToggle
+                checked={estado.exibirSubtitulo}
+                label="Exibir subtítulo"
+                onChange={(checked) => onChange({ exibirSubtitulo: checked })}
+              />
+
+              <CampoToggle
+                checked={estado.exibirBotaoPrimario}
+                label="Exibir botão primário"
+                onChange={(checked) =>
+                  onChange({ exibirBotaoPrimario: checked })
+                }
+              />
+
+              <CampoToggle
+                checked={estado.exibirBotaoSecundario}
+                label="Exibir botão secundário"
+                onChange={(checked) =>
+                  onChange({ exibirBotaoSecundario: checked })
+                }
+              />
+            </div>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Título
+              </span>
+
+              <input
+                value={estado.titulo}
+                onChange={(event) => onChange({ titulo: event.target.value })}
+                placeholder="Título visível"
                 className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
               />
             </label>
 
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
-                Link do botão
+                Subtítulo/texto
               </span>
 
-              <input
-                value={estado.linkBotao}
-                onChange={(event) =>
-                  onChange({ linkBotao: event.target.value })
-                }
-                placeholder="/loja/descontos"
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              <textarea
+                value={estado.texto}
+                onChange={(event) => onChange({ texto: event.target.value })}
+                rows={4}
+                placeholder="Texto de apoio do banner"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
               />
             </label>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
-                Cor de fundo
+                Tipo de mídia
               </span>
 
               <select
-                value={estado.corFundo}
-                onChange={(event) => onChange({ corFundo: event.target.value })}
+                value={estado.tipoMidia}
+                onChange={(event) => onChange({ tipoMidia: event.target.value })}
                 className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
               >
-                {COR_FUNDO_PRESETS.map((preset) => (
+                {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
                   <option key={preset.value} value={preset.value}>
                     {preset.label}
                   </option>
@@ -783,32 +1213,373 @@ function EditorConteudoBlocoModal({
               </select>
             </label>
 
+            {estado.tipoMidia === "VIDEO" ? (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <UploadMidiaCampo
+                    label="Vídeo desktop URL"
+                    value={estado.videoDesktopUrl}
+                    tipoMidia="VIDEO"
+                    onChange={(url) => onChange({ videoDesktopUrl: url })}
+                    orientacao="Cole uma URL ou envie um arquivo MP4/WebM. MP4/H.264 é recomendado para compatibilidade."
+                  />
+
+                  <UploadMidiaCampo
+                    label="Vídeo mobile URL"
+                    value={estado.videoMobileUrl}
+                    tipoMidia="VIDEO"
+                    onChange={(url) => onChange({ videoMobileUrl: url })}
+                    orientacao="Opcional. Quando vazio, o preview mobile usa o vídeo desktop."
+                  />
+                </div>
+
+                <UploadMidiaCampo
+                  label="Poster do vídeo URL"
+                  value={estado.videoPosterUrl}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) => onChange({ videoPosterUrl: url })}
+                  orientacao="Imagem exibida enquanto o vídeo carrega. JPG, PNG ou WebP."
+                />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CampoToggle
+                    checked={estado.videoLoop}
+                    label="Repetir vídeo em loop"
+                    onChange={(checked) => onChange({ videoLoop: checked })}
+                  />
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Som do vídeo
+                    </span>
+
+                    <select
+                      value={estado.videoSom}
+                      onChange={(event) =>
+                        onChange({ videoSom: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {VIDEO_SOM_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadMidiaCampo
+                  label="Imagem desktop URL"
+                  value={estado.imagemDesktopUrl}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) => onChange({ imagemDesktopUrl: url })}
+                  orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
+                />
+
+                <UploadMidiaCampo
+                  label="Imagem mobile URL"
+                  value={estado.imagemMobileUrl}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) => onChange({ imagemMobileUrl: url })}
+                  orientacao="Opcional. Quando vazio, o preview mobile usa a imagem desktop."
+                />
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto do botão
+                </span>
+
+                <input
+                  value={estado.textoBotao}
+                  onChange={(event) =>
+                    onChange({ textoBotao: event.target.value })
+                  }
+                  placeholder="Ex: Comprar agora"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Link do botão
+                </span>
+
+                <input
+                  value={estado.linkBotao}
+                  onChange={(event) =>
+                    onChange({ linkBotao: event.target.value })
+                  }
+                  placeholder="/loja/descontos"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto do botão secundário
+                </span>
+
+                <input
+                  value={estado.textoBotaoSecundario}
+                  onChange={(event) =>
+                    onChange({ textoBotaoSecundario: event.target.value })
+                  }
+                  placeholder="Ex: Ver coleção"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Link do botão secundário
+                </span>
+
+                <input
+                  value={estado.linkBotaoSecundario}
+                  onChange={(event) =>
+                    onChange({ linkBotaoSecundario: event.target.value })
+                  }
+                  placeholder="/loja/colecao"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Alinhamento do conteúdo
+                </span>
+
+                <select
+                  value={estado.alinhamentoConteudo}
+                  onChange={(event) =>
+                    onChange({ alinhamentoConteudo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Altura
+                </span>
+
+                <select
+                  value={estado.alturaBanner}
+                  onChange={(event) =>
+                    onChange({ alturaBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALTURA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Overlay
+                </span>
+
+                <select
+                  value={estado.overlayBanner}
+                  onChange={(event) =>
+                    onChange({ overlayBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {OVERLAY_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor do texto
+                </span>
+
+                <select
+                  value={estado.corTextoBanner}
+                  onChange={(event) =>
+                    onChange({ corTextoBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_TEXTO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              Crop ainda não está ativo nesta etapa. Para vídeo, prefira MP4
+              com codec H.264 para maior compatibilidade.
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5 px-6 py-5">
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
-                Espaçamento
+                Nome interno do bloco
               </span>
 
-              <select
-                value={estado.espacamento}
+              <input
+                value={estado.nomeInterno}
                 onChange={(event) =>
-                  onChange({ espacamento: event.target.value })
+                  onChange({ nomeInterno: event.target.value })
                 }
+                placeholder="Ex: Banner principal"
                 className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              >
-                {ESPACAMENTO_PRESETS.map((preset) => (
-                  <option key={preset.value} value={preset.value}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
-          </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-            Esta é a primeira camada de edição visual. Nas próximas etapas,
-            vamos adicionar imagem desktop/mobile, crop e editor rico de texto.
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Título
+              </span>
+
+              <input
+                value={estado.titulo}
+                onChange={(event) => onChange({ titulo: event.target.value })}
+                placeholder="Título visível"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Texto
+              </span>
+
+              <textarea
+                value={estado.texto}
+                onChange={(event) => onChange({ texto: event.target.value })}
+                rows={5}
+                placeholder="Texto do bloco"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Imagem URL
+              </span>
+
+              <input
+                value={estado.imagemUrl}
+                onChange={(event) =>
+                  onChange({ imagemUrl: event.target.value })
+                }
+                placeholder="/uploads/imagem.jpg ou https://..."
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto do botão
+                </span>
+
+                <input
+                  value={estado.textoBotao}
+                  onChange={(event) =>
+                    onChange({ textoBotao: event.target.value })
+                  }
+                  placeholder="Ex: Comprar agora"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Link do botão
+                </span>
+
+                <input
+                  value={estado.linkBotao}
+                  onChange={(event) =>
+                    onChange({ linkBotao: event.target.value })
+                  }
+                  placeholder="/loja/descontos"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor de fundo
+                </span>
+
+                <select
+                  value={estado.corFundo}
+                  onChange={(event) =>
+                    onChange({ corFundo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_FUNDO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              Esta é a primeira camada de edição visual. Nas próximas etapas,
+              vamos adicionar imagem desktop/mobile, crop e editor rico de
+              texto.
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
           <button
@@ -1197,15 +1968,53 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "imagemUrl") ||
         getStringConfig(config, "imagem") ||
         getStringConfig(config, "backgroundImageUrl"),
+      imagemDesktopUrl:
+        getStringConfig(config, "imagemDesktopUrl") ||
+        getStringConfig(config, "imagemDesktop") ||
+        getStringConfig(config, "imagemUrl") ||
+        getStringConfig(config, "imagem") ||
+        getStringConfig(config, "backgroundImageUrl"),
+      imagemMobileUrl:
+        getStringConfig(config, "imagemMobileUrl") ||
+        getStringConfig(config, "imagemMobile"),
+      videoDesktopUrl: getStringConfig(config, "videoDesktopUrl"),
+      videoMobileUrl: getStringConfig(config, "videoMobileUrl"),
+      videoPosterUrl: getStringConfig(config, "videoPosterUrl"),
+      videoLoop: getBooleanConfig(config, "videoLoop", true),
+      videoSom: getStringConfig(config, "videoSom") || "MUDO",
       textoBotao:
         getStringConfig(config, "textoBotao") ||
         getStringConfig(config, "botaoTexto"),
+      textoBotaoSecundario:
+        getStringConfig(config, "textoBotaoSecundario") ||
+        getStringConfig(config, "botaoSecundarioTexto"),
       linkBotao:
         getStringConfig(config, "linkBotao") ||
         getStringConfig(config, "botaoLink") ||
         getStringConfig(config, "linkUrl"),
+      linkBotaoSecundario:
+        getStringConfig(config, "linkBotaoSecundario") ||
+        getStringConfig(config, "botaoSecundarioLink"),
       corFundo: getStringConfig(config, "corFundo") || "BRANCO",
       espacamento: getStringConfig(config, "espacamento") || "PADRAO",
+      alinhamentoConteudo:
+        getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA",
+      alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
+      overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
+      corTextoBanner: getStringConfig(config, "corTextoBanner") || "CLARO",
+      tipoMidia: getStringConfig(config, "tipoMidia") || "IMAGEM",
+      exibirTexto: getBooleanConfig(config, "exibirTexto", true),
+      exibirSubtitulo: getBooleanConfig(config, "exibirSubtitulo", true),
+      exibirBotaoPrimario: getBooleanConfig(
+        config,
+        "exibirBotaoPrimario",
+        true
+      ),
+      exibirBotaoSecundario: getBooleanConfig(
+        config,
+        "exibirBotaoSecundario",
+        false
+      ),
     });
   }
 
@@ -1229,20 +2038,50 @@ export default function EditorVisualPaginaClient({
 
     const configAtual = getConfigObject(editando.bloco.configJson);
 
+    const isBanner = isBannerTipo(editando.bloco.tipo);
+
     const novoConfig = {
       ...configAtual,
       titulo: editando.titulo,
       texto: editando.texto,
       descricao: editando.texto,
       conteudo: editando.texto,
-      imagemUrl: editando.imagemUrl,
       textoBotao: editando.textoBotao,
       botaoTexto: editando.textoBotao,
       linkBotao: editando.linkBotao,
       botaoLink: editando.linkBotao,
       linkUrl: editando.linkBotao,
-      corFundo: editando.corFundo,
-      espacamento: editando.espacamento,
+      ...(isBanner
+        ? {
+            tipoMidia: editando.tipoMidia,
+            exibirTexto: editando.exibirTexto,
+            exibirSubtitulo: editando.exibirSubtitulo,
+            exibirBotaoPrimario: editando.exibirBotaoPrimario,
+            exibirBotaoSecundario: editando.exibirBotaoSecundario,
+            imagemDesktopUrl: editando.imagemDesktopUrl,
+            imagemDesktop: editando.imagemDesktopUrl,
+            imagemMobileUrl: editando.imagemMobileUrl,
+            imagemMobile: editando.imagemMobileUrl,
+            imagemUrl: editando.imagemDesktopUrl,
+            videoDesktopUrl: editando.videoDesktopUrl,
+            videoMobileUrl: editando.videoMobileUrl,
+            videoPosterUrl: editando.videoPosterUrl,
+            videoLoop: editando.videoLoop,
+            videoSom: editando.videoSom,
+            textoBotaoSecundario: editando.textoBotaoSecundario,
+            botaoSecundarioTexto: editando.textoBotaoSecundario,
+            linkBotaoSecundario: editando.linkBotaoSecundario,
+            botaoSecundarioLink: editando.linkBotaoSecundario,
+            alinhamentoConteudo: editando.alinhamentoConteudo,
+            alturaBanner: editando.alturaBanner,
+            overlayBanner: editando.overlayBanner,
+            corTextoBanner: editando.corTextoBanner,
+          }
+        : {
+            imagemUrl: editando.imagemUrl,
+            corFundo: editando.corFundo,
+            espacamento: editando.espacamento,
+          }),
     };
 
     try {
