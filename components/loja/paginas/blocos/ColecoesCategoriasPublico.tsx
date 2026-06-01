@@ -5,6 +5,7 @@ import {
   asConfig,
   getArray,
   getBackgroundClass,
+  getBoolean,
   getButtonRadiusClass,
   getGridColumnsClass,
   getImageDesktop,
@@ -56,6 +57,110 @@ function getHeaderBlockAlignClass(desktop: string, mobile: string) {
         : "lg:mx-0";
 
   return `${mobileClass} ${desktopClass}`;
+}
+
+function normalizarPresetMosaico(value: string) {
+  if (
+    [
+      "MOSAICO_5_EDITORIAL",
+      "MOSAICO_3_DESTAQUE",
+      "GRID_4_EDITORIAL",
+      "GRID_3_EDITORIAL",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "MOSAICO_5_EDITORIAL";
+}
+
+function getTamanhoMosaicoPreset(preset: string, index: number) {
+  const normalized = normalizarPresetMosaico(preset);
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return ["DESTAQUE", "MEDIO", "MEDIO"][index] || "MEDIO";
+  }
+  if (normalized === "GRID_4_EDITORIAL" || normalized === "GRID_3_EDITORIAL") {
+    return "MEDIO";
+  }
+
+  return ["ALTO", "LARGO", "ALTO", "MEDIO", "GRANDE"][index] || "MEDIO";
+}
+
+function getTamanhoMosaicoEfetivo(item: Record<string, unknown>, index: number, preset: string) {
+  const tamanho = getString(item, "tamanhoMosaico", "AUTO");
+  return tamanho && tamanho !== "AUTO" ? tamanho : getTamanhoMosaicoPreset(preset, index);
+}
+
+function getMosaicGridClass(preset: string) {
+  if (normalizarPresetMosaico(preset) === "MOSAICO_3_DESTAQUE") {
+    return "grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-5 md:grid-cols-3";
+  }
+
+  return "grid auto-rows-[minmax(180px,auto)] grid-cols-1 gap-5 md:grid-cols-4";
+}
+
+function getMosaicItemClass(tamanho: string, index: number, preset: string) {
+  const normalizedPreset = normalizarPresetMosaico(preset);
+
+  if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
+    if (index === 0 || tamanho === "DESTAQUE") {
+      return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
+    }
+
+    return "aspect-[4/5] md:min-h-[300px]";
+  }
+
+  if (tamanho === "DESTAQUE") {
+    return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
+  }
+  if (tamanho === "ALTO") {
+    return "md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[560px]";
+  }
+  if (tamanho === "LARGO") {
+    return "md:col-span-2 aspect-[16/9] md:min-h-[300px]";
+  }
+  if (tamanho === "GRANDE") {
+    return "md:row-span-2 aspect-[3/4] md:aspect-auto md:min-h-[480px]";
+  }
+  if (tamanho === "PEQUENO") {
+    return "aspect-[4/3] md:min-h-[220px]";
+  }
+
+  return "aspect-[4/3] md:min-h-[280px]";
+}
+
+function getGridColumnsByPreset(preset: string, fallback: number) {
+  const normalized = normalizarPresetMosaico(preset);
+  if (normalized === "GRID_3_EDITORIAL") return 3;
+  if (normalized === "GRID_4_EDITORIAL") return 4;
+  return fallback;
+}
+
+function getHeaderWidthClass(width: number) {
+  if (width <= 25) return "lg:grid-cols-[minmax(0,0.32fr)_minmax(0,1.68fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1.58fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(0,0.66fr)_minmax(0,1.34fr)]";
+  return "lg:grid-cols-[minmax(0,0.52fr)_minmax(0,1.48fr)]";
+}
+
+function getLabelPositionClass(posicao: string) {
+  if (posicao === "INFERIOR_CENTRO") return "bottom-5 left-1/2 -translate-x-1/2 text-center";
+  if (posicao === "INFERIOR_DIREITA") return "bottom-5 right-5 text-right";
+  if (posicao === "SUPERIOR_ESQUERDA") return "left-5 top-5";
+  if (posicao === "CENTRO") return "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center";
+  return "bottom-5 left-5";
+}
+
+function getLabelSizeClass(tamanho: string) {
+  if (tamanho === "GRANDE") return "px-5 py-4";
+  if (tamanho === "MEDIA") return "px-4 py-3";
+  return "px-3 py-2.5";
+}
+
+function getLabelWidthClass(largura: string) {
+  if (largura === "LARGA") return "w-[min(82%,420px)]";
+  if (largura === "MEDIA") return "w-[min(68%,320px)]";
+  return "w-fit max-w-[78%]";
 }
 
 function HeaderImage({
@@ -172,6 +277,27 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const colors = getTextColorForBackground(corFundo);
   const layoutVisual = getString(config, "layoutVisual", "MOSAICO_EDITORIAL");
   const estiloEtiqueta = getString(config, "estiloEtiqueta", "SOBREPOSTA");
+  const presetMosaico = normalizarPresetMosaico(
+    getString(config, "presetMosaico", "MOSAICO_5_EDITORIAL")
+  );
+  const tamanhoEtiqueta = getString(config, "tamanhoEtiqueta", "PEQUENA");
+  const posicaoEtiqueta = getString(
+    config,
+    "posicaoEtiqueta",
+    "INFERIOR_ESQUERDA"
+  );
+  const larguraEtiqueta = getString(config, "larguraEtiqueta", "AUTO");
+  const exibirLinhaEtiqueta = getBoolean(config, "exibirLinhaEtiqueta", true);
+  const larguraCabecalhoDesktop = getNumber(
+    config,
+    "larguraCabecalhoDesktop",
+    32
+  );
+  const posicaoCabecalhoMosaico = getString(
+    config,
+    "posicaoCabecalhoMosaico",
+    "LATERAL"
+  );
   const larguraConteudo = getString(config, "larguraConteudo", "LARGA");
   const buttonRadiusClass = getButtonRadiusClass(
     getString(config, "estiloBordaBotao", "RETO")
@@ -321,6 +447,52 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
       )}
     </div>
   ) : null;
+  const renderItemLabel = (item: Record<string, unknown>, overlay: boolean) => {
+    const tituloItem = getString(item, "titulo") || getString(item, "categoriaNome");
+    const subtituloItem = getString(item, "subtitulo");
+    const textoLink = getString(item, "textoLink", "Explorar");
+    const href = getItemHref(item);
+    const wrapperClass = overlay
+      ? `absolute z-10 bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur ${getLabelPositionClass(
+          posicaoEtiqueta
+        )} ${getLabelSizeClass(tamanhoEtiqueta)} ${getLabelWidthClass(larguraEtiqueta)}`
+      : "pt-5";
+
+    return (
+      <div className={wrapperClass}>
+        <PublicRichTextRenderer
+          value={getRichText(item, "tituloRichText")}
+          fallback={tituloItem}
+          className={`font-medium leading-snug ${
+            overlay
+              ? tamanhoEtiqueta === "GRANDE"
+                ? "text-sm text-slate-950"
+                : "text-xs text-slate-950"
+              : `text-xl ${colors.title}`
+          }`}
+        />
+        {exibirLinhaEtiqueta && overlay ? (
+          <span className="my-2 block h-px w-8 bg-slate-950/30" />
+        ) : null}
+        <PublicRichTextRenderer
+          value={getRichText(item, "subtituloRichText")}
+          fallback={subtituloItem}
+          className={
+            overlay
+              ? "mt-1 text-xs leading-5 text-slate-600"
+              : `mt-2 text-sm leading-6 ${colors.body}`
+          }
+        />
+        {textoLink && href ? (
+          <span
+            className={`mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
+          >
+            {textoLink}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <section
@@ -342,14 +514,15 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                 className={`mt-10 grid gap-6 ${getGridColumnsClass(
                   getNumber(config, "colunasMobile", 1),
                   getNumber(config, "colunasTablet", 2),
-                  getNumber(config, "colunasDesktop", 4)
+                  getGridColumnsByPreset(
+                    presetMosaico,
+                    getNumber(config, "colunasDesktop", 4)
+                  )
                 )}`}
               >
                 {itens.map((item, index) => {
                   const tituloItem =
                     getString(item, "titulo") || getString(item, "categoriaNome");
-                  const subtituloItem = getString(item, "subtitulo");
-                  const textoLink = getString(item, "textoLink", "Explorar");
                   const href = getItemHref(item);
                   const content = (
                     <article>
@@ -360,25 +533,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                       />
 
                       {estiloEtiqueta !== "OCULTA" ? (
-                        <div className="pt-5">
-                          <PublicRichTextRenderer
-                            value={getRichText(item, "tituloRichText")}
-                            fallback={tituloItem}
-                            className={`text-xl font-medium leading-snug ${colors.title}`}
-                          />
-                          <PublicRichTextRenderer
-                            value={getRichText(item, "subtituloRichText")}
-                            fallback={subtituloItem}
-                            className={`mt-2 text-sm leading-6 ${colors.body}`}
-                          />
-                          {textoLink && href ? (
-                            <span
-                              className={`mt-4 inline-flex min-h-10 items-center border border-current px-5 text-sm font-semibold ${buttonRadiusClass}`}
-                            >
-                              {textoLink}
-                            </span>
-                          ) : null}
-                        </div>
+                        renderItemLabel(item, false)
                       ) : null}
                     </article>
                   );
@@ -400,8 +555,59 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               </div>
             ) : null}
           </>
+        ) : posicaoCabecalhoMosaico === "TOPO" ? (
+          <>
+            {headerContent}
+
+            {itens.length > 0 ? (
+              <div className={`mt-10 ${getMosaicGridClass(presetMosaico)}`}>
+                {itens.map((item, index) => {
+                  const tituloItem =
+                    getString(item, "titulo") || getString(item, "categoriaNome");
+                  const href = getItemHref(item);
+                  const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                    item,
+                    index,
+                    presetMosaico
+                  );
+                  const content = (
+                    <article
+                      className={`relative min-w-0 overflow-hidden ${getMosaicItemClass(
+                        tamanhoEfetivo,
+                        index,
+                        presetMosaico
+                      )}`}
+                    >
+                      <ItemMedia item={item} alt={tituloItem} className="h-full min-h-full" />
+                      {estiloEtiqueta !== "OCULTA"
+                        ? renderItemLabel(item, estiloEtiqueta === "SOBREPOSTA")
+                        : null}
+                    </article>
+                  );
+
+                  return href ? (
+                    <Link
+                      key={getString(item, "id", `colecao-${index}`)}
+                      href={href}
+                      className="group block"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={getString(item, "id", `colecao-${index}`)}>
+                      {content}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-start">
+          <div
+            className={`grid gap-8 lg:items-start ${getHeaderWidthClass(
+              larguraCabecalhoDesktop
+            )}`}
+          >
             {headerContent ? (
               <div className="lg:sticky lg:top-24">
                 {headerContent}
@@ -409,61 +615,32 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             ) : null}
 
             {itens.length > 0 ? (
-              <div className="grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-5 md:grid-cols-2">
+              <div className={getMosaicGridClass(presetMosaico)}>
                 {itens.map((item, index) => {
                   const tituloItem =
                     getString(item, "titulo") || getString(item, "categoriaNome");
-                  const subtituloItem = getString(item, "subtitulo");
-                  const textoLink = getString(item, "textoLink", "Explorar");
                   const href = getItemHref(item);
-                  const featured = index === 0 || index === 3;
-                  const label = estiloEtiqueta !== "OCULTA" && (
-                    <div
-                      className={
-                        estiloEtiqueta === "SOBREPOSTA"
-                          ? "absolute bottom-4 left-4 right-4 bg-white/92 p-4 shadow-sm backdrop-blur"
-                          : "pt-4"
-                      }
-                    >
-                      <PublicRichTextRenderer
-                        value={getRichText(item, "tituloRichText")}
-                        fallback={tituloItem}
-                        className={`text-lg font-medium leading-snug ${
-                          estiloEtiqueta === "SOBREPOSTA"
-                            ? "text-slate-950"
-                            : colors.title
-                        }`}
-                      />
-                      <PublicRichTextRenderer
-                        value={getRichText(item, "subtituloRichText")}
-                        fallback={subtituloItem}
-                        className={`mt-2 text-sm leading-6 ${
-                          estiloEtiqueta === "SOBREPOSTA"
-                            ? "text-slate-600"
-                            : colors.body
-                        }`}
-                      />
-                      {textoLink && href ? (
-                        <span
-                          className={`mt-3 inline-flex min-h-9 items-center border border-current px-4 text-xs font-semibold ${buttonRadiusClass}`}
-                        >
-                          {textoLink}
-                        </span>
-                      ) : null}
-                    </div>
+                  const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                    item,
+                    index,
+                    presetMosaico
                   );
                   const content = (
                     <article
-                      className={`relative ${
-                        featured ? "md:row-span-2" : ""
-                      }`}
+                      className={`relative min-w-0 overflow-hidden ${getMosaicItemClass(
+                        tamanhoEfetivo,
+                        index,
+                        presetMosaico
+                      )}`}
                     >
                       <ItemMedia
                         item={item}
                         alt={tituloItem}
-                        className={featured ? "aspect-[3/4] h-full" : "aspect-[4/3]"}
+                        className="h-full min-h-full"
                       />
-                      {label}
+                      {estiloEtiqueta !== "OCULTA"
+                        ? renderItemLabel(item, estiloEtiqueta === "SOBREPOSTA")
+                        : null}
                     </article>
                   );
 

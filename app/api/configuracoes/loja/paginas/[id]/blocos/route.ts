@@ -338,6 +338,7 @@ function getConfigPadrao(tipo: string) {
       mediaCropDesktopY: 50,
       mediaCropMobileX: 50,
       mediaCropMobileY: 50,
+      tamanhoMosaico: "AUTO",
       ordem: index - 1,
     });
 
@@ -362,6 +363,7 @@ function getConfigPadrao(tipo: string) {
       alinhamentoCabecalhoDesktop: "ESQUERDA",
       alinhamentoCabecalhoMobile: "ESQUERDA",
       layoutVisual: "MOSAICO_EDITORIAL",
+      presetMosaico: "MOSAICO_5_EDITORIAL",
       origemItens: "PERSONALIZADO",
       alinhamentoTextoDesktop: "ESQUERDA",
       alinhamentoTextoMobile: "ESQUERDA",
@@ -372,6 +374,12 @@ function getConfigPadrao(tipo: string) {
       colunasTablet: 2,
       colunasMobile: 1,
       estiloEtiqueta: "SOBREPOSTA",
+      tamanhoEtiqueta: "PEQUENA",
+      posicaoEtiqueta: "INFERIOR_ESQUERDA",
+      larguraEtiqueta: "AUTO",
+      exibirLinhaEtiqueta: true,
+      larguraCabecalhoDesktop: 32,
+      posicaoCabecalhoMosaico: "LATERAL",
       estiloBordaBotao: "RETO",
       itens: [1, 2, 3, 4, 5].map(criarItem),
     };

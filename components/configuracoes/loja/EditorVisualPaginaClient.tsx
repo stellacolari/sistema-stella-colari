@@ -160,6 +160,7 @@ type ColecaoCategoriaItemEditando = {
   mediaCropDesktopY: number;
   mediaCropMobileX: number;
   mediaCropMobileY: number;
+  tamanhoMosaico: string;
   ordem: number;
 };
 
@@ -233,6 +234,13 @@ type BlocoEditandoState = {
   colunasTabletColecoes: number;
   colunasMobileColecoes: number;
   estiloEtiquetaColecoes: string;
+  presetMosaicoColecoes: string;
+  tamanhoEtiquetaColecoes: string;
+  posicaoEtiquetaColecoes: string;
+  larguraEtiquetaColecoes: string;
+  exibirLinhaEtiquetaColecoes: boolean;
+  larguraCabecalhoDesktopColecoes: number;
+  posicaoCabecalhoMosaicoColecoes: string;
   itensColecoes: ColecaoCategoriaItemEditando[];
   tipoCabecalhoColecoes: string;
   logoTituloUrl: string;
@@ -502,6 +510,48 @@ const MEDIA_POSITION_PRESETS = [
   { value: "top right", label: "Topo direita" },
   { value: "bottom left", label: "Base esquerda" },
   { value: "bottom right", label: "Base direita" },
+];
+
+const PRESET_MOSAICO_COLECOES_PRESETS = [
+  { value: "MOSAICO_5_EDITORIAL", label: "Mosaico 5 editorial" },
+  { value: "MOSAICO_3_DESTAQUE", label: "Mosaico 3 destaque" },
+  { value: "GRID_4_EDITORIAL", label: "Grid 4 editorial" },
+  { value: "GRID_3_EDITORIAL", label: "Grid 3 editorial" },
+];
+
+const TAMANHO_MOSAICO_COLECOES_PRESETS = [
+  { value: "AUTO", label: "Automático pelo preset" },
+  { value: "PEQUENO", label: "Pequeno" },
+  { value: "MEDIO", label: "Médio" },
+  { value: "GRANDE", label: "Grande" },
+  { value: "ALTO", label: "Alto" },
+  { value: "LARGO", label: "Largo" },
+  { value: "DESTAQUE", label: "Destaque" },
+];
+
+const TAMANHO_ETIQUETA_COLECOES_PRESETS = [
+  { value: "PEQUENA", label: "Pequena" },
+  { value: "MEDIA", label: "Média" },
+  { value: "GRANDE", label: "Grande" },
+];
+
+const POSICAO_ETIQUETA_COLECOES_PRESETS = [
+  { value: "INFERIOR_ESQUERDA", label: "Inferior esquerda" },
+  { value: "INFERIOR_CENTRO", label: "Inferior centro" },
+  { value: "INFERIOR_DIREITA", label: "Inferior direita" },
+  { value: "SUPERIOR_ESQUERDA", label: "Superior esquerda" },
+  { value: "CENTRO", label: "Centro" },
+];
+
+const LARGURA_ETIQUETA_COLECOES_PRESETS = [
+  { value: "AUTO", label: "Automática" },
+  { value: "MEDIA", label: "Média" },
+  { value: "LARGA", label: "Larga" },
+];
+
+const POSICAO_CABECALHO_MOSAICO_PRESETS = [
+  { value: "LATERAL", label: "Lateral no desktop" },
+  { value: "TOPO", label: "Topo" },
 ];
 
 const MAX_IMAGEM_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -1200,6 +1250,7 @@ function criarItemColecaoPadrao(index: number): ColecaoCategoriaItemEditando {
     mediaCropDesktopY: 50,
     mediaCropMobileX: 50,
     mediaCropMobileY: 50,
+    tamanhoMosaico: "AUTO",
     ordem: index - 1,
   };
 }
@@ -1232,6 +1283,165 @@ function normalizarLarguraConteudoColecoes(value: string) {
 function normalizarEstiloEtiquetaColecoes(value: string) {
   if (["SOBREPOSTA", "ABAIXO", "OCULTA"].includes(value)) return value;
   return "SOBREPOSTA";
+}
+
+function normalizarPresetMosaicoColecoes(value: string) {
+  if (
+    [
+      "MOSAICO_5_EDITORIAL",
+      "MOSAICO_3_DESTAQUE",
+      "GRID_4_EDITORIAL",
+      "GRID_3_EDITORIAL",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "MOSAICO_5_EDITORIAL";
+}
+
+function normalizarTamanhoMosaicoColecoes(value: string) {
+  if (
+    ["AUTO", "PEQUENO", "MEDIO", "GRANDE", "ALTO", "LARGO", "DESTAQUE"].includes(
+      value
+    )
+  ) {
+    return value;
+  }
+
+  return "AUTO";
+}
+
+function normalizarTamanhoEtiquetaColecoes(value: string) {
+  if (["PEQUENA", "MEDIA", "GRANDE"].includes(value)) return value;
+  return "PEQUENA";
+}
+
+function normalizarPosicaoEtiquetaColecoes(value: string) {
+  if (
+    [
+      "INFERIOR_ESQUERDA",
+      "INFERIOR_CENTRO",
+      "INFERIOR_DIREITA",
+      "SUPERIOR_ESQUERDA",
+      "CENTRO",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "INFERIOR_ESQUERDA";
+}
+
+function normalizarLarguraEtiquetaColecoes(value: string) {
+  if (["AUTO", "MEDIA", "LARGA"].includes(value)) return value;
+  return "AUTO";
+}
+
+function normalizarPosicaoCabecalhoMosaico(value: string) {
+  if (value === "TOPO") return "TOPO";
+  return "LATERAL";
+}
+
+function getTamanhoMosaicoPreset(preset: string, index: number) {
+  const normalized = normalizarPresetMosaicoColecoes(preset);
+
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return ["DESTAQUE", "MEDIO", "MEDIO"][index] || "MEDIO";
+  }
+
+  if (normalized === "GRID_4_EDITORIAL" || normalized === "GRID_3_EDITORIAL") {
+    return "MEDIO";
+  }
+
+  return ["ALTO", "LARGO", "ALTO", "MEDIO", "GRANDE"][index] || "MEDIO";
+}
+
+function getTamanhoMosaicoEfetivo(item: ColecaoCategoriaItemEditando, index: number, preset: string) {
+  const tamanho = normalizarTamanhoMosaicoColecoes(item.tamanhoMosaico);
+  return tamanho === "AUTO" ? getTamanhoMosaicoPreset(preset, index) : tamanho;
+}
+
+function getColecoesMosaicItemClass(tamanho: string, index: number, preset: string) {
+  const normalizedPreset = normalizarPresetMosaicoColecoes(preset);
+
+  if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
+    if (index === 0 || tamanho === "DESTAQUE") {
+      return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
+    }
+
+    return "aspect-[4/5] md:min-h-[300px]";
+  }
+
+  if (normalizedPreset === "GRID_4_EDITORIAL" || normalizedPreset === "GRID_3_EDITORIAL") {
+    return "aspect-[4/5]";
+  }
+
+  if (tamanho === "DESTAQUE") {
+    return "md:col-span-2 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[620px]";
+  }
+
+  if (tamanho === "ALTO") {
+    return "md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[560px]";
+  }
+
+  if (tamanho === "LARGO") {
+    return "md:col-span-2 aspect-[16/9] md:min-h-[300px]";
+  }
+
+  if (tamanho === "GRANDE") {
+    return "md:row-span-2 aspect-[3/4] md:aspect-auto md:min-h-[480px]";
+  }
+
+  if (tamanho === "PEQUENO") {
+    return "aspect-[4/3] md:min-h-[220px]";
+  }
+
+  return "aspect-[4/3] md:min-h-[280px]";
+}
+
+function getColecoesMosaicGridClass(preset: string) {
+  const normalized = normalizarPresetMosaicoColecoes(preset);
+
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return "grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-4 md:grid-cols-3";
+  }
+
+  return "grid auto-rows-[minmax(180px,auto)] grid-cols-1 gap-4 md:grid-cols-4";
+}
+
+function getColecoesGridColumnsByPreset(preset: string, fallback: number) {
+  const normalized = normalizarPresetMosaicoColecoes(preset);
+  if (normalized === "GRID_3_EDITORIAL") return 3;
+  if (normalized === "GRID_4_EDITORIAL") return 4;
+  return fallback;
+}
+
+function getColecoesHeaderWidthClass(width: number) {
+  if (width <= 25) return "lg:grid-cols-[minmax(0,0.32fr)_minmax(0,1.68fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1.58fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(0,0.66fr)_minmax(0,1.34fr)]";
+  return "lg:grid-cols-[minmax(0,0.52fr)_minmax(0,1.48fr)]";
+}
+
+function getColecoesLabelPositionClass(posicao: string) {
+  if (posicao === "INFERIOR_CENTRO") return "bottom-4 left-1/2 -translate-x-1/2 text-center";
+  if (posicao === "INFERIOR_DIREITA") return "bottom-4 right-4 text-right";
+  if (posicao === "SUPERIOR_ESQUERDA") return "left-4 top-4";
+  if (posicao === "CENTRO") return "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center";
+  return "bottom-4 left-4";
+}
+
+function getColecoesLabelSizeClass(tamanho: string) {
+  if (tamanho === "GRANDE") return "px-5 py-4";
+  if (tamanho === "MEDIA") return "px-4 py-3";
+  return "px-3 py-2.5";
+}
+
+function getColecoesLabelWidthClass(largura: string) {
+  if (largura === "LARGA") return "w-[min(82%,420px)]";
+  if (largura === "MEDIA") return "w-[min(68%,320px)]";
+  return "w-fit max-w-[78%]";
 }
 
 function normalizarTipoCabecalhoColecoes(value: string) {
@@ -1308,6 +1518,9 @@ function getItensColecoesConfig(
       ),
       mediaCropMobileX: getNumberConfig(data, "mediaCropMobileX", mobileCrop.x),
       mediaCropMobileY: getNumberConfig(data, "mediaCropMobileY", mobileCrop.y),
+      tamanhoMosaico: normalizarTamanhoMosaicoColecoes(
+        getStringConfig(data, "tamanhoMosaico")
+      ),
       ordem: getNumberConfig(data, "ordem", index),
     };
   });
@@ -2890,11 +3103,36 @@ function RenderBlocoPreview({
   const layoutVisualColecoes = normalizarLayoutVisualColecoes(
     getStringConfig(config, "layoutVisual")
   );
+  const presetMosaicoColecoes = normalizarPresetMosaicoColecoes(
+    getStringConfig(config, "presetMosaico")
+  );
   const larguraConteudoColecoes = normalizarLarguraConteudoColecoes(
     getStringConfig(config, "larguraConteudo")
   );
   const estiloEtiquetaColecoes = normalizarEstiloEtiquetaColecoes(
     getStringConfig(config, "estiloEtiqueta")
+  );
+  const tamanhoEtiquetaColecoes = normalizarTamanhoEtiquetaColecoes(
+    getStringConfig(config, "tamanhoEtiqueta")
+  );
+  const posicaoEtiquetaColecoes = normalizarPosicaoEtiquetaColecoes(
+    getStringConfig(config, "posicaoEtiqueta")
+  );
+  const larguraEtiquetaColecoes = normalizarLarguraEtiquetaColecoes(
+    getStringConfig(config, "larguraEtiqueta")
+  );
+  const exibirLinhaEtiquetaColecoes = getBooleanConfig(
+    config,
+    "exibirLinhaEtiqueta",
+    true
+  );
+  const larguraCabecalhoDesktopColecoes = getNumberConfig(
+    config,
+    "larguraCabecalhoDesktop",
+    32
+  );
+  const posicaoCabecalhoMosaicoColecoes = normalizarPosicaoCabecalhoMosaico(
+    getStringConfig(config, "posicaoCabecalhoMosaico")
   );
   const tipoCabecalhoColecoes = normalizarTipoCabecalhoColecoes(
     getStringConfig(config, "tipoCabecalho")
@@ -2972,7 +3210,10 @@ function RenderBlocoPreview({
       ? Math.max(1, getNumberConfig(config, "colunasMobile", 1))
       : device === "TABLET"
         ? Math.max(1, getNumberConfig(config, "colunasTablet", 2))
-        : Math.max(1, getNumberConfig(config, "colunasDesktop", 4));
+        : getColecoesGridColumnsByPreset(
+            presetMosaicoColecoes,
+            Math.max(1, getNumberConfig(config, "colunasDesktop", 4))
+          );
   const colecoesWidthClass =
     larguraConteudoColecoes === "CONTIDA"
       ? "max-w-5xl"
@@ -3145,6 +3386,71 @@ function RenderBlocoPreview({
       )}
     </div>
   );
+  const renderColecaoItemLabel = (
+    item: ColecaoCategoriaItemEditando,
+    overlay: boolean
+  ) => {
+    const tituloItem = item.titulo || item.categoriaNome;
+    const etiquetaBaseClass = overlay
+      ? `absolute z-10 bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur ${getColecoesLabelPositionClass(
+          posicaoEtiquetaColecoes
+        )} ${getColecoesLabelSizeClass(tamanhoEtiquetaColecoes)} ${getColecoesLabelWidthClass(
+          larguraEtiquetaColecoes
+        )}`
+      : "pt-4";
+    const titleClass = overlay
+      ? tamanhoEtiquetaColecoes === "GRANDE"
+        ? "text-sm text-slate-950"
+        : "text-xs text-slate-950"
+      : "text-slate-950";
+    const bodyClass = overlay
+      ? tamanhoEtiquetaColecoes === "PEQUENA"
+        ? "mt-1 text-[11px] leading-4 text-slate-500"
+        : "mt-1.5 text-xs leading-5 text-slate-500"
+      : "mt-2 leading-6 text-slate-500";
+
+    return (
+      <div className={etiquetaBaseClass}>
+        <RichTextInlineEditor
+          value={item.tituloRichText}
+          fallbackText={tituloItem}
+          placeholder="Título da coleção"
+          className={titleClass}
+          style={resolveTextStyle(cardTituloStyle)}
+          onChange={(richText, plainText) =>
+            onInlineColecaoItemChange(bloco.id, item.id, {
+              tituloRichText: richText,
+              titulo: plainText,
+            })
+          }
+        />
+        {exibirLinhaEtiquetaColecoes && overlay ? (
+          <span className="my-2 block h-px w-8 bg-slate-950/30" />
+        ) : null}
+        <RichTextInlineEditor
+          value={item.subtituloRichText}
+          fallbackText={item.subtitulo}
+          placeholder="Chamada da coleção"
+          multiline
+          className={bodyClass}
+          style={resolveTextStyle(cardTextoStyle)}
+          onChange={(richText, plainText) =>
+            onInlineColecaoItemChange(bloco.id, item.id, {
+              subtituloRichText: richText,
+              subtitulo: plainText,
+            })
+          }
+        />
+        {item.textoLink && (
+          <span
+            className={`mt-2 inline-flex border border-slate-950 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-950 ${buttonRadiusPreviewClass}`}
+          >
+            {item.textoLink}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <section
@@ -3752,113 +4058,86 @@ function RenderBlocoPreview({
                 {colecoesHeaderPreview}
 
                 <div
-                  className="mt-7 grid gap-4"
+                  className="mt-8 grid gap-5"
                   style={{
                     gridTemplateColumns: `repeat(${colunasColecoes}, minmax(0, 1fr))`,
                   }}
                 >
-                  {itensColecoesPreview.map((item) => {
-                    const tituloItem = item.titulo || item.categoriaNome;
+                  {itensColecoesPreview.map((item) => (
+                    <article key={item.id} className="min-w-0">
+                      {renderColecaoItemMedia(item, "aspect-[4/5]")}
+                      {estiloEtiquetaColecoes !== "OCULTA" ? (
+                        renderColecaoItemLabel(item, false)
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : posicaoCabecalhoMosaicoColecoes === "TOPO" ? (
+              <>
+                {colecoesHeaderPreview}
+
+                <div className={`mt-8 ${getColecoesMosaicGridClass(presetMosaicoColecoes)}`}>
+                  {itensColecoesPreview.map((item, index) => {
+                    const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                      item,
+                      index,
+                      presetMosaicoColecoes
+                    );
+
                     return (
-                      <article key={item.id} className="min-w-0">
-                        {renderColecaoItemMedia(item, "aspect-[4/5]")}
-                        {estiloEtiquetaColecoes !== "OCULTA" && (
-                          <div className="pt-4">
-                            <RichTextInlineEditor
-                              value={item.tituloRichText}
-                              fallbackText={tituloItem}
-                              placeholder="Título da coleção"
-                              className="text-slate-950"
-                              style={resolveTextStyle(cardTituloStyle)}
-                              onChange={(richText, plainText) =>
-                                onInlineColecaoItemChange(bloco.id, item.id, {
-                                  tituloRichText: richText,
-                                  titulo: plainText,
-                                })
-                              }
-                            />
-                            <RichTextInlineEditor
-                              value={item.subtituloRichText}
-                              fallbackText={item.subtitulo}
-                              placeholder="Chamada da coleção"
-                              multiline
-                              className="mt-2 leading-6 text-slate-500"
-                              style={resolveTextStyle(cardTextoStyle)}
-                              onChange={(richText, plainText) =>
-                                onInlineColecaoItemChange(bloco.id, item.id, {
-                                  subtituloRichText: richText,
-                                  subtitulo: plainText,
-                                })
-                              }
-                            />
-                            {item.textoLink && (
-                              <span
-                                className={`mt-3 inline-flex border border-slate-950 px-4 py-2 text-xs font-semibold text-slate-950 ${buttonRadiusPreviewClass}`}
-                              >
-                                {item.textoLink}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      <article
+                        key={item.id}
+                        className={`relative min-w-0 overflow-hidden ${getColecoesMosaicItemClass(
+                          tamanhoEfetivo,
+                          index,
+                          presetMosaicoColecoes
+                        )}`}
+                      >
+                        {renderColecaoItemMedia(item, "h-full min-h-full")}
+                        {estiloEtiquetaColecoes !== "OCULTA" ? (
+                          renderColecaoItemLabel(
+                            item,
+                            estiloEtiquetaColecoes === "SOBREPOSTA"
+                          )
+                        ) : null}
                       </article>
                     );
                   })}
                 </div>
               </>
             ) : (
-              <div className="grid gap-7 lg:grid-cols-[0.8fr_1.2fr]">
-                {colecoesHeaderPreview}
+              <div
+                className={`grid gap-7 lg:items-start ${getColecoesHeaderWidthClass(
+                  larguraCabecalhoDesktopColecoes
+                )}`}
+              >
+                <div className="lg:sticky lg:top-6">{colecoesHeaderPreview}</div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className={getColecoesMosaicGridClass(presetMosaicoColecoes)}>
                   {itensColecoesPreview.map((item, index) => {
-                    const tituloItem = item.titulo || item.categoriaNome;
-                    const featured = index === 0 || index === 3;
+                    const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                      item,
+                      index,
+                      presetMosaicoColecoes
+                    );
+
                     return (
                       <article
                         key={item.id}
-                        className={`relative min-w-0 ${featured ? "md:row-span-2" : ""}`}
+                        className={`relative min-w-0 overflow-hidden ${getColecoesMosaicItemClass(
+                          tamanhoEfetivo,
+                          index,
+                          presetMosaicoColecoes
+                        )}`}
                       >
-                        {renderColecaoItemMedia(
-                          item,
-                          featured ? "aspect-[3/4] h-full" : "aspect-[4/3]"
-                        )}
-                        {estiloEtiquetaColecoes !== "OCULTA" && (
-                          <div
-                            className={
-                              estiloEtiquetaColecoes === "SOBREPOSTA"
-                                ? "absolute bottom-3 left-3 right-3 bg-white/95 p-4 shadow-sm"
-                                : "pt-4"
-                            }
-                          >
-                            <RichTextInlineEditor
-                              value={item.tituloRichText}
-                              fallbackText={tituloItem}
-                              placeholder="Título da coleção"
-                              className="text-slate-950"
-                              style={resolveTextStyle(cardTituloStyle)}
-                              onChange={(richText, plainText) =>
-                                onInlineColecaoItemChange(bloco.id, item.id, {
-                                  tituloRichText: richText,
-                                  titulo: plainText,
-                                })
-                              }
-                            />
-                            <RichTextInlineEditor
-                              value={item.subtituloRichText}
-                              fallbackText={item.subtitulo}
-                              placeholder="Chamada da coleção"
-                              multiline
-                              className="mt-2 leading-6 text-slate-500"
-                              style={resolveTextStyle(cardTextoStyle)}
-                              onChange={(richText, plainText) =>
-                                onInlineColecaoItemChange(bloco.id, item.id, {
-                                  subtituloRichText: richText,
-                                  subtitulo: plainText,
-                                })
-                              }
-                            />
-                          </div>
-                        )}
+                        {renderColecaoItemMedia(item, "h-full min-h-full")}
+                        {estiloEtiquetaColecoes !== "OCULTA" ? (
+                          renderColecaoItemLabel(
+                            item,
+                            estiloEtiquetaColecoes === "SOBREPOSTA"
+                          )
+                        ) : null}
                       </article>
                     );
                   })}
@@ -4463,11 +4742,26 @@ function ColecoesCategoriasModalFields({
           <select value={estado.origemItensColecoes} onChange={(event) => onChange({ origemItensColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Origem dos itens">
             {ORIGEM_ITENS_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
           </select>
+          <select value={estado.presetMosaicoColecoes} onChange={(event) => onChange({ presetMosaicoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Preset de composição">
+            {PRESET_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
           <select value={estado.larguraConteudoColecoes} onChange={(event) => onChange({ larguraConteudoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura">
             {LARGURA_CONTEUDO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
           </select>
           <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Etiqueta">
             {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.tamanhoEtiquetaColecoes} onChange={(event) => onChange({ tamanhoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tamanho da etiqueta">
+            {TAMANHO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Etiqueta: {preset.label}</option>)}
+          </select>
+          <select value={estado.posicaoEtiquetaColecoes} onChange={(event) => onChange({ posicaoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição da etiqueta">
+            {POSICAO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.larguraEtiquetaColecoes} onChange={(event) => onChange({ larguraEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura da etiqueta">
+            {LARGURA_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Largura: {preset.label}</option>)}
+          </select>
+          <select value={estado.posicaoCabecalhoMosaicoColecoes} onChange={(event) => onChange({ posicaoCabecalhoMosaicoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição do cabeçalho no mosaico">
+            {POSICAO_CABECALHO_MOSAICO_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
           </select>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -4504,6 +4798,36 @@ function ColecoesCategoriasModalFields({
             className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
             aria-label="Colunas mobile"
           />
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Largura do cabeçalho lateral (%)
+            </span>
+            <input
+              type="number"
+              min={25}
+              max={40}
+              value={estado.larguraCabecalhoDesktopColecoes}
+              onChange={(event) =>
+                onChange({
+                  larguraCabecalhoDesktopColecoes: Number(event.target.value) || 32,
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={estado.exibirLinhaEtiquetaColecoes}
+              onChange={(event) =>
+                onChange({ exibirLinhaEtiquetaColecoes: event.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Exibir linha decorativa na etiqueta
+          </label>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <select
@@ -4570,6 +4894,9 @@ function ColecoesCategoriasModalFields({
                 ) : (
                   <input value={item.linkUrl} onChange={(event) => updateItem(item.id, { linkUrl: event.target.value })} placeholder="/loja/colecao" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
                 )}
+                <select value={item.tamanhoMosaico} onChange={(event) => updateItem(item.id, { tamanhoMosaico: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-2" aria-label="Tamanho no mosaico">
+                  {TAMANHO_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                </select>
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <input value={item.titulo} onChange={(event) => updateItem(item.id, { titulo: event.target.value })} placeholder={item.categoriaNome || "Título da coleção"} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
@@ -7616,6 +7943,31 @@ export default function EditorVisualPaginaClient({
       estiloEtiquetaColecoes: normalizarEstiloEtiquetaColecoes(
         getStringConfig(config, "estiloEtiqueta")
       ),
+      presetMosaicoColecoes: normalizarPresetMosaicoColecoes(
+        getStringConfig(config, "presetMosaico")
+      ),
+      tamanhoEtiquetaColecoes: normalizarTamanhoEtiquetaColecoes(
+        getStringConfig(config, "tamanhoEtiqueta")
+      ),
+      posicaoEtiquetaColecoes: normalizarPosicaoEtiquetaColecoes(
+        getStringConfig(config, "posicaoEtiqueta")
+      ),
+      larguraEtiquetaColecoes: normalizarLarguraEtiquetaColecoes(
+        getStringConfig(config, "larguraEtiqueta")
+      ),
+      exibirLinhaEtiquetaColecoes: getBooleanConfig(
+        config,
+        "exibirLinhaEtiqueta",
+        true
+      ),
+      larguraCabecalhoDesktopColecoes: getNumberConfig(
+        config,
+        "larguraCabecalhoDesktop",
+        32
+      ),
+      posicaoCabecalhoMosaicoColecoes: normalizarPosicaoCabecalhoMosaico(
+        getStringConfig(config, "posicaoCabecalhoMosaico")
+      ),
       itensColecoes: getItensColecoesConfig(config),
       tipoCabecalhoColecoes: normalizarTipoCabecalhoColecoes(
         getStringConfig(config, "tipoCabecalho")
@@ -8001,6 +8353,16 @@ export default function EditorVisualPaginaClient({
                 Number(editando.colunasMobileColecoes) || 1
               ),
               estiloEtiqueta: editando.estiloEtiquetaColecoes,
+              presetMosaico: editando.presetMosaicoColecoes,
+              tamanhoEtiqueta: editando.tamanhoEtiquetaColecoes,
+              posicaoEtiqueta: editando.posicaoEtiquetaColecoes,
+              larguraEtiqueta: editando.larguraEtiquetaColecoes,
+              exibirLinhaEtiqueta: editando.exibirLinhaEtiquetaColecoes,
+              larguraCabecalhoDesktop: Math.min(
+                40,
+                Math.max(25, Number(editando.larguraCabecalhoDesktopColecoes) || 32)
+              ),
+              posicaoCabecalhoMosaico: editando.posicaoCabecalhoMosaicoColecoes,
               corFundo: editando.corFundo,
               espacamento: editando.espacamento,
               tipoCabecalho: editando.tipoCabecalhoColecoes,
@@ -8053,6 +8415,7 @@ export default function EditorVisualPaginaClient({
                 mediaCropDesktopY: item.mediaCropDesktopY,
                 mediaCropMobileX: item.mediaCropMobileX,
                 mediaCropMobileY: item.mediaCropMobileY,
+                tamanhoMosaico: item.tamanhoMosaico,
                 ordem: index,
               })),
             }
