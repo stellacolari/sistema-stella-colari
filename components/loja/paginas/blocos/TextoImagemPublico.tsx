@@ -66,7 +66,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     return null;
   }
 
-  if (textoSobreImagem) {
+  if (textoSobreImagem && hasMedia) {
     return (
       <section className={`relative overflow-hidden ${getSpacingClass(getString(config, "espacamento", "PADRAO"))}`}>
         <div className="absolute inset-0">

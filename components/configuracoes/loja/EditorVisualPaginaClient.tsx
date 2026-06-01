@@ -159,6 +159,7 @@ type BlocoEditandoState = {
   categoriaProdutoNome: string;
   categoriasProdutosIds: string[];
   categoriasProdutosSlugs: string[];
+  categoriasProdutosNomes: string[];
   produtosSelecionadosIds: string[];
   limiteProdutos: number;
   layoutDesktopProdutos: string;
@@ -3173,7 +3174,7 @@ function EditorConteudoBlocoModal({
     onChange({
       categoriaProdutoId: categoria?.id || "",
       categoriaProdutoSlug: categoria?.slug || "",
-      categoriaProdutoNome: categoria?.caminho || categoria?.nome || "",
+      categoriaProdutoNome: categoria?.nome || "",
     });
   }
 
@@ -3191,11 +3192,12 @@ function EditorConteudoBlocoModal({
     onChange({
       categoriasProdutosIds: nextIds,
       categoriasProdutosSlugs: categoriasSelecionadas.map((item) => item.slug),
+      categoriasProdutosNomes: categoriasSelecionadas.map((item) => item.nome),
       ...(categoria && checked && !estadoAtual.categoriaProdutoId
         ? {
             categoriaProdutoId: categoria.id,
             categoriaProdutoSlug: categoria.slug,
-            categoriaProdutoNome: categoria.caminho || categoria.nome,
+            categoriaProdutoNome: categoria.nome,
           }
         : {}),
     });
@@ -5616,6 +5618,7 @@ export default function EditorVisualPaginaClient({
         "categorias",
       ]),
       categoriasProdutosSlugs: getStringArrayConfig(config, ["categoriasSlugs"]),
+      categoriasProdutosNomes: getStringArrayConfig(config, ["categoriasNomes"]),
       produtosSelecionadosIds: getStringArrayConfig(config, ["produtosIds"]),
       limiteProdutos: getNumberConfig(config, "limite", 8),
       layoutDesktopProdutos:
@@ -5815,6 +5818,7 @@ export default function EditorVisualPaginaClient({
               categoriaNome: editando.categoriaProdutoNome,
               categoriasIds: editando.categoriasProdutosIds,
               categoriasSlugs: editando.categoriasProdutosSlugs,
+              categoriasNomes: editando.categoriasProdutosNomes,
               categorias: editando.categoriasProdutosIds,
               produtosIds: editando.produtosSelecionadosIds,
               limite: Math.max(1, Number(editando.limiteProdutos) || 1),

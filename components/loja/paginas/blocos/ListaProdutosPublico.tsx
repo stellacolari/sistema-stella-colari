@@ -27,6 +27,7 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
   const categoriasIds = getArray(config, "categoriasIds").map(String);
   const categoriasLegadas = getArray(config, "categorias").map(String);
   const categoriasSlugs = getArray(config, "categoriasSlugs").map(String);
+  const categoriasNomes = getArray(config, "categoriasNomes").map(String);
   const produtosIds = getArray(config, "produtosIds").map(String);
   let resultado = [...produtos];
 
@@ -65,7 +66,11 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
   if (fonte === "CATEGORIAS_SELECIONADAS") {
     const ids = categoriasIds.length > 0 ? categoriasIds : categoriasLegadas;
 
-    if (ids.length === 0 && categoriasSlugs.length === 0) {
+    if (
+      ids.length === 0 &&
+      categoriasSlugs.length === 0 &&
+      categoriasNomes.length === 0
+    ) {
       return [];
     }
 
@@ -73,6 +78,10 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
       return (
         ids.some((id) => produto.categoriaIds?.includes(id)) ||
         categoriasSlugs.some((slug) => produto.categoriaSlugs?.includes(slug)) ||
+        categoriasNomes.some(
+          (nome) =>
+            produto.categoria === nome || produto.categoriaNomes?.includes(nome)
+        ) ||
         categoriasLegadas.includes(produto.categoria)
       );
     });

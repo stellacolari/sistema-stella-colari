@@ -161,6 +161,7 @@ function getConfigPadrao(tipo: string) {
       categoriaNome: "",
       categoriasIds: [],
       categoriasSlugs: [],
+      categoriasNomes: [],
       categorias: [],
       produtosIds: [],
       limite: 12,

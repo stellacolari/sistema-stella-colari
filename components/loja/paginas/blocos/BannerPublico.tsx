@@ -87,6 +87,13 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   const overlay = getString(config, "overlayBanner", "LEVE");
   const corTexto = getString(config, "corTextoBanner", "CLARO");
   const textClass = getTextClass(corTexto);
+  const imageDesktop = getImageDesktop(config);
+  const imageMobile = getImageMobile(config);
+  const videoDesktop = getString(config, "videoDesktopUrl");
+  const videoMobile = getString(config, "videoMobileUrl");
+  const hasMedia =
+    getBoolean(config, "exibirMidia", true) &&
+    Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
   const hasTitulo = hasTextContent(tituloRichText, titulo);
   const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
   const hasBotaoPrimario = exibirBotaoPrimario && textoBotao && linkBotao;
@@ -95,16 +102,20 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   const hasConteudo =
     exibirTexto && (hasTitulo || (exibirSubtitulo && hasSubtitulo) || hasBotaoPrimario || hasBotaoSecundario);
 
+  if (!hasMedia && !hasConteudo) {
+    return null;
+  }
+
   return (
     <section className={`relative overflow-hidden bg-slate-950 ${getHeightClass(altura)}`}>
       <div className="absolute inset-0">
         <PublicMediaRenderer
           tipoMidia={tipoMidia}
-          exibirMidia={getBoolean(config, "exibirMidia", true)}
-          imagemDesktopUrl={getImageDesktop(config)}
-          imagemMobileUrl={getImageMobile(config)}
-          videoDesktopUrl={getString(config, "videoDesktopUrl")}
-          videoMobileUrl={getString(config, "videoMobileUrl")}
+          exibirMidia={hasMedia}
+          imagemDesktopUrl={imageDesktop}
+          imagemMobileUrl={imageMobile}
+          videoDesktopUrl={videoDesktop}
+          videoMobileUrl={videoMobile}
           videoPosterUrl={getString(config, "videoPosterUrl")}
           videoLoop={getBoolean(config, "videoLoop", true)}
           videoMuted={getString(config, "videoSom", "MUDO") !== "COM_SOM"}
