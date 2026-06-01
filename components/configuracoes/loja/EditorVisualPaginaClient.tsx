@@ -96,6 +96,7 @@ type TipoBlocoAdicionar =
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
+  | "CTA_SIMPLES"
   | "CTA"
   | "CATEGORIAS"
   | "FAQ"
@@ -464,8 +465,8 @@ const TIPOS_BLOCO_ADICIONAR: {
     icon: LayoutGrid,
   },
   {
-    tipo: "CTA",
-    nome: "CTA",
+    tipo: "CTA_SIMPLES",
+    nome: "CTA simples",
     descricao: "Chamada editorial com texto, mídia opcional e até dois botões.",
     tituloInicial: "Chamada para ação",
     icon: MousePointer2,
@@ -857,6 +858,7 @@ const RichTextTypography = Extension.create({
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
   if (tipo === "BANNER") return "Banner";
+  if (tipo === "CTA_SIMPLES") return "CTA simples";
   if (tipo === "CTA") return "CTA";
   if (tipo === "TEXTO_IMAGEM") return "Texto + imagem";
   if (tipo === "PRODUTOS") return "Produtos";
@@ -873,6 +875,10 @@ function getTipoLabel(tipo: string) {
 }
 
 function getBlocoIcon(tipo: string) {
+  if (tipo === "CTA" || tipo === "CTA_SIMPLES") {
+    return MousePointer2;
+  }
+
   if (tipo.includes("IMAGEM") || tipo === "HERO" || tipo === "BANNER") {
     return ImageIcon;
   }
@@ -905,7 +911,7 @@ function isDestaquesCardsTipo(tipo: string) {
 }
 
 function isCtaTipo(tipo: string) {
-  return tipo === "CTA";
+  return tipo === "CTA" || tipo === "CTA_SIMPLES";
 }
 
 function normalizarLayoutCta(value: string) {

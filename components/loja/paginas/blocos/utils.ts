@@ -43,6 +43,7 @@ export const TIPOS_BLOCOS_VISUAIS_PUBLICOS = new Set([
   "DESTAQUES_CARDS",
   "LISTA_PRODUTOS",
   "CTA",
+  "CTA_SIMPLES",
 ]);
 
 export function isBlocoVisualPublico(tipo: string) {

@@ -1,5 +1,6 @@
 import BannerPublico from "@/components/loja/paginas/blocos/BannerPublico";
 import CtaPublico from "@/components/loja/paginas/blocos/CtaPublico";
+import CtaSimplesPublico from "@/components/loja/paginas/blocos/CtaSimplesPublico";
 import DestaquesCardsPublico from "@/components/loja/paginas/blocos/DestaquesCardsPublico";
 import ListaProdutosPublico from "@/components/loja/paginas/blocos/ListaProdutosPublico";
 import TextoImagemPublico from "@/components/loja/paginas/blocos/TextoImagemPublico";
@@ -36,6 +37,10 @@ export default function BlocoPublicoRenderer({
 
   if (bloco.tipo === "CTA") {
     return <CtaPublico bloco={bloco} produtos={produtos} />;
+  }
+
+  if (bloco.tipo === "CTA_SIMPLES") {
+    return <CtaSimplesPublico bloco={bloco} produtos={produtos} />;
   }
 
   if (isBlocoVisualPublico(bloco.tipo)) return null;

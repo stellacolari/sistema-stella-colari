@@ -10,6 +10,7 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "LISTA_PRODUTOS",
   "DESTAQUES_CARDS",
   "CTA",
+  "CTA_SIMPLES",
   "CATEGORIAS",
   "IMAGEM_TEXTO",
   "ESPACADOR",
@@ -34,6 +35,7 @@ function getTituloPadrao(tipo: string) {
     LISTA_PRODUTOS: "Lista de produtos",
     DESTAQUES_CARDS: "Destaques / cards",
     CTA: "Chamada para ação",
+    CTA_SIMPLES: "CTA simples",
     CATEGORIAS: "Categorias",
     IMAGEM_TEXTO: "Imagem + texto",
     ESPACADOR: "Espaçador",
@@ -291,7 +293,7 @@ function getConfigPadrao(tipo: string) {
     };
   }
 
-  if (tipo === "CTA") {
+  if (tipo === "CTA" || tipo === "CTA_SIMPLES") {
     return {
       titulo: "",
       texto: "",
