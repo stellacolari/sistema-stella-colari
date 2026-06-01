@@ -25,14 +25,12 @@ import {
 function getContentWidthClass(value: string) {
   if (value === "CONTIDA") return "max-w-6xl";
   if (value === "TOTAL") return "max-w-none";
-
   return "max-w-7xl";
 }
 
 function getHeaderFlexClass(value: string) {
   if (value === "DIREITA") return "justify-end";
   if (value === "CENTRO") return "justify-center";
-
   return "justify-start";
 }
 
@@ -63,8 +61,8 @@ function getHeaderBlockAlignClass(desktop: string, mobile: string) {
 function normalizarPresetMosaico(value: string) {
   if (
     [
-      "MOSAICO_5_EDITORIAL",
       "MOSAICO_4_EDITORIAL",
+      "MOSAICO_5_EDITORIAL",
       "MOSAICO_3_DESTAQUE",
       "GRID_4_EDITORIAL",
       "GRID_3_EDITORIAL",
@@ -81,152 +79,18 @@ function normalizarTamanhoCabecalho(value: string) {
   return "GRANDE";
 }
 
-function getCabecalhoTitleClass(tamanho: string) {
+function getHeaderTitleClass(tamanho: string) {
   const normalized = normalizarTamanhoCabecalho(tamanho);
 
   if (normalized === "GIGANTE") {
-    return "text-[clamp(3.5rem,6.5vw,7.5rem)] leading-[0.92] tracking-[-0.06em]";
+    return "text-[clamp(3.5rem,6.5vw,7.35rem)] leading-[0.95] tracking-[-0.065em]";
   }
 
   if (normalized === "MEDIO") {
-    return "text-[clamp(2.25rem,4vw,4rem)] leading-[0.96] tracking-[-0.04em]";
+    return "text-[clamp(2.35rem,4vw,4.25rem)] leading-[1] tracking-[-0.045em]";
   }
 
-  return "text-[clamp(3rem,5.4vw,5.75rem)] leading-[0.94] tracking-[-0.05em]";
-}
-
-function getMosaicGridStyle(preset: string, itemCount = 4): CSSProperties {
-  const normalized = normalizarPresetMosaico(preset);
-
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
-    return {
-      display: "grid",
-      gridTemplateColumns: "1.12fr 0.92fr",
-      gridTemplateRows: "repeat(2, minmax(235px, 1fr))",
-      gap: "22px",
-      alignItems: "stretch",
-    };
-  }
-
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    return {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
-      gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
-      gap: "22px",
-      alignItems: "stretch",
-    };
-  }
-
-  return {
-    display: "grid",
-    gridTemplateColumns: "1.05fr 0.9fr 0.9fr 1.05fr",
-    gridTemplateRows: "repeat(2, minmax(285px, 1fr))",
-    gap: "22px",
-    alignItems: "stretch",
-  };
-}
-
-function getMosaicItemStyle(index: number, preset: string, itemCount = 4): CSSProperties {
-  const normalized = normalizarPresetMosaico(preset);
-
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
-    if (index === 0) {
-      return {
-        gridColumn: "1 / 2",
-        gridRow: "1 / 3",
-      };
-    }
-
-    return {
-      gridColumn: "2 / 3",
-      gridRow: `${index} / ${index + 1}`,
-    };
-  }
-
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    const map: CSSProperties[] = [
-      {
-        gridColumn: "1 / 2",
-        gridRow: "1 / 3",
-      },
-      {
-        gridColumn: "2 / 3",
-        gridRow: "1 / 2",
-      },
-      {
-        gridColumn: "2 / 3",
-        gridRow: "2 / 3",
-      },
-      {
-        gridColumn: "3 / 4",
-        gridRow: "1 / 3",
-      },
-      {
-        gridColumn: "1 / 4",
-        gridRow: "3 / 4",
-      },
-    ];
-
-    return map[index] || {};
-  }
-
-  const map: CSSProperties[] = [
-    {
-      gridColumn: "1 / 2",
-      gridRow: "1 / 3",
-    },
-    {
-      gridColumn: "2 / 4",
-      gridRow: "1 / 2",
-    },
-    {
-      gridColumn: "4 / 5",
-      gridRow: "1 / 3",
-    },
-    {
-      gridColumn: "2 / 3",
-      gridRow: "2 / 3",
-    },
-    {
-      gridColumn: "3 / 4",
-      gridRow: "2 / 3",
-    },
-  ];
-
-  return map[index] || {};
-}
-
-function getMosaicItemClass(index: number, preset: string, itemCount = 4) {
-  const normalized = normalizarPresetMosaico(preset);
-
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
-    return index === 0
-      ? "min-h-[560px] aspect-[4/5] lg:aspect-auto"
-      : "min-h-[265px] aspect-[4/3] lg:aspect-auto";
-  }
-
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    if (index === 0 || index === 3) {
-      return "min-h-[600px] aspect-[4/5] lg:aspect-auto";
-    }
-
-    if (index === 4) {
-      return "min-h-[285px] aspect-[16/7] lg:aspect-auto";
-    }
-
-    return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
-  }
-
-  if (index === 0 || index === 2) {
-    return "min-h-[600px] aspect-[4/5] lg:aspect-auto";
-  }
-
-  if (index === 4) {
-    return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
-  }
-
-  return "min-h-[285px] aspect-[4/3] lg:aspect-auto";
+  return "text-[clamp(2.9rem,5.25vw,5.85rem)] leading-[0.98] tracking-[-0.055em]";
 }
 
 function getGridColumnsByPreset(preset: string, fallback: number) {
@@ -237,24 +101,109 @@ function getGridColumnsByPreset(preset: string, fallback: number) {
 }
 
 function getHeaderWidthClass(width: number) {
-  if (width <= 25) return "lg:grid-cols-[minmax(260px,0.3fr)_minmax(0,1fr)]";
-  if (width <= 30) return "lg:grid-cols-[minmax(280px,0.34fr)_minmax(0,1fr)]";
-  if (width >= 40) return "lg:grid-cols-[minmax(340px,0.44fr)_minmax(0,1fr)]";
-  return "lg:grid-cols-[minmax(300px,0.38fr)_minmax(0,1fr)]";
+  if (width <= 25) return "lg:grid-cols-[minmax(240px,0.32fr)_minmax(0,1fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(260px,0.36fr)_minmax(0,1fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(340px,0.46fr)_minmax(0,1fr)]";
+  return "lg:grid-cols-[minmax(300px,0.40fr)_minmax(0,1fr)]";
 }
 
 function getLabelPositionClass(posicao: string) {
-  if (posicao === "INFERIOR_CENTRO") return "bottom-5 left-1/2 -translate-x-1/2 text-center";
-  if (posicao === "INFERIOR_DIREITA") return "bottom-5 right-5 text-right";
-  if (posicao === "SUPERIOR_ESQUERDA") return "left-5 top-5";
+  if (posicao === "INFERIOR_CENTRO") return "bottom-4 left-1/2 -translate-x-1/2 text-center";
+  if (posicao === "INFERIOR_DIREITA") return "bottom-4 right-4 text-right";
+  if (posicao === "SUPERIOR_ESQUERDA") return "left-4 top-4";
   if (posicao === "CENTRO") return "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center";
-  return "bottom-5 left-5";
+  return "bottom-4 left-4";
+}
+
+function getLabelSizeClass(tamanho: string) {
+  if (tamanho === "GRANDE") return "px-4 py-3";
+  if (tamanho === "MEDIA") return "px-3.5 py-2.5";
+  return "px-3 py-2";
 }
 
 function getLabelWidthClass(largura: string) {
-  if (largura === "LARGA") return "w-[min(82%,420px)]";
-  if (largura === "MEDIA") return "w-[min(68%,320px)]";
-  return "w-fit max-w-[78%]";
+  if (largura === "LARGA") return "w-[min(78%,360px)]";
+  if (largura === "MEDIA") return "w-[min(64%,280px)]";
+  return "w-fit max-w-[72%]";
+}
+
+function getMosaicGridStyle(preset: string, quantidadeItens: number): CSSProperties {
+  const normalized = normalizarPresetMosaico(preset);
+
+  if (quantidadeItens <= 3 || normalized === "MOSAICO_3_DESTAQUE") {
+    return {
+      display: "grid",
+      gridTemplateColumns: quantidadeItens <= 1 ? "1fr" : "1.15fr 0.95fr",
+      gridTemplateRows: quantidadeItens <= 2 ? "minmax(360px, 1fr)" : "repeat(2, minmax(210px, 1fr))",
+      gap: "22px",
+      alignItems: "stretch",
+    };
+  }
+
+  return {
+    display: "grid",
+    gridTemplateColumns: "1.05fr 0.9fr 1.05fr",
+    gridTemplateRows: "repeat(2, minmax(250px, 1fr))",
+    gap: "22px",
+    alignItems: "stretch",
+  };
+}
+
+function getMosaicItemStyle(index: number, preset: string, quantidadeItens: number): CSSProperties {
+  const normalized = normalizarPresetMosaico(preset);
+
+  if (quantidadeItens <= 1) {
+    return { gridColumn: "1 / -1", gridRow: "1 / 2" };
+  }
+
+  if (quantidadeItens === 2) {
+    return {
+      gridColumn: `${index + 1} / ${index + 2}`,
+      gridRow: "1 / 2",
+    };
+  }
+
+  if (quantidadeItens === 3 || normalized === "MOSAICO_3_DESTAQUE") {
+    if (index === 0) {
+      return { gridColumn: "1 / 2", gridRow: "1 / 3" };
+    }
+
+    return { gridColumn: "2 / 3", gridRow: `${index} / ${index + 1}` };
+  }
+
+  const map: CSSProperties[] = [
+    { gridColumn: "1 / 2", gridRow: "1 / 3" },
+    { gridColumn: "2 / 3", gridRow: "1 / 2" },
+    { gridColumn: "2 / 3", gridRow: "2 / 3" },
+    { gridColumn: "3 / 4", gridRow: "1 / 3" },
+  ];
+
+  if (index <= 3) return map[index];
+
+  return {
+    gridColumn: `${((index - 4) % 3) + 1} / ${((index - 4) % 3) + 2}`,
+    gridRow: `${Math.floor((index - 4) / 3) + 3} / ${Math.floor((index - 4) / 3) + 4}`,
+  };
+}
+
+function getMosaicItemClass(index: number, preset: string, quantidadeItens: number) {
+  const normalized = normalizarPresetMosaico(preset);
+
+  if (quantidadeItens <= 2) {
+    return "min-h-[420px] aspect-[4/5] lg:aspect-auto";
+  }
+
+  if (quantidadeItens === 3 || normalized === "MOSAICO_3_DESTAQUE") {
+    return index === 0
+      ? "min-h-[500px] aspect-[4/5] lg:aspect-auto"
+      : "min-h-[240px] aspect-[4/3] lg:aspect-auto";
+  }
+
+  if (index === 0 || index === 3) {
+    return "min-h-[525px] aspect-[4/5] lg:aspect-auto";
+  }
+
+  return "min-h-[250px] aspect-[4/3] lg:aspect-auto";
 }
 
 function HeaderImage({
@@ -377,6 +326,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const layoutVisualEfetivo = presetMosaico.startsWith("GRID_")
     ? "GRID_EDITORIAL"
     : layoutVisual;
+  const tamanhoEtiqueta = getString(config, "tamanhoEtiqueta", "PEQUENA");
   const posicaoEtiqueta = getString(
     config,
     "posicaoEtiqueta",
@@ -384,14 +334,14 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   );
   const larguraEtiqueta = getString(config, "larguraEtiqueta", "AUTO");
   const exibirLinhaEtiqueta = getBoolean(config, "exibirLinhaEtiqueta", true);
-  const tamanhoCabecalho = normalizarTamanhoCabecalho(
-    getString(config, "tamanhoCabecalho", "GRANDE")
-  );
   const exibirEtiqueta =
     getBoolean(config, "exibirEtiqueta", estiloEtiqueta !== "OCULTA") &&
     estiloEtiqueta !== "OCULTA";
   const exibirBotaoEtiqueta = getBoolean(config, "exibirBotaoEtiqueta", false);
   const cardInteiroClicavel = getBoolean(config, "cardInteiroClicavel", true);
+  const tamanhoCabecalho = normalizarTamanhoCabecalho(
+    getString(config, "tamanhoCabecalho", "GRANDE")
+  );
   const larguraCabecalhoDesktop = getNumber(
     config,
     "larguraCabecalhoDesktop",
@@ -468,7 +418,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
-          className={`max-w-full break-words whitespace-pre-line font-light ${getCabecalhoTitleClass(
+          className={`whitespace-pre-line break-words font-light ${getHeaderTitleClass(
             tamanhoCabecalho
           )} ${colors.title}`}
         />
@@ -507,7 +457,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const logoPosition = getString(config, "logoTituloPosicao", "ABAIXO");
   const headerContent = hasCabecalho ? (
     <div
-      className={`w-full max-w-4xl ${getHeaderBlockAlignClass(
+      className={`w-full max-w-full min-w-0 ${getHeaderBlockAlignClass(
         alinhamentoCabecalhoDesktop,
         alinhamentoCabecalhoMobile
       )} ${headerAlign}`}
@@ -538,7 +488,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <div
           className={
             logoPosition === "AO_LADO"
-              ? `flex flex-col gap-5 lg:flex-row lg:items-center ${getResponsiveHeaderFlexClass(
+              ? `flex min-w-0 flex-col gap-5 lg:flex-row lg:items-center ${getResponsiveHeaderFlexClass(
                   alinhamentoCabecalhoDesktop,
                   alinhamentoCabecalhoMobile
                 )}`
@@ -546,7 +496,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           }
         >
           {logoPosition === "ACIMA" ? logoTitulo : null}
-          <div>{tituloTextual}</div>
+          <div className="min-w-0">{tituloTextual}</div>
           {logoPosition !== "ACIMA" ? logoTitulo : null}
         </div>
       ) : (
@@ -554,7 +504,6 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
       )}
     </div>
   ) : null;
-
   const renderItemLabel = (item: Record<string, unknown>, overlay: boolean) => {
     if (!exibirEtiqueta) return null;
 
@@ -576,28 +525,12 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
     }
 
     const wrapperClass = overlay
-      ? `absolute z-10 bg-white/92 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm ${getLabelPositionClass(
+      ? `absolute z-10 bg-white/90 shadow-[0_10px_26px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur ${getLabelPositionClass(
           posicaoEtiqueta
-        )} px-4 py-3 ${getLabelWidthClass(larguraEtiqueta)} break-words`
+        )} ${getLabelSizeClass(tamanhoEtiqueta)} ${getLabelWidthClass(larguraEtiqueta)} break-words`
       : "pt-4";
 
-    const buttonContent =
-      exibirBotaoEtiqueta && textoLink && href ? (
-        cardInteiroClicavel ? (
-          <span
-            className={`mt-4 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
-          >
-            {textoLink}
-          </span>
-        ) : (
-          <Link
-            href={href}
-            className={`mt-4 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`}
-          >
-            {textoLink}
-          </Link>
-        )
-      ) : null;
+    const buttonClass = `mt-3 inline-flex min-h-8 items-center border border-current px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${buttonRadiusClass}`;
 
     return (
       <div className={wrapperClass}>
@@ -614,7 +547,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         ) : null}
 
         {exibirLinhaEtiqueta && overlay ? (
-          <span className="mt-3 block h-px w-12 bg-slate-950/35" />
+          <span className="mt-3 block h-px w-10 bg-slate-950/30" />
         ) : null}
 
         {hasSubtituloItem ? (
@@ -629,140 +562,85 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           />
         ) : null}
 
-        {buttonContent}
+        {exibirBotaoEtiqueta && textoLink && href ? (
+          cardInteiroClicavel ? (
+            <span className={buttonClass}>{textoLink}</span>
+          ) : (
+            <Link href={href} className={buttonClass}>
+              {textoLink}
+            </Link>
+          )
+        ) : null}
       </div>
     );
   };
 
-  const renderGridItem = (item: Record<string, unknown>, index: number) => {
+  const renderMosaicItem = (item: Record<string, unknown>, index: number) => {
     const tituloItem =
       getString(item, "titulo") || getString(item, "categoriaNome");
     const href = getItemHref(item);
+    const hasMedia = itemHasMedia(item);
+    const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+
     const content = (
-      <article className="stella-reveal-card" style={{ animationDelay: `${index * 90}ms` }}>
-        <ItemMedia item={item} alt={tituloItem} className="aspect-[4/5]" />
-        {exibirEtiqueta ? renderItemLabel(item, false) : null}
+      <article
+        className="stella-reveal-card relative min-w-0"
+        style={{
+          ...getMosaicItemStyle(index, presetMosaico, itens.length),
+          animationDelay: `${index * 80}ms`,
+        }}
+      >
+        {hasMedia ? (
+          <div
+            className={`relative h-full overflow-hidden ${getMosaicItemClass(
+              index,
+              presetMosaico,
+              itens.length
+            )}`}
+          >
+            <ItemMedia
+              item={item}
+              alt={tituloItem}
+              className="h-full min-h-full transition duration-700 group-hover:scale-[1.035]"
+            />
+            {labelSobreposta ? renderItemLabel(item, true) : null}
+          </div>
+        ) : null}
+
+        {exibirEtiqueta && !labelSobreposta
+          ? renderItemLabel(item, false)
+          : null}
       </article>
     );
+
     const key = getString(item, "id", `colecao-${index}`);
 
     if (href && cardInteiroClicavel) {
       return (
-        <Link key={key} href={href} className="group block">
+        <Link key={key} href={href} className="group block min-w-0">
           {content}
         </Link>
       );
     }
 
-    return <div key={key}>{content}</div>;
+    return (
+      <div key={key} className="min-w-0">
+        {content}
+      </div>
+    );
   };
-
-  const renderMosaicItems = () => (
-    <div className="mt-10 lg:mt-0">
-      <div className="hidden lg:grid" style={getMosaicGridStyle(presetMosaico, itens.length)}>
-        {itens.map((item, index) => {
-          const tituloItem =
-            getString(item, "titulo") || getString(item, "categoriaNome");
-          const href = getItemHref(item);
-          const hasMedia = itemHasMedia(item);
-          const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
-
-          const content = (
-            <article
-              className="stella-reveal-card relative min-w-0"
-              style={{
-                ...getMosaicItemStyle(index, presetMosaico, itens.length),
-                animationDelay: `${index * 90}ms`,
-              }}
-            >
-              {hasMedia ? (
-                <div
-                  className={`relative h-full overflow-hidden ${getMosaicItemClass(
-                    index,
-                    presetMosaico,
-                    itens.length
-                  )}`}
-                >
-                  <ItemMedia
-                    item={item}
-                    alt={tituloItem}
-                    className="h-full min-h-full transition duration-700 group-hover:scale-[1.035]"
-                  />
-                  {labelSobreposta ? renderItemLabel(item, true) : null}
-                </div>
-              ) : null}
-
-              {exibirEtiqueta && !labelSobreposta
-                ? renderItemLabel(item, false)
-                : null}
-            </article>
-          );
-
-          const key = getString(item, "id", `colecao-${index}`);
-
-          if (href && cardInteiroClicavel) {
-            return (
-              <Link key={key} href={href} className="group block">
-                {content}
-              </Link>
-            );
-          }
-
-          return <div key={key}>{content}</div>;
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:hidden">
-        {itens.map((item, index) => {
-          const tituloItem =
-            getString(item, "titulo") || getString(item, "categoriaNome");
-          const href = getItemHref(item);
-          const hasMedia = itemHasMedia(item);
-          const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
-
-          const content = (
-            <article
-              className="stella-reveal-card relative min-w-0"
-              style={{ animationDelay: `${index * 90}ms` }}
-            >
-              {hasMedia ? (
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  <ItemMedia
-                    item={item}
-                    alt={tituloItem}
-                    className="h-full min-h-full"
-                  />
-                  {labelSobreposta ? renderItemLabel(item, true) : null}
-                </div>
-              ) : null}
-
-              {exibirEtiqueta && !labelSobreposta
-                ? renderItemLabel(item, false)
-                : null}
-            </article>
-          );
-
-          const key = getString(item, "id", `colecao-${index}`);
-
-          if (href && cardInteiroClicavel) {
-            return (
-              <Link key={key} href={href} className="group block">
-                {content}
-              </Link>
-            );
-          }
-
-          return <div key={key}>{content}</div>;
-        })}
-      </div>
-    </div>
-  );
 
   return (
     <section
-      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
+      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(
+        getString(config, "espacamento", "PADRAO")
+      )}`}
     >
-      <div className={`mx-auto ${widthClass}`}>
+      <div
+        className={`mx-auto ${widthClass} ${
+          larguraConteudo === "TOTAL" ? "px-0" : "px-5 sm:px-6 lg:px-8"
+        }`}
+      >
         {layoutVisualEfetivo === "GRID_EDITORIAL" ? (
           <>
             {headerContent}
@@ -778,18 +656,83 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                   )
                 )}`}
               >
-                {itens.map(renderGridItem)}
+                {itens.map((item, index) => {
+                  const tituloItem =
+                    getString(item, "titulo") || getString(item, "categoriaNome");
+                  const href = getItemHref(item);
+                  const content = (
+                    <article
+                      className="stella-reveal-card"
+                      style={{ animationDelay: `${index * 80}ms` }}
+                    >
+                      <ItemMedia
+                        item={item}
+                        alt={tituloItem}
+                        className="aspect-[4/5]"
+                      />
+
+                      {exibirEtiqueta ? renderItemLabel(item, false) : null}
+                    </article>
+                  );
+
+                  return href && cardInteiroClicavel ? (
+                    <Link
+                      key={getString(item, "id", `colecao-${index}`)}
+                      href={href}
+                      className="group block"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={getString(item, "id", `colecao-${index}`)}>
+                      {content}
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
           </>
         ) : posicaoCabecalhoMosaico === "TOPO" ? (
           <>
             {headerContent}
-            {itens.length > 0 ? renderMosaicItems() : null}
+
+            {itens.length > 0 ? (
+              <>
+                <div
+                  className="mt-10 hidden lg:grid"
+                  style={getMosaicGridStyle(presetMosaico, itens.length)}
+                >
+                  {itens.map(renderMosaicItem)}
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 gap-5 lg:hidden">
+                  {itens.map((item, index) => {
+                    const tituloItem =
+                      getString(item, "titulo") || getString(item, "categoriaNome");
+                    const href = getItemHref(item);
+                    const hasMedia = itemHasMedia(item);
+                    const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+                    const content = (
+                      <article className="stella-reveal-card relative min-w-0" style={{ animationDelay: `${index * 80}ms` }}>
+                        {hasMedia ? (
+                          <div className="relative aspect-[4/5] overflow-hidden">
+                            <ItemMedia item={item} alt={tituloItem} className="h-full min-h-full" />
+                            {labelSobreposta ? renderItemLabel(item, true) : null}
+                          </div>
+                        ) : null}
+                        {exibirEtiqueta && !labelSobreposta ? renderItemLabel(item, false) : null}
+                      </article>
+                    );
+                    const key = getString(item, "id", `colecao-${index}`);
+                    return href && cardInteiroClicavel ? <Link key={key} href={href} className="group block">{content}</Link> : <div key={key}>{content}</div>;
+                  })}
+                </div>
+              </>
+            ) : null}
           </>
         ) : (
           <div
-            className={`grid gap-10 lg:gap-16 lg:items-start ${getHeaderWidthClass(
+            className={`grid gap-10 lg:gap-14 lg:items-start ${getHeaderWidthClass(
               larguraCabecalhoDesktop
             )}`}
           >
@@ -799,9 +742,39 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               </div>
             ) : null}
 
-            <div className="min-w-0 max-w-full">
-              {itens.length > 0 ? renderMosaicItems() : null}
-            </div>
+            {itens.length > 0 ? (
+              <>
+                <div
+                  className="hidden min-w-0 lg:grid"
+                  style={getMosaicGridStyle(presetMosaico, itens.length)}
+                >
+                  {itens.map(renderMosaicItem)}
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 lg:hidden">
+                  {itens.map((item, index) => {
+                    const tituloItem =
+                      getString(item, "titulo") || getString(item, "categoriaNome");
+                    const href = getItemHref(item);
+                    const hasMedia = itemHasMedia(item);
+                    const labelSobreposta = exibirEtiqueta && estiloEtiqueta === "SOBREPOSTA" && hasMedia;
+                    const content = (
+                      <article className="stella-reveal-card relative min-w-0" style={{ animationDelay: `${index * 80}ms` }}>
+                        {hasMedia ? (
+                          <div className="relative aspect-[4/5] overflow-hidden">
+                            <ItemMedia item={item} alt={tituloItem} className="h-full min-h-full" />
+                            {labelSobreposta ? renderItemLabel(item, true) : null}
+                          </div>
+                        ) : null}
+                        {exibirEtiqueta && !labelSobreposta ? renderItemLabel(item, false) : null}
+                      </article>
+                    );
+                    const key = getString(item, "id", `colecao-${index}`);
+                    return href && cardInteiroClicavel ? <Link key={key} href={href} className="group block">{content}</Link> : <div key={key}>{content}</div>;
+                  })}
+                </div>
+              </>
+            ) : null}
           </div>
         )}
       </div>

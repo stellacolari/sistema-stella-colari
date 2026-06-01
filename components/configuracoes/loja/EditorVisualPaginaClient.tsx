@@ -46,8 +46,6 @@ import {
   RICH_TEXT_COLOR_PRESETS,
   RICH_TEXT_FONT_PRESETS,
   RICH_TEXT_LETTER_SPACING_PRESETS,
-  RICH_TEXT_LINE_HEIGHT_PRESETS,
-  RICH_TEXT_PARAGRAPH_SPACING_PRESETS,
   RICH_TEXT_SIZE_PRESETS,
   RICH_TEXT_WEIGHT_PRESETS,
   getRichTextPresetCss,
@@ -243,10 +241,6 @@ type BlocoEditandoState = {
   exibirLinhaEtiquetaColecoes: boolean;
   larguraCabecalhoDesktopColecoes: number;
   posicaoCabecalhoMosaicoColecoes: string;
-  tamanhoCabecalhoColecoes: string;
-  exibirEtiquetaColecoes: boolean;
-  exibirBotaoEtiquetaColecoes: boolean;
-  cardInteiroClicavelColecoes: boolean;
   itensColecoes: ColecaoCategoriaItemEditando[];
   tipoCabecalhoColecoes: string;
   logoTituloUrl: string;
@@ -271,8 +265,6 @@ type BlocoEditandoState = {
   mediaPositionMobile: string;
   corFundo: string;
   espacamento: string;
-  espacamentoVertical: string;
-  espacamentoHorizontal: string;
   alinhamentoConteudo: string;
   alinhamentoTextoDesktop: string;
   alinhamentoTextoMobile: string;
@@ -312,10 +304,9 @@ const COR_FUNDO_PRESETS = [
 ];
 
 const ESPACAMENTO_PRESETS = [
-  { value: "PEQUENO", label: "Pequeno" },
+  { value: "COMPACTO", label: "Compacto" },
   { value: "PADRAO", label: "Padrão" },
-  { value: "GRANDE", label: "Grande" },
-  { value: "EXTRA", label: "Extra" },
+  { value: "AMPLO", label: "Amplo" },
 ];
 
 const TEXT_FONT_SIZE_PRESETS = [
@@ -522,7 +513,6 @@ const MEDIA_POSITION_PRESETS = [
 ];
 
 const PRESET_MOSAICO_COLECOES_PRESETS = [
-  { value: "MOSAICO_4_EDITORIAL", label: "Mosaico 4 editorial" },
   { value: "MOSAICO_5_EDITORIAL", label: "Mosaico 5 editorial" },
   { value: "MOSAICO_3_DESTAQUE", label: "Mosaico 3 destaque" },
   { value: "GRID_4_EDITORIAL", label: "Grid 4 editorial" },
@@ -989,27 +979,6 @@ const RichTextTypography = Extension.create({
                 ? { style: `letter-spacing: ${attributes.letterSpacing}` }
                 : {},
           },
-          lineHeight: {
-            default: null,
-            parseHTML: (element) => element.style.lineHeight || null,
-            renderHTML: (attributes) =>
-              attributes.lineHeight
-                ? { style: `line-height: ${attributes.lineHeight}` }
-                : {},
-          },
-        },
-      },
-      {
-        types: ["paragraph"],
-        attributes: {
-          paragraphSpacing: {
-            default: null,
-            parseHTML: (element) => element.style.marginBottom || null,
-            renderHTML: (attributes) =>
-              attributes.paragraphSpacing
-                ? { style: `margin-bottom: ${attributes.paragraphSpacing}` }
-                : {},
-          },
         },
       },
     ];
@@ -1319,8 +1288,8 @@ function normalizarEstiloEtiquetaColecoes(value: string) {
 function normalizarPresetMosaicoColecoes(value: string) {
   if (
     [
-      "MOSAICO_5_EDITORIAL",
       "MOSAICO_4_EDITORIAL",
+      "MOSAICO_5_EDITORIAL",
       "MOSAICO_3_DESTAQUE",
       "GRID_4_EDITORIAL",
       "GRID_3_EDITORIAL",
@@ -1375,6 +1344,7 @@ function normalizarPosicaoCabecalhoMosaico(value: string) {
   return "LATERAL";
 }
 
+
 function normalizarTamanhoCabecalhoColecoes(value: string) {
   if (["MEDIO", "GRANDE", "GIGANTE"].includes(value)) return value;
   return "GRANDE";
@@ -1384,152 +1354,63 @@ function getColecoesCabecalhoTitleClass(tamanho: string) {
   const normalized = normalizarTamanhoCabecalhoColecoes(tamanho);
 
   if (normalized === "GIGANTE") {
-    return "text-[clamp(3rem,5.2vw,5.75rem)] leading-[0.94] tracking-[-0.055em]";
+    return "text-[clamp(3.2rem,6vw,6.8rem)] leading-[0.95] tracking-[-0.06em]";
   }
 
   if (normalized === "MEDIO") {
-    return "text-[clamp(2rem,3.4vw,3.75rem)] leading-[0.97] tracking-[-0.04em]";
+    return "text-[clamp(2.1rem,3.6vw,3.8rem)] leading-[1] tracking-[-0.04em]";
   }
 
-  return "text-[clamp(2.5rem,4.2vw,4.75rem)] leading-[0.95] tracking-[-0.05em]";
+  return "text-[clamp(2.65rem,5vw,5.2rem)] leading-[0.98] tracking-[-0.05em]";
 }
 
-function getColecoesMosaicGridStyle(preset: string, itemCount = 4): CSSProperties {
+function getTamanhoMosaicoPreset(preset: string, index: number) {
   const normalized = normalizarPresetMosaicoColecoes(preset);
 
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
-    return {
-      display: "grid",
-      gridTemplateColumns: "1.12fr 0.92fr",
-      gridTemplateRows: "repeat(2, minmax(150px, 1fr))",
-      gap: "16px",
-      alignItems: "stretch",
-    };
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return ["DESTAQUE", "MEDIO", "MEDIO"][index] || "MEDIO";
   }
 
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    return {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
-      gridTemplateRows: "repeat(2, minmax(170px, 1fr))",
-      gap: "16px",
-      alignItems: "stretch",
-    };
+  if (normalized === "GRID_4_EDITORIAL" || normalized === "GRID_3_EDITORIAL") {
+    return "MEDIO";
   }
 
-  return {
-    display: "grid",
-    gridTemplateColumns: "1.05fr 0.9fr 0.9fr 1.05fr",
-    gridTemplateRows: "repeat(2, minmax(170px, 1fr))",
-    gap: "16px",
-    alignItems: "stretch",
-  };
+  return ["ALTO", "MEDIO", "MEDIO", "ALTO"][index] || "MEDIO";
 }
 
-function getColecoesMosaicItemStyle(index: number, preset: string, itemCount = 4): CSSProperties {
-  const normalized = normalizarPresetMosaicoColecoes(preset);
-
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
-    if (index === 0) {
-      return {
-        gridColumn: "1 / 2",
-        gridRow: "1 / 3",
-      };
-    }
-
-    return {
-      gridColumn: "2 / 3",
-      gridRow: `${index} / ${index + 1}`,
-    };
-  }
-
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    const map: CSSProperties[] = [
-      {
-        gridColumn: "1 / 2",
-        gridRow: "1 / 3",
-      },
-      {
-        gridColumn: "2 / 3",
-        gridRow: "1 / 2",
-      },
-      {
-        gridColumn: "2 / 3",
-        gridRow: "2 / 3",
-      },
-      {
-        gridColumn: "3 / 4",
-        gridRow: "1 / 3",
-      },
-      {
-        gridColumn: "1 / 4",
-        gridRow: "3 / 4",
-      },
-    ];
-
-    return map[index] || {};
-  }
-
-  const map: CSSProperties[] = [
-    {
-      gridColumn: "1 / 2",
-      gridRow: "1 / 3",
-    },
-    {
-      gridColumn: "2 / 4",
-      gridRow: "1 / 2",
-    },
-    {
-      gridColumn: "4 / 5",
-      gridRow: "1 / 3",
-    },
-    {
-      gridColumn: "2 / 3",
-      gridRow: "2 / 3",
-    },
-    {
-      gridColumn: "3 / 4",
-      gridRow: "2 / 3",
-    },
-  ];
-
-  return map[index] || {};
+function getTamanhoMosaicoEfetivo(item: ColecaoCategoriaItemEditando, index: number, preset: string) {
+  const tamanho = normalizarTamanhoMosaicoColecoes(item.tamanhoMosaico);
+  return tamanho === "AUTO" ? getTamanhoMosaicoPreset(preset, index) : tamanho;
 }
 
-function getColecoesMosaicItemClass(index: number, preset: string, itemCount = 4) {
-  const normalized = normalizarPresetMosaicoColecoes(preset);
+function getColecoesMosaicItemClass(tamanho: string, index: number, preset: string) {
+  const normalizedPreset = normalizarPresetMosaicoColecoes(preset);
 
-  if (normalized === "MOSAICO_3_DESTAQUE" || (normalized === "MOSAICO_4_EDITORIAL" && itemCount <= 3)) {
+  if (normalizedPreset === "GRID_4_EDITORIAL" || normalizedPreset === "GRID_3_EDITORIAL") {
+    return "aspect-[4/5]";
+  }
+
+  if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
     return index === 0
-      ? "min-h-[320px] aspect-[4/5] lg:aspect-auto"
-      : "min-h-[150px] aspect-[4/3] lg:aspect-auto";
+      ? "md:col-span-1 md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[420px]"
+      : "aspect-[4/3] md:min-h-[200px]";
   }
 
-  if (normalized === "MOSAICO_4_EDITORIAL") {
-    if (index === 0 || index === 3) {
-      return "min-h-[360px] aspect-[4/5] lg:aspect-auto";
-    }
-
-    if (index === 4) {
-      return "min-h-[170px] aspect-[16/7] lg:aspect-auto";
-    }
-
-    return "min-h-[170px] aspect-[4/3] lg:aspect-auto";
+  if (index === 0 || index === 3) {
+    return "md:row-span-2 aspect-[4/5] md:aspect-auto md:min-h-[440px]";
   }
 
-  if (index === 0 || index === 2) {
-    return "min-h-[360px] aspect-[4/5] lg:aspect-auto";
-  }
-
-  if (index === 4) {
-    return "min-h-[170px] aspect-[4/3] lg:aspect-auto";
-  }
-
-  return "min-h-[170px] aspect-[4/3] lg:aspect-auto";
+  return "aspect-[4/3] md:min-h-[210px]";
 }
 
-function getColecoesMosaicMobileClass() {
-  return "grid grid-cols-1 gap-5";
+function getColecoesMosaicGridClass(preset: string) {
+  const normalized = normalizarPresetMosaicoColecoes(preset);
+
+  if (normalized === "MOSAICO_3_DESTAQUE") {
+    return "grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_0.95fr] md:auto-rows-[minmax(200px,auto)]";
+  }
+
+  return "grid grid-cols-1 gap-4 md:grid-cols-3 md:auto-rows-[minmax(210px,auto)]";
 }
 
 function getColecoesGridColumnsByPreset(preset: string, fallback: number) {
@@ -1540,10 +1421,10 @@ function getColecoesGridColumnsByPreset(preset: string, fallback: number) {
 }
 
 function getColecoesHeaderWidthClass(width: number) {
-  if (width <= 25) return "lg:grid-cols-[minmax(180px,0.3fr)_minmax(0,1fr)]";
-  if (width <= 30) return "lg:grid-cols-[minmax(200px,0.34fr)_minmax(0,1fr)]";
-  if (width >= 40) return "lg:grid-cols-[minmax(240px,0.44fr)_minmax(0,1fr)]";
-  return "lg:grid-cols-[minmax(220px,0.38fr)_minmax(0,1fr)]";
+  if (width <= 25) return "lg:grid-cols-[minmax(220px,0.32fr)_minmax(0,1fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(240px,0.36fr)_minmax(0,1fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(320px,0.46fr)_minmax(0,1fr)]";
+  return "lg:grid-cols-[minmax(280px,0.40fr)_minmax(0,1fr)]";
 }
 
 function getColecoesLabelPositionClass(posicao: string) {
@@ -1686,47 +1567,11 @@ function getBgClass(corFundo: string) {
   return "bg-white";
 }
 
-function normalizarEspacamento(value: string, fallback = "PADRAO") {
-  if (value === "COMPACTO") return "PEQUENO";
-  if (value === "AMPLO" || value === "GRANDE") return "GRANDE";
-  if (value === "MEDIO" || value === "PADRAO") return "PADRAO";
-  if (value === "PEQUENO" || value === "EXTRA") return value;
+function getPaddingClass(espacamento: string) {
+  if (espacamento === "COMPACTO") return "px-6 py-6";
+  if (espacamento === "AMPLO") return "px-6 py-16";
 
-  return fallback;
-}
-
-function getVerticalPaddingClass(espacamento: string) {
-  const normalized = normalizarEspacamento(espacamento);
-
-  if (normalized === "PEQUENO") return "py-8 md:py-10";
-  if (normalized === "GRANDE") return "py-16 md:py-24";
-  if (normalized === "EXTRA") return "py-24 md:py-32";
-
-  return "py-12 md:py-16";
-}
-
-function getHorizontalPaddingClass(espacamento: string) {
-  const normalized = normalizarEspacamento(espacamento);
-
-  if (normalized === "PEQUENO") return "px-4";
-  if (normalized === "GRANDE") return "px-6 md:px-12";
-  if (normalized === "EXTRA") return "px-8 md:px-20";
-
-  return "px-5 md:px-8";
-}
-
-function resolveSpacingClasses(config: Record<string, unknown>) {
-  const fallback = normalizarEspacamento(getStringConfig(config, "espacamento"));
-  const vertical = normalizarEspacamento(
-    getStringConfig(config, "espacamentoVertical"),
-    fallback
-  );
-  const horizontal = normalizarEspacamento(
-    getStringConfig(config, "espacamentoHorizontal"),
-    fallback
-  );
-
-  return `${getVerticalPaddingClass(vertical)} ${getHorizontalPaddingClass(horizontal)}`;
+  return "px-6 py-10";
 }
 
 function getBannerHeightClass(altura: string, isMobile: boolean) {
@@ -1743,14 +1588,16 @@ function getBannerHeightClass(altura: string, isMobile: boolean) {
 
 function getBannerAlignmentClass(alinhamento: string, isMobile: boolean) {
   if (alinhamento === "CENTRO") {
-    return "justify-center text-center";
+    return "justify-center px-6 text-center";
   }
 
   if (alinhamento === "DIREITA") {
-    return isMobile ? "justify-center text-center" : "justify-end text-right";
+    return isMobile
+      ? "justify-center px-6 text-center"
+      : "justify-end px-12 text-right";
   }
 
-  return isMobile ? "justify-center text-center" : "justify-start";
+  return isMobile ? "justify-center px-6 text-center" : "justify-start px-12";
 }
 
 function getBannerOverlayClass(overlay: string) {
@@ -2294,67 +2141,6 @@ function ButtonRadiusControl({
   );
 }
 
-function SpacingControls({
-  verticalValue,
-  horizontalValue,
-  onChange,
-}: {
-  verticalValue: string;
-  horizontalValue: string;
-  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
-}) {
-  function updateVertical(value: string) {
-    const normalized = normalizarEspacamento(value);
-
-    onChange({
-      espacamento: normalized,
-      espacamentoVertical: normalized,
-    });
-  }
-
-  function updateHorizontal(value: string) {
-    onChange({ espacamentoHorizontal: normalizarEspacamento(value) });
-  }
-
-  return (
-    <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
-      <label>
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Espaçamento vertical
-        </span>
-        <select
-          value={normalizarEspacamento(verticalValue)}
-          onChange={(event) => updateVertical(event.target.value)}
-          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-        >
-          {ESPACAMENTO_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label>
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Espaçamento horizontal
-        </span>
-        <select
-          value={normalizarEspacamento(horizontalValue)}
-          onChange={(event) => updateHorizontal(event.target.value)}
-          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-        >
-          {ESPACAMENTO_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
-}
-
 function ResponsiveTextAlignControls({
   desktopValue,
   mobileValue,
@@ -2715,7 +2501,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
       />
 
       <select
-        aria-label="Espaçamento entre letras"
+        aria-label="Espaçamento"
         className="h-7 rounded-xl border border-slate-200 bg-white px-2"
         onMouseDown={(event) => {
           event.stopPropagation();
@@ -2740,62 +2526,6 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
         ))}
       </select>
 
-      <select
-        aria-label="Altura da linha"
-        title="Altura da linha da seleção"
-        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
-        onMouseDown={(event) => {
-          event.stopPropagation();
-          rememberSelection();
-        }}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => {
-          const lineHeight = getRichTextPresetCss(
-            RICH_TEXT_LINE_HEIGHT_PRESETS,
-            event.target.value
-          );
-          applyWithSelection(() =>
-            editor.chain().focus().setMark("textStyle", { lineHeight }).run()
-          );
-        }}
-        defaultValue="NORMAL"
-      >
-        {RICH_TEXT_LINE_HEIGHT_PRESETS.map((preset) => (
-          <option key={preset.value} value={preset.value}>
-            {preset.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        aria-label="Espaço entre parágrafos"
-        title="Espaço entre parágrafos do bloco atual"
-        className="h-7 rounded-xl border border-slate-200 bg-white px-2"
-        onMouseDown={(event) => {
-          event.stopPropagation();
-          rememberSelection();
-        }}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => {
-          const paragraphSpacing = getRichTextPresetCss(
-            RICH_TEXT_PARAGRAPH_SPACING_PRESETS,
-            event.target.value
-          );
-          applyWithSelection(() =>
-            editor.chain().focus().updateAttributes("paragraph", {
-              paragraphSpacing,
-            }).run()
-          );
-        }}
-        defaultValue="PADRAO"
-      >
-        {RICH_TEXT_PARAGRAPH_SPACING_PRESETS.map((preset) => (
-          <option key={preset.value} value={preset.value}>
-            {preset.label}
-          </option>
-        ))}
-      </select>
-
       <button
         type="button"
         onMouseDown={keepSelection}
@@ -2811,13 +2541,7 @@ function RichTextBubbleToolbar({ editor }: { editor: Editor }) {
         type="button"
         onMouseDown={keepSelection}
         onClick={() =>
-          editor
-            .chain()
-            .focus()
-            .unsetAllMarks()
-            .updateAttributes("paragraph", { paragraphSpacing: null })
-            .removeEmptyTextStyle()
-            .run()
+          editor.chain().focus().unsetAllMarks().removeEmptyTextStyle().run()
         }
         className="rounded-xl bg-slate-100 px-2 py-1"
       >
@@ -3099,6 +2823,8 @@ function RenderBlocoPreview({
     getStringConfig(config, "botaoSecundarioTexto");
 
   const corFundo = getStringConfig(config, "corFundo") || "BRANCO";
+  const espacamento = getStringConfig(config, "espacamento") || "PADRAO";
+
   const categorias = getArrayConfig(config, "categorias");
   const produtos = getArrayConfig(config, "produtos");
   const fonteProdutos = getStringConfig(config, "fonte") || "TODOS";
@@ -3184,7 +2910,7 @@ function RenderBlocoPreview({
 
   const isMobile = device === "MOBILE";
   const bgClass = getBgClass(corFundo);
-  const paddingClass = resolveSpacingClasses(config);
+  const paddingClass = getPaddingClass(espacamento);
   const alinhamentoBanner =
     getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA";
   const alinhamentoTextoDesktop =
@@ -3423,6 +3149,11 @@ function RenderBlocoPreview({
       "exibirEtiqueta",
       estiloEtiquetaColecoes !== "OCULTA"
     ) && estiloEtiquetaColecoes !== "OCULTA";
+  const exibirBotaoEtiquetaColecoes = getBooleanConfig(
+    config,
+    "exibirBotaoEtiqueta",
+    false
+  );
   const tipoCabecalhoColecoes = normalizarTipoCabecalhoColecoes(
     getStringConfig(config, "tipoCabecalho")
   );
@@ -3545,7 +3276,7 @@ function RenderBlocoPreview({
         fallbackText={titulo}
         placeholder="Clique para adicionar um título"
         multiline
-        className={`max-w-full break-words whitespace-pre-line font-light ${getColecoesCabecalhoTitleClass(
+        className={`whitespace-pre-line break-words font-light ${getColecoesCabecalhoTitleClass(
           tamanhoCabecalhoColecoes
         )}`}
         style={resolveTextStyle(tituloSecaoStyle)}
@@ -3686,7 +3417,7 @@ function RenderBlocoPreview({
 
     const tituloItem = item.titulo || item.categoriaNome;
     const etiquetaBaseClass = overlay
-      ? `absolute z-10 bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur ${getColecoesLabelPositionClass(
+      ? `absolute z-10 bg-white/90 shadow-[0_10px_26px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur ${getColecoesLabelPositionClass(
           posicaoEtiquetaColecoes
         )} ${getColecoesLabelSizeClass(tamanhoEtiquetaColecoes)} ${getColecoesLabelWidthClass(
           larguraEtiquetaColecoes
@@ -3694,8 +3425,8 @@ function RenderBlocoPreview({
       : "pt-4";
     const titleClass = overlay
       ? tamanhoEtiquetaColecoes === "GRANDE"
-        ? "text-sm text-slate-950"
-        : "text-xs text-slate-950"
+        ? "text-sm font-medium leading-tight text-slate-950"
+        : "text-sm font-medium leading-tight text-slate-950"
       : "text-slate-950";
     const bodyClass = overlay
       ? tamanhoEtiquetaColecoes === "PEQUENA"
@@ -3735,7 +3466,7 @@ function RenderBlocoPreview({
             })
           }
         />
-        {item.textoLink && (
+        {exibirBotaoEtiquetaColecoes && item.textoLink && (
           <span
             className={`mt-2 inline-flex border border-slate-950 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-950 ${buttonRadiusPreviewClass}`}
           >
@@ -3811,7 +3542,7 @@ function RenderBlocoPreview({
 
           {exibirTexto && (
             <div
-              className={`absolute inset-0 flex items-center ${paddingClass} ${getBannerAlignmentClass(
+              className={`absolute inset-0 flex items-center ${getBannerAlignmentClass(
                 alinhamentoBanner,
                 isMobile
               )}`}
@@ -3929,7 +3660,7 @@ function RenderBlocoPreview({
             <div className="absolute inset-0">{textoImagemMedia}</div>
             <div className="absolute inset-0 bg-black/35" />
 
-            <div className={`absolute inset-0 flex items-center ${paddingClass}`}>
+            <div className="absolute inset-0 flex items-center px-6 py-10 md:px-12">
               <div className="max-w-xl text-white">
                 <RichTextInlineEditor
                   value={tituloRichText}
@@ -4360,7 +4091,9 @@ function RenderBlocoPreview({
                   {itensColecoesPreview.map((item) => (
                     <article key={item.id} className="min-w-0">
                       {renderColecaoItemMedia(item, "aspect-[4/5]")}
-                      {exibirEtiquetaColecoes ? renderColecaoItemLabel(item, false) : null}
+                      {exibirEtiquetaColecoes ? (
+                        renderColecaoItemLabel(item, false)
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -4369,134 +4102,78 @@ function RenderBlocoPreview({
               <>
                 {colecoesHeaderPreview}
 
-                <div className="mt-8">
-                  <div
-                    className="hidden lg:grid"
-                    style={getColecoesMosaicGridStyle(
-                      presetMosaicoColecoes,
-                      itensColecoesPreview.length
-                    )}
-                  >
-                    {itensColecoesPreview.map((item, index) => {
-                      const labelSobreposta =
-                        exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
+                <div className={`mt-8 ${getColecoesMosaicGridClass(presetMosaicoColecoes)}`}>
+                  {itensColecoesPreview.map((item, index) => {
+                    const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                      item,
+                      index,
+                      presetMosaicoColecoes
+                    );
+                    const itemFrameClass = getColecoesMosaicItemClass(
+                      tamanhoEfetivo,
+                      index,
+                      presetMosaicoColecoes
+                    );
+                    const labelSobreposta =
+                      exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
 
-                      return (
-                        <article
-                          key={item.id}
-                          className="relative min-w-0"
-                          style={getColecoesMosaicItemStyle(
-                            index,
-                            presetMosaicoColecoes,
-                            itensColecoesPreview.length
-                          )}
+                    return (
+                      <article key={item.id} className="relative min-w-0">
+                        <div
+                          className={`relative overflow-hidden ${itemFrameClass}`}
                         >
-                          <div
-                            className={`relative overflow-hidden ${getColecoesMosaicItemClass(
-                              index,
-                              presetMosaicoColecoes,
-                              itensColecoesPreview.length
-                            )}`}
-                          >
-                            {renderColecaoItemMedia(item, "h-full min-h-full")}
-                            {labelSobreposta ? renderColecaoItemLabel(item, true) : null}
-                          </div>
-                          {exibirEtiquetaColecoes && !labelSobreposta
-                            ? renderColecaoItemLabel(item, false)
+                          {renderColecaoItemMedia(item, "h-full min-h-full")}
+                          {labelSobreposta
+                            ? renderColecaoItemLabel(item, true)
                             : null}
-                        </article>
-                      );
-                    })}
-                  </div>
-
-                  <div className={`${getColecoesMosaicMobileClass()} lg:hidden`}>
-                    {itensColecoesPreview.map((item) => {
-                      const labelSobreposta =
-                        exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
-
-                      return (
-                        <article key={item.id} className="relative min-w-0">
-                          <div className="relative aspect-[4/5] overflow-hidden">
-                            {renderColecaoItemMedia(item, "h-full min-h-full")}
-                            {labelSobreposta ? renderColecaoItemLabel(item, true) : null}
-                          </div>
-                          {exibirEtiquetaColecoes && !labelSobreposta
-                            ? renderColecaoItemLabel(item, false)
-                            : null}
-                        </article>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        {exibirEtiquetaColecoes && !labelSobreposta
+                          ? renderColecaoItemLabel(item, false)
+                          : null}
+                      </article>
+                    );
+                  })}
                 </div>
               </>
             ) : (
               <div
-                className={`grid gap-8 lg:gap-10 lg:items-start ${getColecoesHeaderWidthClass(
+                className={`grid gap-6 lg:gap-10 lg:items-start ${getColecoesHeaderWidthClass(
                   larguraCabecalhoDesktopColecoes
                 )}`}
               >
-                <div className="min-w-0 max-w-full lg:sticky lg:top-6">
-                  {colecoesHeaderPreview}
-                </div>
+                <div className="min-w-0 max-w-full lg:sticky lg:top-6">{colecoesHeaderPreview}</div>
 
-                <div className="min-w-0 max-w-full">
-                  <div
-                    className="hidden lg:grid"
-                    style={getColecoesMosaicGridStyle(
-                      presetMosaicoColecoes,
-                      itensColecoesPreview.length
-                    )}
-                  >
-                    {itensColecoesPreview.map((item, index) => {
-                      const labelSobreposta =
-                        exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
+                <div className={getColecoesMosaicGridClass(presetMosaicoColecoes)}>
+                  {itensColecoesPreview.map((item, index) => {
+                    const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
+                      item,
+                      index,
+                      presetMosaicoColecoes
+                    );
+                    const itemFrameClass = getColecoesMosaicItemClass(
+                      tamanhoEfetivo,
+                      index,
+                      presetMosaicoColecoes
+                    );
+                    const labelSobreposta =
+                      exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
 
-                      return (
-                        <article
-                          key={item.id}
-                          className="relative min-w-0"
-                          style={getColecoesMosaicItemStyle(
-                            index,
-                            presetMosaicoColecoes,
-                            itensColecoesPreview.length
-                          )}
+                    return (
+                      <article key={item.id} className="relative min-w-0">
+                        <div
+                          className={`relative overflow-hidden ${itemFrameClass}`}
                         >
-                          <div
-                            className={`relative overflow-hidden ${getColecoesMosaicItemClass(
-                              index,
-                              presetMosaicoColecoes,
-                              itensColecoesPreview.length
-                            )}`}
-                          >
-                            {renderColecaoItemMedia(item, "h-full min-h-full")}
-                            {labelSobreposta ? renderColecaoItemLabel(item, true) : null}
-                          </div>
-                          {exibirEtiquetaColecoes && !labelSobreposta
-                            ? renderColecaoItemLabel(item, false)
+                          {renderColecaoItemMedia(item, "h-full min-h-full")}
+                          {labelSobreposta
+                            ? renderColecaoItemLabel(item, true)
                             : null}
-                        </article>
-                      );
-                    })}
-                  </div>
-
-                  <div className={`${getColecoesMosaicMobileClass()} lg:hidden`}>
-                    {itensColecoesPreview.map((item) => {
-                      const labelSobreposta =
-                        exibirEtiquetaColecoes && estiloEtiquetaColecoes === "SOBREPOSTA";
-
-                      return (
-                        <article key={item.id} className="relative min-w-0">
-                          <div className="relative aspect-[4/5] overflow-hidden">
-                            {renderColecaoItemMedia(item, "h-full min-h-full")}
-                            {labelSobreposta ? renderColecaoItemLabel(item, true) : null}
-                          </div>
-                          {exibirEtiquetaColecoes && !labelSobreposta
-                            ? renderColecaoItemLabel(item, false)
-                            : null}
-                        </article>
-                      );
-                    })}
-                  </div>
+                        </div>
+                        {exibirEtiquetaColecoes && !labelSobreposta
+                          ? renderColecaoItemLabel(item, false)
+                          : null}
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -4889,16 +4566,12 @@ function ColecoesCategoriasModalFields({
         />
       </label>
 
-      <SecaoRecolhivel title="Cabeçalho - texto principal">
-        <p className="text-xs text-slate-500">
-          Configure o texto principal da seção. Use Enter para escolher onde o título quebra linha.
-        </p>
-        <textarea
+      <SecaoRecolhivel title="Textos / conteúdo">
+        <input
           value={estado.titulo}
           onChange={(event) => onChange({ titulo: event.target.value })}
-          rows={3}
-          placeholder={"Coleções /\ncategorias"}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+          placeholder="Clique para adicionar um título"
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
         />
         <textarea
           value={estado.texto}
@@ -4910,9 +4583,6 @@ function ColecoesCategoriasModalFields({
       </SecaoRecolhivel>
 
       <PainelSecao title="Cabeçalho">
-        <p className="mb-4 text-xs leading-5 text-slate-500">
-          Escolha se o cabeçalho será texto, logo, texto com logo ou uma arte de título.
-        </p>
         <div className="grid gap-4 md:grid-cols-2">
           <label>
             <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -5097,10 +4767,7 @@ function ColecoesCategoriasModalFields({
         </div>
       </PainelSecao>
 
-      <PainelSecao title="Layout da seção">
-        <p className="mb-4 text-xs leading-5 text-slate-500">
-          O preset visual define a composição principal. O bloco deve funcionar bem sem ajustar tamanhos item por item.
-        </p>
+      <PainelSecao title="Layout">
         <div className="grid gap-4 md:grid-cols-2">
           <select value={estado.layoutVisualColecoes} onChange={(event) => onChange({ layoutVisualColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Layout visual">
             {LAYOUT_VISUAL_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
@@ -5130,18 +4797,20 @@ function ColecoesCategoriasModalFields({
           >
             {PRESET_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
           </select>
-          <select
-            value={estado.tamanhoCabecalhoColecoes}
-            onChange={(event) => onChange({ tamanhoCabecalhoColecoes: event.target.value })}
-            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-            aria-label="Tamanho do cabeçalho"
-          >
-            <option value="MEDIO">Cabeçalho médio</option>
-            <option value="GRANDE">Cabeçalho grande</option>
-            <option value="GIGANTE">Cabeçalho gigante</option>
-          </select>
           <select value={estado.larguraConteudoColecoes} onChange={(event) => onChange({ larguraConteudoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura">
             {LARGURA_CONTEUDO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Etiqueta">
+            {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.tamanhoEtiquetaColecoes} onChange={(event) => onChange({ tamanhoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tamanho da etiqueta">
+            {TAMANHO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Etiqueta: {preset.label}</option>)}
+          </select>
+          <select value={estado.posicaoEtiquetaColecoes} onChange={(event) => onChange({ posicaoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição da etiqueta">
+            {POSICAO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select value={estado.larguraEtiquetaColecoes} onChange={(event) => onChange({ larguraEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura da etiqueta">
+            {LARGURA_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Largura: {preset.label}</option>)}
           </select>
           <select value={estado.posicaoCabecalhoMosaicoColecoes} onChange={(event) => onChange({ posicaoCabecalhoMosaicoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição do cabeçalho no mosaico">
             {POSICAO_CABECALHO_MOSAICO_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
@@ -5200,72 +4869,6 @@ function ColecoesCategoriasModalFields({
               className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
             />
           </label>
-        </div>
-        <div className="mt-4 space-y-4">
-          <select
-            value={estado.corFundo}
-            onChange={(event) => onChange({ corFundo: event.target.value })}
-            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-            aria-label="Cor de fundo"
-          >
-            {COR_FUNDO_PRESETS.map((preset) => (
-              <option key={preset.value} value={preset.value}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-          <SpacingControls
-            verticalValue={estado.espacamentoVertical}
-            horizontalValue={estado.espacamentoHorizontal}
-            onChange={onChange}
-          />
-        </div>
-      </PainelSecao>
-
-      <ResponsiveTextAlignControls desktopValue={estado.alinhamentoTextoDesktop} mobileValue={estado.alinhamentoTextoMobile} onChange={onChange} />
-      <ButtonRadiusControl
-        value={estado.estiloBordaBotao}
-        onChange={(value) => onChange({ estiloBordaBotao: value })}
-      />
-
-      <PainelSecao title="Etiquetas e clique">
-        <p className="mb-4 text-xs leading-5 text-slate-500">
-          Controle a caixa de texto dos cards e se o card inteiro funciona como link na loja pública.
-        </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.exibirEtiquetaColecoes}
-              onChange={(event) =>
-                onChange({ exibirEtiquetaColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Exibir etiqueta
-          </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.exibirBotaoEtiquetaColecoes}
-              onChange={(event) =>
-                onChange({ exibirBotaoEtiquetaColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Exibir botão dentro da etiqueta
-          </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
-              checked={estado.cardInteiroClicavelColecoes}
-              onChange={(event) =>
-                onChange({ cardInteiroClicavelColecoes: event.target.checked })
-              }
-              className="h-4 w-4"
-            />
-            Card inteiro clicável
-          </label>
           <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700">
             <input
               type="checkbox"
@@ -5275,22 +4878,42 @@ function ColecoesCategoriasModalFields({
               }
               className="h-4 w-4"
             />
-            Exibir linha decorativa
+            Exibir linha decorativa na etiqueta
           </label>
-          <select value={estado.estiloEtiquetaColecoes} onChange={(event) => onChange({ estiloEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Estilo da etiqueta">
-            {ESTILO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <select
+            value={estado.corFundo}
+            onChange={(event) => onChange({ corFundo: event.target.value })}
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Cor de fundo"
+          >
+            {COR_FUNDO_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
           </select>
-          <select value={estado.posicaoEtiquetaColecoes} onChange={(event) => onChange({ posicaoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Posição da etiqueta">
-            {POSICAO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-          </select>
-          <select value={estado.tamanhoEtiquetaColecoes} onChange={(event) => onChange({ tamanhoEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tamanho da etiqueta">
-            {TAMANHO_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Tamanho: {preset.label}</option>)}
-          </select>
-          <select value={estado.larguraEtiquetaColecoes} onChange={(event) => onChange({ larguraEtiquetaColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura da etiqueta">
-            {LARGURA_ETIQUETA_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>Largura: {preset.label}</option>)}
+          <select
+            value={estado.espacamento}
+            onChange={(event) => onChange({ espacamento: event.target.value })}
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Espaçamento"
+          >
+            {ESPACAMENTO_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
           </select>
         </div>
       </PainelSecao>
+
+      <ResponsiveTextAlignControls desktopValue={estado.alinhamentoTextoDesktop} mobileValue={estado.alinhamentoTextoMobile} onChange={onChange} />
+      <ButtonRadiusControl
+        value={estado.estiloBordaBotao}
+        onChange={(value) => onChange({ estiloBordaBotao: value })}
+      />
 
       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between gap-3">
@@ -5300,40 +4923,15 @@ function ColecoesCategoriasModalFields({
           </button>
         </div>
         <div className="mt-4 space-y-4">
-          {estado.itensColecoes.map((item, index) => {
-            const itemTituloResumo =
-              item.titulo || item.categoriaNome || `Item ${index + 1}`;
-            const itemTemMidia = Boolean(
-              item.imagemDesktopUrl ||
-                item.imagemMobileUrl ||
-                item.videoDesktopUrl ||
-                item.videoMobileUrl
-            );
-
-            return (
+          {estado.itensColecoes.map((item, index) => (
             <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h4 className="truncate text-sm font-semibold text-slate-950">
-                    Item {index + 1} — {itemTituloResumo}
-                  </h4>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      {item.tipoLink === "CATEGORIA" ? "Categoria" : "Link personalizado"}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      {itemTemMidia ? "Com imagem" : "Sem imagem"}
-                    </span>
-                  </div>
-                </div>
+                <h4 className="text-sm font-semibold text-slate-950">Item {index + 1}</h4>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => moveItem(item.id, "UP")} disabled={index === 0} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Subir item"><ArrowUp className="h-4 w-4" /></button>
                   <button type="button" onClick={() => moveItem(item.id, "DOWN")} disabled={index === estado.itensColecoes.length - 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40" aria-label="Descer item"><ArrowDown className="h-4 w-4" /></button>
                   <button type="button" onClick={() => removeItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-500" aria-label="Remover item"><Trash2 className="h-4 w-4" /></button>
                 </div>
-              </div>
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Link / destino
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <select value={item.tipoLink} onChange={(event) => updateItem(item.id, { tipoLink: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Tipo de link">
@@ -5348,18 +4946,15 @@ function ColecoesCategoriasModalFields({
                 ) : (
                   <input value={item.linkUrl} onChange={(event) => updateItem(item.id, { linkUrl: event.target.value })} placeholder="/loja/colecao" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
                 )}
-              </div>
-              <div className="mb-3 mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Conteúdo
+                <select value={item.tamanhoMosaico} onChange={(event) => updateItem(item.id, { tamanhoMosaico: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-2" aria-label="Tamanho no mosaico">
+                  {TAMANHO_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                </select>
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <input value={item.titulo} onChange={(event) => updateItem(item.id, { titulo: event.target.value })} placeholder={item.categoriaNome || "Título da coleção"} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
                 <input value={item.textoLink} onChange={(event) => updateItem(item.id, { textoLink: event.target.value })} placeholder="Explorar" className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" />
               </div>
               <textarea value={item.subtitulo} onChange={(event) => updateItem(item.id, { subtitulo: event.target.value })} rows={3} placeholder="Chamada da coleção" className="mt-4 w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500" />
-              <div className="mb-3 mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-                Mídia
-              </div>
               <select
                 value={item.tipoMidia}
                 onChange={(event) =>
@@ -5417,14 +5012,7 @@ function ColecoesCategoriasModalFields({
                   orientacao="Opcional. Quando vazio, usa a mídia desktop."
                 />
               </div>
-              <SecaoRecolhivel title="Avançado do item">
-                <p className="text-xs text-slate-500">
-                  O preset visual já define o mosaico. Use estes campos apenas para exceções ou ajuste fino de enquadramento.
-                </p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <select value={item.tamanhoMosaico} onChange={(event) => updateItem(item.id, { tamanhoMosaico: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 md:col-span-2" aria-label="Tamanho no mosaico">
-                  {TAMANHO_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                </select>
                 <select value={item.mediaPositionDesktop} onChange={(event) => updatePosition(item.id, "DESKTOP", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop desktop">
                   {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
                 </select>
@@ -5432,10 +5020,8 @@ function ColecoesCategoriasModalFields({
                   {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
                 </select>
               </div>
-              </SecaoRecolhivel>
             </div>
-          );
-          })}
+          ))}
         </div>
       </div>
     </div>
@@ -6017,12 +5603,6 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <SpacingControls
-              verticalValue={estado.espacamentoVertical}
-              horizontalValue={estado.espacamentoHorizontal}
-              onChange={onChange}
-            />
-
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
               Crop ainda não está ativo nesta etapa. Para vídeo, prefira MP4
               com codec H.264 para maior compatibilidade.
@@ -6256,11 +5836,25 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
 
-              <SpacingControls
-                verticalValue={estado.espacamentoVertical}
-                horizontalValue={estado.espacamentoHorizontal}
-                onChange={onChange}
-              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <ButtonRadiusControl
                 value={estado.estiloBordaBotao}
@@ -6377,11 +5971,24 @@ function EditorConteudoBlocoModal({
                   </select>
                 </label>
 
-                <SpacingControls
-                  verticalValue={estado.espacamentoVertical}
-                  horizontalValue={estado.espacamentoHorizontal}
-                  onChange={onChange}
-                />
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Espaçamento
+                  </span>
+                  <select
+                    value={estado.espacamento}
+                    onChange={(event) =>
+                      onChange({ espacamento: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {ESPACAMENTO_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <label>
                   <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -7142,11 +6749,25 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
 
-              <SpacingControls
-                verticalValue={estado.espacamentoVertical}
-                horizontalValue={estado.espacamentoHorizontal}
-                onChange={onChange}
-              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
         ) : isDestaquesCards ? (
@@ -7311,11 +6932,24 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
 
-              <SpacingControls
-                verticalValue={estado.espacamentoVertical}
-                horizontalValue={estado.espacamentoHorizontal}
-                onChange={onChange}
-              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -7721,11 +7355,25 @@ function EditorConteudoBlocoModal({
                 </select>
               </label>
 
-              <SpacingControls
-                verticalValue={estado.espacamentoVertical}
-                horizontalValue={estado.espacamentoHorizontal}
-                onChange={onChange}
-              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Espaçamento
+                </span>
+
+                <select
+                  value={estado.espacamento}
+                  onChange={(event) =>
+                    onChange({ espacamento: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESPACAMENTO_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
@@ -8372,26 +8020,6 @@ export default function EditorVisualPaginaClient({
       posicaoCabecalhoMosaicoColecoes: normalizarPosicaoCabecalhoMosaico(
         getStringConfig(config, "posicaoCabecalhoMosaico")
       ),
-      tamanhoCabecalhoColecoes: normalizarTamanhoCabecalhoColecoes(
-        getStringConfig(config, "tamanhoCabecalho") || "GRANDE"
-      ),
-      exibirEtiquetaColecoes:
-        getBooleanConfig(
-          config,
-          "exibirEtiqueta",
-          normalizarEstiloEtiquetaColecoes(getStringConfig(config, "estiloEtiqueta")) !== "OCULTA"
-        ) &&
-        normalizarEstiloEtiquetaColecoes(getStringConfig(config, "estiloEtiqueta")) !== "OCULTA",
-      exibirBotaoEtiquetaColecoes: getBooleanConfig(
-        config,
-        "exibirBotaoEtiqueta",
-        false
-      ),
-      cardInteiroClicavelColecoes: getBooleanConfig(
-        config,
-        "cardInteiroClicavel",
-        true
-      ),
       itensColecoes: getItensColecoesConfig(config),
       tipoCabecalhoColecoes: normalizarTipoCabecalhoColecoes(
         getStringConfig(config, "tipoCabecalho")
@@ -8445,15 +8073,7 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "mediaPositionMobile")
       ),
       corFundo: getStringConfig(config, "corFundo") || "BRANCO",
-      espacamento: normalizarEspacamento(getStringConfig(config, "espacamento")),
-      espacamentoVertical: normalizarEspacamento(
-        getStringConfig(config, "espacamentoVertical"),
-        normalizarEspacamento(getStringConfig(config, "espacamento"))
-      ),
-      espacamentoHorizontal: normalizarEspacamento(
-        getStringConfig(config, "espacamentoHorizontal"),
-        normalizarEspacamento(getStringConfig(config, "espacamento"))
-      ),
+      espacamento: getStringConfig(config, "espacamento") || "PADRAO",
       alinhamentoConteudo:
         getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA",
       alinhamentoTextoDesktop:
@@ -8572,9 +8192,6 @@ export default function EditorVisualPaginaClient({
       estiloBordaBotao: editando.estiloBordaBotao,
       alinhamentoTextoDesktop: editando.alinhamentoTextoDesktop,
       alinhamentoTextoMobile: editando.alinhamentoTextoMobile,
-      espacamento: editando.espacamentoVertical,
-      espacamentoVertical: editando.espacamentoVertical,
-      espacamentoHorizontal: editando.espacamentoHorizontal,
       ...(tituloMudouNoModal ? { tituloRichText: tituloModalRichText } : {}),
       ...(textoMudouNoModal
         ? {
@@ -8651,7 +8268,7 @@ export default function EditorVisualPaginaClient({
                   ? "DIREITA"
                   : "ESQUERDA",
               corFundo: editando.corFundo,
-              espacamento: editando.espacamentoVertical,
+              espacamento: editando.espacamento,
               mediaCropDesktopX: editando.mediaCropDesktopX,
               mediaCropDesktopY: editando.mediaCropDesktopY,
               mediaCropMobileX: editando.mediaCropMobileX,
@@ -8701,7 +8318,7 @@ export default function EditorVisualPaginaClient({
               botaoTexto: editando.textoBotao,
               exibirSeloDesconto: editando.exibirSeloDescontoProdutos,
               corFundo: editando.corFundo,
-              espacamento: editando.espacamentoVertical,
+              espacamento: editando.espacamento,
             }
         : isDestaquesCards
           ? {
@@ -8732,7 +8349,7 @@ export default function EditorVisualPaginaClient({
               ),
               alinhamento: editando.alinhamentoCards,
               corFundo: editando.corFundo,
-              espacamento: editando.espacamentoVertical,
+              espacamento: editando.espacamento,
               cards: editando.cardsDestaques.map((card) => ({
                 id: card.id,
                 titulo: card.titulo,
@@ -8798,12 +8415,8 @@ export default function EditorVisualPaginaClient({
                 Math.max(25, Number(editando.larguraCabecalhoDesktopColecoes) || 32)
               ),
               posicaoCabecalhoMosaico: editando.posicaoCabecalhoMosaicoColecoes,
-              tamanhoCabecalho: editando.tamanhoCabecalhoColecoes,
-              exibirEtiqueta: editando.exibirEtiquetaColecoes,
-              exibirBotaoEtiqueta: editando.exibirBotaoEtiquetaColecoes,
-              cardInteiroClicavel: editando.cardInteiroClicavelColecoes,
               corFundo: editando.corFundo,
-              espacamento: editando.espacamentoVertical,
+              espacamento: editando.espacamento,
               tipoCabecalho: editando.tipoCabecalhoColecoes,
               logoTituloUrl: editando.logoTituloUrl,
               logoTituloMobileUrl: editando.logoTituloMobileUrl,
@@ -8879,7 +8492,7 @@ export default function EditorVisualPaginaClient({
               alinhamento: editando.alinhamentoCta,
               larguraConteudo: editando.larguraConteudoCta,
               corFundo: editando.corFundo,
-              espacamento: editando.espacamentoVertical,
+              espacamento: editando.espacamento,
               layoutDesktop: editando.layoutDesktopCta,
               layoutMobile: editando.layoutMobileCta,
               exibirMidia: editando.exibirMidia,
@@ -8904,7 +8517,7 @@ export default function EditorVisualPaginaClient({
         : {
             imagemUrl: editando.imagemUrl,
             corFundo: editando.corFundo,
-            espacamento: editando.espacamentoVertical,
+            espacamento: editando.espacamento,
           }),
     };
 

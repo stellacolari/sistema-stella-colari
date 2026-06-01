@@ -187,3 +187,9 @@ select:focus {
     animation: stellaColecaoReveal 0.55s ease both;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .stella-reveal-card {
+    animation: none !important;
+  }
+}
