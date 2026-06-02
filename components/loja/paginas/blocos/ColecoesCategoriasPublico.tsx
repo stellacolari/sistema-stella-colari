@@ -83,14 +83,14 @@ function getHeaderTitleClass(tamanho: string) {
   const normalized = normalizarTamanhoCabecalho(tamanho);
 
   if (normalized === "GIGANTE") {
-    return "text-[clamp(3.5rem,6.5vw,7.35rem)] leading-[0.95] tracking-[-0.065em]";
+    return "text-[clamp(3.4rem,5.2vw,6.4rem)] leading-[0.92] tracking-[-0.055em]";
   }
 
   if (normalized === "MEDIO") {
-    return "text-[clamp(2.35rem,4vw,4.25rem)] leading-[1] tracking-[-0.045em]";
+    return "text-[clamp(2.25rem,3.3vw,3.8rem)] leading-[0.98] tracking-[-0.035em]";
   }
 
-  return "text-[clamp(2.9rem,5.25vw,5.85rem)] leading-[0.98] tracking-[-0.055em]";
+  return "text-[clamp(2.8rem,4.4vw,5.2rem)] leading-[0.95] tracking-[-0.045em]";
 }
 
 function getGridColumnsByPreset(preset: string, fallback: number) {
@@ -101,10 +101,10 @@ function getGridColumnsByPreset(preset: string, fallback: number) {
 }
 
 function getHeaderWidthClass(width: number) {
-  if (width <= 25) return "lg:grid-cols-[minmax(240px,0.32fr)_minmax(0,1fr)]";
-  if (width <= 30) return "lg:grid-cols-[minmax(260px,0.36fr)_minmax(0,1fr)]";
-  if (width >= 40) return "lg:grid-cols-[minmax(340px,0.46fr)_minmax(0,1fr)]";
-  return "lg:grid-cols-[minmax(300px,0.40fr)_minmax(0,1fr)]";
+  if (width <= 25) return "lg:grid-cols-[minmax(280px,0.32fr)_minmax(0,1fr)]";
+  if (width <= 30) return "lg:grid-cols-[minmax(300px,0.34fr)_minmax(0,1fr)]";
+  if (width >= 40) return "lg:grid-cols-[minmax(360px,0.42fr)_minmax(0,1fr)]";
+  return "lg:grid-cols-[minmax(320px,0.36fr)_minmax(0,1fr)]";
 }
 
 function getLabelPositionClass(posicao: string) {
@@ -142,9 +142,9 @@ function getMosaicGridStyle(preset: string, quantidadeItens: number): CSSPropert
 
   return {
     display: "grid",
-    gridTemplateColumns: "1.05fr 0.9fr 1.05fr",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gridTemplateRows: "repeat(2, minmax(250px, 1fr))",
-    gap: "22px",
+    gap: "24px",
     alignItems: "stretch",
   };
 }
@@ -418,9 +418,10 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
-          className={`whitespace-pre-line break-words font-light ${getHeaderTitleClass(
+          className={`whitespace-pre-line break-normal font-light ${getHeaderTitleClass(
             tamanhoCabecalho
           )} ${colors.title}`}
+          style={{ wordBreak: "normal", overflowWrap: "normal" }}
         />
       ) : null}
       {hasSubtitulo ? (
@@ -632,9 +633,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
 
   return (
     <section
-      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(
-        getString(config, "espacamento", "PADRAO")
-      )}`}
+      className={`${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
     >
       <div
         className={`mx-auto ${widthClass} ${
@@ -737,7 +736,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             )}`}
           >
             {headerContent ? (
-              <div className="min-w-0 max-w-full lg:sticky lg:top-24">
+              <div className="min-w-0 max-w-full">
                 {headerContent}
               </div>
             ) : null}

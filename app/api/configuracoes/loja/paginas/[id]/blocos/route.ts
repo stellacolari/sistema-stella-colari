@@ -130,6 +130,9 @@ function getConfigPadrao(tipo: string) {
       mediaPositionMobile: "center center",
       alturaDesktop: 520,
       alturaMobile: 320,
+      espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       subtituloStyle: getTextStylePadrao("subtituloStyle"),
       botaoPrimarioStyle: getTextStylePadrao("botaoPrimarioStyle"),
@@ -152,6 +155,8 @@ function getConfigPadrao(tipo: string) {
       alinhamento: "CENTRO",
       fundo: "BRANCO",
       espacamento: "MEDIO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
@@ -191,6 +196,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "CENTRO",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       subtituloStyle: getTextStylePadrao("subtituloStyle"),
       nomeProdutoStyle: getTextStylePadrao("nomeProdutoStyle"),
@@ -242,6 +249,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "CENTRO",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloStyle: getTextStylePadrao("tituloStyle"),
       textoStyle: getTextStylePadrao("textoStyle"),
       botaoStyle: getTextStylePadrao("botaoStyle"),
@@ -283,6 +292,8 @@ function getConfigPadrao(tipo: string) {
       estiloBordaBotao: "PILULA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       tituloSecaoStyle: getTextStylePadrao("tituloSecaoStyle"),
       subtituloSecaoStyle: getTextStylePadrao("subtituloSecaoStyle"),
       cardTituloStyle: getTextStylePadrao("cardTituloStyle"),
@@ -373,6 +384,8 @@ function getConfigPadrao(tipo: string) {
       alinhamentoTextoMobile: "ESQUERDA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       larguraConteudo: "LARGA",
       colunasDesktop: 4,
       colunasTablet: 2,
@@ -416,6 +429,8 @@ function getConfigPadrao(tipo: string) {
       estiloBordaBotao: "PILULA",
       corFundo: "BRANCO",
       espacamento: "PADRAO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
       exibirMidia: false,
       tipoMidia: "IMAGEM",
       imagemUrl: "",
@@ -450,6 +465,8 @@ function getConfigPadrao(tipo: string) {
       categorias: [],
       colunas: 3,
       espacamento: "MEDIO",
+      espacamentoVertical: "PADRAO",
+      espacamentoHorizontal: "PADRAO",
     };
   }
 
