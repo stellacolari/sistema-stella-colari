@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { cancelarPedidoOnlineNaoPago } from "@/lib/pedidos/cancelar-pedido-online";
+import { efetivarPedidoManualPagoComoVenda } from "@/lib/vendas/efetivar-pedido-manual";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -155,6 +156,17 @@ export async function POST(req: Request) {
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : session.payment_intent?.id || null;
+
+      if (session.metadata?.origem === "ADMIN_MANUAL") {
+        const vendaGerada = await efetivarPedidoManualPagoComoVenda({
+          pedidoId,
+          gatewayPagamentoId: paymentIntentId,
+          valorPago,
+        });
+
+        console.log("Venda manual efetivada pelo Stripe:", vendaGerada);
+        return NextResponse.json({ received: true });
+      }
 
       const pedidoAtualizado = await prisma.pedidoOnline.update({
         where: {

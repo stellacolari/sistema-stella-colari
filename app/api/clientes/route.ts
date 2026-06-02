@@ -119,6 +119,8 @@ export async function POST(req: Request) {
         codigo: true,
         nome: true,
         documento: true,
+        telefone: true,
+        email: true,
       },
     });
 

@@ -109,6 +109,8 @@ export default async function NovaVendaV2Page() {
       codigo: true,
       nome: true,
       documento: true,
+      telefone: true,
+      email: true,
     },
   });
 

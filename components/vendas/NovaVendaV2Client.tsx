@@ -9,6 +9,8 @@ type ClienteBusca = {
   codigo: string;
   nome: string;
   documento: string;
+  telefone?: string | null;
+  email?: string | null;
 };
 
 type EstoquePorTamanho = {
@@ -201,6 +203,20 @@ function statusSaldo(estoqueAtual: number, quantidade: number) {
   };
 }
 
+function normalizarTelefoneWhatsApp(value: string | null | undefined) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.startsWith("55")) {
+    return digits;
+  }
+
+  return `55${digits}`;
+}
+
 function Info({
   label,
   value,
@@ -247,6 +263,13 @@ export default function NovaVendaV2Client({
   const [modalClienteAberto, setModalClienteAberto] = useState(false);
   const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState("");
+  const [gerandoLinkPagamento, setGerandoLinkPagamento] = useState(false);
+  const [erroPagamento, setErroPagamento] = useState("");
+  const [linkPagamento, setLinkPagamento] = useState<{
+    url: string;
+    pedidoCodigo: string;
+    assinatura: string;
+  } | null>(null);
   const [novoCliente, setNovoCliente] = useState({
     nome: "",
     telefone: "",
@@ -293,6 +316,22 @@ export default function NovaVendaV2Client({
   }, [produtos, buscaProduto]);
 
   const descontoNumero = Number(descontoPercentual.replace(",", ".")) || 0;
+
+  const assinaturaPagamento = useMemo(() => {
+    return JSON.stringify({
+      clienteId: clienteSelecionadoId,
+      meioVenda,
+      descontoNumero,
+      itens: itensPedido.map((item) => ({
+        id: item.id,
+        quantidade: item.quantidade,
+        tamanhoAnel: item.tamanhoAnel,
+      })),
+    });
+  }, [clienteSelecionadoId, descontoNumero, itensPedido, meioVenda]);
+
+  const linkPagamentoDesatualizado =
+    Boolean(linkPagamento) && linkPagamento?.assinatura !== assinaturaPagamento;
 
   function adicionarProduto(produto: ProdutoBusca) {
     setErro("");
@@ -615,6 +654,89 @@ export default function NovaVendaV2Client({
       setSalvandoCliente(false);
     }
   }
+
+  async function gerarLinkPagamento() {
+    try {
+      setErroPagamento("");
+      setErro("");
+
+      if (!clienteSelecionado) {
+        setErroPagamento("Selecione um cliente antes de gerar o link.");
+        return;
+      }
+
+      if (!meioVenda) {
+        setErroPagamento("Selecione o meio de venda.");
+        return;
+      }
+
+      if (itensPedido.length === 0) {
+        setErroPagamento("Adicione pelo menos um produto.");
+        return;
+      }
+
+      if (totalFinal <= 0) {
+        setErroPagamento("O total precisa ser maior que zero.");
+        return;
+      }
+
+      setGerandoLinkPagamento(true);
+
+      const response = await fetch("/api/vendas/link-pagamento", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clienteId: clienteSelecionado.id,
+          meioVenda,
+          descontoPercentual: descontoNumero,
+          observacoes,
+          itens: itensPedido.map((item) => ({
+            id: item.id,
+            quantidade: item.quantidade,
+            tamanhoAnel: produtoEhAnel(item)
+              ? normalizarTamanhoAnel(item.tamanhoAnel)
+              : null,
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroPagamento(data.error || "Erro ao gerar link de pagamento.");
+        setGerandoLinkPagamento(false);
+        return;
+      }
+
+      setLinkPagamento({
+        url: String(data.paymentUrl || ""),
+        pedidoCodigo: String(data.pedidoCodigo || ""),
+        assinatura: assinaturaPagamento,
+      });
+    } catch {
+      setErroPagamento("Erro ao gerar link de pagamento.");
+    } finally {
+      setGerandoLinkPagamento(false);
+    }
+  }
+
+  async function copiarLinkPagamento() {
+    if (!linkPagamento?.url) return;
+
+    try {
+      await navigator.clipboard.writeText(linkPagamento.url);
+    } catch {
+      setErroPagamento("Não foi possível copiar o link automaticamente.");
+    }
+  }
+
+  const telefoneWhatsApp = normalizarTelefoneWhatsApp(clienteSelecionado?.telefone);
+  const mensagemWhatsApp =
+    clienteSelecionado && linkPagamento?.url
+      ? `Olá, ${clienteSelecionado.nome}! Segue o link para pagamento do seu pedido na Stella: ${linkPagamento.url}`
+      : "";
 
   return (
     <>
@@ -1011,6 +1133,91 @@ export default function NovaVendaV2Client({
                 <Info label="Subtotal" value={moeda(subtotal)} />
                 <Info label="Desconto" value={moeda(valorDesconto)} />
                 <Info label="Total final" value={moeda(totalFinal)} destaque />
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Pagamento
+              </h2>
+
+              <div className="mt-5 space-y-4">
+                <button
+                  type="button"
+                  onClick={gerarLinkPagamento}
+                  disabled={gerandoLinkPagamento}
+                  className="w-full rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {gerandoLinkPagamento
+                    ? "Gerando link..."
+                    : linkPagamentoDesatualizado
+                    ? "Gerar novo link atualizado"
+                    : "Gerar link de pagamento"}
+                </button>
+
+                {erroPagamento ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {erroPagamento}
+                  </div>
+                ) : null}
+
+                {linkPagamento ? (
+                  <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <div>
+                      <p className="font-semibold">
+                        Link gerado
+                        {linkPagamento.pedidoCodigo
+                          ? ` para ${linkPagamento.pedidoCodigo}`
+                          : ""}
+                      </p>
+                      <p className="mt-1 break-all text-xs text-emerald-800">
+                        {linkPagamento.url}
+                      </p>
+                    </div>
+
+                    {linkPagamentoDesatualizado ? (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                        A venda foi alterada depois da geração. Gere um novo
+                        link antes de enviar ao cliente.
+                      </p>
+                    ) : null}
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={copiarLinkPagamento}
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                      >
+                        Copiar link
+                      </button>
+                      <a
+                        href={linkPagamento.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                      >
+                        Abrir link
+                      </a>
+                      {telefoneWhatsApp && !linkPagamentoDesatualizado ? (
+                        <a
+                          href={`https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(
+                            mensagemWhatsApp
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                        >
+                          Enviar WhatsApp
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-slate-500">
+                    O estoque será baixado somente após a confirmação de
+                    pagamento pelo Stripe.
+                  </p>
+                )}
               </div>
             </div>
 
