@@ -53,9 +53,8 @@ export default async function PaginasLojaPage() {
         titulo: "Home",
         slug: "home",
         tipo: "HOME",
-        ativo: true,
-        statusPublicacao: "PUBLICADA",
-        publicadoEm: new Date(),
+        ativo: false,
+        statusPublicacao: "RASCUNHO",
       },
     });
   }

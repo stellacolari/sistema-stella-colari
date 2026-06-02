@@ -42,42 +42,66 @@ function montarCaminhoCategoria(
   return partes.join(" > ");
 }
 
+async function garantirPaginaHomeVisual() {
+  return prisma.lojaPagina.upsert({
+    where: {
+      slug: "home",
+    },
+    update: {},
+    create: {
+      titulo: "Home",
+      slug: "home",
+      tipo: "HOME",
+      ativo: false,
+      statusPublicacao: "RASCUNHO",
+    },
+  });
+}
+
 export default async function ConfiguracoesHomeLojaPage() {
-  const [categoriasRaw, categoriasHomeRaw, secoesRaw, blocoRaw, garantiaRaw] =
-    await Promise.all([
-      prisma.categoriaProduto.findMany({
-        where: {
-          ativo: true,
-        },
-        select: {
-          id: true,
-          nome: true,
-          slug: true,
-          categoriaMaeId: true,
-        },
-        orderBy: [{ ordem: "asc" }, { nome: "asc" }],
-      }),
+  const [
+    homeVisual,
+    categoriasRaw,
+    categoriasHomeRaw,
+    secoesRaw,
+    blocoRaw,
+    garantiaRaw,
+  ] = await Promise.all([
+    garantirPaginaHomeVisual(),
 
-      prisma.lojaCategoriaHome.findMany({
-        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
-      }),
+    prisma.categoriaProduto.findMany({
+      where: {
+        ativo: true,
+      },
+      select: {
+        id: true,
+        nome: true,
+        slug: true,
+        categoriaMaeId: true,
+      },
+      orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+    }),
 
-      prisma.lojaSecaoHome.findMany({
-        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
-      }),
+    prisma.lojaCategoriaHome.findMany({
+      orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+    }),
 
-      prisma.lojaBlocoHome.findFirst({
-        orderBy: {
-          criadoEm: "asc",
-        },
-      }),
+    prisma.lojaSecaoHome.findMany({
+      orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+    }),
 
-      prisma.lojaTextoInstitucional.findUnique({
-        where: {
-          chave: "garantia-produto",
-        },
-      }),
-    ]);
+    prisma.lojaBlocoHome.findFirst({
+      orderBy: {
+        criadoEm: "asc",
+      },
+    }),
+
+    prisma.lojaTextoInstitucional.findUnique({
+      where: {
+        chave: "garantia-produto",
+      },
+    }),
+  ]);
 
   const categoriasDisponiveis = categoriasRaw.map((categoria) => ({
     id: categoria.id,
@@ -129,7 +153,31 @@ return (
     <LojaConfigHeader
       title="Home da loja"
       description="Configure categorias em destaque, seções de produtos, bloco promocional e textos institucionais da loja pública."
+      actions={
+        <>
+          <Link
+            href={`/configuracoes/loja/paginas/${homeVisual.id}/editor`}
+            className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Editar Home no editor visual
+          </Link>
+          <Link
+            href={`/loja/preview/pagina/${homeVisual.id}`}
+            target="_blank"
+            className="inline-flex items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+          >
+            Prévia visual
+          </Link>
+        </>
+      }
     />
+
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+      Você pode continuar usando a configuração atual ou montar a Home pelo
+      editor visual. A loja pública usa a Home visual somente quando ela está
+      ativa, publicada e possui blocos ativos; caso contrário, esta Home atual
+      continua aparecendo como fallback.
+    </section>
 
     <HomeLojaClient
       categoriasDisponiveis={categoriasDisponiveis}
