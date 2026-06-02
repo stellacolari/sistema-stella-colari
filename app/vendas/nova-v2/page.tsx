@@ -20,7 +20,45 @@ async function buscarProdutosVenda() {
       nome: true,
       precoVenda: true,
       categoria: true,
+      imagemUrl: true,
       tipoProduto: true,
+      imagens: {
+        orderBy: {
+          ordem: "asc",
+        },
+        select: {
+          imagemUrl: true,
+        },
+        take: 1,
+      },
+      variacoes: {
+        where: {
+          ativo: true,
+        },
+        orderBy: {
+          ordem: "asc",
+        },
+        select: {
+          id: true,
+          nome: true,
+          obrigatoria: true,
+          opcoes: {
+            where: {
+              ativo: true,
+            },
+            orderBy: {
+              ordem: "asc",
+            },
+            select: {
+              id: true,
+              nome: true,
+              imagemUrl: true,
+              ativo: true,
+              ordem: true,
+            },
+          },
+        },
+      },
       estoque: {
         select: {
           tamanhoAnel: true,
@@ -93,9 +131,22 @@ export default async function NovaVendaV2Page() {
           : produto.nome,
       precoVenda: Number(produto.precoVenda),
       categoria: produto.categoria,
+      imagemUrl: produto.imagens[0]?.imagemUrl ?? produto.imagemUrl,
       estoqueAtual: estoque.estoqueAtual,
       estoquesPorTamanho: estoque.estoquesPorTamanho,
       tipoProduto: produto.tipoProduto,
+      variacoes: produto.variacoes.map((variacao) => ({
+        id: variacao.id,
+        nome: variacao.nome,
+        obrigatoria: Boolean(variacao.obrigatoria),
+        opcoes: variacao.opcoes.map((opcao) => ({
+          id: opcao.id,
+          nome: opcao.nome,
+          imagemUrl: opcao.imagemUrl,
+          ativo: Boolean(opcao.ativo),
+          ordem: Number(opcao.ordem || 0),
+        })),
+      })),
     };
   });
 

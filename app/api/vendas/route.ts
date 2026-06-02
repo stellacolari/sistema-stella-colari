@@ -239,6 +239,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (meioVenda.trim().toUpperCase() === "SITE") {
+      return NextResponse.json(
+        { error: "Site é reservado para pedidos online." },
+        { status: 400 }
+      );
+    }
+
     if (itens.length === 0) {
       return NextResponse.json(
         { error: "Adicione pelo menos um produto à venda." },

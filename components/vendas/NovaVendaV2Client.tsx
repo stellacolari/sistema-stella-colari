@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ImageIcon, Plus, Trash2, X } from "lucide-react";
 
 type ClienteBusca = {
   id: string;
@@ -16,15 +16,33 @@ type EstoquePorTamanho = {
   quantidadeAtual: number;
 };
 
+type ProdutoVariacaoOpcaoVenda = {
+  id: string;
+  nome: string;
+  imagemUrl?: string | null;
+  ativo?: boolean;
+  ordem?: number;
+};
+
+type ProdutoVariacaoVenda = {
+  id: string;
+  nome: string;
+  obrigatoria: boolean;
+  opcoes: ProdutoVariacaoOpcaoVenda[];
+};
+
 type ProdutoBusca = {
   id: string;
   codigoInterno: string;
   codigoFornecedor: string;
   nome: string;
+  imagemUrl?: string | null;
   precoVenda: number;
   categoria: string;
   estoqueAtual: number;
   estoquesPorTamanho: EstoquePorTamanho[];
+  tipoProduto?: string;
+  variacoes?: ProdutoVariacaoVenda[];
 };
 
 type ItemPedido = ProdutoBusca & {
@@ -97,6 +115,58 @@ function getTamanhosDisponiveis(produto: ProdutoBusca) {
     }));
 }
 
+function getOpcaoVariacaoSelecionada(item: ItemPedido) {
+  if (!item.tamanhoAnel) {
+    return null;
+  }
+
+  const tamanho = normalizarTamanhoAnel(item.tamanhoAnel);
+
+  for (const variacao of item.variacoes || []) {
+    const opcao = variacao.opcoes.find(
+      (opcaoVariacao) =>
+        opcaoVariacao.ativo !== false &&
+        normalizarTamanhoAnel(opcaoVariacao.nome) === tamanho
+    );
+
+    if (opcao) {
+      return opcao;
+    }
+  }
+
+  return null;
+}
+
+function getImagemProduto(item: ProdutoBusca | ItemPedido) {
+  if ("itemKey" in item) {
+    return getOpcaoVariacaoSelecionada(item)?.imagemUrl || item.imagemUrl || null;
+  }
+
+  return item.imagemUrl || null;
+}
+
+function MiniaturaProduto({
+  imagemUrl,
+  nome,
+}: {
+  imagemUrl?: string | null;
+  nome: string;
+}) {
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+      {imagemUrl ? (
+        <img
+          src={imagemUrl}
+          alt={nome}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <ImageIcon className="h-5 w-5 text-slate-300" />
+      )}
+    </div>
+  );
+}
+
 function statusSaldo(estoqueAtual: number, quantidade: number) {
   const restante = estoqueAtual - quantidade;
 
@@ -164,6 +234,7 @@ export default function NovaVendaV2Client({
   clientes: ClienteBusca[];
   produtos: ProdutoBusca[];
 }) {
+  const [clientesDisponiveis, setClientesDisponiveis] = useState(clientes);
   const [buscaCliente, setBuscaCliente] = useState("");
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState("");
   const [meioVenda, setMeioVenda] = useState("");
@@ -173,19 +244,31 @@ export default function NovaVendaV2Client({
   const [itensPedido, setItensPedido] = useState<ItemPedido[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [modalClienteAberto, setModalClienteAberto] = useState(false);
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const [erroCliente, setErroCliente] = useState("");
+  const [novoCliente, setNovoCliente] = useState({
+    nome: "",
+    telefone: "",
+    email: "",
+    documento: "",
+    tipoCliente: "PESSOA FÍSICA",
+    observacoes: "",
+  });
 
   const clienteSelecionado = useMemo(() => {
     return (
-      clientes.find((cliente) => cliente.id === clienteSelecionadoId) || null
+      clientesDisponiveis.find((cliente) => cliente.id === clienteSelecionadoId) ||
+      null
     );
-  }, [clientes, clienteSelecionadoId]);
+  }, [clientesDisponiveis, clienteSelecionadoId]);
 
   const clientesFiltrados = useMemo(() => {
     const termo = buscaCliente.trim().toLowerCase();
 
     if (!termo) return [];
 
-    return clientes
+    return clientesDisponiveis
       .filter((cliente) => {
         return (
           cliente.nome.toLowerCase().includes(termo) ||
@@ -193,7 +276,7 @@ export default function NovaVendaV2Client({
         );
       })
       .slice(0, 8);
-  }, [clientes, buscaCliente]);
+  }, [clientesDisponiveis, buscaCliente]);
 
   const produtosFiltrados = useMemo(() => {
     const termo = buscaProduto.trim().toLowerCase();
@@ -442,7 +525,99 @@ export default function NovaVendaV2Client({
     setBuscaCliente(`${cliente.documento} - ${cliente.nome}`);
   }
 
+  function atualizarCampoNovoCliente(
+    campo: keyof typeof novoCliente,
+    valor: string
+  ) {
+    setNovoCliente((atual) => ({
+      ...atual,
+      [campo]: valor,
+    }));
+  }
+
+  function fecharModalCliente() {
+    if (salvandoCliente) return;
+
+    setModalClienteAberto(false);
+    setErroCliente("");
+    setNovoCliente({
+      nome: "",
+      telefone: "",
+      email: "",
+      documento: "",
+      tipoCliente: "PESSOA FÍSICA",
+      observacoes: "",
+    });
+  }
+
+  async function criarClienteRapido() {
+    try {
+      setErroCliente("");
+
+      if (!novoCliente.nome.trim()) {
+        setErroCliente("Informe o nome do cliente.");
+        return;
+      }
+
+      if (!novoCliente.telefone.trim()) {
+        setErroCliente("Informe telefone/WhatsApp.");
+        return;
+      }
+
+      if (!novoCliente.documento.trim()) {
+        setErroCliente("Informe CPF/CNPJ do cliente.");
+        return;
+      }
+
+      setSalvandoCliente(true);
+
+      const response = await fetch("/api/clientes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(novoCliente),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroCliente(data.error || "Erro ao cadastrar cliente.");
+        setSalvandoCliente(false);
+        return;
+      }
+
+      const clienteCriado = data.cliente as ClienteBusca | undefined;
+
+      if (!clienteCriado?.id) {
+        setErroCliente("Cliente criado, mas não foi possível selecioná-lo.");
+        setSalvandoCliente(false);
+        return;
+      }
+
+      setClientesDisponiveis((atuais) => [
+        clienteCriado,
+        ...atuais.filter((cliente) => cliente.id !== clienteCriado.id),
+      ]);
+      selecionarCliente(clienteCriado);
+      setModalClienteAberto(false);
+      setNovoCliente({
+        nome: "",
+        telefone: "",
+        email: "",
+        documento: "",
+        tipoCliente: "PESSOA FÍSICA",
+        observacoes: "",
+      });
+    } catch {
+      setErroCliente("Erro ao cadastrar cliente.");
+    } finally {
+      setSalvandoCliente(false);
+    }
+  }
+
   return (
+    <>
     <div className="space-y-6">
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -479,9 +654,22 @@ export default function NovaVendaV2Client({
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Buscar cliente por documento ou nome
-                </label>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Buscar cliente por documento ou nome
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErroCliente("");
+                      setModalClienteAberto(true);
+                    }}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Novo cliente
+                  </button>
+                </div>
 
                 <div className="relative">
                   <input
@@ -550,9 +738,12 @@ export default function NovaVendaV2Client({
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                 >
                   <option value="">Selecione</option>
-                  <option>Site</option>
                   <option>Venda Direta</option>
+                  <option>WhatsApp</option>
+                  <option>Instagram</option>
+                  <option>Telefone</option>
                   <option>Revenda</option>
+                  <option>Outro</option>
                 </select>
               </div>
 
@@ -603,7 +794,23 @@ export default function NovaVendaV2Client({
                       <td className="px-4 py-3 font-medium text-slate-900">
                         {produto.codigoInterno}
                       </td>
-                      <td className="px-4 py-3">{produto.nome}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <MiniaturaProduto
+                            imagemUrl={getImagemProduto(produto)}
+                            nome={produto.nome}
+                          />
+
+                          <div className="flex min-w-0 flex-col">
+                            <span className="truncate font-medium text-slate-900">
+                              {produto.nome}
+                            </span>
+                            <span className="mt-0.5 text-xs text-slate-400">
+                              {produto.tipoProduto === "KIT" ? "Kit" : "Produto"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-4 py-3">{produto.categoria}</td>
                       <td className="px-4 py-3">{moeda(produto.precoVenda)}</td>
                       <td className="px-4 py-3">
@@ -692,7 +899,23 @@ export default function NovaVendaV2Client({
                             {item.codigoInterno}
                           </td>
 
-                          <td className="px-6 py-4">{item.nome}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <MiniaturaProduto
+                                imagemUrl={getImagemProduto(item)}
+                                nome={item.nome}
+                              />
+
+                              <div className="flex min-w-0 flex-col">
+                                <span className="truncate font-medium text-slate-900">
+                                  {item.nome}
+                                </span>
+                                <span className="mt-0.5 text-xs text-slate-400">
+                                  {item.categoria}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
 
                           <td className="px-6 py-4">
                             {ehAnel ? (
@@ -830,5 +1053,152 @@ export default function NovaVendaV2Client({
         </aside>
       </div>
     </div>
+
+    {modalClienteAberto ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">
+        <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Cliente
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                Novo cliente
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Cadastre sem sair da venda. Os itens adicionados serão mantidos.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={fecharModalCliente}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+              aria-label="Fechar cadastro de cliente"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-5 px-6 py-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Nome
+                </span>
+                <input
+                  value={novoCliente.nome}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("nome", event.target.value)
+                  }
+                  placeholder="Nome do cliente"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Telefone/WhatsApp
+                </span>
+                <input
+                  value={novoCliente.telefone}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("telefone", event.target.value)
+                  }
+                  placeholder="(11) 99999-9999"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  E-mail
+                </span>
+                <input
+                  value={novoCliente.email}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("email", event.target.value)
+                  }
+                  placeholder="email@cliente.com"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  CPF/CNPJ
+                </span>
+                <input
+                  value={novoCliente.documento}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("documento", event.target.value)
+                  }
+                  placeholder="Documento"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Tipo de cliente
+                </span>
+                <select
+                  value={novoCliente.tipoCliente}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("tipoCliente", event.target.value)
+                  }
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                >
+                  <option>PESSOA FÍSICA</option>
+                  <option>REVENDEDORA</option>
+                  <option>LOJA FISICA</option>
+                </select>
+              </label>
+
+              <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Observações
+                </span>
+                <textarea
+                  value={novoCliente.observacoes}
+                  onChange={(event) =>
+                    atualizarCampoNovoCliente("observacoes", event.target.value)
+                  }
+                  rows={3}
+                  placeholder="Observações internas"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </label>
+            </div>
+
+            {erroCliente ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {erroCliente}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
+              <button
+                type="button"
+                onClick={fecharModalCliente}
+                disabled={salvandoCliente}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={criarClienteRapido}
+                disabled={salvandoCliente}
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {salvandoCliente ? "Salvando..." : "Salvar e selecionar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
