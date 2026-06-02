@@ -1146,6 +1146,15 @@ function getMediaCropFromPosition(position: string) {
   return { x, y };
 }
 
+function clampMediaCropValue(value: number) {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, value));
+}
+
+function getMediaObjectPosition(x: number, y: number) {
+  return `${clampMediaCropValue(x)}% ${clampMediaCropValue(y)}%`;
+}
+
 function criarCardDestaquePadrao(index: number): DestaqueCardEditando {
   return {
     id: `card-${Date.now()}-${index}`,
@@ -1459,7 +1468,7 @@ function getColecoesMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaicoColecoes(preset);
 
   if (normalized === "MOSAICO_4_EDITORIAL") {
-    return "grid grid-cols-1 md:grid-cols-2 md:grid-rows-[repeat(6,minmax(70px,1fr))] md:items-stretch";
+    return "grid grid-cols-1 md:h-[clamp(420px,65vh,620px)] md:grid-cols-2 md:grid-rows-[repeat(6,minmax(0,1fr))] md:items-stretch";
   }
 
   if (normalized === "MOSAICO_2_PARES") {
@@ -1541,7 +1550,16 @@ function getItensColecoesConfig(
       getStringConfig(data, "mediaPositionMobile")
     );
     const desktopCrop = getMediaCropFromPosition(mediaPositionDesktop);
-    const mobileCrop = getMediaCropFromPosition(mediaPositionMobile);
+    const mediaCropDesktopX = getNumberConfig(
+      data,
+      "mediaCropDesktopX",
+      desktopCrop.x
+    );
+    const mediaCropDesktopY = getNumberConfig(
+      data,
+      "mediaCropDesktopY",
+      desktopCrop.y
+    );
     const imagemUrl =
       getStringConfig(data, "imagemDesktopUrl") ||
       getStringConfig(data, "imagemUrl") ||
@@ -1573,18 +1591,18 @@ function getItensColecoesConfig(
       videoMobileUrl: getStringConfig(data, "videoMobileUrl"),
       mediaPositionDesktop,
       mediaPositionMobile,
-      mediaCropDesktopX: getNumberConfig(
+      mediaCropDesktopX,
+      mediaCropDesktopY,
+      mediaCropMobileX: getNumberConfig(
         data,
-        "mediaCropDesktopX",
-        desktopCrop.x
+        "mediaCropMobileX",
+        mediaCropDesktopX
       ),
-      mediaCropDesktopY: getNumberConfig(
+      mediaCropMobileY: getNumberConfig(
         data,
-        "mediaCropDesktopY",
-        desktopCrop.y
+        "mediaCropMobileY",
+        mediaCropDesktopY
       ),
-      mediaCropMobileX: getNumberConfig(data, "mediaCropMobileX", mobileCrop.x),
-      mediaCropMobileY: getNumberConfig(data, "mediaCropMobileY", mobileCrop.y),
       tamanhoMosaico: normalizarTamanhoMosaicoColecoes(
         getStringConfig(data, "tamanhoMosaico")
       ),
@@ -3320,8 +3338,14 @@ function RenderBlocoPreview({
         ? item.videoMobileUrl
         : item.videoDesktopUrl;
     const objectPosition = isMobile
-      ? item.mediaPositionMobile
-      : item.mediaPositionDesktop;
+      ? getMediaObjectPosition(
+          item.mediaCropMobileX,
+          item.mediaCropMobileY
+        )
+      : getMediaObjectPosition(
+          item.mediaCropDesktopX,
+          item.mediaCropDesktopY
+        );
 
     return (
       <div className={`overflow-hidden bg-slate-100 ${className}`}>
@@ -4640,6 +4664,32 @@ function ColecoesCategoriasModalFields({
     );
   }
 
+  function updateCrop(
+    itemId: string,
+    device: "DESKTOP" | "MOBILE",
+    axis: "X" | "Y",
+    value: number
+  ) {
+    const crop = clampMediaCropValue(value);
+
+    if (device === "DESKTOP") {
+      updateItem(
+        itemId,
+        axis === "X"
+          ? { mediaCropDesktopX: crop }
+          : { mediaCropDesktopY: crop }
+      );
+      return;
+    }
+
+    updateItem(
+      itemId,
+      axis === "X"
+        ? { mediaCropMobileX: crop }
+        : { mediaCropMobileY: crop }
+    );
+  }
+
   return (
     <div className="space-y-5 px-6 py-5">
       <label>
@@ -5115,13 +5165,105 @@ function ColecoesCategoriasModalFields({
                   orientacao="Opcional. Quando vazio, usa a mídia desktop."
                 />
               </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <select value={item.mediaPositionDesktop} onChange={(event) => updatePosition(item.id, "DESKTOP", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop desktop">
-                  {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                </select>
-                <select value={item.mediaPositionMobile} onChange={(event) => updatePosition(item.id, "MOBILE", event.target.value)} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Crop mobile">
-                  {MEDIA_POSITION_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                </select>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-medium leading-5 text-slate-500">
+                  Use o enquadramento para escolher qual parte da imagem aparece dentro do card.
+                </p>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Enquadramento desktop
+                    </span>
+                    <select
+                      value={item.mediaPositionDesktop}
+                      onChange={(event) =>
+                        updatePosition(item.id, "DESKTOP", event.target.value)
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                      aria-label="Enquadramento desktop"
+                    >
+                      {MEDIA_POSITION_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Enquadramento mobile
+                    </span>
+                    <select
+                      value={item.mediaPositionMobile}
+                      onChange={(event) =>
+                        updatePosition(item.id, "MOBILE", event.target.value)
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                      aria-label="Enquadramento mobile"
+                    >
+                      {MEDIA_POSITION_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {[
+                    {
+                      label: "Desktop X",
+                      value: item.mediaCropDesktopX,
+                      device: "DESKTOP" as const,
+                      axis: "X" as const,
+                    },
+                    {
+                      label: "Desktop Y",
+                      value: item.mediaCropDesktopY,
+                      device: "DESKTOP" as const,
+                      axis: "Y" as const,
+                    },
+                    {
+                      label: "Mobile X",
+                      value: item.mediaCropMobileX,
+                      device: "MOBILE" as const,
+                      axis: "X" as const,
+                    },
+                    {
+                      label: "Mobile Y",
+                      value: item.mediaCropMobileY,
+                      device: "MOBILE" as const,
+                      axis: "Y" as const,
+                    },
+                  ].map((control) => (
+                    <label key={control.label}>
+                      <span className="mb-2 flex items-center justify-between text-sm font-medium text-slate-700">
+                        {control.label}
+                        <span className="text-xs text-slate-500">
+                          {clampMediaCropValue(control.value)}%
+                        </span>
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={clampMediaCropValue(control.value)}
+                        onChange={(event) =>
+                          updateCrop(
+                            item.id,
+                            control.device,
+                            control.axis,
+                            Number(event.target.value)
+                          )
+                        }
+                        className="w-full accent-slate-950"
+                      />
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           ))}

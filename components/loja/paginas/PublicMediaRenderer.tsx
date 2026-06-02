@@ -35,6 +35,10 @@ function normalizarPosition(value?: string | null) {
 
   if (POSITIONS.has(position)) return position;
 
+  if (/^\d{1,3}(\.\d+)?%\s+\d{1,3}(\.\d+)?%$/.test(position)) {
+    return position;
+  }
+
   return "center center";
 }
 
@@ -73,12 +77,17 @@ export default function PublicMediaRenderer({
   const mobileStyle: CSSProperties = { objectPosition: mobilePosition };
 
   if (tipoMidia === "VIDEO" && (videoDesktop || videoMobile)) {
+    const mobileVideoSrc = videoMobile || videoDesktop;
+    const desktopVideoSrc = videoDesktop || videoMobile;
+    const renderMobileVariant =
+      Boolean(mobileVideoSrc) && (Boolean(videoMobile) || mobilePosition !== desktopPosition);
+
     return (
       <div className={`relative h-full w-full overflow-hidden ${className}`}>
-        {videoMobile ? (
+        {renderMobileVariant ? (
           <video
             className={`${baseMediaClass} md:hidden`}
-            src={videoMobile}
+            src={mobileVideoSrc}
             poster={poster || undefined}
             autoPlay
             loop={videoLoop}
@@ -89,8 +98,8 @@ export default function PublicMediaRenderer({
         ) : null}
 
         <video
-          className={`${baseMediaClass} ${videoMobile ? "hidden md:block" : ""}`}
-          src={videoDesktop || videoMobile}
+          className={`${baseMediaClass} ${renderMobileVariant ? "hidden md:block" : ""}`}
+          src={desktopVideoSrc}
           poster={poster || undefined}
           autoPlay
           loop={videoLoop}
@@ -103,11 +112,16 @@ export default function PublicMediaRenderer({
   }
 
   if (imageDesktop || imageMobile) {
+    const mobileImageSrc = imageMobile || imageDesktop;
+    const desktopImageSrc = imageDesktop || imageMobile;
+    const renderMobileVariant =
+      Boolean(mobileImageSrc) && (Boolean(imageMobile) || mobilePosition !== desktopPosition);
+
     return (
       <div className={`relative h-full w-full overflow-hidden ${className}`}>
-        {imageMobile ? (
+        {renderMobileVariant ? (
           <img
-            src={imageMobile}
+            src={mobileImageSrc}
             alt={alt}
             className={`${baseMediaClass} md:hidden`}
             style={mobileStyle}
@@ -115,9 +129,9 @@ export default function PublicMediaRenderer({
         ) : null}
 
         <img
-          src={imageDesktop || imageMobile}
+          src={desktopImageSrc}
           alt={alt}
-          className={`${baseMediaClass} ${imageMobile ? "hidden md:block" : ""}`}
+          className={`${baseMediaClass} ${renderMobileVariant ? "hidden md:block" : ""}`}
           style={desktopStyle}
         />
       </div>

@@ -95,6 +95,39 @@ function getMosaicGapPx(value: string) {
   return 24;
 }
 
+function getMediaCropFromPosition(position: string) {
+  const [vertical = "center", horizontal = "center"] = position.split(" ");
+
+  const x = horizontal === "left" ? 0 : horizontal === "right" ? 100 : 50;
+  const y = vertical === "top" ? 0 : vertical === "bottom" ? 100 : 50;
+
+  return { x, y };
+}
+
+function clampMediaCropValue(value: number) {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, value));
+}
+
+function getItemMediaObjectPosition(
+  item: Record<string, unknown>,
+  device: "Desktop" | "Mobile"
+) {
+  const desktopPosition = getMediaPosition(item, "Desktop");
+  const desktopPresetCrop = getMediaCropFromPosition(desktopPosition);
+  const desktopX = getNumber(item, "mediaCropDesktopX", desktopPresetCrop.x);
+  const desktopY = getNumber(item, "mediaCropDesktopY", desktopPresetCrop.y);
+
+  if (device === "Mobile") {
+    const mobileX = getNumber(item, "mediaCropMobileX", desktopX);
+    const mobileY = getNumber(item, "mediaCropMobileY", desktopY);
+
+    return `${clampMediaCropValue(mobileX)}% ${clampMediaCropValue(mobileY)}%`;
+  }
+
+  return `${clampMediaCropValue(desktopX)}% ${clampMediaCropValue(desktopY)}%`;
+}
+
 function getTamanhoMosaicoPreset(preset: string, index: number) {
   const normalized = normalizarPresetMosaico(preset);
 
@@ -123,7 +156,7 @@ function getMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaico(preset);
 
   if (normalized === "MOSAICO_4_EDITORIAL") {
-    return "grid grid-cols-1 md:grid-cols-2 md:grid-rows-[repeat(6,minmax(70px,1fr))] md:items-stretch";
+    return "grid grid-cols-1 md:h-[clamp(620px,82vh,860px)] md:grid-cols-2 md:grid-rows-[repeat(6,minmax(0,1fr))] md:items-stretch";
   }
 
   if (normalized === "MOSAICO_2_PARES") {
@@ -341,8 +374,8 @@ function ItemMedia({
         imagemMobileUrl={getImageMobile(item)}
         videoDesktopUrl={getString(item, "videoDesktopUrl")}
         videoMobileUrl={getString(item, "videoMobileUrl")}
-        objectPositionDesktop={getMediaPosition(item, "Desktop")}
-        objectPositionMobile={getMediaPosition(item, "Mobile")}
+        objectPositionDesktop={getItemMediaObjectPosition(item, "Desktop")}
+        objectPositionMobile={getItemMediaObjectPosition(item, "Mobile")}
         alt={alt}
       />
     </div>
