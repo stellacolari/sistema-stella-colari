@@ -77,6 +77,24 @@ function normalizarPresetMosaico(value: string) {
   return "MOSAICO_4_EDITORIAL";
 }
 
+function normalizarGapMosaico(value: string) {
+  if (["PEQUENO", "PADRAO", "GRANDE", "EXTRA"].includes(value)) {
+    return value;
+  }
+
+  return "PADRAO";
+}
+
+function getMosaicGapPx(value: string) {
+  const normalized = normalizarGapMosaico(value);
+
+  if (normalized === "PEQUENO") return 12;
+  if (normalized === "GRANDE") return 32;
+  if (normalized === "EXTRA") return 44;
+
+  return 24;
+}
+
 function getTamanhoMosaicoPreset(preset: string, index: number) {
   const normalized = normalizarPresetMosaico(preset);
 
@@ -105,34 +123,33 @@ function getMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaico(preset);
 
   if (normalized === "MOSAICO_2_PARES" || normalized === "MOSAICO_4_EDITORIAL") {
-    return "grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start";
+    return "grid grid-cols-1 md:grid-cols-2 md:items-start";
   }
 
   if (normalized === "MOSAICO_6_REFERENCIA") {
-    return "grid grid-cols-1 gap-6 md:grid-cols-3 md:items-start";
+    return "grid grid-cols-1 md:grid-cols-3 md:items-start";
   }
 
   if (normalized === "MOSAICO_3_DESTAQUE") {
-    return "grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:items-start";
+    return "grid grid-cols-1 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:items-start";
   }
 
-  return "grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start";
+  return "grid grid-cols-1 md:grid-cols-2 md:items-start";
 }
 
 function getMosaicItemClass(tamanho: string, index: number, preset: string) {
   const normalizedPreset = normalizarPresetMosaico(preset);
 
   if (normalizedPreset === "MOSAICO_2_PARES") {
-    return `${index % 2 === 1 ? "md:mt-14" : ""} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_4_EDITORIAL") {
-    return `${index % 2 === 1 ? "md:mt-16" : ""} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_6_REFERENCIA") {
-    const offset = index % 3 === 1 ? "md:mt-8" : index % 3 === 2 ? "md:mt-16" : "";
-    return `${offset} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
@@ -313,6 +330,10 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const presetMosaico = normalizarPresetMosaico(
     getString(config, "presetMosaico", "MOSAICO_4_EDITORIAL")
   );
+  const gapMosaico = normalizarGapMosaico(
+    getString(config, "gapMosaico", "PADRAO")
+  );
+  const gapMosaicoStyle = { gap: `${getMosaicGapPx(gapMosaico)}px` };
   const layoutVisualEfetivo = presetMosaico.startsWith("GRID_")
     ? "GRID_EDITORIAL"
     : layoutVisual;
@@ -568,7 +589,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
 
             {itens.length > 0 ? (
               <div
-                className={`mt-10 grid gap-6 ${getGridColumnsClass(
+                className={`mt-10 grid ${getGridColumnsClass(
                   getNumber(config, "colunasMobile", 1),
                   getNumber(config, "colunasTablet", 2),
                   getGridColumnsByPreset(
@@ -576,6 +597,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     getNumber(config, "colunasDesktop", 4)
                   )
                 )}`}
+                style={gapMosaicoStyle}
               >
                 {itens.map((item, index) => {
                   const tituloItem =
@@ -617,7 +639,10 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             {headerContent}
 
             {itens.length > 0 ? (
-              <div className={`mt-10 ${getMosaicGridClass(presetMosaico)}`}>
+              <div
+                className={`mt-10 ${getMosaicGridClass(presetMosaico)}`}
+                style={gapMosaicoStyle}
+              >
                 {itens.map((item, index) => {
                   const tituloItem =
                     getString(item, "titulo") || getString(item, "categoriaNome");
@@ -684,7 +709,10 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             ) : null}
 
             {itens.length > 0 ? (
-              <div className={getMosaicGridClass(presetMosaico)}>
+              <div
+                className={getMosaicGridClass(presetMosaico)}
+                style={gapMosaicoStyle}
+              >
                 {itens.map((item, index) => {
                   const tituloItem =
                     getString(item, "titulo") || getString(item, "categoriaNome");

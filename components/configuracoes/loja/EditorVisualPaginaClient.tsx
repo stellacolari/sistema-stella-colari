@@ -235,6 +235,7 @@ type BlocoEditandoState = {
   colunasMobileColecoes: number;
   estiloEtiquetaColecoes: string;
   presetMosaicoColecoes: string;
+  gapMosaicoColecoes: string;
   tamanhoEtiquetaColecoes: string;
   posicaoEtiquetaColecoes: string;
   larguraEtiquetaColecoes: string;
@@ -522,6 +523,13 @@ const PRESET_MOSAICO_COLECOES_PRESETS = [
   { value: "MOSAICO_3_DESTAQUE", label: "Mosaico com destaque" },
   { value: "GRID_4_EDITORIAL", label: "Grade com 4 cards" },
   { value: "GRID_3_EDITORIAL", label: "Grade com 3 cards" },
+];
+
+const GAP_MOSAICO_COLECOES_PRESETS = [
+  { value: "PEQUENO", label: "Pequeno" },
+  { value: "PADRAO", label: "Padrão" },
+  { value: "GRANDE", label: "Grande" },
+  { value: "EXTRA", label: "Extra" },
 ];
 
 const TAMANHO_MOSAICO_COLECOES_PRESETS = [
@@ -1320,6 +1328,24 @@ function normalizarTamanhoMosaicoColecoes(value: string) {
   return "AUTO";
 }
 
+function normalizarGapMosaicoColecoes(value: string) {
+  if (["PEQUENO", "PADRAO", "GRANDE", "EXTRA"].includes(value)) {
+    return value;
+  }
+
+  return "PADRAO";
+}
+
+function getGapMosaicoColecoesPx(value: string) {
+  const normalized = normalizarGapMosaicoColecoes(value);
+
+  if (normalized === "PEQUENO") return 12;
+  if (normalized === "GRANDE") return 32;
+  if (normalized === "EXTRA") return 44;
+
+  return 24;
+}
+
 function normalizarTamanhoEtiquetaColecoes(value: string) {
   if (["PEQUENA", "MEDIA", "GRANDE"].includes(value)) return value;
   return "PEQUENA";
@@ -1379,16 +1405,15 @@ function getColecoesMosaicItemClass(tamanho: string, index: number, preset: stri
   const normalizedPreset = normalizarPresetMosaicoColecoes(preset);
 
   if (normalizedPreset === "MOSAICO_2_PARES") {
-    return `${index % 2 === 1 ? "md:mt-10" : ""} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_4_EDITORIAL") {
-    return `${index % 2 === 1 ? "md:mt-12" : ""} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_6_REFERENCIA") {
-    const offset = index % 3 === 1 ? "md:mt-6" : index % 3 === 2 ? "md:mt-12" : "";
-    return `${offset} aspect-[4/5]`;
+    return "aspect-[4/5]";
   }
 
   if (normalizedPreset === "MOSAICO_3_DESTAQUE") {
@@ -1410,18 +1435,18 @@ function getColecoesMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaicoColecoes(preset);
 
   if (normalized === "MOSAICO_2_PARES" || normalized === "MOSAICO_4_EDITORIAL") {
-    return "grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start";
+    return "grid grid-cols-1 md:grid-cols-2 md:items-start";
   }
 
   if (normalized === "MOSAICO_6_REFERENCIA") {
-    return "grid grid-cols-1 gap-4 md:grid-cols-3 md:items-start";
+    return "grid grid-cols-1 md:grid-cols-3 md:items-start";
   }
 
   if (normalized === "MOSAICO_3_DESTAQUE") {
-    return "grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:items-start";
+    return "grid grid-cols-1 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:items-start";
   }
 
-  return "grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start";
+  return "grid grid-cols-1 md:grid-cols-2 md:items-start";
 }
 
 function getColecoesGridColumnsByPreset(preset: string, fallback: number) {
@@ -3120,6 +3145,12 @@ function RenderBlocoPreview({
   const presetMosaicoColecoes = normalizarPresetMosaicoColecoes(
     getStringConfig(config, "presetMosaico")
   );
+  const gapMosaicoColecoes = normalizarGapMosaicoColecoes(
+    getStringConfig(config, "gapMosaico")
+  );
+  const gapMosaicoColecoesStyle = {
+    gap: `${getGapMosaicoColecoesPx(gapMosaicoColecoes)}px`,
+  };
   const layoutVisualColecoesEfetivo = presetMosaicoColecoes.startsWith("GRID_")
     ? "GRID_EDITORIAL"
     : layoutVisualColecoes;
@@ -3153,11 +3184,6 @@ function RenderBlocoPreview({
     config,
     "exibirBotaoEtiqueta",
     false
-  );
-  const cardInteiroClicavelColecoes = getBooleanConfig(
-    config,
-    "cardInteiroClicavel",
-    true
   );
   const larguraCabecalhoDesktopColecoes = getNumberConfig(
     config,
@@ -4093,9 +4119,10 @@ function RenderBlocoPreview({
                 {colecoesHeaderPreview}
 
                 <div
-                  className="mt-8 grid gap-5"
+                  className="mt-8 grid"
                   style={{
                     gridTemplateColumns: `repeat(${colunasColecoes}, minmax(0, 1fr))`,
+                    ...gapMosaicoColecoesStyle,
                   }}
                 >
                   {itensColecoesPreview.map((item) => (
@@ -4112,7 +4139,10 @@ function RenderBlocoPreview({
               <>
                 {colecoesHeaderPreview}
 
-                <div className={`mt-8 ${getColecoesMosaicGridClass(presetMosaicoColecoes)}`}>
+                <div
+                  className={`mt-8 ${getColecoesMosaicGridClass(presetMosaicoColecoes)}`}
+                  style={gapMosaicoColecoesStyle}
+                >
                   {itensColecoesPreview.map((item, index) => {
                     const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
                       item,
@@ -4153,7 +4183,10 @@ function RenderBlocoPreview({
               >
                 <div className="lg:sticky lg:top-6">{colecoesHeaderPreview}</div>
 
-                <div className={getColecoesMosaicGridClass(presetMosaicoColecoes)}>
+                <div
+                  className={getColecoesMosaicGridClass(presetMosaicoColecoes)}
+                  style={gapMosaicoColecoesStyle}
+                >
                   {itensColecoesPreview.map((item, index) => {
                     const tamanhoEfetivo = getTamanhoMosaicoEfetivo(
                       item,
@@ -4806,6 +4839,24 @@ function ColecoesCategoriasModalFields({
             aria-label="Preset de composição"
           >
             {PRESET_MOSAICO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+          </select>
+          <select
+            value={estado.gapMosaicoColecoes}
+            onChange={(event) =>
+              onChange({
+                gapMosaicoColecoes: normalizarGapMosaicoColecoes(
+                  event.target.value
+                ),
+              })
+            }
+            className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            aria-label="Espaçamento entre imagens"
+          >
+            {GAP_MOSAICO_COLECOES_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                Espaçamento entre imagens: {preset.label}
+              </option>
+            ))}
           </select>
           <select value={estado.larguraConteudoColecoes} onChange={(event) => onChange({ larguraConteudoColecoes: event.target.value })} className="h-11 rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500" aria-label="Largura">
             {LARGURA_CONTEUDO_COLECOES_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
@@ -8008,6 +8059,9 @@ export default function EditorVisualPaginaClient({
       presetMosaicoColecoes: normalizarPresetMosaicoColecoes(
         getStringConfig(config, "presetMosaico")
       ),
+      gapMosaicoColecoes: normalizarGapMosaicoColecoes(
+        getStringConfig(config, "gapMosaico")
+      ),
       tamanhoEtiquetaColecoes: normalizarTamanhoEtiquetaColecoes(
         getStringConfig(config, "tamanhoEtiqueta")
       ),
@@ -8433,6 +8487,7 @@ export default function EditorVisualPaginaClient({
               ),
               estiloEtiqueta: editando.estiloEtiquetaColecoes,
               presetMosaico: editando.presetMosaicoColecoes,
+              gapMosaico: editando.gapMosaicoColecoes,
               tamanhoEtiqueta: editando.tamanhoEtiquetaColecoes,
               posicaoEtiqueta: editando.posicaoEtiquetaColecoes,
               larguraEtiqueta: editando.larguraEtiquetaColecoes,

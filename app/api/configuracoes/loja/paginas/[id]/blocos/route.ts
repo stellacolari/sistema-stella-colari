@@ -364,6 +364,7 @@ function getConfigPadrao(tipo: string) {
       alinhamentoCabecalhoMobile: "ESQUERDA",
       layoutVisual: "MOSAICO_EDITORIAL",
       presetMosaico: "MOSAICO_4_EDITORIAL",
+      gapMosaico: "PADRAO",
       origemItens: "PERSONALIZADO",
       alinhamentoTextoDesktop: "ESQUERDA",
       alinhamentoTextoMobile: "ESQUERDA",
