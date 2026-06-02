@@ -7,6 +7,7 @@ import {
   Ban,
   CheckCircle2,
   Filter,
+  ImageIcon,
   Package,
   RefreshCcw,
   Search,
@@ -20,6 +21,7 @@ export type CompraItemListItem = {
   tipoItem: string;
   codigoDigitado: string;
   descricao: string;
+  imagemUrl?: string | null;
   quantidade: number;
   tamanhoAnel: string | null;
   valorUnitarioBase: number;
@@ -178,6 +180,55 @@ function itemNomeComTamanho(item: CompraItemListItem) {
   return `${item.descricao} · Tam. ${item.tamanhoAnel}`;
 }
 
+function MiniaturaItem({
+  imagemUrl,
+  descricao,
+}: {
+  imagemUrl?: string | null;
+  descricao: string;
+}) {
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+      {imagemUrl ? (
+        <img
+          src={imagemUrl}
+          alt={descricao}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <ImageIcon className="h-5 w-5 text-slate-300" />
+      )}
+    </div>
+  );
+}
+
+function MiniaturasResumo({ itens }: { itens: CompraItemListItem[] }) {
+  if (itens.length === 0) {
+    return <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />;
+  }
+
+  return (
+    <div className="flex shrink-0 -space-x-2">
+      {itens.slice(0, 3).map((item) => (
+        <div
+          key={item.id}
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border-2 border-white bg-slate-50 shadow-sm ring-1 ring-slate-200"
+        >
+          {item.imagemUrl ? (
+            <img
+              src={item.imagemUrl}
+              alt={item.descricao}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ImageIcon className="h-4 w-4 text-slate-300" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function itensResumo(itens: CompraItemListItem[]) {
   if (itens.length === 0) {
     return "Sem itens";
@@ -232,13 +283,20 @@ function TabelaItensSomenteLeitura({ itens }: { itens: CompraItemListItem[] }) {
           {itens.map((item) => (
             <tr key={item.id}>
               <td className="px-5 py-4">
-                <div className="flex flex-col">
-                  <span className="font-semibold text-slate-950">
-                    {item.descricao}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {itemMeta(item)}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <MiniaturaItem
+                    imagemUrl={item.imagemUrl}
+                    descricao={item.descricao}
+                  />
+
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate font-semibold text-slate-950">
+                      {item.descricao}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {itemMeta(item)}
+                    </span>
+                  </div>
                 </div>
               </td>
 
@@ -735,7 +793,7 @@ export default function ComprasListClient({ compras }: ComprasListClientProps) {
 
                       <td className="px-6 py-4">
                         <div className="flex max-w-[360px] items-start gap-2">
-                          <Package className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                          <MiniaturasResumo itens={compra.itens} />
                           <span className="line-clamp-2 text-sm text-slate-700">
                             {itensResumo(compra.itens)}
                           </span>

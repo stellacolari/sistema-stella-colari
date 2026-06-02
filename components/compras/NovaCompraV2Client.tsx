@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ImageIcon, Plus, Trash2 } from "lucide-react";
 
 type ProdutoVariacaoOpcaoCompra = {
   id: string;
@@ -27,6 +27,7 @@ type ItemBusca = {
   codigoInterno: string;
   codigoFornecedor: string;
   nome: string;
+  imagemUrl?: string | null;
   custoBase: number;
   fornecedorPadrao: string;
   categoria: string;
@@ -95,6 +96,32 @@ function gerarItemKey(item: ItemBusca, variacaoOpcao = "") {
   return `${item.tipo}-${item.id}-${variacaoOpcao || "UNICO"}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
+}
+
+function getImagemItemPedido(item: ItemPedido) {
+  return getOpcaoVariacaoSelecionada(item)?.imagemUrl || item.imagemUrl || null;
+}
+
+function MiniaturaItem({
+  imagemUrl,
+  nome,
+}: {
+  imagemUrl?: string | null;
+  nome: string;
+}) {
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+      {imagemUrl ? (
+        <img
+          src={imagemUrl}
+          alt={nome}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <ImageIcon className="h-5 w-5 text-slate-300" />
+      )}
+    </div>
+  );
 }
 
 function Info({
@@ -538,13 +565,22 @@ function valorUnitarioFinal(item: ItemPedido) {
                         </td>
 
                         <td className="px-4 py-3">
-                          <div className="flex flex-col">
-                            <span>{item.nome}</span>
-                            <span className="mt-0.5 text-xs text-slate-400">
-                              {item.tipo === "produto"
-                                ? "Produto"
-                                : "Item adicional"}
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <MiniaturaItem
+                              imagemUrl={item.imagemUrl}
+                              nome={item.nome}
+                            />
+
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate font-medium text-slate-900">
+                                {item.nome}
+                              </span>
+                              <span className="mt-0.5 text-xs text-slate-400">
+                                {item.tipo === "produto"
+                                  ? "Produto"
+                                  : "Item adicional"}
+                              </span>
+                            </div>
                           </div>
                         </td>
 
@@ -625,13 +661,22 @@ function valorUnitarioFinal(item: ItemPedido) {
                           </td>
 
                           <td className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <span>{item.nome}</span>
-                              <span className="mt-0.5 text-xs text-slate-400">
-                                {item.tipo === "produto"
-                                  ? item.categoria || "Produto"
-                                  : "Item adicional"}
-                              </span>
+                            <div className="flex items-center gap-3">
+                              <MiniaturaItem
+                                imagemUrl={getImagemItemPedido(item)}
+                                nome={item.nome}
+                              />
+
+                              <div className="flex min-w-0 flex-col">
+                                <span className="truncate font-medium text-slate-900">
+                                  {item.nome}
+                                </span>
+                                <span className="mt-0.5 text-xs text-slate-400">
+                                  {item.tipo === "produto"
+                                    ? item.categoria || "Produto"
+                                    : "Item adicional"}
+                                </span>
+                              </div>
                             </div>
                           </td>
 

@@ -9,7 +9,29 @@ export const dynamic = "force-dynamic";
 
 type CompraComItens = Prisma.CompraGetPayload<{
   include: {
-    itens: true;
+    itens: {
+      include: {
+        produto: {
+          select: {
+            imagemUrl: true;
+            imagens: {
+              orderBy: {
+                ordem: "asc";
+              };
+              select: {
+                imagemUrl: true;
+              };
+              take: 1;
+            };
+          };
+        };
+        itemAdicional: {
+          select: {
+            imagemUrl: true;
+          };
+        };
+      };
+    };
   };
 }>;
 
@@ -17,7 +39,29 @@ export default async function ComprasPage() {
   const comprasRaw = await prisma.compra.findMany({
     orderBy: { criadoEm: "desc" },
     include: {
-      itens: true,
+      itens: {
+        include: {
+          produto: {
+            select: {
+              imagemUrl: true,
+              imagens: {
+                orderBy: {
+                  ordem: "asc",
+                },
+                select: {
+                  imagemUrl: true,
+                },
+                take: 1,
+              },
+            },
+          },
+          itemAdicional: {
+            select: {
+              imagemUrl: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -27,6 +71,11 @@ export default async function ComprasPage() {
       tipoItem: item.tipoItem,
       codigoDigitado: item.codigoDigitado,
       descricao: item.descricao,
+      imagemUrl:
+        item.produto?.imagens[0]?.imagemUrl ??
+        item.produto?.imagemUrl ??
+        item.itemAdicional?.imagemUrl ??
+        null,
       quantidade: item.quantidade,
       tamanhoAnel: item.tamanhoAnel,
       valorUnitarioBase: Number(item.valorUnitarioBase),

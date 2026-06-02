@@ -12,6 +12,15 @@ export default async function NovaCompraV2Page() {
       },
     },
     include: {
+      imagens: {
+        orderBy: {
+          ordem: "asc",
+        },
+        select: {
+          imagemUrl: true,
+        },
+        take: 1,
+      },
       variacoes: {
         where: {
           ativo: true,
@@ -51,6 +60,7 @@ export default async function NovaCompraV2Page() {
       codigoInterno: produto.codigoInterno,
       codigoFornecedor: produto.codigoFornecedor || "",
       nome: produto.nome,
+      imagemUrl: produto.imagens[0]?.imagemUrl ?? produto.imagemUrl,
       custoBase: Number(produto.custoBase),
       fornecedorPadrao: produto.fornecedorPadrao,
       categoria: produto.categoria,
@@ -76,6 +86,7 @@ export default async function NovaCompraV2Page() {
       codigoInterno: item.codigoInterno,
       codigoFornecedor: item.codigoFornecedor || "",
       nome: item.nome,
+      imagemUrl: item.imagemUrl,
       custoBase: Number(item.custoBase),
       fornecedorPadrao: item.fornecedorPadrao,
       categoria: "",
