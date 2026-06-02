@@ -122,7 +122,11 @@ function getTamanhoMosaicoEfetivo(item: Record<string, unknown>, index: number, 
 function getMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaico(preset);
 
-  if (normalized === "MOSAICO_2_PARES" || normalized === "MOSAICO_4_EDITORIAL") {
+  if (normalized === "MOSAICO_4_EDITORIAL") {
+    return "grid grid-cols-1 md:grid-cols-2 md:grid-rows-[repeat(6,minmax(70px,1fr))] md:items-stretch";
+  }
+
+  if (normalized === "MOSAICO_2_PARES") {
     return "grid grid-cols-1 md:grid-cols-2 md:items-start";
   }
 
@@ -145,7 +149,7 @@ function getMosaicItemClass(tamanho: string, index: number, preset: string) {
   }
 
   if (normalizedPreset === "MOSAICO_4_EDITORIAL") {
-    return "aspect-[4/5]";
+    return "aspect-[4/5] md:h-full md:min-h-full md:aspect-auto";
   }
 
   if (normalizedPreset === "MOSAICO_6_REFERENCIA") {
@@ -177,6 +181,30 @@ function getMosaicItemClass(tamanho: string, index: number, preset: string) {
   }
 
   return "aspect-[4/5]";
+}
+
+function getMosaicItemPlacementClass(index: number, preset: string) {
+  const normalizedPreset = normalizarPresetMosaico(preset);
+
+  if (normalizedPreset !== "MOSAICO_4_EDITORIAL") return "";
+
+  if (index === 0) {
+    return "md:col-start-1 md:col-end-2 md:row-start-1 md:row-end-5";
+  }
+
+  if (index === 1) {
+    return "md:col-start-2 md:col-end-3 md:row-start-1 md:row-end-3";
+  }
+
+  if (index === 2) {
+    return "md:col-start-1 md:col-end-2 md:row-start-5 md:row-end-7";
+  }
+
+  if (index === 3) {
+    return "md:col-start-2 md:col-end-3 md:row-start-3 md:row-end-7";
+  }
+
+  return "";
 }
 
 function getGridColumnsByPreset(preset: string, fallback: number) {
@@ -659,8 +687,12 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     index,
                     presetMosaico
                   );
+                  const itemPlacementClass = getMosaicItemPlacementClass(
+                    index,
+                    presetMosaico
+                  );
                   const content = (
-                    <article className="relative min-w-0">
+                    <article className="relative h-full min-w-0">
                       {hasMedia ? (
                         <div
                           className={`relative overflow-hidden ${itemFrameClass}`}
@@ -683,12 +715,15 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     <Link
                       key={getString(item, "id", `colecao-${index}`)}
                       href={href}
-                      className="group block"
+                      className={`group block h-full min-w-0 ${itemPlacementClass}`}
                     >
                       {content}
                     </Link>
                   ) : (
-                    <div key={getString(item, "id", `colecao-${index}`)}>
+                    <div
+                      key={getString(item, "id", `colecao-${index}`)}
+                      className={`h-full min-w-0 ${itemPlacementClass}`}
+                    >
                       {content}
                     </div>
                   );
@@ -729,8 +764,12 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     index,
                     presetMosaico
                   );
+                  const itemPlacementClass = getMosaicItemPlacementClass(
+                    index,
+                    presetMosaico
+                  );
                   const content = (
-                    <article className="relative min-w-0">
+                    <article className="relative h-full min-w-0">
                       {hasMedia ? (
                         <div
                           className={`relative overflow-hidden ${itemFrameClass}`}
@@ -753,12 +792,15 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                     <Link
                       key={getString(item, "id", `colecao-${index}`)}
                       href={href}
-                      className="group block"
+                      className={`group block h-full min-w-0 ${itemPlacementClass}`}
                     >
                       {content}
                     </Link>
                   ) : (
-                    <div key={getString(item, "id", `colecao-${index}`)}>
+                    <div
+                      key={getString(item, "id", `colecao-${index}`)}
+                      className={`h-full min-w-0 ${itemPlacementClass}`}
+                    >
                       {content}
                     </div>
                   );

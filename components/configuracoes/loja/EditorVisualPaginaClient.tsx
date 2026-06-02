@@ -1409,7 +1409,7 @@ function getColecoesMosaicItemClass(tamanho: string, index: number, preset: stri
   }
 
   if (normalizedPreset === "MOSAICO_4_EDITORIAL") {
-    return "aspect-[4/5]";
+    return "aspect-[4/5] md:h-full md:min-h-full md:aspect-auto";
   }
 
   if (normalizedPreset === "MOSAICO_6_REFERENCIA") {
@@ -1431,10 +1431,38 @@ function getColecoesMosaicItemClass(tamanho: string, index: number, preset: stri
   return "aspect-[4/5]";
 }
 
+function getColecoesMosaicItemPlacementClass(index: number, preset: string) {
+  const normalizedPreset = normalizarPresetMosaicoColecoes(preset);
+
+  if (normalizedPreset !== "MOSAICO_4_EDITORIAL") return "";
+
+  if (index === 0) {
+    return "md:col-start-1 md:col-end-2 md:row-start-1 md:row-end-5";
+  }
+
+  if (index === 1) {
+    return "md:col-start-2 md:col-end-3 md:row-start-1 md:row-end-3";
+  }
+
+  if (index === 2) {
+    return "md:col-start-1 md:col-end-2 md:row-start-5 md:row-end-7";
+  }
+
+  if (index === 3) {
+    return "md:col-start-2 md:col-end-3 md:row-start-3 md:row-end-7";
+  }
+
+  return "";
+}
+
 function getColecoesMosaicGridClass(preset: string) {
   const normalized = normalizarPresetMosaicoColecoes(preset);
 
-  if (normalized === "MOSAICO_2_PARES" || normalized === "MOSAICO_4_EDITORIAL") {
+  if (normalized === "MOSAICO_4_EDITORIAL") {
+    return "grid grid-cols-1 md:grid-cols-2 md:grid-rows-[repeat(6,minmax(70px,1fr))] md:items-stretch";
+  }
+
+  if (normalized === "MOSAICO_2_PARES") {
     return "grid grid-cols-1 md:grid-cols-2 md:items-start";
   }
 
@@ -4154,11 +4182,18 @@ function RenderBlocoPreview({
                       index,
                       presetMosaicoColecoes
                     );
+                    const itemPlacementClass = getColecoesMosaicItemPlacementClass(
+                      index,
+                      presetMosaicoColecoes
+                    );
                     const labelSobreposta =
                       estiloEtiquetaColecoes === "SOBREPOSTA";
 
                     return (
-                      <article key={item.id} className="relative min-w-0">
+                      <article
+                        key={item.id}
+                        className={`relative h-full min-w-0 ${itemPlacementClass}`}
+                      >
                         <div
                           className={`relative overflow-hidden ${itemFrameClass}`}
                         >
@@ -4198,11 +4233,18 @@ function RenderBlocoPreview({
                       index,
                       presetMosaicoColecoes
                     );
+                    const itemPlacementClass = getColecoesMosaicItemPlacementClass(
+                      index,
+                      presetMosaicoColecoes
+                    );
                     const labelSobreposta =
                       estiloEtiquetaColecoes === "SOBREPOSTA";
 
                     return (
-                      <article key={item.id} className="relative min-w-0">
+                      <article
+                        key={item.id}
+                        className={`relative h-full min-w-0 ${itemPlacementClass}`}
+                      >
                         <div
                           className={`relative overflow-hidden ${itemFrameClass}`}
                         >
