@@ -118,12 +118,17 @@ type PedidosClientProps = {
 
 const FILTROS_RAPIDOS = [
   { value: "TODOS", label: "Todos" },
-  { value: "SITE", label: "Site" },
-  { value: "MANUAL_LINK", label: "Manual com link" },
   { value: "PAGAMENTO", label: "Aguardando pagamento" },
-  { value: "SEPARAR", label: "Pago / para separar" },
-  { value: "ANDAMENTO", label: "Enviado / em andamento" },
-  { value: "CANCELADOS", label: "Cancelados / expirados" },
+  { value: "PAGO_PREPARO", label: "Pago / aguardando preparo" },
+  { value: "PREPARAR_ENVIO", label: "Preparar envio" },
+  { value: "COMPRAR_ETIQUETA", label: "Comprar etiqueta" },
+  { value: "GERAR_ETIQUETA", label: "Gerar etiqueta" },
+  { value: "PRONTO_IMPRESSAO", label: "Pronto para impressão" },
+  { value: "TRANSPORTE", label: "Postado / em transporte" },
+  { value: "ENTREGUE", label: "Entregue" },
+  { value: "PROBLEMA", label: "Problema / cancelado" },
+  { value: "RETIRADA", label: "Retirada local" },
+  { value: "MANUAL_LINK", label: "Manual com link" },
 ];
 
 function moeda(valor: number) {
@@ -250,6 +255,15 @@ function isPedidoPago(pedido: PedidoOperacionalItem) {
   return pedido.statusPagamento === "PAGO" && !isPedidoCanceladoOuExpirado(pedido);
 }
 
+function isPedidoPagoAguardandoPreparo(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    isPedidoPago(pedido) &&
+    pedido.status === "PEDIDO_RECEBIDO" &&
+    !isPedidoManualComLink(pedido)
+  );
+}
+
 function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
     pedido.origemCanal === "LOJA_STELLA" &&
@@ -309,12 +323,14 @@ function podeAtualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
   );
 }
 
-function isPedidoEmAndamento(pedido: PedidoOperacionalItem) {
+function podeImprimirEtiquetaEmLote(pedido: PedidoOperacionalItem) {
   return (
-    pedido.status === "PEDIDO_SEPARADO" ||
-    pedido.status === "PEDIDO_ENVIADO" ||
-    pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
-    pedido.envio?.statusEnvio === "POSTADO"
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    pedido.envio?.statusEnvio === "ETIQUETA_GERADA" &&
+    Boolean(pedido.envio.etiquetaPdfUrl || pedido.envio.etiquetaUrl)
   );
 }
 
@@ -330,28 +346,51 @@ function isPedidoCanceladoOuExpirado(pedido: PedidoOperacionalItem) {
 function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   if (filtro === "TODOS") return true;
 
-  if (filtro === "SITE") {
-    return pedido.origemCanal === "LOJA_STELLA";
-  }
-
-  if (filtro === "MANUAL_LINK") {
-    return isPedidoManualComLink(pedido);
-  }
-
   if (filtro === "PAGAMENTO") {
     return isPagamentoPendente(pedido);
   }
 
-  if (filtro === "SEPARAR") {
-    return isPedidoPago(pedido);
+  if (filtro === "PAGO_PREPARO") {
+    return isPedidoPagoAguardandoPreparo(pedido);
   }
 
-  if (filtro === "ANDAMENTO") {
-    return isPedidoEmAndamento(pedido) && !isPedidoCanceladoOuExpirado(pedido);
+  if (filtro === "PREPARAR_ENVIO") {
+    return podePrepararEnvioMelhorEnvio(pedido);
   }
 
-  if (filtro === "CANCELADOS") {
+  if (filtro === "COMPRAR_ETIQUETA") {
+    return podeComprarEtiquetaMelhorEnvio(pedido);
+  }
+
+  if (filtro === "GERAR_ETIQUETA") {
+    return podeGerarEtiquetaMelhorEnvio(pedido);
+  }
+
+  if (filtro === "PRONTO_IMPRESSAO") {
+    return podeImprimirEtiquetaEmLote(pedido);
+  }
+
+  if (filtro === "TRANSPORTE") {
+    return (
+      pedido.envio?.statusEnvio === "POSTADO" ||
+      pedido.envio?.statusEnvio === "EM_PREPARACAO"
+    );
+  }
+
+  if (filtro === "ENTREGUE") {
+    return pedido.status === "PEDIDO_ENTREGUE" || pedido.envio?.statusEnvio === "ENTREGUE";
+  }
+
+  if (filtro === "PROBLEMA") {
     return isPedidoCanceladoOuExpirado(pedido) || pedido.status === "PROBLEMA";
+  }
+
+  if (filtro === "RETIRADA") {
+    return pedido.envio?.tipoEntrega === "RETIRADA";
+  }
+
+  if (filtro === "MANUAL_LINK") {
+    return isPedidoManualComLink(pedido);
   }
 
   return true;
@@ -632,6 +671,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   >(null);
   const [atualizandoRastreioPedidoId, setAtualizandoRastreioPedidoId] =
     useState<string | null>(null);
+  const [pedidoIdsSelecionados, setPedidoIdsSelecionados] = useState<string[]>(
+    []
+  );
+  const [preparandoImpressaoLote, setPreparandoImpressaoLote] = useState(false);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -641,6 +684,26 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       );
     });
   }, [busca, filtroRapido, pedidos]);
+
+  const pedidosImprimiveisVisiveis = useMemo(() => {
+    return pedidosFiltrados.filter(podeImprimirEtiquetaEmLote);
+  }, [pedidosFiltrados]);
+
+  const pedidoIdsImprimiveisVisiveis = useMemo(() => {
+    return new Set(pedidosImprimiveisVisiveis.map((pedido) => pedido.id));
+  }, [pedidosImprimiveisVisiveis]);
+
+  const pedidoIdsSelecionadosValidos = useMemo(() => {
+    return pedidoIdsSelecionados.filter((id) =>
+      pedidoIdsImprimiveisVisiveis.has(id)
+    );
+  }, [pedidoIdsImprimiveisVisiveis, pedidoIdsSelecionados]);
+
+  const todosImprimiveisVisiveisSelecionados =
+    pedidosImprimiveisVisiveis.length > 0 &&
+    pedidosImprimiveisVisiveis.every((pedido) =>
+      pedidoIdsSelecionadosValidos.includes(pedido.id)
+    );
 
   const contadoresFiltro = useMemo(() => {
     return new Map(
@@ -933,6 +996,73 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     }
   }
 
+  function alternarPedidoSelecionado(pedido: PedidoOperacionalItem) {
+    if (!podeImprimirEtiquetaEmLote(pedido)) {
+      return;
+    }
+
+    setPedidoIdsSelecionados((idsAtuais) =>
+      idsAtuais.includes(pedido.id)
+        ? idsAtuais.filter((id) => id !== pedido.id)
+        : [...idsAtuais, pedido.id]
+    );
+  }
+
+  function alternarTodosImprimiveisVisiveis() {
+    if (todosImprimiveisVisiveisSelecionados) {
+      setPedidoIdsSelecionados((idsAtuais) =>
+        idsAtuais.filter((id) => !pedidoIdsImprimiveisVisiveis.has(id))
+      );
+      return;
+    }
+
+    setPedidoIdsSelecionados((idsAtuais) => {
+      const proximosIds = new Set(idsAtuais);
+
+      pedidosImprimiveisVisiveis.forEach((pedido) =>
+        proximosIds.add(pedido.id)
+      );
+
+      return Array.from(proximosIds);
+    });
+  }
+
+  async function imprimirEtiquetasSelecionadas() {
+    if (pedidoIdsSelecionadosValidos.length === 0) {
+      return;
+    }
+
+    setErroOperacao("");
+    setPreparandoImpressaoLote(true);
+
+    try {
+      const response = await fetch("/api/pedidos/etiquetas/lote", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ids: pedidoIdsSelecionadosValidos,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao preparar impressão em lote.");
+        return;
+      }
+
+      if (data.url) {
+        window.open(String(data.url), "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      setErroOperacao("Erro ao preparar impressão em lote.");
+    } finally {
+      setPreparandoImpressaoLote(false);
+    }
+  }
+
   return (
     <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-200 px-5 py-4">
@@ -998,6 +1128,59 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={todosImprimiveisVisiveisSelecionados}
+                disabled={pedidosImprimiveisVisiveis.length === 0}
+                onChange={alternarTodosImprimiveisVisiveis}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900"
+              />
+              Selecionar todos visíveis
+            </label>
+
+            <span className="text-xs text-slate-500">
+              {pedidoIdsSelecionadosValidos.length} pedido
+              {pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"} selecionado
+              {pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"}
+            </span>
+
+            <span className="text-xs text-slate-400">
+              {pedidosImprimiveisVisiveis.length} pronto
+              {pedidosImprimiveisVisiveis.length === 1 ? "" : "s"} para impressão
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {pedidoIdsSelecionados.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPedidoIdsSelecionados([])}
+                className="inline-flex h-9 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Limpar seleção
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={imprimirEtiquetasSelecionadas}
+              disabled={
+                pedidoIdsSelecionadosValidos.length === 0 ||
+                preparandoImpressaoLote
+              }
+              className="inline-flex h-9 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {preparandoImpressaoLote
+                ? "Preparando..."
+                : "Imprimir etiquetas selecionadas"}
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-2 md:grid-cols-4">
@@ -1073,14 +1256,29 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             const estaCancelandoLink =
               cancelandoLinkPedidoId === pedido.id || isPending;
             const destaquePedidoClass = getDestaquePedidoClass(pedido);
+            const podeSelecionarParaImpressao =
+              podeImprimirEtiquetaEmLote(pedido);
+            const selecionadoParaImpressao =
+              pedidoIdsSelecionadosValidos.includes(pedido.id);
 
             return (
               <article
                 key={pedido.id}
-                className={`grid items-center gap-4 px-5 py-3 transition hover:bg-slate-50 xl:grid-cols-[minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] ${
+                className={`grid items-start gap-4 px-5 py-3 transition hover:bg-slate-50 xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] ${
                   destaquePedidoClass
                 }`}
               >
+                <div className="pt-1">
+                  <input
+                    type="checkbox"
+                    aria-label={`Selecionar etiqueta do pedido ${pedido.codigo}`}
+                    checked={selecionadoParaImpressao}
+                    disabled={!podeSelecionarParaImpressao}
+                    onChange={() => alternarPedidoSelecionado(pedido)}
+                    className="h-4 w-4 rounded border-slate-300 text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+                  />
+                </div>
+
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
