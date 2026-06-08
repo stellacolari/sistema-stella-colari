@@ -5,6 +5,11 @@ import { pbkdf2Sync, randomBytes, randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizarTamanhoEstoque } from "@/lib/loja/estoque";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
+import {
+  cotarFreteMelhorEnvio,
+  getCepOrigemMelhorEnvio,
+} from "@/lib/frete/melhor-envio";
+import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
@@ -160,6 +165,23 @@ function parseNumero(value: unknown, fallback = 0) {
   const numero = Number(normalizado);
 
   return Number.isFinite(numero) ? numero : fallback;
+}
+
+function normalizarCep(cep: unknown) {
+  return String(cep || "").replace(/\D/g, "");
+}
+
+function selecionarOpcaoFrete(
+  opcoes: FreteOpcao[],
+  freteOpcaoId: string
+) {
+  return (
+    opcoes.find((opcao) => opcao.id === freteOpcaoId && !opcao.erro) || null
+  );
+}
+
+function toPrismaJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
 function normalizarCodigoCupom(value: unknown) {
@@ -733,6 +755,7 @@ export async function POST(request: Request) {
     const cidade = String(body.cidade || "").trim();
     const estado = String(body.estado || "").trim();
     const observacoes = String(body.observacoes || "").trim();
+    const freteOpcaoId = String(body.freteOpcaoId || "").trim();
 
     const cupomCodigo = normalizarCodigoCupom(body.cupomCodigo);
     const cashbackUsadoSolicitado = parseNumero(body.cashbackUsadoValor, 0);
@@ -751,6 +774,20 @@ export async function POST(request: Request) {
     if (!telefoneCliente) {
       return NextResponse.json(
         { error: "Informe o telefone/WhatsApp do cliente." },
+        { status: 400 }
+      );
+    }
+
+    if (normalizarCep(cep).length !== 8) {
+      return NextResponse.json(
+        { error: "Informe um CEP válido para calcular o frete." },
+        { status: 400 }
+      );
+    }
+
+    if (!freteOpcaoId) {
+      return NextResponse.json(
+        { error: "Selecione uma opção de frete." },
         { status: 400 }
       );
     }
@@ -1175,6 +1212,38 @@ export async function POST(request: Request) {
           ((cashbackBaseValor * cashbackPercentualAplicado) / 100).toFixed(2)
         );
 
+        const produtosFrete: FreteProdutoPayload[] = itensProcessados.map(
+          (itemProcessado) => ({
+            id: itemProcessado.produto.id,
+            nome: itemProcessado.produto.nome,
+            quantidade: itemProcessado.quantidade,
+            valorUnitario: Number(itemProcessado.preco.precoUnitario || 0),
+          })
+        );
+        const opcoesFrete = await cotarFreteMelhorEnvio({
+          cepDestino: cep,
+          produtos: produtosFrete,
+        });
+        const freteSelecionado = selecionarOpcaoFrete(
+          opcoesFrete,
+          freteOpcaoId
+        );
+
+        if (!freteSelecionado) {
+          throw new Error(
+            "A opção de frete selecionada não está mais disponível. Recalcule o frete."
+          );
+        }
+
+        const valorFrete = Number(freteSelecionado.valor || 0);
+        const totalPedido = subtotal + valorFrete;
+        const freteDadosJson = toPrismaJson({
+          provider: "MELHOR_ENVIO",
+          opcao: freteSelecionado,
+          cepOrigem: getCepOrigemMelhorEnvio(),
+          cepDestino: normalizarCep(cep),
+        });
+
         const pedido = await tx.pedidoOnline.create({
           data: {
             codigo: codigoPedido,
@@ -1194,9 +1263,12 @@ export async function POST(request: Request) {
             estado: estado || null,
             observacoes: observacoes || null,
             subtotal,
-            frete: 0,
-            total: subtotal,
+            frete: valorFrete,
+            total: totalPedido,
             status: "PEDIDO_RECEBIDO",
+            dadosOriginaisJson: {
+              frete: freteDadosJson,
+            },
 
             cupomId: cupom?.id || null,
             cupomCodigo: cupom?.codigo || null,
@@ -1276,9 +1348,19 @@ export async function POST(request: Request) {
           data: {
             pedidoOnlineId: pedido.id,
             tipoEntrega: "ENTREGA",
+            transportadora: freteSelecionado.transportadora || null,
+            servico: freteSelecionado.nome || null,
             statusEnvio: "PENDENTE",
+            cepOrigem: getCepOrigemMelhorEnvio() || null,
             cepDestino: cep || null,
-            valorFrete: 0,
+            valorFrete,
+            prazoDias: freteSelecionado.prazoDias,
+            gatewayLogistico: "MELHOR_ENVIO",
+            gatewayEnvioId: freteSelecionado.servicoId,
+            observacoes: JSON.stringify({
+              provider: "MELHOR_ENVIO",
+              cotacao: freteSelecionado,
+            }),
           },
         });
 

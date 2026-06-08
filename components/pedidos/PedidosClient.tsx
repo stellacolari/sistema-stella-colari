@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
+  Copy,
   CreditCard,
-  Filter,
+  ExternalLink,
+  MessageCircle,
   Package,
   Search,
   Truck,
@@ -41,8 +43,15 @@ export type PedidoOperacionalItem = {
 
   statusPagamento: string;
   metodoPagamento: string | null;
+  gatewayPagamento: string | null;
+  gatewayPedidoId: string | null;
+  linkPagamento: string | null;
   pagoEm: string | null;
   valorPago: number;
+  vendaGerada: {
+    id: string;
+    codigo: string;
+  } | null;
 
   cashbackStatus: string;
   cashbackPrevistoValor: number;
@@ -108,11 +117,12 @@ type PedidosClientProps = {
 
 const FILTROS_RAPIDOS = [
   { value: "TODOS", label: "Todos" },
-  { value: "ACAO", label: "Precisa de ação" },
-  { value: "PAGAMENTO", label: "Pagamento pendente" },
-  { value: "SEPARAR", label: "Pagos para separar" },
-  { value: "ENVIO", label: "Envio/preparação" },
-  { value: "PROBLEMA", label: "Problema/cancelado" },
+  { value: "SITE", label: "Site" },
+  { value: "MANUAL_LINK", label: "Manual com link" },
+  { value: "PAGAMENTO", label: "Aguardando pagamento" },
+  { value: "SEPARAR", label: "Pago / para separar" },
+  { value: "ANDAMENTO", label: "Enviado / em andamento" },
+  { value: "CANCELADOS", label: "Cancelados / expirados" },
 ];
 
 function moeda(valor: number) {
@@ -177,32 +187,34 @@ function statusPedidoClass(status: string) {
 
 function labelStatusPagamento(status: string) {
   if (status === "AGUARDANDO_PAGAMENTO") return "Aguardando";
+  if (status === "PENDENTE") return "Pendente";
   if (status === "PAGO") return "Pago";
   if (status === "RECUSADO") return "Recusado";
   if (status === "ESTORNADO") return "Estornado";
   if (status === "CANCELADO") return "Cancelado";
+  if (status === "EXPIRADO") return "Expirado";
 
   return status.replaceAll("_", " ");
 }
 
 function statusPagamentoClass(status: string) {
   if (status === "PAGO") {
-    return "text-emerald-700";
+    return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   }
 
-  if (status === "AGUARDANDO_PAGAMENTO") {
-    return "text-amber-700";
+  if (status === "AGUARDANDO_PAGAMENTO" || status === "PENDENTE") {
+    return "bg-amber-50 text-amber-700 ring-amber-200";
   }
 
-  if (status === "RECUSADO" || status === "CANCELADO") {
-    return "text-red-700";
+  if (status === "RECUSADO" || status === "CANCELADO" || status === "EXPIRADO") {
+    return "bg-red-50 text-red-700 ring-red-200";
   }
 
   if (status === "ESTORNADO") {
-    return "text-orange-700";
+    return "bg-orange-50 text-orange-700 ring-orange-200";
   }
 
-  return "text-slate-600";
+  return "bg-slate-50 text-slate-600 ring-slate-200";
 }
 
 function labelStatusEnvio(status: string | null | undefined) {
@@ -216,43 +228,66 @@ function labelStatusEnvio(status: string | null | undefined) {
   return status.replaceAll("_", " ");
 }
 
-function pedidoPrecisaAcao(pedido: PedidoOperacionalItem) {
-  if (pedido.status === "PROBLEMA") return true;
-  if (pedido.statusPagamento === "AGUARDANDO_PAGAMENTO") return true;
-
+function isPagamentoPendente(pedido: PedidoOperacionalItem) {
   return (
-    pedido.statusPagamento === "PAGO" &&
-    pedido.status === "PEDIDO_RECEBIDO"
+    pedido.statusPagamento === "AGUARDANDO_PAGAMENTO" ||
+    pedido.statusPagamento === "PENDENTE"
+  );
+}
+
+function isPedidoPagoParaSeparar(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.statusPagamento === "PAGO" && pedido.status === "PEDIDO_RECEBIDO"
+  );
+}
+
+function isPedidoPago(pedido: PedidoOperacionalItem) {
+  return pedido.statusPagamento === "PAGO" && !isPedidoCanceladoOuExpirado(pedido);
+}
+
+function isPedidoEmAndamento(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.status === "PEDIDO_SEPARADO" ||
+    pedido.status === "PEDIDO_ENVIADO" ||
+    pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
+    pedido.envio?.statusEnvio === "POSTADO"
+  );
+}
+
+function isPedidoCanceladoOuExpirado(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.status === "CANCELADO" ||
+    pedido.statusPagamento === "CANCELADO" ||
+    pedido.statusPagamento === "EXPIRADO" ||
+    pedido.statusPagamento === "RECUSADO"
   );
 }
 
 function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   if (filtro === "TODOS") return true;
 
-  if (filtro === "ACAO") {
-    return pedidoPrecisaAcao(pedido);
+  if (filtro === "SITE") {
+    return pedido.origemCanal === "LOJA_STELLA";
+  }
+
+  if (filtro === "MANUAL_LINK") {
+    return isPedidoManualComLink(pedido);
   }
 
   if (filtro === "PAGAMENTO") {
-    return pedido.statusPagamento === "AGUARDANDO_PAGAMENTO";
+    return isPagamentoPendente(pedido);
   }
 
   if (filtro === "SEPARAR") {
-    return (
-      pedido.statusPagamento === "PAGO" &&
-      pedido.status === "PEDIDO_RECEBIDO"
-    );
+    return isPedidoPago(pedido);
   }
 
-  if (filtro === "ENVIO") {
-    return (
-      pedido.envio?.statusEnvio === "PENDENTE" ||
-      pedido.envio?.statusEnvio === "EM_PREPARACAO"
-    );
+  if (filtro === "ANDAMENTO") {
+    return isPedidoEmAndamento(pedido) && !isPedidoCanceladoOuExpirado(pedido);
   }
 
-  if (filtro === "PROBLEMA") {
-    return pedido.status === "PROBLEMA" || pedido.status === "CANCELADO";
+  if (filtro === "CANCELADOS") {
+    return isPedidoCanceladoOuExpirado(pedido) || pedido.status === "PROBLEMA";
   }
 
   return true;
@@ -280,8 +315,17 @@ function pedidoCombinaBusca(pedido: PedidoOperacionalItem, busca: string) {
       pedido.cep,
       pedido.status,
       pedido.statusPagamento,
+      labelStatusPagamento(pedido.statusPagamento),
+      labelStatusPedido(pedido.status),
+      pedido.origemCanal,
+      origemPedidoLabel(pedido),
+      pedido.gatewayPagamento,
+      pedido.gatewayPedidoId,
+      pedido.linkPagamento,
+      pedido.vendaGerada?.codigo,
       pedido.envio?.statusEnvio,
       pedido.envio?.transportadora,
+      pedido.envio?.servico,
       pedido.envio?.codigoRastreio,
       pedido.cupomCodigo,
     ].join(" ")
@@ -305,18 +349,28 @@ function getMensagemAcao(pedido: PedidoOperacionalItem) {
     };
   }
 
-  if (pedido.statusPagamento === "AGUARDANDO_PAGAMENTO") {
+  if (isPedidoCanceladoOuExpirado(pedido)) {
     return {
-      label: "Aguardando pagamento",
+      label:
+        pedido.statusPagamento === "EXPIRADO"
+          ? "Link expirado"
+          : "Pedido cancelado",
+      className: "text-red-700",
+      icon: AlertCircle,
+    };
+  }
+
+  if (isPagamentoPendente(pedido)) {
+    return {
+      label: isPedidoManualComLink(pedido)
+        ? "Link aguardando pagamento"
+        : "Aguardando pagamento",
       className: "text-amber-700",
       icon: CreditCard,
     };
   }
 
-  if (
-    pedido.statusPagamento === "PAGO" &&
-    pedido.status === "PEDIDO_RECEBIDO"
-  ) {
+  if (isPedidoPagoParaSeparar(pedido)) {
     return {
       label: "Separar pedido",
       className: "text-emerald-700",
@@ -343,6 +397,10 @@ function getMensagemAcao(pedido: PedidoOperacionalItem) {
 }
 
 function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
+  if (isPedidoManualComLink(pedido)) {
+    return null;
+  }
+
   if (
     pedido.statusPagamento === "PAGO" &&
     pedido.status === "PEDIDO_RECEBIDO"
@@ -380,7 +438,7 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
   }
 
   if (
-    pedido.statusPagamento === "AGUARDANDO_PAGAMENTO" &&
+    isPagamentoPendente(pedido) &&
     pedido.status !== "CANCELADO" &&
     pedido.status !== "PROBLEMA"
   ) {
@@ -398,16 +456,104 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
   return null;
 }
 
+function isPedidoManualComLink(pedido: PedidoOperacionalItem) {
+  return pedido.origemCanal === "ADMIN_MANUAL";
+}
+
+function origemPedidoLabel(pedido: PedidoOperacionalItem) {
+  if (isPedidoManualComLink(pedido)) {
+    return "Manual com link";
+  }
+
+  if (pedido.origemCanal === "LOJA_STELLA") {
+    return "Site";
+  }
+
+  return pedido.origemCanal.replaceAll("_", " ");
+}
+
+function origemPedidoClass(pedido: PedidoOperacionalItem) {
+  if (isPedidoManualComLink(pedido)) {
+    return "bg-violet-50 text-violet-700 ring-violet-200";
+  }
+
+  if (pedido.origemCanal === "LOJA_STELLA") {
+    return "bg-sky-50 text-sky-700 ring-sky-200";
+  }
+
+  return "bg-slate-50 text-slate-600 ring-slate-200";
+}
+
+function normalizarTelefoneWhatsApp(telefone: string | null | undefined) {
+  const digitos = String(telefone || "").replace(/\D/g, "");
+
+  if (!digitos) {
+    return "";
+  }
+
+  if (digitos.startsWith("55")) {
+    return digitos;
+  }
+
+  return `55${digitos}`;
+}
+
+function montarLinkWhatsApp(pedido: PedidoOperacionalItem) {
+  if (!pedido.linkPagamento) {
+    return "";
+  }
+
+  const telefone = normalizarTelefoneWhatsApp(pedido.telefoneCliente);
+
+  if (!telefone) {
+    return "";
+  }
+
+  const mensagem = `Olá, ${pedido.nomeCliente}! Segue o link para pagamento do pedido ${pedido.codigo} na Stella: ${pedido.linkPagamento}`;
+
+  return `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+}
+
+function getDestaquePedidoClass(pedido: PedidoOperacionalItem) {
+  if (pedido.status === "PROBLEMA") {
+    return "border-l-4 border-red-400 bg-red-50/30";
+  }
+
+  if (isPedidoCanceladoOuExpirado(pedido)) {
+    return "border-l-4 border-slate-300 bg-slate-50";
+  }
+
+  if (isPedidoPagoParaSeparar(pedido)) {
+    return "border-l-4 border-emerald-300 bg-emerald-50/25";
+  }
+
+  if (isPagamentoPendente(pedido) && isPedidoManualComLink(pedido)) {
+    return "border-l-4 border-violet-300 bg-violet-50/25";
+  }
+
+  if (isPagamentoPendente(pedido)) {
+    return "border-l-4 border-amber-300 bg-amber-50/25";
+  }
+
+  return "";
+}
+
 export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [busca, setBusca] = useState("");
-  const [filtroRapido, setFiltroRapido] = useState("ACAO");
+  const [filtroRapido, setFiltroRapido] = useState("TODOS");
   const [erroOperacao, setErroOperacao] = useState("");
+  const [linkCopiadoPedidoId, setLinkCopiadoPedidoId] = useState<string | null>(
+    null
+  );
   const [processandoPedidoId, setProcessandoPedidoId] = useState<string | null>(
     null
   );
+  const [cancelandoLinkPedidoId, setCancelandoLinkPedidoId] = useState<
+    string | null
+  >(null);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -417,6 +563,28 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       );
     });
   }, [busca, filtroRapido, pedidos]);
+
+  const contadoresFiltro = useMemo(() => {
+    return new Map(
+      FILTROS_RAPIDOS.map((filtro) => [
+        filtro.value,
+        pedidos.filter((pedido) => passaFiltroRapido(pedido, filtro.value))
+          .length,
+      ])
+    );
+  }, [pedidos]);
+
+  const resumoOperacional = useMemo(() => {
+    return {
+      linksPendentes: pedidos.filter(
+        (pedido) => isPedidoManualComLink(pedido) && isPagamentoPendente(pedido)
+      ).length,
+      pagosParaSeparar: pedidos.filter(isPedidoPagoParaSeparar).length,
+      problemas: pedidos.filter((pedido) => pedido.status === "PROBLEMA")
+        .length,
+      canceladosExpirados: pedidos.filter(isPedidoCanceladoOuExpirado).length,
+    };
+  }, [pedidos]);
 
   const totalFiltrado = useMemo(() => {
     return pedidosFiltrados.reduce(
@@ -472,6 +640,59 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     }
   }
 
+  async function copiarLinkPagamento(pedido: PedidoOperacionalItem) {
+    if (!pedido.linkPagamento) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(pedido.linkPagamento);
+      setLinkCopiadoPedidoId(pedido.id);
+      window.setTimeout(() => setLinkCopiadoPedidoId(null), 2200);
+    } catch {
+      setErroOperacao("Não foi possível copiar o link de pagamento.");
+    }
+  }
+
+  async function cancelarLinkPagamentoManual(pedido: PedidoOperacionalItem) {
+    const confirmado = window.confirm(
+      `Cancelar o link de pagamento do pedido ${pedido.codigo}? A sessão Stripe será expirada quando possível e o estoque não será baixado.`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroOperacao("");
+    setCancelandoLinkPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(
+        `/api/pedidos/${pedido.id}/cancelar-link-pagamento`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(
+          data.error || "Erro ao cancelar link de pagamento manual."
+        );
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao cancelar link de pagamento manual.");
+    } finally {
+      setCancelandoLinkPedidoId(null);
+    }
+  }
+
   return (
     <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-200 px-5 py-4">
@@ -495,33 +716,85 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-[1fr_220px] xl:w-[620px]">
+          <div className="grid gap-3 xl:w-[680px]">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
               <input
                 value={busca}
                 onChange={(event) => setBusca(event.target.value)}
-                placeholder="Buscar pedido, cliente, cidade, rastreio..."
+                placeholder="Buscar cliente, código, pagamento, origem, gateway..."
                 className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-slate-500"
               />
             </label>
+          </div>
+        </div>
 
-            <label className="relative block">
-              <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <div className="mt-4 flex flex-wrap gap-2">
+          {FILTROS_RAPIDOS.map((filtro) => {
+            const ativo = filtroRapido === filtro.value;
 
-              <select
-                value={filtroRapido}
-                onChange={(event) => setFiltroRapido(event.target.value)}
-                className="h-11 w-full appearance-none rounded-2xl border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-slate-500"
+            return (
+              <button
+                key={filtro.value}
+                type="button"
+                onClick={() => setFiltroRapido(filtro.value)}
+                className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${
+                  ativo
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
               >
-                {FILTROS_RAPIDOS.map((filtro) => (
-                  <option key={filtro.value} value={filtro.value}>
-                    {filtro.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <span>{filtro.label}</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    ativo
+                      ? "bg-white/15 text-white"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {contadoresFiltro.get(filtro.value) || 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-4">
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+              Links pendentes
+            </p>
+            <p className="mt-1 text-lg font-bold text-violet-950">
+              {resumoOperacional.linksPendentes}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+              Para separar
+            </p>
+            <p className="mt-1 text-lg font-bold text-emerald-950">
+              {resumoOperacional.pagosParaSeparar}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+              Problemas
+            </p>
+            <p className="mt-1 text-lg font-bold text-red-950">
+              {resumoOperacional.problemas}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              Cancelados/expirados
+            </p>
+            <p className="mt-1 text-lg font-bold text-slate-950">
+              {resumoOperacional.canceladosExpirados}
+            </p>
           </div>
         </div>
       </div>
@@ -554,11 +827,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             const acaoRapida = getAcaoRapidaStatus(pedido);
             const estaProcessando =
               processandoPedidoId === pedido.id || isPending;
+            const pedidoManualComLink = isPedidoManualComLink(pedido);
+            const linkWhatsApp = montarLinkWhatsApp(pedido);
+            const pagamentoPendente = isPagamentoPendente(pedido);
+            const estaCancelandoLink =
+              cancelandoLinkPedidoId === pedido.id || isPending;
+            const destaquePedidoClass = getDestaquePedidoClass(pedido);
 
             return (
               <article
                 key={pedido.id}
-                className="grid items-center gap-4 px-5 py-3 transition hover:bg-slate-50 xl:grid-cols-[minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(220px,1fr)_minmax(260px,auto)]"
+                className={`grid items-center gap-4 px-5 py-3 transition hover:bg-slate-50 xl:grid-cols-[minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] ${
+                  destaquePedidoClass
+                }`}
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -574,7 +855,15 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         pedido.status
                       )}`}
                     >
-                      {labelStatusPedido(pedido.status)}
+                      Operação: {labelStatusPedido(pedido.status)}
+                    </span>
+
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${origemPedidoClass(
+                        pedido
+                      )}`}
+                    >
+                      Origem: {origemPedidoLabel(pedido)}
                     </span>
                   </div>
 
@@ -650,19 +939,153 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                 <div>
                   <div className="flex flex-wrap gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold ring-1 ring-slate-200 ${statusPagamentoClass(
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusPagamentoClass(
                         pedido.statusPagamento
                       )}`}
                     >
                       <CreditCard className="h-3 w-3" />
-                      {labelStatusPagamento(pedido.statusPagamento)}
+                      Pagamento: {labelStatusPagamento(pedido.statusPagamento)}
                     </span>
+
+                    {pedido.gatewayPagamento && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                        {pedido.gatewayPagamento}
+                      </span>
+                    )}
 
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
                       <Truck className="h-3 w-3" />
                       {labelStatusEnvio(pedido.envio?.statusEnvio)}
                     </span>
                   </div>
+
+                  {pedidoManualComLink && pagamentoPendente && (
+                    <div className="mt-3 rounded-2xl border border-violet-200 bg-white px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                        Link de pagamento
+                      </p>
+
+                      {pedido.linkPagamento ? (
+                        <>
+                          <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+                            {pedido.linkPagamento}
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => copiarLinkPagamento(pedido)}
+                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {linkCopiadoPedidoId === pedido.id
+                                ? "Copiado"
+                                : "Copiar"}
+                            </button>
+
+                            <a
+                              href={pedido.linkPagamento}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Abrir
+                            </a>
+
+                            {linkWhatsApp && (
+                              <a
+                                href={linkWhatsApp}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                WhatsApp
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                cancelarLinkPagamentoManual(pedido)
+                              }
+                              disabled={estaCancelandoLink}
+                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {estaCancelandoLink
+                                ? "Cancelando..."
+                                : "Cancelar link"}
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mt-1 text-xs text-amber-700">
+                            Link indisponível ou expirado na Stripe.
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={() => cancelarLinkPagamentoManual(pedido)}
+                            disabled={estaCancelandoLink}
+                            className="mt-2 inline-flex h-8 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {estaCancelandoLink
+                              ? "Cancelando..."
+                              : "Marcar cancelado"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {pedidoManualComLink && pedido.statusPagamento === "PAGO" && (
+                    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      {pedido.vendaGerada ? (
+                        <>
+                          Venda gerada:{" "}
+                          <Link
+                            href={`/vendas`}
+                            className="font-semibold underline-offset-4 hover:underline"
+                          >
+                            {pedido.vendaGerada.codigo}
+                          </Link>
+                        </>
+                      ) : (
+                        "Pagamento confirmado. Venda gerada não localizada na listagem."
+                      )}
+                    </div>
+                  )}
+
+                  {!pedidoManualComLink && pedido.envio && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                      <p className="font-semibold text-slate-900">
+                        Frete escolhido
+                      </p>
+
+                      <p className="mt-1">
+                        {[pedido.envio.transportadora, pedido.envio.servico]
+                          .filter(Boolean)
+                          .join(" - ") || "Entrega"}
+                      </p>
+
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                        <span>{moeda(pedido.envio.valorFrete)}</span>
+                        {pedido.envio.prazoDias !== null && (
+                          <span>
+                            {pedido.envio.prazoDias} dia
+                            {pedido.envio.prazoDias === 1 ? "" : "s"}
+                          </span>
+                        )}
+                        <span>{labelStatusEnvio(pedido.envio.statusEnvio)}</span>
+                      </div>
+
+                      <p className="mt-2 text-[11px] text-slate-400">
+                        Etiqueta e rastreio serão adicionados em etapa futura.
+                      </p>
+                    </div>
+                  )}
 
                   {(possuiCupom ||
                     possuiCashbackUsado ||

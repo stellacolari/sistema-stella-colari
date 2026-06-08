@@ -184,6 +184,10 @@ function percentual(valor: number) {
   }).format(valor || 0);
 }
 
+function valorInterno(valor: string, mostrarValoresInternos: boolean) {
+  return mostrarValoresInternos ? valor : "••••";
+}
+
 function normalizarTexto(value: string | null | undefined) {
   return String(value ?? "")
     .normalize("NFD")
@@ -420,6 +424,7 @@ export default function ProdutosCatalogClient({
     []
   );
   const [erroLixeira, setErroLixeira] = useState<string | null>(null);
+  const [mostrarValoresInternos, setMostrarValoresInternos] = useState(false);
 
   const [modalFamiliaAberto, setModalFamiliaAberto] = useState(false);
   const [familiaSelecionadaId, setFamiliaSelecionadaId] = useState("");
@@ -1269,12 +1274,31 @@ function filtrarSemFamilia() {
             </p>
           </div>
 
-          <Link
-            href="/produtos/novo"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Novo produto
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setMostrarValoresInternos((valorAtual) => !valorAtual)
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              {mostrarValoresInternos ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              {mostrarValoresInternos
+                ? "Ocultar valores internos"
+                : "Mostrar valores internos"}
+            </button>
+
+            <Link
+              href="/produtos/novo"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+            >
+              Novo produto
+            </Link>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_260px_auto]">
@@ -1595,16 +1619,24 @@ function filtrarSemFamilia() {
 
                         <p
                           className={`mt-1 text-base font-bold ${
-                            lucroEfetivo < 0
+                            !mostrarValoresInternos
+                              ? "text-slate-400"
+                              : lucroEfetivo < 0
                               ? "text-red-700"
                               : "text-emerald-700"
                           }`}
                         >
-                          {moeda(lucroEfetivo)}
+                          {valorInterno(
+                            moeda(lucroEfetivo),
+                            mostrarValoresInternos
+                          )}
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          {percentual(margemEfetiva)}%
+                          {valorInterno(
+                            `${percentual(margemEfetiva)}%`,
+                            mostrarValoresInternos
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1615,17 +1647,26 @@ function filtrarSemFamilia() {
 
                     <Info
                       label="Custo produto"
-                      value={moeda(Number(produto.custoBase))}
+                      value={valorInterno(
+                        moeda(Number(produto.custoBase)),
+                        mostrarValoresInternos
+                      )}
                     />
 
                     <Info
                       label="Adicionais"
-                      value={moeda(Number(produto.custoAdicionais))}
+                      value={valorInterno(
+                        moeda(Number(produto.custoAdicionais)),
+                        mostrarValoresInternos
+                      )}
                     />
 
                     <Info
                       label="Custo total"
-                      value={moeda(Number(produto.custoTotal))}
+                      value={valorInterno(
+                        moeda(Number(produto.custoTotal)),
+                        mostrarValoresInternos
+                      )}
                     />
                   </div>
 

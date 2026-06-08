@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Sparkles,
   Tag,
+  Truck,
   Wallet,
   X,
 } from "lucide-react";
@@ -100,6 +101,17 @@ type CupomAplicado = {
 };
 
 type ModoCheckout = "SEM_CADASTRO" | "COM_CADASTRO";
+
+type FreteOpcaoCheckout = {
+  id: string;
+  servicoId: string;
+  nome: string;
+  transportadora: string;
+  valor: number;
+  prazoDias: number | null;
+  descricao: string;
+  erro?: string | null;
+};
 
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -314,6 +326,10 @@ export default function CheckoutClient({
   const [erroCupom, setErroCupom] = useState("");
   const [erroCashback, setErroCashback] = useState("");
   const [erroCep, setErroCep] = useState("");
+  const [cotandoFrete, setCotandoFrete] = useState(false);
+  const [erroFrete, setErroFrete] = useState("");
+  const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcaoCheckout[]>([]);
+  const [freteSelecionadoId, setFreteSelecionadoId] = useState("");
   const [codigoCupom, setCodigoCupom] = useState("");
   const [cupomAplicado, setCupomAplicado] = useState<CupomAplicado | null>(
     null
@@ -391,6 +407,20 @@ export default function CheckoutClient({
   const subtotal = useMemo(() => {
     return Math.max(subtotalAposCupom - cashbackUsado, 0);
   }, [subtotalAposCupom, cashbackUsado]);
+
+  const freteSelecionado = useMemo(() => {
+    return (
+      opcoesFrete.find(
+        (opcao) => opcao.id === freteSelecionadoId && !opcao.erro
+      ) || null
+    );
+  }, [freteSelecionadoId, opcoesFrete]);
+
+  const valorFrete = Number(freteSelecionado?.valor || 0);
+
+  const totalPedido = useMemo(() => {
+    return subtotal + valorFrete;
+  }, [subtotal, valorFrete]);
 
   const economia = useMemo(() => {
     return itens.reduce((total, item) => {
@@ -483,6 +513,12 @@ export default function CheckoutClient({
 function atualizarCampo(campo: keyof typeof form, valor: string) {
   setErroCep("");
 
+  if (campo === "cep") {
+    setErroFrete("");
+    setOpcoesFrete([]);
+    setFreteSelecionadoId("");
+  }
+
   setForm((current) => ({
     ...current,
     [campo]: campo === "estado" ? valor.toUpperCase() : valor,
@@ -551,6 +587,99 @@ useEffect(() => {
 
   return () => window.clearTimeout(timer);
 }, [form.cep, ultimoCepBuscado]);
+
+  const assinaturaCotacaoFrete = useMemo(() => {
+    const cep = form.cep.replace(/\D/g, "");
+    const itensCotacao = itens.map((item) => ({
+      produtoId: item.produtoId,
+      quantidade: item.quantidade,
+    }));
+
+    return JSON.stringify({
+      cep,
+      itens: itensCotacao,
+    });
+  }, [form.cep, itens]);
+
+  useEffect(() => {
+    const cep = form.cep.replace(/\D/g, "");
+
+    if (cep.length !== 8 || itens.length === 0) {
+      setCotandoFrete(false);
+      setOpcoesFrete([]);
+      setFreteSelecionadoId("");
+      setErroFrete("");
+      return;
+    }
+
+    let cancelado = false;
+
+    async function cotarFrete() {
+      setCotandoFrete(true);
+      setErroFrete("");
+
+      try {
+        const response = await fetch("/api/loja/frete/cotar", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            cepDestino: cep,
+            itens: itens.map((item) => ({
+              produtoId: item.produtoId,
+              quantidade: item.quantidade,
+            })),
+            subtotal,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (cancelado) {
+          return;
+        }
+
+        if (!response.ok) {
+          setOpcoesFrete([]);
+          setFreteSelecionadoId("");
+          setErroFrete(data.error || "Erro ao cotar frete.");
+          return;
+        }
+
+        const opcoes = Array.isArray(data.opcoes)
+          ? (data.opcoes as FreteOpcaoCheckout[])
+          : [];
+        const opcoesOrdenadas = [...opcoes].sort((a, b) => {
+          if (a.erro && !b.erro) return 1;
+          if (!a.erro && b.erro) return -1;
+          return Number(a.valor || 0) - Number(b.valor || 0);
+        });
+
+        setOpcoesFrete(opcoesOrdenadas);
+
+        const primeiraOpcaoValida = opcoesOrdenadas.find((opcao) => !opcao.erro);
+        setFreteSelecionadoId(primeiraOpcaoValida?.id || "");
+      } catch {
+        if (!cancelado) {
+          setOpcoesFrete([]);
+          setFreteSelecionadoId("");
+          setErroFrete("Erro ao cotar frete.");
+        }
+      } finally {
+        if (!cancelado) {
+          setCotandoFrete(false);
+        }
+      }
+    }
+
+    cotarFrete();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [assinaturaCotacaoFrete, form.cep, itens, subtotal]);
+
 function preencherDadosClienteLogado() {
   if (!clienteLogado) {
     return;
@@ -675,6 +804,23 @@ function preencherDadosClienteLogado() {
       return;
     }
 
+    const cepNumeros = form.cep.replace(/\D/g, "");
+
+    if (cepNumeros.length !== 8) {
+      setErro("Informe um CEP válido para calcular o frete.");
+      return;
+    }
+
+    if (cotandoFrete) {
+      setErro("Aguarde a cotação do frete antes de finalizar.");
+      return;
+    }
+
+    if (!freteSelecionado) {
+      setErro("Selecione uma opção de frete para finalizar o pedido.");
+      return;
+    }
+
     if (criarCadastroNoCheckout) {
       if (!form.emailCliente.trim()) {
         setErro("Informe seu e-mail para criar o cadastro.");
@@ -723,6 +869,7 @@ function preencherDadosClienteLogado() {
           criarCadastro: criarCadastroNoCheckout,
           cupomCodigo: cupomAplicado?.codigo || null,
           cashbackUsadoValor: cashbackUsado,
+          freteOpcaoId: freteSelecionado.id,
           ...form,
           itens: itens.map((item) => ({
             produtoId: item.produtoId,
@@ -1344,6 +1491,96 @@ function preencherDadosClienteLogado() {
                   </label>
                 </div>
 
+                <div className="mt-5 border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Truck className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-sm font-semibold text-slate-950">
+                          Frete
+                        </h3>
+
+                        {cotandoFrete && (
+                          <span className="text-xs font-medium text-slate-500">
+                            Cotando...
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Informe um CEP válido para ver as opções disponíveis.
+                      </p>
+
+                      {erroFrete && (
+                        <div className="mt-3 border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                          {erroFrete}
+                        </div>
+                      )}
+
+                      {opcoesFrete.length > 0 && (
+                        <div className="mt-3 grid gap-2">
+                          {opcoesFrete.map((opcao) => {
+                            const selecionada =
+                              freteSelecionadoId === opcao.id && !opcao.erro;
+
+                            return (
+                              <label
+                                key={opcao.id}
+                                className={`flex cursor-pointer items-start gap-3 border bg-white px-3 py-3 text-sm transition ${
+                                  selecionada
+                                    ? "border-[var(--brand-blue)] ring-1 ring-[var(--brand-blue)]"
+                                    : opcao.erro
+                                    ? "border-red-200 opacity-70"
+                                    : "border-slate-200 hover:border-slate-400"
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="frete"
+                                  value={opcao.id}
+                                  checked={selecionada}
+                                  disabled={Boolean(opcao.erro)}
+                                  onChange={() =>
+                                    setFreteSelecionadoId(opcao.id)
+                                  }
+                                  className="mt-1 h-4 w-4"
+                                />
+
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-medium text-slate-950">
+                                    {opcao.transportadora} - {opcao.nome}
+                                  </span>
+
+                                  {opcao.erro ? (
+                                    <span className="mt-1 block text-xs text-red-700">
+                                      {opcao.erro}
+                                    </span>
+                                  ) : (
+                                    <span className="mt-1 block text-xs text-slate-500">
+                                      {opcao.prazoDias !== null
+                                        ? `${opcao.prazoDias} dia${
+                                            opcao.prazoDias === 1 ? "" : "s"
+                                          }`
+                                        : "Prazo indisponível"}
+                                    </span>
+                                  )}
+                                </span>
+
+                                {!opcao.erro && (
+                                  <span className="shrink-0 font-semibold text-slate-950">
+                                    {moeda(opcao.valor)}
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <label className="mt-4 block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     Observações
@@ -1487,8 +1724,21 @@ function preencherDadosClienteLogado() {
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-light text-slate-500">Frete</span>
-                  <span className="font-medium text-slate-950">A combinar</span>
+                  <span className="font-medium text-slate-950">
+                    {freteSelecionado ? moeda(valorFrete) : "Selecione"}
+                  </span>
                 </div>
+
+                {freteSelecionado && (
+                  <p className="text-right text-xs text-slate-500">
+                    {freteSelecionado.transportadora} - {freteSelecionado.nome}
+                    {freteSelecionado.prazoDias !== null
+                      ? ` · ${freteSelecionado.prazoDias} dia${
+                          freteSelecionado.prazoDias === 1 ? "" : "s"
+                        }`
+                      : ""}
+                  </p>
+                )}
 
                 <div className="flex items-center justify-between border-t border-slate-200 pt-4">
                   <span className="text-base font-medium text-slate-950">
@@ -1496,7 +1746,7 @@ function preencherDadosClienteLogado() {
                   </span>
 
                   <span className="text-xl font-light text-slate-950">
-                    {moeda(subtotal)}
+                    {moeda(totalPedido)}
                   </span>
                 </div>
               </div>
@@ -1545,7 +1795,9 @@ function preencherDadosClienteLogado() {
               <button
                 type="button"
                 onClick={finalizarPedido}
-                disabled={salvando || itens.length === 0}
+                disabled={
+                  salvando || itens.length === 0 || cotandoFrete || !freteSelecionado
+                }
                 className="mt-5 w-full brand-button px-4 py-3 text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {salvando ? "Criando pedido..." : "Prosseguir para pagamento"}

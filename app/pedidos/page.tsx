@@ -9,6 +9,23 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+async function buscarUrlCheckoutStripe(sessionId: string | null) {
+  if (!sessionId || !process.env.STRIPE_SECRET_KEY) {
+    return null;
+  }
+
+  try {
+    const { stripe } = await import("@/lib/stripe");
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    return session.url || null;
+  } catch (error) {
+    console.error("Erro ao buscar link Stripe do pedido manual:", error);
+    return null;
+  }
+}
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -70,6 +87,68 @@ export default async function PedidosPage() {
     },
   });
 
+  const pedidosManuaisPendentes = pedidosRaw.filter(
+    (pedido) =>
+      pedido.origemCanal === "ADMIN_MANUAL" &&
+      (pedido.statusPagamento === "AGUARDANDO_PAGAMENTO" ||
+        pedido.statusPagamento === "PENDENTE") &&
+      pedido.gatewayPagamento === "STRIPE"
+  );
+
+  const linksPagamento = new Map<string, string | null>(
+    await Promise.all(
+      pedidosManuaisPendentes.map(async (pedido) => [
+        pedido.id,
+        await buscarUrlCheckoutStripe(pedido.gatewayPedidoId),
+      ] as const)
+    )
+  );
+
+  const pedidosManuaisPagos = pedidosRaw.filter(
+    (pedido) =>
+      pedido.origemCanal === "ADMIN_MANUAL" &&
+      pedido.statusPagamento === "PAGO"
+  );
+
+  const vendasPedidosManuais =
+    pedidosManuaisPagos.length > 0
+      ? await prisma.venda.findMany({
+          where: {
+            OR: pedidosManuaisPagos.map((pedido) => ({
+              observacoes: {
+                contains: pedido.codigo,
+              },
+            })),
+          },
+          select: {
+            id: true,
+            codigo: true,
+            observacoes: true,
+          },
+        })
+      : [];
+
+  const vendasPorPedido = new Map<
+    string,
+    { id: string; codigo: string } | null
+  >();
+
+  pedidosManuaisPagos.forEach((pedido) => {
+    const venda = vendasPedidosManuais.find((item) =>
+      String(item.observacoes || "").includes(pedido.codigo)
+    );
+
+    vendasPorPedido.set(
+      pedido.id,
+      venda
+        ? {
+            id: venda.id,
+            codigo: venda.codigo,
+          }
+        : null
+    );
+  });
+
   const pedidos: PedidoOperacionalItem[] = pedidosRaw.map((pedido) => {
     const quantidadeItens = pedido.itens.reduce(
       (total, item) => total + item.quantidade,
@@ -104,8 +183,12 @@ export default async function PedidosPage() {
 
       statusPagamento: pedido.statusPagamento || "AGUARDANDO_PAGAMENTO",
       metodoPagamento: pedido.metodoPagamento,
+      gatewayPagamento: pedido.gatewayPagamento,
+      gatewayPedidoId: pedido.gatewayPedidoId,
+      linkPagamento: linksPagamento.get(pedido.id) || null,
       pagoEm: pedido.pagoEm ? pedido.pagoEm.toISOString() : null,
       valorPago: Number(pedido.valorPago || 0),
+      vendaGerada: vendasPorPedido.get(pedido.id) || null,
 
       cashbackStatus: pedido.cashbackStatus,
       cashbackPrevistoValor: Number(pedido.cashbackPrevistoValor || 0),
