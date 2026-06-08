@@ -1061,13 +1061,17 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   {!pedidoManualComLink && pedido.envio && (
                     <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
                       <p className="font-semibold text-slate-900">
-                        Frete escolhido
+                        {pedido.envio.tipoEntrega === "RETIRADA"
+                          ? "Retirada local"
+                          : "Frete escolhido"}
                       </p>
 
                       <p className="mt-1">
-                        {[pedido.envio.transportadora, pedido.envio.servico]
-                          .filter(Boolean)
-                          .join(" - ") || "Entrega"}
+                        {pedido.envio.tipoEntrega === "RETIRADA"
+                          ? pedido.envio.servico || "Retirada local"
+                          : [pedido.envio.transportadora, pedido.envio.servico]
+                              .filter(Boolean)
+                              .join(" - ") || "Entrega"}
                       </p>
 
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
@@ -1081,9 +1085,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         <span>{labelStatusEnvio(pedido.envio.statusEnvio)}</span>
                       </div>
 
-                      <p className="mt-2 text-[11px] text-slate-400">
-                        Etiqueta e rastreio serão adicionados em etapa futura.
-                      </p>
+                      {pedido.envio.tipoEntrega !== "RETIRADA" && (
+                        <p className="mt-2 text-[11px] text-slate-400">
+                          Etiqueta e rastreio serão adicionados em etapa futura.
+                        </p>
+                      )}
                     </div>
                   )}
 

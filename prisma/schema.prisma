@@ -850,6 +850,25 @@ model LojaCashbackConfiguracao {
   atualizadoEm               DateTime @updatedAt
 }
 
+model LojaFreteConfiguracao {
+  id                       String   @id @default(cuid())
+  chave                    String   @unique @default("PADRAO")
+  provedor                 String   @default("MELHOR_ENVIO")
+  cepOrigem                String?
+  ambiente                 String   @default("sandbox")
+  userAgent                String?
+  pesoFallbackKg           Float    @default(0.3)
+  alturaFallbackCm         Float    @default(4)
+  larguraFallbackCm        Float    @default(12)
+  comprimentoFallbackCm    Float    @default(18)
+  prazoAdicionalDias       Int      @default(0)
+  valorAdicional           Float    @default(0)
+  retiradaLocalHabilitada  Boolean  @default(false)
+  retiradaLocalTexto       String?
+  criadoEm                 DateTime @default(now())
+  atualizadoEm             DateTime @updatedAt
+}
+
 model CupomLoja {
   id                  String         @id @default(cuid())
   codigo              String         @unique

@@ -110,6 +110,8 @@ type FreteOpcaoCheckout = {
   valor: number;
   prazoDias: number | null;
   descricao: string;
+  provider?: "MELHOR_ENVIO" | "MANUAL" | "RETIRADA_LOCAL";
+  tipoEntrega?: "ENTREGA" | "RETIRADA";
   erro?: string | null;
 };
 
@@ -641,8 +643,14 @@ useEffect(() => {
         }
 
         if (!response.ok) {
-          setOpcoesFrete([]);
-          setFreteSelecionadoId("");
+          const opcoesFallback = Array.isArray(data.opcoes)
+            ? (data.opcoes as FreteOpcaoCheckout[])
+            : [];
+          setOpcoesFrete(opcoesFallback);
+          const primeiraOpcaoFallback = opcoesFallback.find(
+            (opcao) => !opcao.erro
+          );
+          setFreteSelecionadoId(primeiraOpcaoFallback?.id || "");
           setErroFrete(data.error || "Erro ao cotar frete.");
           return;
         }
@@ -657,6 +665,9 @@ useEffect(() => {
         });
 
         setOpcoesFrete(opcoesOrdenadas);
+        setErroFrete(
+          typeof data.message === "string" && data.message ? data.message : ""
+        );
 
         const primeiraOpcaoValida = opcoesOrdenadas.find((opcao) => !opcao.erro);
         setFreteSelecionadoId(primeiraOpcaoValida?.id || "");
@@ -1509,7 +1520,8 @@ function preencherDadosClienteLogado() {
                       </div>
 
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Informe um CEP válido para ver as opções disponíveis.
+                        Informe um CEP válido para ver entrega ou retirada
+                        disponíveis.
                       </p>
 
                       {erroFrete && (
@@ -1549,7 +1561,9 @@ function preencherDadosClienteLogado() {
 
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium text-slate-950">
-                                    {opcao.transportadora} - {opcao.nome}
+                                    {opcao.tipoEntrega === "RETIRADA"
+                                      ? "Retirada local"
+                                      : `${opcao.transportadora} - ${opcao.nome}`}
                                   </span>
 
                                   {opcao.erro ? (
@@ -1558,7 +1572,9 @@ function preencherDadosClienteLogado() {
                                     </span>
                                   ) : (
                                     <span className="mt-1 block text-xs text-slate-500">
-                                      {opcao.prazoDias !== null
+                                      {opcao.tipoEntrega === "RETIRADA"
+                                        ? opcao.descricao
+                                        : opcao.prazoDias !== null
                                         ? `${opcao.prazoDias} dia${
                                             opcao.prazoDias === 1 ? "" : "s"
                                           }`

@@ -17,6 +17,8 @@ export type FreteOpcao = {
   valor: number;
   prazoDias: number | null;
   descricao: string;
+  provider?: "MELHOR_ENVIO" | "MANUAL" | "RETIRADA_LOCAL";
+  tipoEntrega?: "ENTREGA" | "RETIRADA";
   raw?: unknown;
   erro?: string | null;
 };

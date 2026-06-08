@@ -9,6 +9,7 @@ import {
   FolderKanban,
   Home,
   LayoutTemplate,
+  PackageCheck,
   SlidersHorizontal,
   Sparkles,
   Store,
@@ -58,6 +59,11 @@ const tabs = [
     href: "/configuracoes/loja/cashback",
     label: "Cashback",
     icon: Sparkles,
+  },
+  {
+    href: "/configuracoes/loja/frete",
+    label: "Frete",
+    icon: PackageCheck,
   },
   {
     href: "/configuracoes/loja/formularios",

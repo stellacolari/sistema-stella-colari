@@ -9,6 +9,11 @@ import {
   cotarFreteMelhorEnvio,
   getCepOrigemMelhorEnvio,
 } from "@/lib/frete/melhor-envio";
+import {
+  buscarConfiguracaoFrete,
+  FRETE_MANUAL_ID,
+  FRETE_RETIRADA_LOCAL_ID,
+} from "@/lib/frete/configuracao";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
@@ -182,6 +187,34 @@ function selecionarOpcaoFrete(
 
 function toPrismaJson(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function montarOpcaoRetiradaLocal(texto: string): FreteOpcao {
+  return {
+    id: FRETE_RETIRADA_LOCAL_ID,
+    servicoId: FRETE_RETIRADA_LOCAL_ID,
+    nome: "Retirada local",
+    transportadora: "Retirada local",
+    valor: 0,
+    prazoDias: 0,
+    descricao: texto || "Retirada local sem custo de frete.",
+    provider: "RETIRADA_LOCAL",
+    tipoEntrega: "RETIRADA",
+  };
+}
+
+function montarOpcaoManual(valor: number, prazoDias: number): FreteOpcao {
+  return {
+    id: FRETE_MANUAL_ID,
+    servicoId: FRETE_MANUAL_ID,
+    nome: "Frete manual",
+    transportadora: "Frete manual",
+    valor,
+    prazoDias,
+    descricao: "Frete configurado manualmente.",
+    provider: "MANUAL",
+    tipoEntrega: "ENTREGA",
+  };
 }
 
 function normalizarCodigoCupom(value: unknown) {
@@ -850,6 +883,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const freteConfig = await buscarConfiguracaoFrete();
+
     const pedidoCriado = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const codigoPedido = await gerarProximoCodigoPedido(tx);
@@ -1220,10 +1255,47 @@ export async function POST(request: Request) {
             valorUnitario: Number(itemProcessado.preco.precoUnitario || 0),
           })
         );
-        const opcoesFrete = await cotarFreteMelhorEnvio({
-          cepDestino: cep,
-          produtos: produtosFrete,
-        });
+        const opcoesFrete: FreteOpcao[] = [];
+
+        if (freteConfig.retiradaLocalHabilitada) {
+          opcoesFrete.push(
+            montarOpcaoRetiradaLocal(freteConfig.retiradaLocalTexto)
+          );
+        }
+
+        if (freteConfig.provedor === "MANUAL") {
+          opcoesFrete.push(
+            montarOpcaoManual(
+              freteConfig.valorAdicional,
+              freteConfig.prazoAdicionalDias
+            )
+          );
+        }
+
+        if (freteConfig.provedor === "MELHOR_ENVIO") {
+          if (!freteConfig.melhorEnvioTokenConfigurado) {
+            throw new Error(
+              "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente."
+            );
+          }
+
+          if (freteConfig.cepOrigem.length !== 8) {
+            throw new Error(
+              "CEP de origem do frete não configurado. Ajuste em Configurações > Frete e entrega."
+            );
+          }
+
+          const opcoesMelhorEnvio = await cotarFreteMelhorEnvio(
+            {
+              cepDestino: cep,
+              produtos: produtosFrete,
+            },
+            freteConfig
+          );
+
+          opcoesFrete.push(...opcoesMelhorEnvio);
+        }
+
         const freteSelecionado = selecionarOpcaoFrete(
           opcoesFrete,
           freteOpcaoId
@@ -1237,10 +1309,16 @@ export async function POST(request: Request) {
 
         const valorFrete = Number(freteSelecionado.valor || 0);
         const totalPedido = subtotal + valorFrete;
+        const providerFrete = freteSelecionado.provider || freteConfig.provedor;
+        const tipoEntrega = freteSelecionado.tipoEntrega || "ENTREGA";
+        const cepOrigem =
+          providerFrete === "MELHOR_ENVIO"
+            ? getCepOrigemMelhorEnvio(freteConfig)
+            : freteConfig.cepOrigem;
         const freteDadosJson = toPrismaJson({
-          provider: "MELHOR_ENVIO",
+          provider: providerFrete,
           opcao: freteSelecionado,
-          cepOrigem: getCepOrigemMelhorEnvio(),
+          cepOrigem,
           cepDestino: normalizarCep(cep),
         });
 
@@ -1347,18 +1425,18 @@ export async function POST(request: Request) {
         await tx.pedidoEnvio.create({
           data: {
             pedidoOnlineId: pedido.id,
-            tipoEntrega: "ENTREGA",
+            tipoEntrega,
             transportadora: freteSelecionado.transportadora || null,
             servico: freteSelecionado.nome || null,
             statusEnvio: "PENDENTE",
-            cepOrigem: getCepOrigemMelhorEnvio() || null,
+            cepOrigem: cepOrigem || null,
             cepDestino: cep || null,
             valorFrete,
             prazoDias: freteSelecionado.prazoDias,
-            gatewayLogistico: "MELHOR_ENVIO",
+            gatewayLogistico: providerFrete,
             gatewayEnvioId: freteSelecionado.servicoId,
             observacoes: JSON.stringify({
-              provider: "MELHOR_ENVIO",
+              provider: providerFrete,
               cotacao: freteSelecionado,
             }),
           },

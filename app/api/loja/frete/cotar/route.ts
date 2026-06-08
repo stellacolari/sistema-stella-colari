@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cotarFreteMelhorEnvio } from "@/lib/frete/melhor-envio";
-import type { FreteProdutoPayload } from "@/lib/frete/types";
+import {
+  buscarConfiguracaoFrete,
+  FRETE_MANUAL_ID,
+  FRETE_RETIRADA_LOCAL_ID,
+} from "@/lib/frete/configuracao";
+import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 type ItemCotacaoPayload = {
   produtoId?: unknown;
@@ -25,11 +30,50 @@ function normalizarItens(itens: unknown): { produtoId: string; quantidade: numbe
     .filter((item) => item.produtoId);
 }
 
+function montarOpcaoRetiradaLocal(texto: string): FreteOpcao {
+  return {
+    id: FRETE_RETIRADA_LOCAL_ID,
+    servicoId: FRETE_RETIRADA_LOCAL_ID,
+    nome: "Retirada local",
+    transportadora: "Retirada local",
+    valor: 0,
+    prazoDias: 0,
+    descricao: texto || "Retirada local sem custo de frete.",
+    provider: "RETIRADA_LOCAL",
+    tipoEntrega: "RETIRADA",
+  };
+}
+
+function montarOpcaoManual(valor: number, prazoDias: number): FreteOpcao {
+  return {
+    id: FRETE_MANUAL_ID,
+    servicoId: FRETE_MANUAL_ID,
+    nome: "Frete manual",
+    transportadora: "Frete manual",
+    valor,
+    prazoDias,
+    descricao:
+      prazoDias > 0
+        ? `Frete configurado manualmente - ${prazoDias} dia${
+            prazoDias === 1 ? "" : "s"
+          }`
+        : "Frete configurado manualmente.",
+    provider: "MANUAL",
+    tipoEntrega: "ENTREGA",
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const cepDestino = normalizarCep(body.cepDestino);
     const itens = normalizarItens(body.itens);
+    const freteConfig = await buscarConfiguracaoFrete();
+    const opcoesBase: FreteOpcao[] = [];
+
+    if (freteConfig.retiradaLocalHabilitada) {
+      opcoesBase.push(montarOpcaoRetiradaLocal(freteConfig.retiradaLocalTexto));
+    }
 
     if (cepDestino.length !== 8) {
       return NextResponse.json(
@@ -43,6 +87,17 @@ export async function POST(request: Request) {
         { error: "Informe os itens do carrinho para cotar frete." },
         { status: 400 }
       );
+    }
+
+    if (freteConfig.provedor === "DESATIVADO") {
+      return NextResponse.json({
+        opcoes: opcoesBase,
+        freteDesativado: true,
+        message:
+          opcoesBase.length > 0
+            ? "Frete por entrega está desativado. Use retirada local."
+            : "Frete está desativado no momento.",
+      });
     }
 
     const produtos = await prisma.produto.findMany({
@@ -86,13 +141,49 @@ export async function POST(request: Request) {
       };
     });
 
-    const opcoes = await cotarFreteMelhorEnvio({
-      cepDestino,
-      produtos: produtosFrete,
-    });
+    let opcoesEntrega: FreteOpcao[] = [];
+
+    if (freteConfig.provedor === "MANUAL") {
+      opcoesEntrega = [
+        montarOpcaoManual(
+          freteConfig.valorAdicional,
+          freteConfig.prazoAdicionalDias
+        ),
+      ];
+    } else {
+      if (!freteConfig.melhorEnvioTokenConfigurado) {
+        return NextResponse.json(
+          {
+            error:
+              "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
+            opcoes: opcoesBase,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (freteConfig.cepOrigem.length !== 8) {
+        return NextResponse.json(
+          {
+            error:
+              "CEP de origem do frete não configurado. Ajuste em Configurações > Frete e entrega.",
+            opcoes: opcoesBase,
+          },
+          { status: 400 }
+        );
+      }
+
+      opcoesEntrega = await cotarFreteMelhorEnvio(
+        {
+          cepDestino,
+          produtos: produtosFrete,
+        },
+        freteConfig
+      );
+    }
 
     return NextResponse.json({
-      opcoes,
+      opcoes: [...opcoesBase, ...opcoesEntrega],
     });
   } catch (error) {
     console.error("Erro ao cotar frete:", error);

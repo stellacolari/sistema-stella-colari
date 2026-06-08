@@ -1,4 +1,5 @@
 import type { CotarFreteInput, FreteOpcao } from "@/lib/frete/types";
+import type { FreteConfiguracaoOperacional } from "@/lib/frete/configuracao";
 
 const MELHOR_ENVIO_URLS = {
   sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate",
@@ -9,23 +10,9 @@ function normalizarCep(cep: string) {
   return String(cep || "").replace(/\D/g, "");
 }
 
-function getNumeroEnv(nome: string, fallback: number) {
-  const valor = Number(process.env[nome]);
-
-  return Number.isFinite(valor) && valor > 0 ? valor : fallback;
-}
-
-function getConfigMelhorEnvio() {
-  const env = process.env.MELHOR_ENVIO_ENV === "production"
-    ? "production"
-    : "sandbox";
+function getConfigMelhorEnvio(config: FreteConfiguracaoOperacional) {
   const token = String(process.env.MELHOR_ENVIO_TOKEN || "").trim();
-  const cepOrigem = normalizarCep(
-    String(process.env.MELHOR_ENVIO_ORIGEM_CEP || "")
-  );
-  const userAgent = String(
-    process.env.MELHOR_ENVIO_USER_AGENT || "Sistema Stella"
-  ).trim();
+  const cepOrigem = normalizarCep(config.cepOrigem);
 
   if (!token) {
     throw new Error("MELHOR_ENVIO_TOKEN não configurado.");
@@ -36,10 +23,10 @@ function getConfigMelhorEnvio() {
   }
 
   return {
-    url: MELHOR_ENVIO_URLS[env],
+    url: MELHOR_ENVIO_URLS[config.ambiente],
     token,
     cepOrigem,
-    userAgent,
+    userAgent: config.userAgent,
   };
 }
 
@@ -87,22 +74,17 @@ function getErroServico(item: Record<string, unknown>) {
   return null;
 }
 
-function montarProdutos(input: CotarFreteInput) {
-  const fallbackPesoKg = getNumeroEnv("FRETE_FALLBACK_PESO_KG", 0.3);
-  const fallbackAlturaCm = getNumeroEnv("FRETE_FALLBACK_ALTURA_CM", 4);
-  const fallbackLarguraCm = getNumeroEnv("FRETE_FALLBACK_LARGURA_CM", 12);
-  const fallbackComprimentoCm = getNumeroEnv(
-    "FRETE_FALLBACK_COMPRIMENTO_CM",
-    18
-  );
-
+function montarProdutos(
+  input: CotarFreteInput,
+  config: FreteConfiguracaoOperacional
+) {
   return input.produtos.map((produto) => {
     // Fallback temporario ate Produto ganhar campos reais de peso/dimensoes.
-    const pesoKg = Number(produto.pesoKg || 0) || fallbackPesoKg;
-    const alturaCm = Number(produto.alturaCm || 0) || fallbackAlturaCm;
-    const larguraCm = Number(produto.larguraCm || 0) || fallbackLarguraCm;
+    const pesoKg = Number(produto.pesoKg || 0) || config.pesoFallbackKg;
+    const alturaCm = Number(produto.alturaCm || 0) || config.alturaFallbackCm;
+    const larguraCm = Number(produto.larguraCm || 0) || config.larguraFallbackCm;
     const comprimentoCm =
-      Number(produto.comprimentoCm || 0) || fallbackComprimentoCm;
+      Number(produto.comprimentoCm || 0) || config.comprimentoFallbackCm;
 
     return {
       id: produto.id,
@@ -117,9 +99,10 @@ function montarProdutos(input: CotarFreteInput) {
 }
 
 export async function cotarFreteMelhorEnvio(
-  input: CotarFreteInput
+  input: CotarFreteInput,
+  freteConfig: FreteConfiguracaoOperacional
 ): Promise<FreteOpcao[]> {
-  const config = getConfigMelhorEnvio();
+  const config = getConfigMelhorEnvio(freteConfig);
   const cepDestino = normalizarCep(input.cepDestino);
 
   if (cepDestino.length !== 8) {
@@ -145,7 +128,7 @@ export async function cotarFreteMelhorEnvio(
       to: {
         postal_code: cepDestino,
       },
-      products: montarProdutos(input),
+      products: montarProdutos(input, freteConfig),
     }),
     cache: "no-store",
   });
@@ -171,10 +154,13 @@ export async function cotarFreteMelhorEnvio(
     const servicoId = String(record.id || "");
     const nome = String(record.name || "Frete").trim();
     const transportadora = getTransportadora(record);
-    const valor = parseNumero(record.custom_price || record.price);
-    const prazoDias = parsePrazo(
+    const valorBase = parseNumero(record.custom_price || record.price);
+    const prazoBase = parsePrazo(
       record.custom_delivery_time || record.delivery_time
     );
+    const valor = Math.max(valorBase + freteConfig.valorAdicional, 0);
+    const prazoDias =
+      prazoBase !== null ? prazoBase + freteConfig.prazoAdicionalDias : null;
     const erro = getErroServico(record);
 
     return {
@@ -191,12 +177,14 @@ export async function cotarFreteMelhorEnvio(
       ]
         .filter(Boolean)
         .join(" - "),
+      provider: "MELHOR_ENVIO",
+      tipoEntrega: "ENTREGA",
       raw: record,
       erro,
     };
   });
 }
 
-export function getCepOrigemMelhorEnvio() {
-  return normalizarCep(String(process.env.MELHOR_ENVIO_ORIGEM_CEP || ""));
+export function getCepOrigemMelhorEnvio(config: FreteConfiguracaoOperacional) {
+  return normalizarCep(config.cepOrigem);
 }

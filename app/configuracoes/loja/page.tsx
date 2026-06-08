@@ -9,12 +9,14 @@ import {
   Home,
   LayoutTemplate,
   Megaphone,
+  PackageCheck,
   SlidersHorizontal,
   Sparkles,
   Store,
   Tag,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
 
 export const metadata: Metadata = {
   title: "Loja Online | Sistema Stella",
@@ -131,6 +133,7 @@ export default async function LojaOnlineCentralPage() {
     formulariosNovos,
     cuponsAtivos,
     cashbackConfig,
+    freteConfig,
     produtosAtivos,
     produtosSemEstoque,
   ] = await Promise.all([
@@ -195,6 +198,8 @@ export default async function LojaOnlineCentralPage() {
       },
     }),
 
+    buscarConfiguracaoFrete(),
+
     prisma.produto.count({
       where: {
         ativo: true,
@@ -226,6 +231,12 @@ export default async function LojaOnlineCentralPage() {
         cashbackConfig.percentualCompraRecorrente || 0
       )}%`
     : "Inativo";
+  const freteTexto =
+    freteConfig.provedor === "DESATIVADO"
+      ? "Desativado"
+      : freteConfig.retiradaLocalHabilitada
+      ? `${freteConfig.provedor} + retirada`
+      : freteConfig.provedor;
 
   return (
     <main className="space-y-6">
@@ -375,6 +386,16 @@ export default async function LojaOnlineCentralPage() {
           metric={cashbackTexto}
           metricLabel="primeira / recorrente"
           tone="success"
+        />
+
+        <CentralCard
+          href="/configuracoes/loja/frete"
+          title="Frete e entrega"
+          description="Configure Melhor Envio, origem, dimensões fallback, ajustes de prazo/valor e retirada local."
+          icon={PackageCheck}
+          metric={freteTexto}
+          metricLabel="provedor ativo"
+          tone={freteConfig.provedor === "DESATIVADO" ? "warning" : "site"}
         />
 
         <CentralCard
