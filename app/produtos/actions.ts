@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import { unlink } from "fs/promises";
 import { put, del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
@@ -344,9 +345,6 @@ async function calcularCustoAdicionaisCategoria(categoriaNome: string) {
   }
 
   const regras = await prisma.regraCategoria.findMany({
-    where: {
-      categoria,
-    },
     include: {
       itemAdicional: {
         select: {
@@ -360,6 +358,10 @@ async function calcularCustoAdicionaisCategoria(categoriaNome: string) {
   });
 
   const custoAdicionais = regras.reduce((total, regra) => {
+    if (!regraAplicaACategoria(regra, categoria)) {
+      return total;
+    }
+
     const itemAtivo =
       regra.itemAdicional.ativo && regra.itemAdicional.status !== "NA_LIXEIRA";
 

@@ -10,6 +10,7 @@ import ComposicaoKitInput from "@/components/produtos/ComposicaoKitInput";
 import VariacoesProdutoInput, {
   type ProdutoVariacaoInput,
 } from "@/components/produtos/VariacoesProdutoInput";
+import { regraAplicaACategoria } from "@/lib/regras-categoria";
 
 type CategoriaProduto = {
   id: string;
@@ -34,6 +35,8 @@ type ProdutoDisponivelKit = {
 type RegraAdicionalProduto = {
   id: string;
   categoria: string;
+  aplicarTodasCategorias: boolean;
+  categorias: unknown;
   quantidade: number;
   itemAdicional: {
     id: string;
@@ -270,7 +273,9 @@ export default function EditarProdutoClient({
     }
 
     return regrasAdicionais.filter(
-      (regra) => regra.categoria === categoriaPrincipal.nome
+      (regra) => regraAplicaACategoria(regra, categoriaPrincipal.nome, [
+        categoriaPrincipal.id,
+      ])
     );
   }, [categoriaPrincipal, regrasAdicionais]);
 

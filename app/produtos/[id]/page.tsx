@@ -113,6 +113,8 @@ export default async function EditarProdutoPage({
         select: {
           id: true,
           categoria: true,
+          aplicarTodasCategorias: true,
+          categorias: true,
           quantidade: true,
           itemAdicional: {
             select: {
@@ -185,6 +187,8 @@ export default async function EditarProdutoPage({
   const regrasAdicionaisSerializadas = regrasAdicionais.map((regra) => ({
     id: regra.id,
     categoria: regra.categoria,
+    aplicarTodasCategorias: regra.aplicarTodasCategorias,
+    categorias: regra.categorias,
     quantidade: Number(regra.quantidade || 0),
     itemAdicional: {
       id: regra.itemAdicional.id,

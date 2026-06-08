@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { regraAplicaACategoria } from "@/lib/regras-categoria";
 
 function arredondarMoeda(valor: number) {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
@@ -12,9 +13,6 @@ export async function calcularCustoAdicionaisPorCategoria(categoria: string) {
   }
 
   const regras = await prisma.regraCategoria.findMany({
-    where: {
-      categoria: categoriaNormalizada,
-    },
     include: {
       itemAdicional: {
         select: {
@@ -30,8 +28,12 @@ export async function calcularCustoAdicionaisPorCategoria(categoria: string) {
   });
 
   const custoAdicionais = regras.reduce((total, regra) => {
+    if (!regraAplicaACategoria(regra, categoriaNormalizada)) {
+      return total;
+    }
+
     const itemAtivo =
-      regra.itemAdicional.ativo && regra.itemAdicional.status !== "LIXEIRA";
+      regra.itemAdicional.ativo && regra.itemAdicional.status !== "NA_LIXEIRA";
 
     if (!itemAtivo) {
       return total;

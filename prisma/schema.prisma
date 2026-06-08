@@ -221,13 +221,15 @@ model ItemAdicional {
 }
 
 model RegraCategoria {
-  id              String        @id @default(cuid())
-  categoria       String
-  quantidade      Int           @default(1)
-  itemAdicionalId String
-  criadoEm        DateTime      @default(now())
-  atualizadoEm    DateTime      @updatedAt
-  itemAdicional   ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
+  id                       String        @id @default(cuid())
+  categoria                String
+  quantidade               Int           @default(1)
+  itemAdicionalId          String
+  aplicarTodasCategorias   Boolean       @default(false)
+  categorias               Json?
+  criadoEm                 DateTime      @default(now())
+  atualizadoEm             DateTime      @updatedAt
+  itemAdicional            ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
 }
 
 model Cliente {

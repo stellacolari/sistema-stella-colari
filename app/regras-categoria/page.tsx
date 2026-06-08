@@ -5,6 +5,13 @@ import {
   recalcularTodosProdutosPelasRegras,
 } from "./actions";
 import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
+import RegrasCategoriaForm from "./RegrasCategoriaForm";
+import {
+  extrairCategoriasRegra,
+  normalizarCategoria,
+} from "@/lib/regras-categoria";
+
+export const dynamic = "force-dynamic";
 
 type CategoriaRegraOption = {
   id: string;
@@ -52,6 +59,49 @@ function formatarMoeda(valor: number) {
   }).format(valor || 0);
 }
 
+function formatarEscopoRegra(regra: {
+  categoria: string;
+  aplicarTodasCategorias: boolean;
+  categorias: unknown;
+}) {
+  if (regra.aplicarTodasCategorias) {
+    return {
+      titulo: "Todas as categorias",
+      resumo: null,
+      legado: false,
+    };
+  }
+
+  const categorias = extrairCategoriasRegra(regra.categorias);
+
+  if (categorias.length > 0) {
+    const nomes = categorias.map(
+      (categoria) => categoria.caminho || categoria.nome || categoria.slug || ""
+    );
+    const categoriasValidas = nomes.filter(Boolean);
+    const titulo = categoriasValidas.slice(0, 2).join(", ");
+    const restante = categoriasValidas.length - 2;
+
+    return {
+      titulo:
+        restante > 0
+          ? `${titulo} +${restante} categoria${restante === 1 ? "" : "s"}`
+          : titulo,
+      resumo:
+        categoriasValidas.length > 1
+          ? `${categoriasValidas.length} categorias selecionadas`
+          : null,
+      legado: false,
+    };
+  }
+
+  return {
+    titulo: regra.categoria,
+    resumo: "Categoria antiga/manual",
+    legado: true,
+  };
+}
+
 export default async function RegrasCategoriaPage() {
   const [itensAdicionais, regras, categoriasRaw] = await Promise.all([
     prisma.itemAdicional.findMany({
@@ -97,7 +147,9 @@ export default async function RegrasCategoriaPage() {
     }))
   );
 
-  const categoriasNovasNomes = new Set(categorias.map((categoria) => categoria.nome));
+  const categoriasNovasNomes = new Set(
+    categorias.map((categoria) => normalizarCategoria(categoria.nome))
+  );
 
   return (
     <div className="space-y-6">
@@ -134,78 +186,19 @@ export default async function RegrasCategoriaPage() {
           <h2 className="text-lg font-semibold text-slate-900">Nova regra</h2>
 
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            Selecione uma categoria cadastrada no sistema e vincule um item
-            adicional consumido por produto.
+            Selecione uma ou mais categorias cadastradas no sistema e vincule um
+            item adicional consumido por produto.
           </p>
 
-          <form action={criarRegraCategoria} className="mt-5 space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Categoria
-              </label>
-
-              <select
-                name="categoriaId"
-                defaultValue=""
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-              >
-                <option value="">Selecione</option>
-
-                {categorias.map((categoria) => (
-                  <option key={categoria.id} value={categoria.id}>
-                    {categoria.caminho}
-                  </option>
-                ))}
-              </select>
-
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                A regra será salva usando o nome da categoria principal, para
-                manter compatibilidade com o cálculo atual dos produtos.
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Item adicional
-              </label>
-
-              <select
-                name="itemAdicionalId"
-                defaultValue=""
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-              >
-                <option value="">Selecione</option>
-
-                {itensAdicionais.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.codigoInterno} - {item.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Quantidade consumida
-              </label>
-
-              <input
-                name="quantidade"
-                type="number"
-                min="1"
-                step="1"
-                defaultValue={1}
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-            >
-              Salvar regra
-            </button>
-          </form>
+          <RegrasCategoriaForm
+            categorias={categorias}
+            itensAdicionais={itensAdicionais.map((item) => ({
+              id: item.id,
+              codigoInterno: item.codigoInterno,
+              nome: item.nome,
+            }))}
+            criarRegraCategoria={criarRegraCategoria}
+          />
         </section>
 
         <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
@@ -246,19 +239,28 @@ export default async function RegrasCategoriaPage() {
                       regra.itemAdicional.custoBase || 0
                     );
                     const custoTotal = quantidade * custoUnitario;
-                    const categoriaExiste = categoriasNovasNomes.has(
-                      regra.categoria
-                    );
+                    const escopo = formatarEscopoRegra(regra);
+                    const categoriaExiste =
+                      !escopo.legado ||
+                      categoriasNovasNomes.has(
+                        normalizarCategoria(regra.categoria)
+                      );
 
                     return (
                       <tr key={regra.id} className="text-sm text-slate-700">
                         <td className="px-6 py-4 font-medium text-slate-900">
                           <div>
-                            <p>{regra.categoria}</p>
+                            <p>{escopo.titulo}</p>
 
-                            {!categoriaExiste && (
-                              <p className="mt-1 text-xs text-amber-600">
-                                Categoria antiga/manual
+                            {escopo.resumo && (
+                              <p
+                                className={`mt-1 text-xs ${
+                                  escopo.legado && !categoriaExiste
+                                    ? "text-amber-600"
+                                    : "text-slate-500"
+                                }`}
+                              >
+                                {escopo.resumo}
                               </p>
                             )}
                           </div>

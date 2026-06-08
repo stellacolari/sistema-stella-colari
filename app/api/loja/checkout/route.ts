@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { pbkdf2Sync, randomBytes, randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizarTamanhoEstoque } from "@/lib/loja/estoque";
+import { regraAplicaACategoria } from "@/lib/regras-categoria";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
@@ -636,9 +637,6 @@ async function baixarAdicionaisDaCategoria({
   const baixas: BaixaAdicionalResultado[] = [];
 
   const regras = await tx.regraCategoria.findMany({
-    where: {
-      categoria,
-    },
     include: {
       itemAdicional: {
         select: {
@@ -656,6 +654,10 @@ async function baixarAdicionaisDaCategoria({
   });
 
   for (const regra of regras) {
+    if (!regraAplicaACategoria(regra, categoria)) {
+      continue;
+    }
+
     const itemPadraoFoiSubstituido =
       opcaoAdicional?.itemPadraoSubstituidoId &&
       regra.itemAdicionalId === opcaoAdicional.itemPadraoSubstituidoId;

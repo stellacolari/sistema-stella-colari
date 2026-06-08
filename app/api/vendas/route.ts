@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -144,7 +145,6 @@ async function consumirAdicionaisDaCategoria({
   nomeProduto: string;
 }) {
   const regrasAdicionais = await tx.regraCategoria.findMany({
-    where: { categoria },
     include: { itemAdicional: true },
   });
 
@@ -153,6 +153,10 @@ async function consumirAdicionaisDaCategoria({
   const adicionaisConsumidos: AdicionalConsumidoVenda[] = [];
 
   for (const regra of regrasAdicionais) {
+    if (!regraAplicaACategoria(regra, categoria)) {
+      continue;
+    }
+
     const quantidadeNecessaria = regra.quantidade * quantidadeProduto;
 
     const estoqueAdicional = await tx.estoqueAdicional.findFirst({

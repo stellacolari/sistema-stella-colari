@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import ProdutosCatalogClient from "@/components/produtos/ProdutosCatalogClient";
+import { regraAplicaACategorias } from "@/lib/regras-categoria";
 
 export const dynamic = "force-dynamic";
 
@@ -76,57 +77,66 @@ function getCategoriaPrincipalProduto(produto: ProdutoComRelacoes) {
   return relacaoPrincipal?.categoria?.nome || produto.categoria || "";
 }
 
-function montarMapaCustoAdicionais(regras: RegraAdicionalComItem[]) {
-  const mapa = new Map<string, number>();
+function getCategoriasProduto(produto: ProdutoComRelacoes) {
+  const categorias: { id?: string | null; nome: string }[] =
+    produto.categoriasProduto.map((relacao) => ({
+    id: relacao.categoria.id,
+    nome: relacao.categoria.nome,
+  }));
 
-  regras.forEach((regra) => {
+  if (produto.categoria) {
+    categorias.push({
+      nome: produto.categoria,
+    });
+  }
+
+  return categorias;
+}
+
+function calcularCustoAdicionaisProduto(
+  regras: RegraAdicionalComItem[],
+  categorias: { id?: string | null; nome: string }[]
+) {
+  const custo = regras.reduce((total, regra) => {
+    if (!regraAplicaACategorias(regra, categorias)) {
+      return total;
+    }
+
     const itemAtivo =
       regra.itemAdicional.ativo && regra.itemAdicional.status !== "NA_LIXEIRA";
 
     if (!itemAtivo) {
-      return;
-    }
-
-    const categoria = String(regra.categoria || "").trim();
-
-    if (!categoria) {
-      return;
+      return total;
     }
 
     const quantidade = Number(regra.quantidade || 0);
     const custoUnitario = Number(regra.itemAdicional.custoBase || 0);
     const custoTotal = quantidade * custoUnitario;
 
-    mapa.set(
-      categoria,
-      arredondarMoeda((mapa.get(categoria) || 0) + custoTotal)
-    );
-  });
+    return total + custoTotal;
+  }, 0);
 
-  return mapa;
+  return arredondarMoeda(custo);
 }
 
-function montarMapaQuantidadeAdicionais(regras: RegraAdicionalComItem[]) {
-  const mapa = new Map<string, number>();
+function calcularQuantidadeAdicionaisProduto(
+  regras: RegraAdicionalComItem[],
+  categorias: { id?: string | null; nome: string }[]
+) {
+  return regras.reduce((total, regra) => {
+    if (!regraAplicaACategorias(regra, categorias)) {
+      return total;
+    }
 
-  regras.forEach((regra) => {
     const itemAtivo =
       regra.itemAdicional.ativo && regra.itemAdicional.status !== "NA_LIXEIRA";
 
     if (!itemAtivo) {
-      return;
+      return total;
     }
 
-    const categoria = String(regra.categoria || "").trim();
-
-    if (!categoria) {
-      return;
-    }
-
-    mapa.set(categoria, (mapa.get(categoria) || 0) + 1);
-  });
-
-  return mapa;
+    return total + 1;
+  }, 0);
 }
 
 function calcularPrecoVendaAtualizado({
@@ -348,28 +358,25 @@ export default async function ProdutosPage() {
     buscarFamiliasRaw(),
   ]);
 
-  const custoAdicionaisPorCategoria =
-    montarMapaCustoAdicionais(regrasAdicionais);
-
-  const quantidadeAdicionaisPorCategoria =
-    montarMapaQuantidadeAdicionais(regrasAdicionais);
-
   const familiasDisponiveis = serializarFamilias(familiasRaw);
   const mapaValoresFamilia = montarMapaValoresFamilia(familiasRaw);
 
   const produtos = produtosRaw.map((produto: ProdutoComRelacoes) => {
     const categoriaPrincipal = getCategoriaPrincipalProduto(produto);
+    const categoriasProduto = getCategoriasProduto(produto);
 
     const custoBase = Number(produto.custoBase || 0);
     const margemAplicada = Number(produto.margemAplicada || 0);
     const precoVendaBanco = Number(produto.precoVenda || 0);
 
-    const custoAdicionais = Number(
-      custoAdicionaisPorCategoria.get(categoriaPrincipal) || 0
+    const custoAdicionais = calcularCustoAdicionaisProduto(
+      regrasAdicionais,
+      categoriasProduto
     );
 
-    const quantidadeAdicionais = Number(
-      quantidadeAdicionaisPorCategoria.get(categoriaPrincipal) || 0
+    const quantidadeAdicionais = calcularQuantidadeAdicionaisProduto(
+      regrasAdicionais,
+      categoriasProduto
     );
 
     const custoTotal = arredondarMoeda(custoBase + custoAdicionais);
