@@ -69,3 +69,12 @@ export type PrepararEnvioMelhorEnvioInput = {
 export type ComprarEtiquetaMelhorEnvioInput = {
   orderId: string;
 };
+
+export type GerarEtiquetaMelhorEnvioInput = {
+  orderId: string;
+};
+
+export type ImprimirEtiquetaMelhorEnvioInput = {
+  orderId: string;
+  mode?: "private" | "public";
+};

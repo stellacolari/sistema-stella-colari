@@ -270,6 +270,28 @@ function podeComprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
   );
 }
 
+function podeGerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    pedido.envio?.statusEnvio === "ETIQUETA_COMPRADA" &&
+    Boolean(pedido.envio.gatewayEnvioId)
+  );
+}
+
+function podeImprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    pedido.envio?.statusEnvio === "ETIQUETA_GERADA" &&
+    Boolean(pedido.envio.gatewayEnvioId)
+  );
+}
+
 function isPedidoEmAndamento(pedido: PedidoOperacionalItem) {
   return (
     pedido.status === "PEDIDO_SEPARADO" ||
@@ -585,6 +607,12 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [comprandoEtiquetaPedidoId, setComprandoEtiquetaPedidoId] = useState<
     string | null
   >(null);
+  const [gerandoEtiquetaPedidoId, setGerandoEtiquetaPedidoId] = useState<
+    string | null
+  >(null);
+  const [imprimindoEtiquetaPedidoId, setImprimindoEtiquetaPedidoId] = useState<
+    string | null
+  >(null);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -781,6 +809,75 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       setErroOperacao("Erro ao comprar etiqueta.");
     } finally {
       setComprandoEtiquetaPedidoId(null);
+    }
+  }
+
+  async function gerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    const confirmado = window.confirm(
+      `Gerar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? Depois disso será possível solicitar o link de impressão.`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroOperacao("");
+    setGerandoEtiquetaPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(`/api/pedidos/${pedido.id}/gerar-etiqueta`, {
+        method: "PATCH",
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao gerar etiqueta.");
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao gerar etiqueta.");
+    } finally {
+      setGerandoEtiquetaPedidoId(null);
+    }
+  }
+
+  async function imprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    setErroOperacao("");
+    setImprimindoEtiquetaPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(
+        `/api/pedidos/${pedido.id}/imprimir-etiqueta`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao imprimir etiqueta.");
+        return;
+      }
+
+      const etiquetaUrl = String(data.etiquetaUrl || "").trim();
+
+      if (etiquetaUrl) {
+        window.open(etiquetaUrl, "_blank", "noopener,noreferrer");
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao imprimir etiqueta.");
+    } finally {
+      setImprimindoEtiquetaPedidoId(null);
     }
   }
 
@@ -1190,6 +1287,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           </p>
                         )}
 
+                      {pedido.envio.statusEnvio === "ETIQUETA_GERADA" &&
+                        pedido.envio.gatewayEnvioId && (
+                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                            Etiqueta gerada: {pedido.envio.gatewayEnvioId}
+                          </p>
+                        )}
+
                       {podePrepararEnvioMelhorEnvio(pedido) && (
                         <button
                           type="button"
@@ -1218,9 +1322,54 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </button>
                       )}
 
+                      {podeGerarEtiquetaMelhorEnvio(pedido) && (
+                        <button
+                          type="button"
+                          onClick={() => gerarEtiquetaMelhorEnvio(pedido)}
+                          disabled={gerandoEtiquetaPedidoId === pedido.id}
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          {gerandoEtiquetaPedidoId === pedido.id
+                            ? "Gerando..."
+                            : "Gerar etiqueta"}
+                        </button>
+                      )}
+
+                      {podeImprimirEtiquetaMelhorEnvio(pedido) && (
+                        <button
+                          type="button"
+                          onClick={() => imprimirEtiquetaMelhorEnvio(pedido)}
+                          disabled={imprimindoEtiquetaPedidoId === pedido.id}
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          {imprimindoEtiquetaPedidoId === pedido.id
+                            ? "Abrindo..."
+                            : "Imprimir etiqueta"}
+                        </button>
+                      )}
+
+                      {(pedido.envio.etiquetaUrl ||
+                        pedido.envio.etiquetaPdfUrl) && (
+                        <a
+                          href={
+                            pedido.envio.etiquetaPdfUrl ||
+                            pedido.envio.etiquetaUrl ||
+                            "#"
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Abrir etiqueta
+                        </a>
+                      )}
+
                       {pedido.envio.tipoEntrega !== "RETIRADA" && (
                         <p className="mt-2 text-[11px] text-slate-400">
-                          Geração, impressão e rastreio serão adicionados em etapa futura.
+                          Rastreio será adicionado em etapa futura.
                         </p>
                       )}
                     </div>
