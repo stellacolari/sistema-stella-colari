@@ -78,3 +78,7 @@ export type ImprimirEtiquetaMelhorEnvioInput = {
   orderId: string;
   mode?: "private" | "public";
 };
+
+export type AtualizarRastreioMelhorEnvioInput = {
+  orderId: string;
+};

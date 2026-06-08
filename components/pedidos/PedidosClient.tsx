@@ -101,6 +101,7 @@ export type PedidoOperacionalItem = {
 
     postadoEm: string | null;
     entregueEm: string | null;
+    atualizadoEm: string;
   } | null;
 
   ultimoHistorico: {
@@ -289,6 +290,21 @@ function podeImprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
     pedido.envio?.statusEnvio === "ETIQUETA_GERADA" &&
     Boolean(pedido.envio.gatewayEnvioId)
+  );
+}
+
+function podeAtualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    Boolean(pedido.envio.gatewayEnvioId) &&
+    [
+      "ETIQUETA_GERADA",
+      "POSTADO",
+      "ENTREGUE",
+      "PROBLEMA",
+    ].includes(pedido.envio.statusEnvio)
   );
 }
 
@@ -613,6 +629,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [imprimindoEtiquetaPedidoId, setImprimindoEtiquetaPedidoId] = useState<
     string | null
   >(null);
+  const [atualizandoRastreioPedidoId, setAtualizandoRastreioPedidoId] =
+    useState<string | null>(null);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -878,6 +896,39 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       setErroOperacao("Erro ao imprimir etiqueta.");
     } finally {
       setImprimindoEtiquetaPedidoId(null);
+    }
+  }
+
+  async function atualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
+    setErroOperacao("");
+    setAtualizandoRastreioPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(
+        `/api/pedidos/${pedido.id}/atualizar-rastreio`,
+        {
+          method: "PATCH",
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao atualizar rastreio.");
+        return;
+      }
+
+      if (data.aviso) {
+        setErroOperacao(String(data.aviso));
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao atualizar rastreio.");
+    } finally {
+      setAtualizandoRastreioPedidoId(null);
     }
   }
 
@@ -1294,6 +1345,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           </p>
                         )}
 
+                      {pedido.envio.codigoRastreio && (
+                        <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                          Rastreio: {pedido.envio.codigoRastreio}
+                        </p>
+                      )}
+
+                      {podeAtualizarRastreioMelhorEnvio(pedido) && (
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          Rastreio atualizado em{" "}
+                          {dataCurta(pedido.envio.atualizadoEm)}
+                        </p>
+                      )}
+
                       {podePrepararEnvioMelhorEnvio(pedido) && (
                         <button
                           type="button"
@@ -1367,9 +1431,23 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </a>
                       )}
 
+                      {podeAtualizarRastreioMelhorEnvio(pedido) && (
+                        <button
+                          type="button"
+                          onClick={() => atualizarRastreioMelhorEnvio(pedido)}
+                          disabled={atualizandoRastreioPedidoId === pedido.id}
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Truck className="h-3.5 w-3.5" />
+                          {atualizandoRastreioPedidoId === pedido.id
+                            ? "Atualizando..."
+                            : "Atualizar rastreio"}
+                        </button>
+                      )}
+
                       {pedido.envio.tipoEntrega !== "RETIRADA" && (
                         <p className="mt-2 text-[11px] text-slate-400">
-                          Rastreio será adicionado em etapa futura.
+                          Rastreio manual pelo Melhor Envio.
                         </p>
                       )}
                     </div>

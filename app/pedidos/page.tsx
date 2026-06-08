@@ -245,6 +245,7 @@ export default async function PedidosPage() {
             entregueEm: pedido.envio.entregueEm
               ? pedido.envio.entregueEm.toISOString()
               : null,
+            atualizadoEm: pedido.envio.atualizadoEm.toISOString(),
           }
         : null,
 

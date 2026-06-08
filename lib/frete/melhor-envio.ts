@@ -1,4 +1,5 @@
 import type {
+  AtualizarRastreioMelhorEnvioInput,
   ComprarEtiquetaMelhorEnvioInput,
   CotarFreteInput,
   FreteOpcao,
@@ -34,6 +35,11 @@ const MELHOR_ENVIO_GENERATE_URLS = {
 const MELHOR_ENVIO_PRINT_URLS = {
   sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/print",
   production: "https://www.melhorenvio.com.br/api/v2/me/shipment/print",
+};
+
+const MELHOR_ENVIO_TRACKING_URLS = {
+  sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/tracking",
+  production: "https://www.melhorenvio.com.br/api/v2/me/shipment/tracking",
 };
 
 function normalizarCep(cep: string) {
@@ -516,6 +522,45 @@ export async function imprimirEtiquetaMelhorEnvio(
     const message = extrairMensagemErroMelhorEnvio(data);
 
     throw new Error(message || "Erro ao imprimir etiqueta no Melhor Envio.");
+  }
+
+  return data;
+}
+
+export async function atualizarRastreioMelhorEnvio(
+  input: AtualizarRastreioMelhorEnvioInput,
+  freteConfig: FreteConfiguracaoOperacional
+) {
+  const config = getConfigMelhorEnvio(freteConfig);
+  const orderId = String(input.orderId || "").trim();
+
+  if (!orderId) {
+    throw new Error("Identificador do envio no Melhor Envio não informado.");
+  }
+
+  const response = await fetch(
+    MELHOR_ENVIO_TRACKING_URLS[freteConfig.ambiente],
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+        "User-Agent": config.userAgent,
+      },
+      body: JSON.stringify({
+        orders: [orderId],
+      }),
+      cache: "no-store",
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = extrairMensagemErroMelhorEnvio(data);
+
+    throw new Error(message || "Erro ao atualizar rastreio no Melhor Envio.");
   }
 
   return data;
