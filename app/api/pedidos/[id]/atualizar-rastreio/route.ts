@@ -175,6 +175,13 @@ export async function PATCH(
       );
     }
 
+    if (pedido.statusPagamento !== "PAGO") {
+      return NextResponse.json(
+        { error: "Só é possível atualizar rastreio de pedido pago." },
+        { status: 400 }
+      );
+    }
+
     if (!pedido.envio) {
       return NextResponse.json(
         { error: "Pedido não possui dados de envio." },

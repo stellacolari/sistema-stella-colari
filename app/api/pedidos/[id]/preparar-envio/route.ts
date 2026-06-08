@@ -110,13 +110,12 @@ export async function PATCH(
       );
     }
 
-    if (
-      pedido.envio.statusEnvio === "PREPARADO" ||
-      pedido.envio.statusEnvio === "COTADO" ||
-      pedido.envio.statusEnvio === "EM_PREPARACAO"
-    ) {
+    if (pedido.envio.statusEnvio !== "PENDENTE") {
       return NextResponse.json(
-        { error: "Envio já foi preparado para este pedido." },
+        {
+          error:
+            "Só é possível preparar envio quando o status logístico está pendente.",
+        },
         { status: 400 }
       );
     }

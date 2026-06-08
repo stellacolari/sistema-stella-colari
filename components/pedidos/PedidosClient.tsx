@@ -296,6 +296,7 @@ function podeImprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
 function podeAtualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
     pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
     Boolean(pedido.envio.gatewayEnvioId) &&

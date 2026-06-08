@@ -118,7 +118,13 @@ function extrairMensagemErroMelhorEnvio(data: unknown) {
   const record = data as Record<string, unknown>;
 
   if (typeof record.message === "string" && record.message.trim()) {
-    return record.message.trim();
+    const message = record.message.trim();
+
+    if (message.toLowerCase() === "unauthenticated.") {
+      return "Melhor Envio retornou autenticação inválida. Verifique MELHOR_ENVIO_TOKEN, ambiente sandbox/production e escopos do token.";
+    }
+
+    return message;
   }
 
   if (record.error && typeof record.error === "string") {
