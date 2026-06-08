@@ -220,6 +220,8 @@ function statusPagamentoClass(status: string) {
 function labelStatusEnvio(status: string | null | undefined) {
   if (!status) return "Sem envio";
   if (status === "PENDENTE") return "Pendente";
+  if (status === "PREPARADO") return "Preparado";
+  if (status === "COTADO") return "Cotado";
   if (status === "EM_PREPARACAO") return "Em preparação";
   if (status === "POSTADO") return "Postado";
   if (status === "ENTREGUE") return "Entregue";
@@ -243,6 +245,16 @@ function isPedidoPagoParaSeparar(pedido: PedidoOperacionalItem) {
 
 function isPedidoPago(pedido: PedidoOperacionalItem) {
   return pedido.statusPagamento === "PAGO" && !isPedidoCanceladoOuExpirado(pedido);
+}
+
+function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    pedido.envio?.statusEnvio === "PENDENTE"
+  );
 }
 
 function isPedidoEmAndamento(pedido: PedidoOperacionalItem) {
@@ -554,6 +566,9 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [cancelandoLinkPedidoId, setCancelandoLinkPedidoId] = useState<
     string | null
   >(null);
+  const [preparandoEnvioPedidoId, setPreparandoEnvioPedidoId] = useState<
+    string | null
+  >(null);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -690,6 +705,32 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       setErroOperacao("Erro ao cancelar link de pagamento manual.");
     } finally {
       setCancelandoLinkPedidoId(null);
+    }
+  }
+
+  async function prepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
+    setErroOperacao("");
+    setPreparandoEnvioPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(`/api/pedidos/${pedido.id}/preparar-envio`, {
+        method: "PATCH",
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao preparar envio.");
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao preparar envio.");
+    } finally {
+      setPreparandoEnvioPedidoId(null);
     }
   }
 
@@ -1084,6 +1125,27 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         )}
                         <span>{labelStatusEnvio(pedido.envio.statusEnvio)}</span>
                       </div>
+
+                      {pedido.envio.statusEnvio === "PREPARADO" &&
+                        pedido.envio.gatewayEnvioId && (
+                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                            Envio preparado: {pedido.envio.gatewayEnvioId}
+                          </p>
+                        )}
+
+                      {podePrepararEnvioMelhorEnvio(pedido) && (
+                        <button
+                          type="button"
+                          onClick={() => prepararEnvioMelhorEnvio(pedido)}
+                          disabled={preparandoEnvioPedidoId === pedido.id}
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Truck className="h-3.5 w-3.5" />
+                          {preparandoEnvioPedidoId === pedido.id
+                            ? "Preparando..."
+                            : "Preparar envio"}
+                        </button>
+                      )}
 
                       {pedido.envio.tipoEntrega !== "RETIRADA" && (
                         <p className="mt-2 text-[11px] text-slate-400">

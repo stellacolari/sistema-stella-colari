@@ -1,9 +1,21 @@
-import type { CotarFreteInput, FreteOpcao } from "@/lib/frete/types";
+import type {
+  CotarFreteInput,
+  FreteOpcao,
+  FreteProdutoPayload,
+  MelhorEnvioDestinatario,
+  MelhorEnvioRemetente,
+  PrepararEnvioMelhorEnvioInput,
+} from "@/lib/frete/types";
 import type { FreteConfiguracaoOperacional } from "@/lib/frete/configuracao";
 
 const MELHOR_ENVIO_URLS = {
   sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate",
   production: "https://www.melhorenvio.com.br/api/v2/me/shipment/calculate",
+};
+
+const MELHOR_ENVIO_CART_URLS = {
+  sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/cart",
+  production: "https://www.melhorenvio.com.br/api/v2/me/cart",
 };
 
 function normalizarCep(cep: string) {
@@ -98,6 +110,77 @@ function montarProdutos(
   });
 }
 
+function montarProdutosDeclaracao(produtos: FreteProdutoPayload[]) {
+  return produtos.map((produto) => ({
+    name: produto.nome,
+    quantity: Math.max(Math.round(Number(produto.quantidade || 1)), 1),
+    unitary_value: Math.max(Number(produto.valorUnitario || 0), 1),
+  }));
+}
+
+function montarVolumePadrao(
+  produtos: FreteProdutoPayload[],
+  config: FreteConfiguracaoOperacional
+) {
+  const quantidadeTotal = produtos.reduce(
+    (total, produto) =>
+      total + Math.max(Math.round(Number(produto.quantidade || 1)), 1),
+    0
+  );
+  const pesoTotal = produtos.reduce((total, produto) => {
+    const quantidade = Math.max(Math.round(Number(produto.quantidade || 1)), 1);
+    const peso = Number(produto.pesoKg || 0) || config.pesoFallbackKg;
+
+    return total + peso * quantidade;
+  }, 0);
+  const valorTotal = produtos.reduce((total, produto) => {
+    const quantidade = Math.max(Math.round(Number(produto.quantidade || 1)), 1);
+
+    return total + Number(produto.valorUnitario || 0) * quantidade;
+  }, 0);
+
+  return {
+    height: config.alturaFallbackCm,
+    width: config.larguraFallbackCm,
+    length: config.comprimentoFallbackCm,
+    weight: Math.max(pesoTotal, config.pesoFallbackKg),
+    insurance_value: Math.max(valorTotal, 1),
+    quantity: Math.max(quantidadeTotal, 1),
+  };
+}
+
+function getCamposFaltantesEndereco(
+  prefixo: string,
+  dados: MelhorEnvioRemetente | MelhorEnvioDestinatario
+) {
+  const campos: [string, unknown][] = [
+    [`${prefixo}.name`, dados.name],
+    [`${prefixo}.phone`, dados.phone],
+    [`${prefixo}.address`, dados.address],
+    [`${prefixo}.number`, dados.number],
+    [`${prefixo}.district`, dados.district],
+    [`${prefixo}.city`, dados.city],
+    [`${prefixo}.state_abbr`, dados.state_abbr],
+    [`${prefixo}.postal_code`, dados.postal_code],
+  ];
+
+  return campos
+    .filter(([, value]) => !String(value || "").trim())
+    .map(([campo]) => campo);
+}
+
+export function validarDadosRemetenteMelhorEnvio(
+  remetente: MelhorEnvioRemetente
+) {
+  return getCamposFaltantesEndereco("remetente", remetente);
+}
+
+export function validarDadosDestinatarioMelhorEnvio(
+  destinatario: MelhorEnvioDestinatario
+) {
+  return getCamposFaltantesEndereco("destinatario", destinatario);
+}
+
 export async function cotarFreteMelhorEnvio(
   input: CotarFreteInput,
   freteConfig: FreteConfiguracaoOperacional
@@ -187,4 +270,76 @@ export async function cotarFreteMelhorEnvio(
 
 export function getCepOrigemMelhorEnvio(config: FreteConfiguracaoOperacional) {
   return normalizarCep(config.cepOrigem);
+}
+
+export async function inserirEnvioNoCarrinhoMelhorEnvio(
+  input: PrepararEnvioMelhorEnvioInput,
+  freteConfig: FreteConfiguracaoOperacional
+) {
+  const config = getConfigMelhorEnvio(freteConfig);
+  const camposRemetente = validarDadosRemetenteMelhorEnvio(input.remetente);
+  const camposDestinatario = validarDadosDestinatarioMelhorEnvio(
+    input.destinatario
+  );
+  const camposFaltantes = [...camposRemetente, ...camposDestinatario];
+
+  if (camposFaltantes.length > 0) {
+    throw new Error(
+      `Dados incompletos para preparar envio no Melhor Envio: ${camposFaltantes.join(
+        ", "
+      )}. Próxima etapa: configurar dados completos do remetente.`
+    );
+  }
+
+  const payload = {
+    service: input.serviceId,
+    from: {
+      ...input.remetente,
+      postal_code: normalizarCep(input.remetente.postal_code || ""),
+    },
+    to: {
+      ...input.destinatario,
+      postal_code: normalizarCep(input.destinatario.postal_code || ""),
+    },
+    products: montarProdutosDeclaracao(input.produtos),
+    volumes: [montarVolumePadrao(input.produtos, freteConfig)],
+    options: {
+      insurance_value: true,
+      receipt: false,
+      own_hand: false,
+      non_commercial: true,
+      platform: "Sistema Stella",
+      tags: [
+        {
+          tag: input.pedidoCodigo,
+          url: "",
+        },
+      ],
+    },
+  };
+
+  const response = await fetch(MELHOR_ENVIO_CART_URLS[freteConfig.ambiente], {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${config.token}`,
+      "Content-Type": "application/json",
+      "User-Agent": config.userAgent,
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      data && typeof data === "object" && "message" in data
+        ? String((data as { message?: unknown }).message || "")
+        : "";
+
+    throw new Error(message || "Erro ao inserir envio no carrinho do Melhor Envio.");
+  }
+
+  return data;
 }
