@@ -65,3 +65,7 @@ export type PrepararEnvioMelhorEnvioInput = {
   destinatario: MelhorEnvioDestinatario;
   produtos: FreteProdutoPayload[];
 };
+
+export type ComprarEtiquetaMelhorEnvioInput = {
+  orderId: string;
+};

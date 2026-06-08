@@ -222,7 +222,9 @@ function labelStatusEnvio(status: string | null | undefined) {
   if (status === "PENDENTE") return "Pendente";
   if (status === "PREPARADO") return "Preparado";
   if (status === "COTADO") return "Cotado";
+  if (status === "ETIQUETA_COMPRADA") return "Etiqueta comprada";
   if (status === "EM_PREPARACAO") return "Em preparação";
+  if (status === "ETIQUETA_GERADA") return "Etiqueta gerada";
   if (status === "POSTADO") return "Postado";
   if (status === "ENTREGUE") return "Entregue";
   if (status === "PROBLEMA") return "Problema";
@@ -254,6 +256,17 @@ function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
     pedido.envio?.statusEnvio === "PENDENTE"
+  );
+}
+
+function podeComprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" &&
+    pedido.statusPagamento === "PAGO" &&
+    pedido.envio?.tipoEntrega === "ENTREGA" &&
+    pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
+    pedido.envio?.statusEnvio === "PREPARADO" &&
+    Boolean(pedido.envio.gatewayEnvioId)
   );
 }
 
@@ -569,6 +582,9 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [preparandoEnvioPedidoId, setPreparandoEnvioPedidoId] = useState<
     string | null
   >(null);
+  const [comprandoEtiquetaPedidoId, setComprandoEtiquetaPedidoId] = useState<
+    string | null
+  >(null);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -731,6 +747,40 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       setErroOperacao("Erro ao preparar envio.");
     } finally {
       setPreparandoEnvioPedidoId(null);
+    }
+  }
+
+  async function comprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    const confirmado = window.confirm(
+      `Comprar/pagar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? A geração e impressão continuarão pendentes.`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroOperacao("");
+    setComprandoEtiquetaPedidoId(pedido.id);
+
+    try {
+      const response = await fetch(`/api/pedidos/${pedido.id}/comprar-etiqueta`, {
+        method: "PATCH",
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao comprar etiqueta.");
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao comprar etiqueta.");
+    } finally {
+      setComprandoEtiquetaPedidoId(null);
     }
   }
 
@@ -1133,6 +1183,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           </p>
                         )}
 
+                      {pedido.envio.statusEnvio === "ETIQUETA_COMPRADA" &&
+                        pedido.envio.gatewayEnvioId && (
+                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                            Etiqueta comprada: {pedido.envio.gatewayEnvioId}
+                          </p>
+                        )}
+
                       {podePrepararEnvioMelhorEnvio(pedido) && (
                         <button
                           type="button"
@@ -1147,9 +1204,23 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </button>
                       )}
 
+                      {podeComprarEtiquetaMelhorEnvio(pedido) && (
+                        <button
+                          type="button"
+                          onClick={() => comprarEtiquetaMelhorEnvio(pedido)}
+                          disabled={comprandoEtiquetaPedidoId === pedido.id}
+                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          {comprandoEtiquetaPedidoId === pedido.id
+                            ? "Comprando..."
+                            : "Comprar etiqueta"}
+                        </button>
+                      )}
+
                       {pedido.envio.tipoEntrega !== "RETIRADA" && (
                         <p className="mt-2 text-[11px] text-slate-400">
-                          Etiqueta e rastreio serão adicionados em etapa futura.
+                          Geração, impressão e rastreio serão adicionados em etapa futura.
                         </p>
                       )}
                     </div>

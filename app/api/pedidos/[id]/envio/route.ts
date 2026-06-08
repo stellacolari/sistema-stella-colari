@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 const STATUS_ENVIO_VALIDOS = new Set([
   "PENDENTE",
   "COTADO",
+  "PREPARADO",
+  "ETIQUETA_COMPRADA",
   "ETIQUETA_GERADA",
   "POSTADO",
   "ENTREGUE",
@@ -108,7 +110,13 @@ function getStatusPedidoSincronizadoPorEnvio({
   }
 
   if (
-    ["PENDENTE", "COTADO", "ETIQUETA_GERADA"].includes(statusEnvio) &&
+    [
+      "PENDENTE",
+      "COTADO",
+      "PREPARADO",
+      "ETIQUETA_COMPRADA",
+      "ETIQUETA_GERADA",
+    ].includes(statusEnvio) &&
     ["PEDIDO_ENVIADO", "PEDIDO_ENTREGUE", "PROBLEMA"].includes(
       statusPedidoAtual
     )

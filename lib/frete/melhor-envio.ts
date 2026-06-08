@@ -1,4 +1,5 @@
 import type {
+  ComprarEtiquetaMelhorEnvioInput,
   CotarFreteInput,
   FreteOpcao,
   FreteProdutoPayload,
@@ -16,6 +17,11 @@ const MELHOR_ENVIO_URLS = {
 const MELHOR_ENVIO_CART_URLS = {
   sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/cart",
   production: "https://www.melhorenvio.com.br/api/v2/me/cart",
+};
+
+const MELHOR_ENVIO_CHECKOUT_URLS = {
+  sandbox: "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/checkout",
+  production: "https://www.melhorenvio.com.br/api/v2/me/shipment/checkout",
 };
 
 function normalizarCep(cep: string) {
@@ -84,6 +90,45 @@ function getErroServico(item: Record<string, unknown>) {
   }
 
   return null;
+}
+
+function extrairMensagemErroMelhorEnvio(data: unknown) {
+  if (!data || typeof data !== "object") {
+    return "";
+  }
+
+  const record = data as Record<string, unknown>;
+
+  if (typeof record.message === "string" && record.message.trim()) {
+    return record.message.trim();
+  }
+
+  if (record.error && typeof record.error === "string") {
+    return record.error.trim();
+  }
+
+  if (record.errors && typeof record.errors === "object") {
+    const errors = record.errors as Record<string, unknown>;
+    const mensagens = Object.entries(errors)
+      .flatMap(([campo, value]) => {
+        if (Array.isArray(value)) {
+          return value.map((item) => `${campo}: ${String(item)}`);
+        }
+
+        if (value) {
+          return [`${campo}: ${String(value)}`];
+        }
+
+        return [];
+      })
+      .filter(Boolean);
+
+    if (mensagens.length > 0) {
+      return mensagens.join(" | ");
+    }
+  }
+
+  return "";
 }
 
 function montarProdutos(
@@ -344,6 +389,45 @@ export async function inserirEnvioNoCarrinhoMelhorEnvio(
         : "";
 
     throw new Error(message || "Erro ao inserir envio no carrinho do Melhor Envio.");
+  }
+
+  return data;
+}
+
+export async function comprarEtiquetaMelhorEnvio(
+  input: ComprarEtiquetaMelhorEnvioInput,
+  freteConfig: FreteConfiguracaoOperacional
+) {
+  const config = getConfigMelhorEnvio(freteConfig);
+  const orderId = String(input.orderId || "").trim();
+
+  if (!orderId) {
+    throw new Error("Identificador do envio no Melhor Envio não informado.");
+  }
+
+  const response = await fetch(
+    MELHOR_ENVIO_CHECKOUT_URLS[freteConfig.ambiente],
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+        "User-Agent": config.userAgent,
+      },
+      body: JSON.stringify({
+        orders: [orderId],
+      }),
+      cache: "no-store",
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = extrairMensagemErroMelhorEnvio(data);
+
+    throw new Error(message || "Erro ao comprar etiqueta no Melhor Envio.");
   }
 
   return data;
