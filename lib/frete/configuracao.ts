@@ -22,6 +22,16 @@ export type FreteConfiguracaoOperacional = {
   valorAdicional: number;
   retiradaLocalHabilitada: boolean;
   retiradaLocalTexto: string;
+  remetenteNome: string;
+  remetenteDocumento: string;
+  remetenteEmail: string;
+  remetenteTelefone: string;
+  remetenteEndereco: string;
+  remetenteNumero: string;
+  remetenteComplemento: string;
+  remetenteBairro: string;
+  remetenteCidade: string;
+  remetenteUf: string;
   melhorEnvioTokenConfigurado: boolean;
 };
 
@@ -102,6 +112,16 @@ export function serializarConfiguracaoFrete(
     valorAdicional?: number | null;
     retiradaLocalHabilitada?: boolean | null;
     retiradaLocalTexto?: string | null;
+    remetenteNome?: string | null;
+    remetenteDocumento?: string | null;
+    remetenteEmail?: string | null;
+    remetenteTelefone?: string | null;
+    remetenteEndereco?: string | null;
+    remetenteNumero?: string | null;
+    remetenteComplemento?: string | null;
+    remetenteBairro?: string | null;
+    remetenteCidade?: string | null;
+    remetenteUf?: string | null;
   } | null
 ): FreteConfiguracaoOperacional {
   const envConfig = getEnvConfigBase();
@@ -135,6 +155,20 @@ export function serializarConfiguracaoFrete(
     valorAdicional: numeroNaoNegativo(config?.valorAdicional),
     retiradaLocalHabilitada: Boolean(config?.retiradaLocalHabilitada),
     retiradaLocalTexto: String(config?.retiradaLocalTexto || "").trim(),
+    remetenteNome: String(config?.remetenteNome || "").trim(),
+    remetenteDocumento: String(config?.remetenteDocumento || "")
+      .replace(/\D/g, "")
+      .trim(),
+    remetenteEmail: String(config?.remetenteEmail || "").trim(),
+    remetenteTelefone: String(config?.remetenteTelefone || "")
+      .replace(/\D/g, "")
+      .trim(),
+    remetenteEndereco: String(config?.remetenteEndereco || "").trim(),
+    remetenteNumero: String(config?.remetenteNumero || "").trim(),
+    remetenteComplemento: String(config?.remetenteComplemento || "").trim(),
+    remetenteBairro: String(config?.remetenteBairro || "").trim(),
+    remetenteCidade: String(config?.remetenteCidade || "").trim(),
+    remetenteUf: String(config?.remetenteUf || "").trim().toUpperCase(),
     melhorEnvioTokenConfigurado: envConfig.melhorEnvioTokenConfigurado,
   };
 }
@@ -165,4 +199,3 @@ export async function buscarConfiguracaoFrete() {
 
   return serializarConfiguracaoFrete(config);
 }
-

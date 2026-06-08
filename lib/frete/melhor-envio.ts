@@ -156,6 +156,7 @@ function getCamposFaltantesEndereco(
   const campos: [string, unknown][] = [
     [`${prefixo}.name`, dados.name],
     [`${prefixo}.phone`, dados.phone],
+    [`${prefixo}.document`, dados.document],
     [`${prefixo}.address`, dados.address],
     [`${prefixo}.number`, dados.number],
     [`${prefixo}.district`, dados.district],
@@ -163,6 +164,10 @@ function getCamposFaltantesEndereco(
     [`${prefixo}.state_abbr`, dados.state_abbr],
     [`${prefixo}.postal_code`, dados.postal_code],
   ];
+
+  if (prefixo === "remetente") {
+    campos.push([`${prefixo}.email`, dados.email]);
+  }
 
   return campos
     .filter(([, value]) => !String(value || "").trim())

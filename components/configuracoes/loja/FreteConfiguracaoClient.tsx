@@ -16,6 +16,16 @@ export type FreteConfiguracao = {
   valorAdicional: number;
   retiradaLocalHabilitada: boolean;
   retiradaLocalTexto: string;
+  remetenteNome: string;
+  remetenteDocumento: string;
+  remetenteEmail: string;
+  remetenteTelefone: string;
+  remetenteEndereco: string;
+  remetenteNumero: string;
+  remetenteComplemento: string;
+  remetenteBairro: string;
+  remetenteCidade: string;
+  remetenteUf: string;
   melhorEnvioTokenConfigurado: boolean;
 };
 
@@ -60,6 +70,30 @@ export default function FreteConfiguracaoClient({
   const [retiradaLocalTexto, setRetiradaLocalTexto] = useState(
     config.retiradaLocalTexto
   );
+  const [remetenteNome, setRemetenteNome] = useState(config.remetenteNome);
+  const [remetenteDocumento, setRemetenteDocumento] = useState(
+    config.remetenteDocumento
+  );
+  const [remetenteEmail, setRemetenteEmail] = useState(config.remetenteEmail);
+  const [remetenteTelefone, setRemetenteTelefone] = useState(
+    config.remetenteTelefone
+  );
+  const [remetenteEndereco, setRemetenteEndereco] = useState(
+    config.remetenteEndereco
+  );
+  const [remetenteNumero, setRemetenteNumero] = useState(
+    config.remetenteNumero
+  );
+  const [remetenteComplemento, setRemetenteComplemento] = useState(
+    config.remetenteComplemento
+  );
+  const [remetenteBairro, setRemetenteBairro] = useState(
+    config.remetenteBairro
+  );
+  const [remetenteCidade, setRemetenteCidade] = useState(
+    config.remetenteCidade
+  );
+  const [remetenteUf, setRemetenteUf] = useState(config.remetenteUf);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
@@ -88,6 +122,16 @@ export default function FreteConfiguracaoClient({
           valorAdicional,
           retiradaLocalHabilitada,
           retiradaLocalTexto,
+          remetenteNome,
+          remetenteDocumento,
+          remetenteEmail,
+          remetenteTelefone,
+          remetenteEndereco,
+          remetenteNumero,
+          remetenteComplemento,
+          remetenteBairro,
+          remetenteCidade,
+          remetenteUf,
         }),
       });
 
@@ -283,6 +327,148 @@ export default function FreteConfiguracaoClient({
           </div>
 
           <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950">
+                Remetente
+              </h3>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Dados usados para inserir o envio no carrinho do Melhor Envio.
+                O CEP de origem acima será usado como CEP do remetente.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Nome do remetente
+                </span>
+
+                <input
+                  value={remetenteNome}
+                  onChange={(event) => setRemetenteNome(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  CPF/CNPJ
+                </span>
+
+                <input
+                  value={remetenteDocumento}
+                  onChange={(event) =>
+                    setRemetenteDocumento(event.target.value)
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  E-mail
+                </span>
+
+                <input
+                  value={remetenteEmail}
+                  onChange={(event) => setRemetenteEmail(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Telefone
+                </span>
+
+                <input
+                  value={remetenteTelefone}
+                  onChange={(event) => setRemetenteTelefone(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Endereço
+                </span>
+
+                <input
+                  value={remetenteEndereco}
+                  onChange={(event) => setRemetenteEndereco(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Número
+                </span>
+
+                <input
+                  value={remetenteNumero}
+                  onChange={(event) => setRemetenteNumero(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Complemento
+                </span>
+
+                <input
+                  value={remetenteComplemento}
+                  onChange={(event) =>
+                    setRemetenteComplemento(event.target.value)
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Bairro
+                </span>
+
+                <input
+                  value={remetenteBairro}
+                  onChange={(event) => setRemetenteBairro(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cidade
+                </span>
+
+                <input
+                  value={remetenteCidade}
+                  onChange={(event) => setRemetenteCidade(event.target.value)}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  UF
+                </span>
+
+                <input
+                  value={remetenteUf}
+                  onChange={(event) =>
+                    setRemetenteUf(event.target.value.toUpperCase())
+                  }
+                  maxLength={2}
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm uppercase outline-none transition focus:border-slate-500"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <label className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -363,4 +549,3 @@ export default function FreteConfiguracaoClient({
     </section>
   );
 }
-

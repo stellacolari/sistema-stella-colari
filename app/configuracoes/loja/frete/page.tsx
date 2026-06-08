@@ -27,6 +27,16 @@ export default async function FreteConfiguracaoPage() {
     valorAdicional: configRaw.valorAdicional,
     retiradaLocalHabilitada: configRaw.retiradaLocalHabilitada,
     retiradaLocalTexto: configRaw.retiradaLocalTexto,
+    remetenteNome: configRaw.remetenteNome,
+    remetenteDocumento: configRaw.remetenteDocumento,
+    remetenteEmail: configRaw.remetenteEmail,
+    remetenteTelefone: configRaw.remetenteTelefone,
+    remetenteEndereco: configRaw.remetenteEndereco,
+    remetenteNumero: configRaw.remetenteNumero,
+    remetenteComplemento: configRaw.remetenteComplemento,
+    remetenteBairro: configRaw.remetenteBairro,
+    remetenteCidade: configRaw.remetenteCidade,
+    remetenteUf: configRaw.remetenteUf,
     melhorEnvioTokenConfigurado: configRaw.melhorEnvioTokenConfigurado,
   };
 
@@ -41,4 +51,3 @@ export default async function FreteConfiguracaoPage() {
     </main>
   );
 }
-

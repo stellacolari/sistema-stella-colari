@@ -156,6 +156,16 @@ export async function PATCH(
     }
 
     const remetente: MelhorEnvioRemetente = {
+      name: freteConfig.remetenteNome,
+      phone: freteConfig.remetenteTelefone,
+      email: freteConfig.remetenteEmail,
+      document: freteConfig.remetenteDocumento,
+      address: freteConfig.remetenteEndereco,
+      complement: freteConfig.remetenteComplemento || null,
+      number: freteConfig.remetenteNumero,
+      district: freteConfig.remetenteBairro,
+      city: freteConfig.remetenteCidade,
+      state_abbr: freteConfig.remetenteUf,
       postal_code: freteConfig.cepOrigem,
     };
 

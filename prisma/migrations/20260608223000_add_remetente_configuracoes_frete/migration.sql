@@ -1,0 +1,10 @@
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteNome" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteDocumento" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteEmail" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteTelefone" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteEndereco" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteNumero" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteComplemento" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteBairro" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteCidade" TEXT;
+ALTER TABLE "LojaFreteConfiguracao" ADD COLUMN "remetenteUf" TEXT;

@@ -33,6 +33,14 @@ function normalizarCep(value: unknown) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function normalizarDocumento(value: unknown) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function normalizarTelefone(value: unknown) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function normalizarProvedor(value: unknown) {
   const provedor = String(value || "").trim().toUpperCase();
 
@@ -95,6 +103,20 @@ export async function PATCH(request: Request) {
       false
     );
     const retiradaLocalTexto = String(body.retiradaLocalTexto || "").trim();
+    const remetenteNome = String(body.remetenteNome || "").trim();
+    const remetenteDocumento = normalizarDocumento(body.remetenteDocumento);
+    const remetenteEmail = String(body.remetenteEmail || "").trim();
+    const remetenteTelefone = normalizarTelefone(body.remetenteTelefone);
+    const remetenteEndereco = String(body.remetenteEndereco || "").trim();
+    const remetenteNumero = String(body.remetenteNumero || "").trim();
+    const remetenteComplemento = String(
+      body.remetenteComplemento || ""
+    ).trim();
+    const remetenteBairro = String(body.remetenteBairro || "").trim();
+    const remetenteCidade = String(body.remetenteCidade || "").trim();
+    const remetenteUf = String(body.remetenteUf || "")
+      .trim()
+      .toUpperCase();
 
     if (cepOrigem && cepOrigem.length !== 8) {
       return NextResponse.json(
@@ -111,6 +133,24 @@ export async function PATCH(request: Request) {
     ) {
       return NextResponse.json(
         { error: "Peso e dimensões fallback devem ser maiores que zero." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      remetenteDocumento &&
+      remetenteDocumento.length !== 11 &&
+      remetenteDocumento.length !== 14
+    ) {
+      return NextResponse.json(
+        { error: "Documento do remetente deve ser CPF ou CNPJ válido." },
+        { status: 400 }
+      );
+    }
+
+    if (remetenteUf && remetenteUf.length !== 2) {
+      return NextResponse.json(
+        { error: "UF do remetente deve ter 2 letras." },
         { status: 400 }
       );
     }
@@ -133,6 +173,16 @@ export async function PATCH(request: Request) {
         valorAdicional,
         retiradaLocalHabilitada,
         retiradaLocalTexto: retiradaLocalTexto || null,
+        remetenteNome: remetenteNome || null,
+        remetenteDocumento: remetenteDocumento || null,
+        remetenteEmail: remetenteEmail || null,
+        remetenteTelefone: remetenteTelefone || null,
+        remetenteEndereco: remetenteEndereco || null,
+        remetenteNumero: remetenteNumero || null,
+        remetenteComplemento: remetenteComplemento || null,
+        remetenteBairro: remetenteBairro || null,
+        remetenteCidade: remetenteCidade || null,
+        remetenteUf: remetenteUf || null,
       },
       update: {
         provedor,
@@ -147,6 +197,16 @@ export async function PATCH(request: Request) {
         valorAdicional,
         retiradaLocalHabilitada,
         retiradaLocalTexto: retiradaLocalTexto || null,
+        remetenteNome: remetenteNome || null,
+        remetenteDocumento: remetenteDocumento || null,
+        remetenteEmail: remetenteEmail || null,
+        remetenteTelefone: remetenteTelefone || null,
+        remetenteEndereco: remetenteEndereco || null,
+        remetenteNumero: remetenteNumero || null,
+        remetenteComplemento: remetenteComplemento || null,
+        remetenteBairro: remetenteBairro || null,
+        remetenteCidade: remetenteCidade || null,
+        remetenteUf: remetenteUf || null,
       },
     });
 
@@ -162,4 +222,3 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

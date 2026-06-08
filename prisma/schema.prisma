@@ -865,6 +865,16 @@ model LojaFreteConfiguracao {
   valorAdicional           Float    @default(0)
   retiradaLocalHabilitada  Boolean  @default(false)
   retiradaLocalTexto       String?
+  remetenteNome            String?
+  remetenteDocumento       String?
+  remetenteEmail           String?
+  remetenteTelefone        String?
+  remetenteEndereco        String?
+  remetenteNumero          String?
+  remetenteComplemento     String?
+  remetenteBairro          String?
+  remetenteCidade          String?
+  remetenteUf              String?
   criadoEm                 DateTime @default(now())
   atualizadoEm             DateTime @updatedAt
 }
