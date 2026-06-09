@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -433,6 +433,7 @@ export default function ProdutosCatalogClient({
   );
   const [erroLixeira, setErroLixeira] = useState<string | null>(null);
   const [mostrarValoresInternos, setMostrarValoresInternos] = useState(false);
+  const [colunasMobile, setColunasMobile] = useState<"1" | "2">("1");
   const exibirValoresInternos =
     podeVerValoresInternos && mostrarValoresInternos;
 
@@ -450,6 +451,20 @@ export default function ProdutosCatalogClient({
   const [salvandoFamilia, setSalvandoFamilia] = useState(false);
   const [confirmarMoverFamilia, setConfirmarMoverFamilia] = useState(false);
   const [buscaProdutoFamilia, setBuscaProdutoFamilia] = useState("");
+
+  useEffect(() => {
+    const preferencia = window.localStorage.getItem(
+      "stella-produtos-mobile-cols"
+    );
+
+    if (preferencia === "1" || preferencia === "2") {
+      setColunasMobile(preferencia);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("stella-produtos-mobile-cols", colunasMobile);
+  }, [colunasMobile]);
 
   const produtosFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -1405,6 +1420,30 @@ function filtrarSemFamilia() {
             {erroLixeira}
           </div>
         )}
+
+        <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 md:hidden">
+          <span className="text-xs font-semibold text-slate-600">
+            Colunas no mobile
+          </span>
+
+          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1">
+            {(["1", "2"] as const).map((quantidade) => (
+              <button
+                key={quantidade}
+                type="button"
+                onClick={() => setColunasMobile(quantidade)}
+                className={`h-8 rounded-lg px-3 text-xs font-semibold transition ${
+                  colunasMobile === quantidade
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {quantidade} col.
+              </button>
+            ))}
+          </div>
+        </div>
+
         {podeEditarCatalogo &&
           quantidadeSemFamilia > 0 &&
           familiaFiltroId !== "SEM_FAMILIA" && (
@@ -1511,7 +1550,11 @@ function filtrarSemFamilia() {
           Nenhum produto encontrado.
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div
+          className={`grid ${
+            colunasMobile === "2" ? "grid-cols-2 gap-3" : "grid-cols-1 gap-4"
+          } sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4`}
+        >
           {produtosFiltrados.map((produto) => {
             const statusProduto = getStatusProduto(produto);
             const produtoNaLixeira = statusProduto === "NA_LIXEIRA";
@@ -1526,7 +1569,11 @@ function filtrarSemFamilia() {
             return (
               <div
                 key={produto.id}
-                className={`relative flex h-full flex-col overflow-hidden rounded-3xl bg-white p-4 shadow-sm ring-1 ${
+                className={`relative flex h-full flex-col overflow-hidden bg-white shadow-sm ring-1 ${
+                  colunasMobile === "2"
+                    ? "rounded-2xl p-2.5 sm:rounded-3xl sm:p-4"
+                    : "rounded-3xl p-4"
+                } ${
                   emDesconto ? "ring-amber-200" : "ring-slate-200"
                 } ${produtoNaLixeira ? "opacity-75" : ""}`}
               >
@@ -1556,18 +1603,36 @@ function filtrarSemFamilia() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-1 flex-col">
-                  <div className="flex items-start justify-between gap-3">
+                <div
+                  className={`flex flex-1 flex-col ${
+                    colunasMobile === "2" ? "mt-2.5 sm:mt-4" : "mt-4"
+                  }`}
+                >
+                  <div
+                    className={`flex items-start ${
+                      colunasMobile === "2"
+                        ? "flex-col gap-2 sm:flex-row sm:justify-between sm:gap-3"
+                        : "justify-between gap-3"
+                    }`}
+                  >
                     <div className="min-w-0">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                         {produto.codigoInterno}
                       </p>
 
-                      <h2 className="mt-1 line-clamp-2 text-base font-semibold text-slate-900">
+                      <h2
+                        className={`mt-1 line-clamp-2 font-semibold text-slate-900 ${
+                          colunasMobile === "2" ? "text-sm sm:text-base" : "text-base"
+                        }`}
+                      >
                         {produto.nome}
                       </h2>
 
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div
+                        className={`mt-2 flex flex-wrap gap-1.5 ${
+                          colunasMobile === "2" ? "max-sm:hidden" : ""
+                        }`}
+                      >
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                           {produto.categoria}
                         </span>
@@ -1610,7 +1675,9 @@ function filtrarSemFamilia() {
                     </div>
 
                     <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${statusClass(
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ${
+                        colunasMobile === "2" ? "max-sm:px-2 max-sm:py-0.5" : ""
+                      } ${statusClass(
                         statusProduto
                       )}`}
                     >
@@ -1629,14 +1696,24 @@ function filtrarSemFamilia() {
                     </button>
                   )}
 
-                  <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-3">
+                  <div
+                    className={`border border-slate-200 bg-slate-50 ${
+                      colunasMobile === "2"
+                        ? "mt-3 rounded-2xl p-2.5 sm:mt-4 sm:rounded-3xl sm:p-3"
+                        : "mt-4 rounded-3xl p-3"
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                           Venda
                         </p>
 
-                        <p className="mt-1 text-xl font-bold text-slate-950">
+                        <p
+                          className={`mt-1 font-bold text-slate-950 ${
+                            colunasMobile === "2" ? "text-base sm:text-xl" : "text-xl"
+                          }`}
+                        >
                           {moeda(produto.precoVenda)}
                         </p>
 
@@ -1683,7 +1760,11 @@ function filtrarSemFamilia() {
                     <Info label="Estoque" value={`${produto.estoqueAtual} un.`} />
 
                     {podeVerValoresInternos && (
-                      <>
+                      <div
+                        className={`contents ${
+                          colunasMobile === "2" ? "max-sm:hidden" : ""
+                        }`}
+                      >
                         <Info
                           label="Custo produto"
                           value={valorInterno(
@@ -1707,7 +1788,7 @@ function filtrarSemFamilia() {
                             exibirValoresInternos
                           )}
                         />
-                      </>
+                      </div>
                     )}
                   </div>
 
@@ -1716,12 +1797,18 @@ function filtrarSemFamilia() {
                       href={produto.linkCompra}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-3 text-xs font-medium text-slate-700 underline underline-offset-4 transition hover:text-slate-900"
+                      className={`mt-3 text-xs font-medium text-slate-700 underline underline-offset-4 transition hover:text-slate-900 ${
+                        colunasMobile === "2" ? "max-sm:hidden" : ""
+                      }`}
                     >
                       Ver link de compra
                     </a>
                   ) : podeVerValoresInternos ? (
-                    <p className="mt-3 text-xs text-slate-400">
+                    <p
+                      className={`mt-3 text-xs text-slate-400 ${
+                        colunasMobile === "2" ? "max-sm:hidden" : ""
+                      }`}
+                    >
                       Sem link de compra
                     </p>
                   ) : null}

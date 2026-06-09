@@ -310,56 +310,54 @@ export default function AppShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <main className="min-w-0">
-        <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur-xl">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <button
                 type="button"
                 aria-label="Abrir menu"
                 onClick={() => setMenuMobileAberto(true)}
-                className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
               >
                 <Menu className="h-5 w-5" />
               </button>
 
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                <p className="hidden text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 sm:block">
                   {pageInfo.eyebrow}
                 </p>
 
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-                  {pageInfo.title}
+                <h2 className="truncate text-base font-semibold tracking-tight text-slate-950 sm:mt-1 sm:text-xl">
+                  <span className="sm:hidden">Sistema Stella</span>
+                  <span className="hidden sm:inline">{pageInfo.title}</span>
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 hidden text-sm text-slate-500 sm:block">
                   {pageInfo.description}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {pageInfo.showLojaButton && (
                 <Link
                   href="/loja"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-4"
                 >
-                  Ver loja pública
+                  <span className="hidden sm:inline">Ver loja pública</span>
+                  <span className="sm:hidden">Loja</span>
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               )}
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+              <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 xl:block">
                 Sistema Stella
-              </div>
-
-              <div className="w-full sm:w-auto">
-                <LogoutButton />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </main>
     </div>
   );

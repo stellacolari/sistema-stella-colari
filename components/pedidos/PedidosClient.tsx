@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Package,
   Search,
+  SlidersHorizontal,
   Truck,
 } from "lucide-react";
 
@@ -647,6 +648,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   const [busca, setBusca] = useState("");
   const [filtroRapido, setFiltroRapido] = useState("TODOS");
+  const [filtrosMobileAbertos, setFiltrosMobileAbertos] = useState(false);
   const [erroOperacao, setErroOperacao] = useState("");
   const [linkCopiadoPedidoId, setLinkCopiadoPedidoId] = useState<string | null>(
     null
@@ -1065,8 +1067,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   return (
     <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 px-5 py-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
               Lista de pedidos
@@ -1086,7 +1088,38 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             )}
           </div>
 
-          <div className="grid gap-3 xl:w-[680px]">
+          <div className="grid gap-3 md:hidden">
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Visão
+              </span>
+
+              <select
+                value={filtroRapido}
+                onChange={(event) => setFiltroRapido(event.target.value)}
+                className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-slate-500"
+              >
+                {FILTROS_RAPIDOS.map((filtro) => (
+                  <option key={filtro.value} value={filtro.value}>
+                    {filtro.label} ({contadoresFiltro.get(filtro.value) || 0})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={() =>
+                setFiltrosMobileAbertos((valorAtual) => !valorAtual)
+              }
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {filtrosMobileAbertos ? "Ocultar filtros" : "Filtros e etiquetas"}
+            </button>
+          </div>
+
+          <div className="hidden gap-3 md:grid xl:w-[680px]">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -1100,7 +1133,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 hidden flex-wrap gap-2 md:flex">
           {FILTROS_RAPIDOS.map((filtro) => {
             const ativo = filtroRapido === filtro.value;
 
@@ -1130,7 +1163,28 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           })}
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <div
+          className={`mt-3 ${
+            filtrosMobileAbertos ? "block" : "hidden"
+          } md:hidden`}
+        >
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+            <input
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              placeholder="Buscar cliente, código, origem..."
+              className="h-10 w-full rounded-2xl border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-slate-500"
+            />
+          </label>
+        </div>
+
+        <div
+          className={`mt-4 flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:flex md:flex-row md:items-center md:justify-between md:px-4 ${
+            filtrosMobileAbertos ? "flex" : "hidden"
+          }`}
+        >
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
               <input
@@ -1183,7 +1237,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-4">
+        <div
+          className={`mt-4 gap-2 md:grid md:grid-cols-4 ${
+            filtrosMobileAbertos ? "grid" : "hidden"
+          }`}
+        >
           <div className="rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
               Links pendentes

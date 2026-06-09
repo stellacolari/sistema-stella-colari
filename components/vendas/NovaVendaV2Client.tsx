@@ -54,6 +54,13 @@ type ItemPedido = ProdutoBusca & {
   tamanhoAnel: string;
 };
 
+type MedidaDisponivel = {
+  valor: string;
+  label: string;
+  estoqueDisponivel: number;
+  imagemUrl?: string | null;
+};
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -87,9 +94,10 @@ function getEstoqueDisponivel(item: {
   estoqueAtual: number;
   estoquesPorTamanho: EstoquePorTamanho[];
   categoria: string;
+  variacoes?: ProdutoVariacaoVenda[];
   tamanhoAnel: string;
 }) {
-  if (!produtoEhAnel(item)) {
+  if (!produtoTemMedidas(item)) {
     return item.estoqueAtual;
   }
 
@@ -99,23 +107,108 @@ function getEstoqueDisponivel(item: {
     return 0;
   }
 
-  return (
+  const estoquePorTamanho =
     item.estoquesPorTamanho.find(
       (estoque) => normalizarTamanhoAnel(estoque.tamanhoAnel) === tamanho
-    )?.quantidadeAtual ?? 0
+    )?.quantidadeAtual ?? null;
+
+  if (estoquePorTamanho !== null) {
+    return estoquePorTamanho;
+  }
+
+  const medidaPorVariacao = getOpcoesVariacaoAtivas(item).some(
+    (opcao) => normalizarTamanhoAnel(opcao.nome) === tamanho
+  );
+
+  return medidaPorVariacao ? item.estoqueAtual : 0;
+}
+
+function getOpcoesVariacaoAtivas(produto: {
+  variacoes?: ProdutoVariacaoVenda[];
+}) {
+  return (produto.variacoes || []).flatMap((variacao) =>
+    variacao.opcoes
+      .filter((opcao) => opcao.ativo !== false)
+      .sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0))
   );
 }
 
-function getTamanhosDisponiveis(produto: ProdutoBusca) {
-  return produto.estoquesPorTamanho
+function produtoTemMedidas(produto: {
+  categoria: string;
+  estoqueAtual: number;
+  estoquesPorTamanho: EstoquePorTamanho[];
+  variacoes?: ProdutoVariacaoVenda[];
+}) {
+  const temEstoquePorMedida = produto.estoquesPorTamanho.some(
+    (estoque) =>
+      normalizarTamanhoAnel(estoque.tamanhoAnel) !== "UNICO" &&
+      estoque.quantidadeAtual > 0
+  );
+
+  if (temEstoquePorMedida) {
+    return true;
+  }
+
+  const temVariacaoAtiva =
+    produto.estoqueAtual > 0 &&
+    getOpcoesVariacaoAtivas(produto).some(
+      (opcao) => normalizarTamanhoAnel(opcao.nome) !== "UNICO"
+    );
+
+  return temVariacaoAtiva || produtoEhAnel(produto);
+}
+
+function getMedidasDisponiveis(produto: ProdutoBusca): MedidaDisponivel[] {
+  const opcoesVariacao = getOpcoesVariacaoAtivas(produto);
+
+  const medidasPorEstoque = produto.estoquesPorTamanho
     .filter(
       (estoque) =>
-        estoque.tamanhoAnel !== "UNICO" && estoque.quantidadeAtual > 0
+        normalizarTamanhoAnel(estoque.tamanhoAnel) !== "UNICO" &&
+        estoque.quantidadeAtual > 0
     )
-    .map((estoque) => ({
-      tamanhoAnel: estoque.tamanhoAnel,
-      quantidadeAtual: estoque.quantidadeAtual,
+    .map((estoque) => {
+      const valor = normalizarTamanhoAnel(estoque.tamanhoAnel);
+      const opcaoVariacao = opcoesVariacao.find(
+        (opcao) => normalizarTamanhoAnel(opcao.nome) === valor
+      );
+
+      return {
+        valor,
+        label: opcaoVariacao?.nome || estoque.tamanhoAnel,
+        estoqueDisponivel: estoque.quantidadeAtual,
+        imagemUrl: opcaoVariacao?.imagemUrl || null,
+      };
+    });
+
+  if (medidasPorEstoque.length > 0) {
+    return medidasPorEstoque;
+  }
+
+  if (produto.estoqueAtual <= 0) {
+    return [];
+  }
+
+  return opcoesVariacao
+    .filter((opcao) => normalizarTamanhoAnel(opcao.nome) !== "UNICO")
+    .map((opcao) => ({
+      valor: normalizarTamanhoAnel(opcao.nome),
+      label: opcao.nome,
+      estoqueDisponivel: produto.estoqueAtual,
+      imagemUrl: opcao.imagemUrl || null,
     }));
+}
+
+function getTamanhosDisponiveis(produto: ProdutoBusca) {
+  return getMedidasDisponiveis(produto).map((medida) => ({
+    tamanhoAnel: medida.valor,
+    quantidadeAtual: medida.estoqueDisponivel,
+    label: medida.label,
+  }));
+}
+
+function getLabelMedida(produto: { categoria: string }) {
+  return produtoEhAnel(produto) ? "Tamanho" : "Medida";
 }
 
 function getOpcaoVariacaoSelecionada(item: ItemPedido) {
@@ -218,6 +311,15 @@ function normalizarTelefoneWhatsApp(value: string | null | undefined) {
   return `55${digits}`;
 }
 
+function linkCompacto(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}/...`;
+  } catch {
+    return url;
+  }
+}
+
 function Info({
   label,
   value,
@@ -259,6 +361,9 @@ export default function NovaVendaV2Client({
   const [observacoes, setObservacoes] = useState("");
   const [buscaProduto, setBuscaProduto] = useState("");
   const [itensPedido, setItensPedido] = useState<ItemPedido[]>([]);
+  const [produtoMedidaSelecionado, setProdutoMedidaSelecionado] =
+    useState<ProdutoBusca | null>(null);
+  const [medidaSelecionada, setMedidaSelecionada] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [modalClienteAberto, setModalClienteAberto] = useState(false);
@@ -347,32 +452,22 @@ export default function NovaVendaV2Client({
       return;
     }
 
-    const ehAnel = produtoEhAnel(produto);
+    if (produtoTemMedidas(produto)) {
+      const medidasDisponiveis = getMedidasDisponiveis(produto);
 
-    if (ehAnel) {
-      const tamanhosDisponiveis = getTamanhosDisponiveis(produto);
-
-      if (tamanhosDisponiveis.length === 0) {
-        setErro(`O produto ${produto.nome} não possui tamanhos disponíveis.`);
+      if (medidasDisponiveis.length === 0) {
+        setErro(`O produto ${produto.nome} não possui medidas disponíveis.`);
         return;
       }
 
-      const primeiroTamanho = tamanhosDisponiveis[0].tamanhoAnel;
-
-      return setItensPedido((atual) => [
-        ...atual,
-        {
-          ...produto,
-          itemKey: gerarItemKey(produto.id, primeiroTamanho),
-          quantidade: 1,
-          tamanhoAnel: primeiroTamanho,
-        },
-      ]);
+      setProdutoMedidaSelecionado(produto);
+      setMedidaSelecionada("");
+      return;
     }
 
     setItensPedido((atual) => {
       const existente = atual.find(
-        (item) => item.id === produto.id && !produtoEhAnel(item)
+        (item) => item.id === produto.id && !produtoTemMedidas(item)
       );
 
       if (existente) {
@@ -402,6 +497,39 @@ export default function NovaVendaV2Client({
     });
   }
 
+  function fecharModalMedida() {
+    setProdutoMedidaSelecionado(null);
+    setMedidaSelecionada("");
+  }
+
+  function confirmarAdicionarProdutoComMedida() {
+    if (!produtoMedidaSelecionado || !medidaSelecionada) {
+      return;
+    }
+
+    const medidaNormalizada = normalizarTamanhoAnel(medidaSelecionada);
+    const medida = getMedidasDisponiveis(produtoMedidaSelecionado).find(
+      (opcao) => opcao.valor === medidaNormalizada
+    );
+
+    if (!medida) {
+      setErro("Escolha uma medida disponível para adicionar o produto.");
+      return;
+    }
+
+    setErro("");
+    setItensPedido((atual) => [
+      ...atual,
+      {
+        ...produtoMedidaSelecionado,
+        itemKey: gerarItemKey(produtoMedidaSelecionado.id, medida.valor),
+        quantidade: 1,
+        tamanhoAnel: medida.valor,
+      },
+    ]);
+    fecharModalMedida();
+  }
+
   function alterarQuantidade(itemKey: string, quantidade: number) {
     setErro("");
 
@@ -415,8 +543,8 @@ export default function NovaVendaV2Client({
 
         if (quantidade > estoqueDisponivel) {
           setErro(
-            produtoEhAnel(item)
-              ? `A quantidade de ${item.nome} tamanho ${item.tamanhoAnel} não pode ser maior que o estoque atual (${estoqueDisponivel}).`
+            produtoTemMedidas(item)
+              ? `A quantidade de ${item.nome} medida ${item.tamanhoAnel} não pode ser maior que o estoque atual (${estoqueDisponivel}).`
               : `A quantidade de ${item.nome} não pode ser maior que o estoque atual (${estoqueDisponivel}).`
           );
           return item;
@@ -436,11 +564,10 @@ export default function NovaVendaV2Client({
 
         const tamanhoNormalizado = normalizarTamanhoAnel(tamanho);
 
-        const estoqueNovoTamanho =
-          item.estoquesPorTamanho.find(
-            (estoque) =>
-              normalizarTamanhoAnel(estoque.tamanhoAnel) === tamanhoNormalizado
-          )?.quantidadeAtual ?? 0;
+        const medidaNova = getMedidasDisponiveis(item).find(
+          (medida) => medida.valor === tamanhoNormalizado
+        );
+        const estoqueNovoTamanho = medidaNova?.estoqueDisponivel ?? 0;
 
         return {
           ...item,
@@ -501,13 +628,14 @@ export default function NovaVendaV2Client({
         return;
       }
 
-      const anelSemTamanho = itensPedido.find(
-        (item) => produtoEhAnel(item) && !normalizarTamanhoAnel(item.tamanhoAnel)
+      const itemSemMedida = itensPedido.find(
+        (item) =>
+          produtoTemMedidas(item) && !normalizarTamanhoAnel(item.tamanhoAnel)
       );
 
-      if (anelSemTamanho) {
+      if (itemSemMedida) {
         setErro(
-          `Informe o tamanho do anel para o produto ${anelSemTamanho.nome}.`
+          `Informe a medida para o produto ${itemSemMedida.nome}.`
         );
         return;
       }
@@ -519,8 +647,8 @@ export default function NovaVendaV2Client({
 
       if (itemSemSaldo) {
         setErro(
-          produtoEhAnel(itemSemSaldo)
-            ? `O item ${itemSemSaldo.nome} tamanho ${itemSemSaldo.tamanhoAnel} está com quantidade acima do estoque disponível.`
+          produtoTemMedidas(itemSemSaldo)
+            ? `O item ${itemSemSaldo.nome} medida ${itemSemSaldo.tamanhoAnel} está com quantidade acima do estoque disponível.`
             : `O item ${itemSemSaldo.nome} está com quantidade acima do estoque disponível.`
         );
         return;
@@ -547,7 +675,7 @@ export default function NovaVendaV2Client({
             precoVenda: item.precoVenda,
             categoria: item.categoria,
             quantidade: item.quantidade,
-            tamanhoAnel: produtoEhAnel(item)
+            tamanhoAnel: produtoTemMedidas(item)
               ? normalizarTamanhoAnel(item.tamanhoAnel)
               : null,
           })),
@@ -705,7 +833,7 @@ export default function NovaVendaV2Client({
           itens: itensPedido.map((item) => ({
             id: item.id,
             quantidade: item.quantidade,
-            tamanhoAnel: produtoEhAnel(item)
+            tamanhoAnel: produtoTemMedidas(item)
               ? normalizarTamanhoAnel(item.tamanhoAnel)
               : null,
           })),
@@ -751,7 +879,7 @@ export default function NovaVendaV2Client({
 
   return (
     <>
-    <div className="space-y-6 pb-28 md:pb-0">
+    <div className="space-y-6 pb-36 md:pb-0 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
       <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -1064,7 +1192,8 @@ export default function NovaVendaV2Client({
                     const estoqueDisponivel = getEstoqueDisponivel(item);
                     const saldoRestante = estoqueDisponivel - item.quantidade;
                     const saldo = statusSaldo(estoqueDisponivel, item.quantidade);
-                    const ehAnel = produtoEhAnel(item);
+                    const temMedidas = produtoTemMedidas(item);
+                    const labelMedida = getLabelMedida(item);
                     const tamanhosDisponiveis = getTamanhosDisponiveis(item);
 
                     return (
@@ -1101,10 +1230,10 @@ export default function NovaVendaV2Client({
                             </div>
 
                             <div className="mt-4 grid grid-cols-2 gap-3">
-                              {ehAnel ? (
+                              {temMedidas ? (
                                 <label>
                                   <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                    Tamanho
+                                    {labelMedida}
                                   </span>
                                   <select
                                     value={item.tamanhoAnel}
@@ -1121,7 +1250,7 @@ export default function NovaVendaV2Client({
                                         key={estoque.tamanhoAnel}
                                         value={estoque.tamanhoAnel}
                                       >
-                                        {estoque.tamanhoAnel}
+                                        {estoque.label || estoque.tamanhoAnel}
                                       </option>
                                     ))}
                                   </select>
@@ -1129,7 +1258,7 @@ export default function NovaVendaV2Client({
                               ) : (
                                 <div>
                                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                    Tamanho
+                                    Medida
                                   </p>
                                   <p className="mt-2 text-sm font-medium text-slate-500">
                                     -
@@ -1206,7 +1335,7 @@ export default function NovaVendaV2Client({
                       <tr className="text-sm text-slate-600">
                         <th className="px-6 py-4 font-semibold">Código</th>
                         <th className="px-6 py-4 font-semibold">Descrição</th>
-                        <th className="px-6 py-4 font-semibold">Tamanho</th>
+                        <th className="px-6 py-4 font-semibold">Medida</th>
                         <th className="px-6 py-4 font-semibold">Qtd</th>
                         <th className="px-6 py-4 font-semibold">Estoque</th>
                         <th className="px-6 py-4 font-semibold">
@@ -1231,7 +1360,7 @@ export default function NovaVendaV2Client({
                           estoqueDisponivel,
                           item.quantidade
                         );
-                        const ehAnel = produtoEhAnel(item);
+                        const temMedidas = produtoTemMedidas(item);
                         const tamanhosDisponiveis = getTamanhosDisponiveis(item);
 
                         return (
@@ -1259,7 +1388,7 @@ export default function NovaVendaV2Client({
                             </td>
 
                             <td className="px-6 py-4">
-                              {ehAnel ? (
+                              {temMedidas ? (
                                 <select
                                   value={item.tamanhoAnel}
                                   onChange={(event) =>
@@ -1275,7 +1404,7 @@ export default function NovaVendaV2Client({
                                       key={estoque.tamanhoAnel}
                                       value={estoque.tamanhoAnel}
                                     >
-                                      {estoque.tamanhoAnel}
+                                      {estoque.label || estoque.tamanhoAnel}
                                     </option>
                                   ))}
                                 </select>
@@ -1460,15 +1589,24 @@ export default function NovaVendaV2Client({
                 ) : null}
 
                 {linkPagamento && tipoFinalizacao === "PAGAR_ONLINE" ? (
-                  <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                    <p className="font-semibold">
-                      Link gerado
-                      {linkPagamento.pedidoCodigo
-                        ? ` para ${linkPagamento.pedidoCodigo}`
-                        : ""}
-                    </p>
-                    <p className="break-all text-xs text-emerald-800">
-                      {linkPagamento.url}
+                  <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold">
+                        Link gerado
+                        {linkPagamento.pedidoCodigo
+                          ? ` para ${linkPagamento.pedidoCodigo}`
+                          : ""}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setModalLinkPagamentoAberto(true)}
+                        className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                      >
+                        Ver QR
+                      </button>
+                    </div>
+                    <p className="truncate rounded-xl bg-white/70 px-3 py-2 text-xs text-emerald-800 ring-1 ring-emerald-100">
+                      {linkCompacto(linkPagamento.url)}
                     </p>
                     {linkPagamentoDesatualizado ? (
                       <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
@@ -1476,13 +1614,6 @@ export default function NovaVendaV2Client({
                         link antes de enviar ao cliente.
                       </p>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => setModalLinkPagamentoAberto(true)}
-                      className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-                    >
-                      Ver QR Code e opções
-                    </button>
                   </div>
                 ) : null}
 
@@ -1521,7 +1652,10 @@ export default function NovaVendaV2Client({
       </div>
     </div>
 
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+    <div
+      className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white px-4 pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.16)] ring-1 ring-slate-200 md:hidden"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="mx-auto flex max-w-screen-sm items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -1559,15 +1693,111 @@ export default function NovaVendaV2Client({
       </div>
     </div>
 
+    {produtoMedidaSelecionado ? (
+      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+        <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {getLabelMedida(produtoMedidaSelecionado)}
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                Escolha a medida
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={fecharModalMedida}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+              aria-label="Fechar escolha de medida"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4 px-4 py-5 sm:px-6">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <MiniaturaProduto
+                imagemUrl={getImagemProduto(produtoMedidaSelecionado)}
+                nome={produtoMedidaSelecionado.nome}
+              />
+
+              <div className="min-w-0">
+                <p className="line-clamp-2 text-sm font-semibold text-slate-950">
+                  {produtoMedidaSelecionado.nome}
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
+                  {moeda(produtoMedidaSelecionado.precoVenda)}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {getMedidasDisponiveis(produtoMedidaSelecionado).map((medida) => (
+                <button
+                  key={medida.valor}
+                  type="button"
+                  onClick={() => setMedidaSelecionada(medida.valor)}
+                  className={`rounded-2xl border p-3 text-left transition ${
+                    medidaSelecionada === medida.valor
+                      ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {medida.imagemUrl ? (
+                      <MiniaturaProduto
+                        imagemUrl={medida.imagemUrl}
+                        nome={medida.label}
+                      />
+                    ) : null}
+
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-bold text-slate-950">
+                        {medida.label}
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-slate-500">
+                        {medida.estoqueDisponivel} em estoque
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={fecharModalMedida}
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmarAdicionarProdutoComMedida}
+                disabled={!medidaSelecionada}
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null}
+
     {modalLinkPagamentoAberto && linkPagamento ? (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-        <div className="max-h-[96vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+        <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Stripe
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">
                 Link de pagamento gerado
               </h2>
               {linkPagamento.pedidoCodigo ? (
@@ -1587,19 +1817,29 @@ export default function NovaVendaV2Client({
             </button>
           </div>
 
-          <div className="space-y-5 px-4 py-5 sm:px-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total final
-              </p>
-              <p className="mt-1 text-2xl font-bold text-slate-950">
-                {moeda(totalFinal)}
-              </p>
+          <div className="space-y-4 px-4 py-4 sm:px-5">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Pedido
+                </p>
+                <p className="mt-1 truncate text-sm font-bold text-slate-950">
+                  {linkPagamento.pedidoCodigo || "-"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Total
+                </p>
+                <p className="mt-1 text-sm font-bold text-slate-950">
+                  {moeda(totalFinal)}
+                </p>
+              </div>
             </div>
 
-            <p className="text-sm leading-6 text-slate-600">
-              Escaneie o QR Code ou envie o link para o cliente finalizar o
-              pagamento com as opções disponíveis no Stripe.
+            <p className="text-sm leading-5 text-slate-600">
+              Escaneie o QR Code ou envie o link para o cliente.
             </p>
 
             {linkPagamentoDesatualizado ? (
@@ -1609,22 +1849,22 @@ export default function NovaVendaV2Client({
               </div>
             ) : null}
 
-            <div className="flex justify-center rounded-3xl border border-slate-200 bg-white p-4">
+            <div className="flex justify-center rounded-3xl border border-slate-200 bg-white p-3">
               <QRCodeSVG
                 value={linkPagamento.url}
-                size={220}
+                size={180}
                 level="M"
                 includeMargin
-                className="h-auto max-w-full"
+                className="h-auto max-w-[180px] sm:max-w-[220px]"
               />
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Link Stripe
               </p>
-              <p className="mt-2 break-all text-xs text-slate-700">
-                {linkPagamento.url}
+              <p className="mt-1 truncate text-sm font-medium text-slate-700">
+                {linkCompacto(linkPagamento.url)}
               </p>
             </div>
 
@@ -1634,7 +1874,7 @@ export default function NovaVendaV2Client({
               </div>
             ) : null}
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={copiarLinkPagamento}
@@ -1659,7 +1899,7 @@ export default function NovaVendaV2Client({
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:col-span-2"
+                  className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                 >
                   Enviar WhatsApp
                 </a>
@@ -1668,7 +1908,7 @@ export default function NovaVendaV2Client({
               <button
                 type="button"
                 onClick={() => setModalLinkPagamentoAberto(false)}
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 sm:col-span-2"
+                className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Fechar
               </button>
@@ -1679,8 +1919,8 @@ export default function NovaVendaV2Client({
     ) : null}
 
     {modalClienteAberto ? (
-      <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-        <div className="max-h-[96vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+        <div className="max-h-[96vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
           <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
