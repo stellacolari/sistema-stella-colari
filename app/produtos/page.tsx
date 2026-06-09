@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import ProdutosCatalogClient from "@/components/produtos/ProdutosCatalogClient";
 import { regraAplicaACategorias } from "@/lib/regras-categoria";
+import { exigirAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -312,7 +313,9 @@ function serializarFamilias(familias: FamiliaComRelacoes[]) {
 }
 
 export default async function ProdutosPage() {
-  const [produtosRaw, regrasAdicionais, familiasRaw] = await Promise.all([
+  const [usuario, produtosRaw, regrasAdicionais, familiasRaw] = await Promise.all([
+    exigirAdmin(),
+
     prisma.produto.findMany({
       orderBy: {
         nome: "asc",
@@ -468,6 +471,7 @@ export default async function ProdutosPage() {
     <ProdutosCatalogClient
       produtos={produtos}
       familiasDisponiveis={familiasDisponiveis}
+      perfilAdmin={usuario.perfil}
     />
   );
 }

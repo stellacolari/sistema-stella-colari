@@ -410,12 +410,20 @@ function montarCamposIniciaisFamilia({
 export default function ProdutosCatalogClient({
   produtos,
   familiasDisponiveis = [],
+  perfilAdmin,
 }: {
   produtos: ProdutoCatalogItem[];
   familiasDisponiveis?: ProdutoFamiliaOption[];
+  perfilAdmin?: "ACESSO_GERAL" | "VENDEDOR" | string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const isVendedor = perfilAdmin === "VENDEDOR";
+  const podeVerValoresInternos = perfilAdmin === "ACESSO_GERAL";
+  const podeEditarCatalogo = perfilAdmin === "ACESSO_GERAL";
+  const statusOptionsVisiveis = isVendedor
+    ? STATUS_OPTIONS.filter((status) => status.value !== "NA_LIXEIRA")
+    : STATUS_OPTIONS;
 
   const [busca, setBusca] = useState("");
   const [statusSelecionado, setStatusSelecionado] = useState("ATIVOS");
@@ -425,6 +433,8 @@ export default function ProdutosCatalogClient({
   );
   const [erroLixeira, setErroLixeira] = useState<string | null>(null);
   const [mostrarValoresInternos, setMostrarValoresInternos] = useState(false);
+  const exibirValoresInternos =
+    podeVerValoresInternos && mostrarValoresInternos;
 
   const [modalFamiliaAberto, setModalFamiliaAberto] = useState(false);
   const [familiaSelecionadaId, setFamiliaSelecionadaId] = useState("");
@@ -446,6 +456,10 @@ export default function ProdutosCatalogClient({
 
 const filtrados = produtos.filter((produto) => {
   const statusProduto = getStatusProduto(produto);
+
+  if (isVendedor && statusProduto === "NA_LIXEIRA") {
+    return false;
+  }
 
   if (statusSelecionado === "ATIVOS" && statusProduto === "NA_LIXEIRA") {
     return false;
@@ -514,7 +528,7 @@ if (
 }
 
 return filtrados;
-  }, [busca, familiaFiltroId, produtos, statusSelecionado]);
+  }, [busca, familiaFiltroId, isVendedor, produtos, statusSelecionado]);
 
   const produtosSelecionaveis = useMemo(() => {
     return produtosFiltrados.filter(
@@ -601,6 +615,10 @@ function filtrarSemFamilia() {
   setProdutosSelecionados([]);
 }
   function alternarProdutoSelecionado(produtoId: string) {
+    if (!podeEditarCatalogo) {
+      return;
+    }
+
     setProdutosSelecionados((selecionados) => {
       if (selecionados.includes(produtoId)) {
         return selecionados.filter((id) => id !== produtoId);
@@ -611,6 +629,10 @@ function filtrarSemFamilia() {
   }
 
   function alternarTodosSelecionados() {
+    if (!podeEditarCatalogo) {
+      return;
+    }
+
     if (todosSelecionados) {
       setProdutosSelecionados([]);
       return;
@@ -1269,35 +1291,40 @@ function filtrarSemFamilia() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-600">
-              Visualize preço, custo, adicionais, lucro, estoque, status e
-              famílias comerciais dos produtos cadastrados.
+              {isVendedor
+                ? "Consulte produtos, preços de venda, estoque e status para atendimento e vendas."
+                : "Visualize preço, custo, adicionais, lucro, estoque, status e famílias comerciais dos produtos cadastrados."}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setMostrarValoresInternos((valorAtual) => !valorAtual)
-              }
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              {mostrarValoresInternos ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-              {mostrarValoresInternos
-                ? "Ocultar valores internos"
-                : "Mostrar valores internos"}
-            </button>
+            {podeVerValoresInternos && (
+              <button
+                type="button"
+                onClick={() =>
+                  setMostrarValoresInternos((valorAtual) => !valorAtual)
+                }
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                {mostrarValoresInternos ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                {mostrarValoresInternos
+                  ? "Ocultar valores internos"
+                  : "Mostrar valores internos"}
+              </button>
+            )}
 
-            <Link
-              href="/produtos/novo"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-            >
-              Novo produto
-            </Link>
+            {podeEditarCatalogo && (
+              <Link
+                href="/produtos/novo"
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+              >
+                Novo produto
+              </Link>
+            )}
           </div>
         </div>
 
@@ -1354,7 +1381,7 @@ function filtrarSemFamilia() {
               }}
               className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
             >
-              {STATUS_OPTIONS.map((status) => (
+              {statusOptionsVisiveis.map((status) => (
                 <option key={status.value} value={status.value}>
                   {status.label}
                 </option>
@@ -1378,7 +1405,9 @@ function filtrarSemFamilia() {
             {erroLixeira}
           </div>
         )}
-        {quantidadeSemFamilia > 0 && familiaFiltroId !== "SEM_FAMILIA" && (
+        {podeEditarCatalogo &&
+          quantidadeSemFamilia > 0 &&
+          familiaFiltroId !== "SEM_FAMILIA" && (
           <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold">
@@ -1402,7 +1431,7 @@ function filtrarSemFamilia() {
         )}
       </div>
 
-      {quantidadeSelecionada > 0 && (
+      {podeEditarCatalogo && quantidadeSelecionada > 0 && (
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -1457,20 +1486,24 @@ function filtrarSemFamilia() {
         ? "Produtos filtrados por família e ordenados pela ordem configurada no agrupamento."
         : familiaFiltroId === "SEM_FAMILIA"
         ? "Exibindo produtos que ainda não pertencem a nenhuma família comercial."
-        : "Use os checkboxes dos cards para ações em lote."}
+        : podeEditarCatalogo
+        ? "Use os checkboxes dos cards para ações em lote."
+        : "Consulte produtos, preços, estoque e status para atendimento."}
     </p>
   </div>
 
-  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-    <input
-      type="checkbox"
-      checked={todosSelecionados}
-      disabled={produtosSelecionaveis.length === 0}
-      onChange={alternarTodosSelecionados}
-      className="h-4 w-4 rounded border-slate-300"
-    />
-    Selecionar todos visíveis
-  </label>
+  {podeEditarCatalogo && (
+    <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+      <input
+        type="checkbox"
+        checked={todosSelecionados}
+        disabled={produtosSelecionaveis.length === 0}
+        onChange={alternarTodosSelecionados}
+        className="h-4 w-4 rounded border-slate-300"
+      />
+      Selecionar todos visíveis
+    </label>
+  )}
 </div>
 
 {produtosFiltrados.length === 0 ? (
@@ -1497,16 +1530,18 @@ function filtrarSemFamilia() {
                   emDesconto ? "ring-amber-200" : "ring-slate-200"
                 } ${produtoNaLixeira ? "opacity-75" : ""}`}
               >
-                <div className="absolute left-4 top-4 z-10 rounded-xl bg-white/90 px-2 py-1 shadow-sm">
-                  <input
-                    type="checkbox"
-                    checked={produtosSelecionados.includes(produto.id)}
-                    disabled={produtoNaLixeira}
-                    onChange={() => alternarProdutoSelecionado(produto.id)}
-                    className="h-4 w-4 rounded border-slate-300"
-                    aria-label={`Selecionar produto ${produto.codigoInterno}`}
-                  />
-                </div>
+                {podeEditarCatalogo && (
+                  <div className="absolute left-4 top-4 z-10 rounded-xl bg-white/90 px-2 py-1 shadow-sm">
+                    <input
+                      type="checkbox"
+                      checked={produtosSelecionados.includes(produto.id)}
+                      disabled={produtoNaLixeira}
+                      onChange={() => alternarProdutoSelecionado(produto.id)}
+                      className="h-4 w-4 rounded border-slate-300"
+                      aria-label={`Selecionar produto ${produto.codigoInterno}`}
+                    />
+                  </div>
+                )}
 
                 <div className="relative">
                   <ImageBox src={produto.imagemUrl} alt={produto.nome} />
@@ -1557,7 +1592,7 @@ function filtrarSemFamilia() {
                           </span>
                         ))}
 
-                        {produto.custoAdicionais > 0 && (
+                        {podeVerValoresInternos && produto.custoAdicionais > 0 && (
                           <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
                             <Package className="mr-1 h-3.5 w-3.5" />
                             {produto.quantidadeAdicionais} adicional
@@ -1584,7 +1619,7 @@ function filtrarSemFamilia() {
                     </span>
                   </div>
 
-                  {possuiFamilia && produto.familiaId && (
+                  {podeEditarCatalogo && possuiFamilia && produto.familiaId && (
                     <button
                       type="button"
                       onClick={() => abrirEdicaoFamilia(produto.familiaId!)}
@@ -1612,65 +1647,71 @@ function filtrarSemFamilia() {
                         )}
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Lucro
-                        </p>
+                      {podeVerValoresInternos && (
+                        <div className="text-right">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                            Lucro
+                          </p>
 
-                        <p
-                          className={`mt-1 text-base font-bold ${
-                            !mostrarValoresInternos
-                              ? "text-slate-400"
-                              : lucroEfetivo < 0
-                              ? "text-red-700"
-                              : "text-emerald-700"
-                          }`}
-                        >
-                          {valorInterno(
-                            moeda(lucroEfetivo),
-                            mostrarValoresInternos
-                          )}
-                        </p>
+                          <p
+                            className={`mt-1 text-base font-bold ${
+                              !exibirValoresInternos
+                                ? "text-slate-400"
+                                : lucroEfetivo < 0
+                                ? "text-red-700"
+                                : "text-emerald-700"
+                            }`}
+                          >
+                            {valorInterno(
+                              moeda(lucroEfetivo),
+                              exibirValoresInternos
+                            )}
+                          </p>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          {valorInterno(
-                            `${percentual(margemEfetiva)}%`,
-                            mostrarValoresInternos
-                          )}
-                        </p>
-                      </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {valorInterno(
+                              `${percentual(margemEfetiva)}%`,
+                              exibirValoresInternos
+                            )}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-3 grid gap-2">
                     <Info label="Estoque" value={`${produto.estoqueAtual} un.`} />
 
-                    <Info
-                      label="Custo produto"
-                      value={valorInterno(
-                        moeda(Number(produto.custoBase)),
-                        mostrarValoresInternos
-                      )}
-                    />
+                    {podeVerValoresInternos && (
+                      <>
+                        <Info
+                          label="Custo produto"
+                          value={valorInterno(
+                            moeda(Number(produto.custoBase)),
+                            exibirValoresInternos
+                          )}
+                        />
 
-                    <Info
-                      label="Adicionais"
-                      value={valorInterno(
-                        moeda(Number(produto.custoAdicionais)),
-                        mostrarValoresInternos
-                      )}
-                    />
+                        <Info
+                          label="Adicionais"
+                          value={valorInterno(
+                            moeda(Number(produto.custoAdicionais)),
+                            exibirValoresInternos
+                          )}
+                        />
 
-                    <Info
-                      label="Custo total"
-                      value={valorInterno(
-                        moeda(Number(produto.custoTotal)),
-                        mostrarValoresInternos
-                      )}
-                    />
+                        <Info
+                          label="Custo total"
+                          value={valorInterno(
+                            moeda(Number(produto.custoTotal)),
+                            exibirValoresInternos
+                          )}
+                        />
+                      </>
+                    )}
                   </div>
 
-                  {produto.linkCompra ? (
+                  {podeVerValoresInternos && produto.linkCompra ? (
                     <a
                       href={produto.linkCompra}
                       target="_blank"
@@ -1679,19 +1720,20 @@ function filtrarSemFamilia() {
                     >
                       Ver link de compra
                     </a>
-                  ) : (
+                  ) : podeVerValoresInternos ? (
                     <p className="mt-3 text-xs text-slate-400">
                       Sem link de compra
                     </p>
-                  )}
+                  ) : null}
 
-                  {produto.totalVendas > 0 && (
+                  {podeVerValoresInternos && produto.totalVendas > 0 && (
                     <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
                       Este produto possui {produto.totalVendas} registro
                       {produto.totalVendas > 1 ? "s" : ""} de venda.
                     </p>
                   )}
 
+                  {podeEditarCatalogo && (
                   <div className="mt-4 flex gap-2">
                     {produtoNaLixeira ? (
                       <button
@@ -1746,6 +1788,7 @@ function filtrarSemFamilia() {
                       </>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
             );
@@ -1753,7 +1796,7 @@ function filtrarSemFamilia() {
         </div>
       )}
 
-      {modalFamiliaAberto && (
+      {podeEditarCatalogo && modalFamiliaAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">
           <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
