@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 type MenuTone = "default" | "site" | "system";
+type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
 
 type MenuSingleLink = {
   type: "link";
@@ -426,6 +427,102 @@ const menuSections: MenuSection[] = [
   },
 ];
 
+const vendedorMenuSections: MenuSection[] = [
+  {
+    title: "Operação",
+    description: "Rotina do dia a dia",
+    items: [
+      {
+        type: "link",
+        href: "/pedidos",
+        label: "Pedidos",
+        icon: ClipboardList,
+        description: "Central operacional",
+        highlight: true,
+      },
+      {
+        type: "group",
+        href: "/vendas",
+        label: "Vendas",
+        icon: ShoppingBag,
+        description: "Venda manual e histórico",
+        defaultOpen: true,
+        quickAddHref: "/vendas/nova-v2",
+        quickAddLabel: "Nova venda",
+        links: [
+          {
+            href: "/vendas",
+            label: "Lista de vendas",
+            icon: ShoppingBag,
+          },
+          {
+            href: "/vendas/nova-v2",
+            label: "Nova venda",
+            icon: Plus,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Catálogo",
+    description: "Produtos e clientes",
+    items: [
+      {
+        type: "group",
+        href: "/produtos",
+        label: "Produtos",
+        icon: Package,
+        description: "Catálogo de produtos",
+        defaultOpen: false,
+        links: [
+          {
+            href: "/produtos",
+            label: "Catálogo de produtos",
+            icon: Package,
+          },
+        ],
+      },
+      {
+        type: "group",
+        href: "/clientes",
+        label: "Clientes",
+        icon: Users,
+        description: "Cadastro e histórico",
+        defaultOpen: false,
+        quickAddHref: "/clientes/novo",
+        quickAddLabel: "Novo cliente",
+        links: [
+          {
+            href: "/clientes",
+            label: "Lista de clientes",
+            icon: Users,
+          },
+          {
+            href: "/clientes/novo",
+            label: "Novo cliente",
+            icon: Plus,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Loja online",
+    description: "Site público",
+    items: [
+      {
+        type: "link",
+        href: "/loja",
+        label: "Ver loja pública",
+        icon: Store,
+        description: "Abrir vitrine",
+        tone: "site",
+      },
+    ],
+  },
+];
+
 function isPathActive(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
@@ -560,8 +657,12 @@ function getIconBoxClass({
   return "bg-white/80 text-slate-600 ring-slate-200";
 }
 
-function getSectionGroups() {
-  return menuSections.flatMap((section) =>
+function getMenuSections(perfil: PerfilAdmin) {
+  return perfil === "VENDEDOR" ? vendedorMenuSections : menuSections;
+}
+
+function getSectionGroups(sections: MenuSection[]) {
+  return sections.flatMap((section) =>
     section.items
       .filter((item): item is MenuGroup => item.type === "group")
       .map((group) => ({
@@ -572,10 +673,17 @@ function getSectionGroups() {
   );
 }
 
-export default function SidebarMenu() {
+export default function SidebarMenu({
+  perfil = "VENDEDOR",
+  onNavigate,
+}: {
+  perfil?: PerfilAdmin;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  const sections = useMemo(() => getMenuSections(perfil), [perfil]);
 
-  const groups = useMemo(() => getSectionGroups(), []);
+  const groups = useMemo(() => getSectionGroups(sections), [sections]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [compacto, setCompacto] = useState(false);
 
@@ -669,7 +777,7 @@ export default function SidebarMenu() {
 
       <div className={`min-h-0 flex-1 overflow-y-auto ${panelPadding}`}>
         <nav className={sectionSpacing}>
-          {menuSections.map((section, sectionIndex) => (
+          {sections.map((section, sectionIndex) => (
             <div key={`${section.title || "sem-titulo"}-${sectionIndex}`}>
               {section.title ? (
                 <div className={sectionTitleMargin}>
@@ -696,6 +804,7 @@ export default function SidebarMenu() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={onNavigate}
                         className={`group flex items-center ${itemGap} rounded-2xl border transition ${itemPadding} ${getItemButtonClass(
                           {
                             active,
@@ -793,6 +902,7 @@ export default function SidebarMenu() {
                           <Link
                             href={item.quickAddHref}
                             title={item.quickAddLabel || "Adicionar"}
+                            onClick={onNavigate}
                             className={`flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 ${
                               compacto ? "h-8 w-8 rounded-xl" : "h-11 w-11"
                             }`}
@@ -814,6 +924,7 @@ export default function SidebarMenu() {
                                 <Link
                                   key={link.href}
                                   href={link.href}
+                                  onClick={onNavigate}
                                   className={`flex items-center gap-3 rounded-2xl text-sm transition ${subItemPadding} ${getSubItemClass(
                                     {
                                       active: subActive,
@@ -837,6 +948,7 @@ export default function SidebarMenu() {
                             <Fragment>
                               <Link
                                 href={item.href}
+                                onClick={onNavigate}
                                 className={`flex items-center gap-3 rounded-2xl text-sm transition ${subItemPadding} ${getSubItemClass(
                                   {
                                     active: isPathActive(pathname, item.href),

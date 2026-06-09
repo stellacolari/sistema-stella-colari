@@ -1,11 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Menu, X } from "lucide-react";
 import SidebarMenu from "@/components/layout/SidebarMenu";
 import LogoutButton from "@/components/layout/LogoutButton";
+
+type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
 
 function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/home")) {
@@ -155,18 +158,78 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isLoja = pathname === "/loja" || pathname.startsWith("/loja/");
   const isLogin = pathname === "/login";
+  const isPublicShell =
+    pathname === "/" ||
+    isLogin ||
+    isLoja ||
+    pathname === "/api" ||
+    pathname.startsWith("/api/") ||
+    /\.[a-zA-Z0-9]+$/.test(pathname);
   const pageInfo = getPageInfo(pathname);
+  const [perfil, setPerfil] = useState<PerfilAdmin>("VENDEDOR");
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
-  if (isLogin) {
+  useEffect(() => {
+    if (isPublicShell) {
+      return;
+    }
+
+    let ativo = true;
+
+    async function carregarSessao() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+        const perfilResposta = data.usuario?.perfil;
+
+        if (!ativo) {
+          return;
+        }
+
+        setPerfil(perfilResposta === "ACESSO_GERAL" ? "ACESSO_GERAL" : "VENDEDOR");
+      } catch {
+        if (ativo) {
+          setPerfil("VENDEDOR");
+        }
+      }
+    }
+
+    carregarSessao();
+
+    return () => {
+      ativo = false;
+    };
+  }, [isPublicShell]);
+
+  useEffect(() => {
+    setMenuMobileAberto(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuMobileAberto) {
+      return;
+    }
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [menuMobileAberto]);
+
+  if (isPublicShell) {
+    if (isLoja) {
+      return (
+        <main className="loja-publica stella-storefront-render min-h-screen bg-white text-slate-900">
+          {children}
+        </main>
+      );
+    }
+
     return <>{children}</>;
-  }
-
-  if (isLoja) {
-    return (
-      <main className="loja-publica stella-storefront-render min-h-screen bg-white text-slate-900">
-        {children}
-      </main>
-    );
   }
 
   return (
@@ -184,7 +247,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </p>
         </div>
 
-        <SidebarMenu />
+        <SidebarMenu perfil={perfil} />
 
         <div className="border-t border-slate-200 px-6 py-4">
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -201,21 +264,77 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
+      {menuMobileAberto ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuMobileAberto(false)}
+            className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+          />
+
+          <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,360px)] flex-col border-r border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Sistema Stella
+                </p>
+
+                <p className="mt-1 text-lg font-bold tracking-tight text-slate-950">
+                  Gestão
+                </p>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Fechar menu"
+                onClick={() => setMenuMobileAberto(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1">
+              <SidebarMenu
+                perfil={perfil}
+                onNavigate={() => setMenuMobileAberto(false)}
+              />
+            </div>
+
+            <div className="border-t border-slate-200 p-4">
+              <LogoutButton />
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
       <main className="min-w-0">
         <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur-xl">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                {pageInfo.eyebrow}
-              </p>
+            <div className="flex min-w-0 items-start gap-3">
+              <button
+                type="button"
+                aria-label="Abrir menu"
+                onClick={() => setMenuMobileAberto(true)}
+                className="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 lg:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
 
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
-                {pageInfo.title}
-              </h2>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  {pageInfo.eyebrow}
+                </p>
 
-              <p className="mt-1 text-sm text-slate-500">
-                {pageInfo.description}
-              </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  {pageInfo.title}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {pageInfo.description}
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
