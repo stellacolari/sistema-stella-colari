@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const scrypt = promisify(scryptCallback);
 const HASH_PREFIXO = "scrypt";
 const HASH_KEY_LENGTH = 64;
+const PERFIS_VALIDOS = new Set(["ACESSO_GERAL", "VENDEDOR"]);
 
 async function hashSenha(senha) {
   const salt = randomBytes(16).toString("hex");
@@ -24,10 +25,23 @@ function getEnvObrigatoria(nome) {
   return value;
 }
 
+function getPerfilAdmin() {
+  const perfil = String(process.env.ADMIN_PERFIL || "ACESSO_GERAL")
+    .trim()
+    .toUpperCase();
+
+  if (!PERFIS_VALIDOS.has(perfil)) {
+    throw new Error("ADMIN_PERFIL inválido. Use ACESSO_GERAL ou VENDEDOR.");
+  }
+
+  return perfil;
+}
+
 async function main() {
   const nome = getEnvObrigatoria("ADMIN_NOME");
   const email = getEnvObrigatoria("ADMIN_EMAIL").toLowerCase();
   const senha = getEnvObrigatoria("ADMIN_SENHA");
+  const perfil = getPerfilAdmin();
   const podeAtualizar = String(process.env.ADMIN_ATUALIZAR || "")
     .trim()
     .toUpperCase();
@@ -61,18 +75,18 @@ async function main() {
       nome,
       email,
       senhaHash,
-      perfil: "ADMIN",
+      perfil,
       ativo: true,
     },
     update: {
       nome,
       senhaHash,
-      perfil: "ADMIN",
+      perfil,
       ativo: true,
     },
   });
 
-  console.log(`Admin ${email} criado/atualizado com sucesso.`);
+  console.log(`Usuário admin ${email} criado/atualizado com perfil ${perfil}.`);
 }
 
 main()

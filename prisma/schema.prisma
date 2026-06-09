@@ -884,7 +884,7 @@ model UsuarioAdmin {
   nome          String
   email         String    @unique
   senhaHash     String
-  perfil        String    @default("ADMIN")
+  perfil        String    @default("ACESSO_GERAL")
   ativo         Boolean   @default(true)
   ultimoLoginEm DateTime?
   criadoEm      DateTime  @default(now())
