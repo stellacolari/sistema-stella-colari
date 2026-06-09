@@ -879,6 +879,22 @@ model LojaFreteConfiguracao {
   atualizadoEm             DateTime @updatedAt
 }
 
+model UsuarioAdmin {
+  id            String    @id @default(cuid())
+  nome          String
+  email         String    @unique
+  senhaHash     String
+  perfil        String    @default("ADMIN")
+  ativo         Boolean   @default(true)
+  ultimoLoginEm DateTime?
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+
+  @@index([email])
+  @@index([ativo])
+  @@index([perfil])
+}
+
 model CupomLoja {
   id                  String         @id @default(cuid())
   codigo              String         @unique

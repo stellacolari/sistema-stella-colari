@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import SidebarMenu from "@/components/layout/SidebarMenu";
+import LogoutButton from "@/components/layout/LogoutButton";
 
 function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/home")) {
@@ -153,7 +154,12 @@ function getPageInfo(pathname: string) {
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isLoja = pathname === "/loja" || pathname.startsWith("/loja/");
+  const isLogin = pathname === "/login";
   const pageInfo = getPageInfo(pathname);
+
+  if (isLogin) {
+    return <>{children}</>;
+  }
 
   if (isLoja) {
     return (
@@ -181,7 +187,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <SidebarMenu />
 
         <div className="border-t border-slate-200 px-6 py-4">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               Acesso
             </p>
@@ -189,6 +195,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <p className="mt-1 text-sm font-medium text-slate-800">
               Sistema interno
             </p>
+
+            <LogoutButton />
           </div>
         </div>
       </aside>
@@ -223,6 +231,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
                 Sistema Stella
+              </div>
+
+              <div className="w-full sm:w-auto">
+                <LogoutButton />
               </div>
             </div>
           </div>

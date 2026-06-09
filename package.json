@@ -6,7 +6,8 @@
     "dev": "next dev --turbo -p 3000",
     "dev:clean": "rm -rf .next next-build node_modules/.cache && prisma generate && next dev --turbo -p 3000",
     "build": "prisma generate && next build",
-    "start": "next start -p 3000"
+    "start": "next start -p 3000",
+    "db:criar-admin": "node scripts/criar-admin.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
