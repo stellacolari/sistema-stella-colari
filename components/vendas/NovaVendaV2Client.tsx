@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ImageIcon, Plus, Trash2, X } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 type ClienteBusca = {
   id: string;
@@ -263,8 +264,13 @@ export default function NovaVendaV2Client({
   const [modalClienteAberto, setModalClienteAberto] = useState(false);
   const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [erroCliente, setErroCliente] = useState("");
+  const [tipoFinalizacao, setTipoFinalizacao] = useState<
+    "PAGO_AGORA" | "PAGAR_ONLINE"
+  >("PAGO_AGORA");
   const [gerandoLinkPagamento, setGerandoLinkPagamento] = useState(false);
   const [erroPagamento, setErroPagamento] = useState("");
+  const [modalLinkPagamentoAberto, setModalLinkPagamentoAberto] =
+    useState(false);
   const [linkPagamento, setLinkPagamento] = useState<{
     url: string;
     pedidoCodigo: string;
@@ -719,6 +725,7 @@ export default function NovaVendaV2Client({
         pedidoCodigo: String(data.pedidoCodigo || ""),
         assinatura: assinaturaPagamento,
       });
+      setModalLinkPagamentoAberto(true);
     } catch {
       setErroPagamento("Erro ao gerar link de pagamento.");
     } finally {
@@ -1351,95 +1358,82 @@ export default function NovaVendaV2Client({
 
             <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
               <h2 className="text-lg font-semibold text-slate-900">
-                Pagamento
+                Finalização da venda
               </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Escolha se o pagamento já foi recebido ou se o cliente vai pagar
+                online pelo Stripe.
+              </p>
 
               <div className="mt-5 space-y-4">
-                <button
-                  type="button"
-                  onClick={gerarLinkPagamento}
-                  disabled={gerandoLinkPagamento}
-                  className="min-h-12 w-full rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {gerandoLinkPagamento
-                    ? "Gerando link..."
-                    : linkPagamentoDesatualizado
-                    ? "Gerar novo link atualizado"
-                    : "Gerar link de pagamento"}
-                </button>
-
-                {erroPagamento ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {erroPagamento}
-                  </div>
-                ) : null}
-
-                {linkPagamento ? (
-                  <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                    <div>
-                      <p className="font-semibold">
-                        Link gerado
-                        {linkPagamento.pedidoCodigo
-                          ? ` para ${linkPagamento.pedidoCodigo}`
-                          : ""}
-                      </p>
-                      <p className="mt-1 break-all text-xs text-emerald-800">
-                        {linkPagamento.url}
-                      </p>
-                    </div>
-
-                    {linkPagamentoDesatualizado ? (
-                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-                        A venda foi alterada depois da geração. Gere um novo
-                        link antes de enviar ao cliente.
-                      </p>
-                    ) : null}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={copiarLinkPagamento}
-                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTipoFinalizacao("PAGO_AGORA")}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      tipoFinalizacao === "PAGO_AGORA"
+                        ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                          tipoFinalizacao === "PAGO_AGORA"
+                            ? "border-slate-900"
+                            : "border-slate-300"
+                        }`}
                       >
-                        Copiar link
-                      </button>
-                      <a
-                        href={linkPagamento.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-                      >
-                        Abrir link
-                      </a>
-                      {telefoneWhatsApp && !linkPagamentoDesatualizado ? (
-                        <a
-                          href={`https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(
-                            mensagemWhatsApp
-                          )}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-                        >
-                          Enviar WhatsApp
-                        </a>
-                      ) : null}
+                        {tipoFinalizacao === "PAGO_AGORA" ? (
+                          <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+                        ) : null}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-950">
+                          Já pagou
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Registre a venda como paga quando o valor já foi
+                          recebido por Pix externo, dinheiro, maquininha ou
+                          outro meio.
+                        </span>
+                      </span>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-xs leading-5 text-slate-500">
-                    O estoque será baixado somente após a confirmação de
-                    pagamento pelo Stripe.
-                  </p>
-                )}
-              </div>
-            </div>
+                  </button>
 
-            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Ajustes finais
-              </h2>
+                  <button
+                    type="button"
+                    onClick={() => setTipoFinalizacao("PAGAR_ONLINE")}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      tipoFinalizacao === "PAGAR_ONLINE"
+                        ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                          tipoFinalizacao === "PAGAR_ONLINE"
+                            ? "border-indigo-600"
+                            : "border-slate-300"
+                        }`}
+                      >
+                        {tipoFinalizacao === "PAGAR_ONLINE" ? (
+                          <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+                        ) : null}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-950">
+                          Pagar agora
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Gere um link do Stripe para o cliente pagar online.
+                        </span>
+                      </span>
+                    </div>
+                  </button>
+                </div>
 
-              <div className="mt-5 space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Observações
@@ -1459,13 +1453,66 @@ export default function NovaVendaV2Client({
                   </div>
                 ) : null}
 
+                {erroPagamento ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {erroPagamento}
+                  </div>
+                ) : null}
+
+                {linkPagamento && tipoFinalizacao === "PAGAR_ONLINE" ? (
+                  <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <p className="font-semibold">
+                      Link gerado
+                      {linkPagamento.pedidoCodigo
+                        ? ` para ${linkPagamento.pedidoCodigo}`
+                        : ""}
+                    </p>
+                    <p className="break-all text-xs text-emerald-800">
+                      {linkPagamento.url}
+                    </p>
+                    {linkPagamentoDesatualizado ? (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                        A venda foi alterada depois da geração. Gere um novo
+                        link antes de enviar ao cliente.
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setModalLinkPagamentoAberto(true)}
+                      className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                    >
+                      Ver QR Code e opções
+                    </button>
+                  </div>
+                ) : null}
+
                 <button
                   type="button"
-                  onClick={confirmarVenda}
-                  disabled={salvando}
-                  className="min-h-12 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={
+                    tipoFinalizacao === "PAGO_AGORA"
+                      ? confirmarVenda
+                      : gerarLinkPagamento
+                  }
+                  disabled={
+                    tipoFinalizacao === "PAGO_AGORA"
+                      ? salvando
+                      : gerandoLinkPagamento
+                  }
+                  className={`min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    tipoFinalizacao === "PAGO_AGORA"
+                      ? "bg-slate-900 text-white hover:bg-slate-800"
+                      : "bg-indigo-600 text-white hover:bg-indigo-500"
+                  }`}
                 >
-                  {salvando ? "Salvando..." : "Confirmar venda"}
+                  {tipoFinalizacao === "PAGO_AGORA"
+                    ? salvando
+                      ? "Salvando..."
+                      : "Registrar venda paga"
+                    : gerandoLinkPagamento
+                    ? "Gerando link..."
+                    : linkPagamentoDesatualizado
+                    ? "Gerar novo link atualizado"
+                    : "Gerar link de pagamento"}
                 </button>
               </div>
             </div>
@@ -1487,14 +1534,149 @@ export default function NovaVendaV2Client({
 
         <button
           type="button"
-          onClick={confirmarVenda}
-          disabled={salvando}
-          className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={
+            tipoFinalizacao === "PAGO_AGORA"
+              ? confirmarVenda
+              : gerarLinkPagamento
+          }
+          disabled={
+            tipoFinalizacao === "PAGO_AGORA" ? salvando : gerandoLinkPagamento
+          }
+          className={`inline-flex min-h-12 shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            tipoFinalizacao === "PAGO_AGORA"
+              ? "bg-slate-900 hover:bg-slate-800"
+              : "bg-indigo-600 hover:bg-indigo-500"
+          }`}
         >
-          {salvando ? "Salvando..." : "Confirmar"}
+          {tipoFinalizacao === "PAGO_AGORA"
+            ? salvando
+              ? "Salvando..."
+              : "Registrar"
+            : gerandoLinkPagamento
+            ? "Gerando..."
+            : "Gerar link"}
         </button>
       </div>
     </div>
+
+    {modalLinkPagamentoAberto && linkPagamento ? (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+        <div className="max-h-[96vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Stripe
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                Link de pagamento gerado
+              </h2>
+              {linkPagamento.pedidoCodigo ? (
+                <p className="mt-1 text-sm text-slate-500">
+                  Pedido {linkPagamento.pedidoCodigo}
+                </p>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setModalLinkPagamentoAberto(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+              aria-label="Fechar link de pagamento"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-5 px-4 py-5 sm:px-6">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Total final
+              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">
+                {moeda(totalFinal)}
+              </p>
+            </div>
+
+            <p className="text-sm leading-6 text-slate-600">
+              Escaneie o QR Code ou envie o link para o cliente finalizar o
+              pagamento com as opções disponíveis no Stripe.
+            </p>
+
+            {linkPagamentoDesatualizado ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                A venda foi alterada depois da geração. Gere um novo link antes
+                de enviar ao cliente.
+              </div>
+            ) : null}
+
+            <div className="flex justify-center rounded-3xl border border-slate-200 bg-white p-4">
+              <QRCodeSVG
+                value={linkPagamento.url}
+                size={220}
+                level="M"
+                includeMargin
+                className="h-auto max-w-full"
+              />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Link Stripe
+              </p>
+              <p className="mt-2 break-all text-xs text-slate-700">
+                {linkPagamento.url}
+              </p>
+            </div>
+
+            {erroPagamento ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {erroPagamento}
+              </div>
+            ) : null}
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={copiarLinkPagamento}
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Copiar link
+              </button>
+
+              <a
+                href={linkPagamento.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Abrir link
+              </a>
+
+              {telefoneWhatsApp && !linkPagamentoDesatualizado ? (
+                <a
+                  href={`https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(
+                    mensagemWhatsApp
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:col-span-2"
+                >
+                  Enviar WhatsApp
+                </a>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => setModalLinkPagamentoAberto(false)}
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 sm:col-span-2"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null}
 
     {modalClienteAberto ? (
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
