@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { atualizarProduto } from "../actions";
 import EditarProdutoClient from "@/components/produtos/EditarProdutoClient";
+import { exigirAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,17 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const usuario = await exigirAdmin();
+  const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
 
-  const [produto, categorias, produtosDisponiveisKit, regrasAdicionais] =
+  const [
+    produto,
+    categorias,
+    produtosDisponiveisKit,
+    regrasAdicionais,
+    embalagemClasses,
+    embalagemModelos,
+  ] =
     await Promise.all([
       prisma.produto.findUnique({
         where: { id },
@@ -127,6 +137,30 @@ export default async function EditarProdutoPage({
         },
         orderBy: [{ categoria: "asc" }, { criadoEm: "asc" }],
       }),
+
+      prisma.embalagemClasse.findMany({
+        where: {
+          ativo: true,
+        },
+        select: {
+          id: true,
+          nome: true,
+        },
+        orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+      }),
+
+      prisma.embalagemModelo.findMany({
+        where: {
+          ativo: true,
+        },
+        select: {
+          id: true,
+          tipo: true,
+          nomeInterno: true,
+          nomePublico: true,
+        },
+        orderBy: [{ tipo: "asc" }, { prioridade: "desc" }, { nomeInterno: "asc" }],
+      }),
     ]);
 
   if (!produto) {
@@ -218,6 +252,33 @@ export default async function EditarProdutoPage({
     observacoes: produto.observacoes || "",
     tipoProduto: produto.tipoProduto,
     ativo: Boolean(produto.ativo),
+    embalagem: {
+      embalagemClasseId: produto.embalagemClasseId,
+      embalagemUnidades: Number(produto.embalagemUnidades || 1),
+      embalagemCompartilhavel: Boolean(produto.embalagemCompartilhavel),
+      embalagemIndividualObrigatoria: Boolean(
+        produto.embalagemIndividualObrigatoria
+      ),
+      embalagemModeloPreferencialId: produto.embalagemModeloPreferencialId,
+      permiteEmbalagemPresente: Boolean(produto.permiteEmbalagemPresente),
+      embalagemPresentePadraoId: produto.embalagemPresentePadraoId,
+      pesoGramas:
+        produto.pesoGramas !== null && produto.pesoGramas !== undefined
+          ? Number(produto.pesoGramas)
+          : null,
+      alturaCm:
+        produto.alturaCm !== null && produto.alturaCm !== undefined
+          ? Number(produto.alturaCm)
+          : null,
+      larguraCm:
+        produto.larguraCm !== null && produto.larguraCm !== undefined
+          ? Number(produto.larguraCm)
+          : null,
+      comprimentoCm:
+        produto.comprimentoCm !== null && produto.comprimentoCm !== undefined
+          ? Number(produto.comprimentoCm)
+          : null,
+    },
   };
 
   return (
@@ -231,6 +292,11 @@ export default async function EditarProdutoPage({
       categoriasSelecionadasIniciaisIds={categoriasSelecionadasIniciaisIds}
       componentesKitIniciais={componentesKitIniciais}
       variacoesIniciais={variacoesIniciais}
+      embalagemOptions={{
+        classes: embalagemClasses,
+        modelos: embalagemModelos,
+      }}
+      podeEditarEmbalagem={podeEditarEmbalagem}
       atualizarProdutoAction={actionAtualizar}
     />
   );

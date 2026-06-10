@@ -2,7 +2,7 @@ import type { ElementType } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  BarChart3,
+  Boxes,
   ClipboardList,
   Eye,
   FolderKanban,
@@ -12,7 +12,6 @@ import {
   PackageCheck,
   SlidersHorizontal,
   Sparkles,
-  Store,
   Tag,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -136,6 +135,7 @@ export default async function LojaOnlineCentralPage() {
     freteConfig,
     produtosAtivos,
     produtosSemEstoque,
+    modelosEmbalagem,
   ] = await Promise.all([
     prisma.bannerLoja.count({
       where: {
@@ -222,6 +222,12 @@ export default async function LojaOnlineCentralPage() {
             },
           },
         },
+      },
+    }),
+
+    prisma.embalagemModelo.count({
+      where: {
+        ativo: true,
       },
     }),
   ]);
@@ -396,6 +402,16 @@ export default async function LojaOnlineCentralPage() {
           metric={freteTexto}
           metricLabel="provedor ativo"
           tone={freteConfig.provedor === "DESATIVADO" ? "warning" : "site"}
+        />
+
+        <CentralCard
+          href="/configuracoes/loja/embalagens"
+          title="Embalagens"
+          description="Modele classes, caixas, embalagem de presente, componentes consumidos e compatibilidades."
+          icon={Boxes}
+          metric={`${modelosEmbalagem}`}
+          metricLabel="modelos ativos"
+          tone="site"
         />
 
         <CentralCard

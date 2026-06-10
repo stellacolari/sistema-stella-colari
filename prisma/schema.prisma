@@ -8,48 +8,66 @@ datasource db {
 }
 
 model Produto {
-  id                 String                  @id @default(cuid())
-  codigoInterno      String                  @unique
-  codigoFornecedor   String?
-  nome               String
-  imagemUrl          String?
-  linkCompra         String?
-  custoBase          Float
-  margemAplicada     Float
-  precoVenda         Float
-  categoria          String
-  fornecedorPadrao   String
-  ativo              Boolean                 @default(true)
-  observacoes        String?
-  criadoEm           DateTime                @default(now())
-  atualizadoEm       DateTime                @updatedAt
-  status             String                  @default("ATIVO")
-  statusAntesLixeira String?
-  descontoAtivo      Boolean                 @default(false)
-  precoPromocional   Float?
-  imagemHoverUrl     String?
-  descricaoLoja      String?
-  tipoProduto        String                  @default("UNITARIO")
-  familiaId          String?
-  familiaMaterial    String?
-  familiaCorJoia     String?
-  familiaImagemUrl   String?
-  familiaOrdem       Int                     @default(0)
-  compraItens        CompraItem[]
-  estoque            EstoqueProduto[]
-  familia            ProdutoFamilia?         @relation(fields: [familiaId], references: [id])
-  canaisVenda        ProdutoCanal[]
-  categoriasProduto  ProdutoCategoria[]
-  familiasVinculos   ProdutoFamiliaProduto[]
-  imagens            ProdutoImagem[]
-  usadoEmKits        ProdutoKitComponente[]  @relation("ComponenteProduto")
-  componentesDoKit   ProdutoKitComponente[]  @relation("KitProduto")
-  variacoes          ProdutoVariacao[]
-  vendasItens        VendaItem[]
+  id                             String                           @id @default(cuid())
+  codigoInterno                  String                           @unique
+  codigoFornecedor               String?
+  nome                           String
+  imagemUrl                      String?
+  linkCompra                     String?
+  custoBase                      Float
+  margemAplicada                 Float
+  precoVenda                     Float
+  categoria                      String
+  fornecedorPadrao               String
+  ativo                          Boolean                          @default(true)
+  observacoes                    String?
+  criadoEm                       DateTime                         @default(now())
+  atualizadoEm                   DateTime                         @updatedAt
+  status                         String                           @default("ATIVO")
+  statusAntesLixeira             String?
+  descontoAtivo                  Boolean                          @default(false)
+  precoPromocional               Float?
+  imagemHoverUrl                 String?
+  descricaoLoja                  String?
+  tipoProduto                    String                           @default("UNITARIO")
+  familiaId                      String?
+  familiaMaterial                String?
+  familiaCorJoia                 String?
+  familiaImagemUrl               String?
+  familiaOrdem                   Int                              @default(0)
+  embalagemClasseId              String?
+  embalagemUnidades              Float                            @default(1)
+  embalagemCompartilhavel        Boolean                          @default(true)
+  embalagemIndividualObrigatoria Boolean                          @default(false)
+  embalagemModeloPreferencialId  String?
+  permiteEmbalagemPresente       Boolean                          @default(true)
+  embalagemPresentePadraoId      String?
+  pesoGramas                     Float?
+  alturaCm                       Float?
+  larguraCm                      Float?
+  comprimentoCm                  Float?
+  compraItens                    CompraItem[]
+  estoque                        EstoqueProduto[]
+  embalagemClasse                EmbalagemClasse?                 @relation(fields: [embalagemClasseId], references: [id])
+  embalagemModeloPreferencial    EmbalagemModelo?                 @relation("ProdutoEmbalagemPreferencial", fields: [embalagemModeloPreferencialId], references: [id])
+  embalagemPresentePadrao        EmbalagemModelo?                 @relation("ProdutoEmbalagemPresentePadrao", fields: [embalagemPresentePadraoId], references: [id])
+  familia                        ProdutoFamilia?                  @relation(fields: [familiaId], references: [id])
+  embalagensCompatibilidades     EmbalagemModeloCompatibilidade[]
+  canaisVenda                    ProdutoCanal[]
+  categoriasProduto              ProdutoCategoria[]
+  familiasVinculos               ProdutoFamiliaProduto[]
+  imagens                        ProdutoImagem[]
+  usadoEmKits                    ProdutoKitComponente[]           @relation("ComponenteProduto")
+  componentesDoKit               ProdutoKitComponente[]           @relation("KitProduto")
+  variacoes                      ProdutoVariacao[]
+  vendasItens                    VendaItem[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
   @@index([familiaCorJoia])
+  @@index([embalagemClasseId])
+  @@index([embalagemModeloPreferencialId])
+  @@index([embalagemPresentePadraoId])
 }
 
 model ProdutoFamilia {
@@ -217,19 +235,124 @@ model ItemAdicional {
   estoque                       EstoqueAdicional?
   pedidosComoAdicionalConsumido PedidoOnlineItemAdicional[] @relation("PedidoItemAdicionalConsumido")
   pedidosComoPadraoSubstituido  PedidoOnlineItemAdicional[] @relation("PedidoItemPadraoSubstituido")
+  embalagensComponentes         EmbalagemModeloComponente[]
+  embalagensPlanoItens          PedidoEmbalagemPlanoItem[]
   regrasCategoria               RegraCategoria[]
 }
 
+model EmbalagemClasse {
+  id               String                           @id @default(cuid())
+  nome             String
+  slug             String                           @unique
+  descricao        String?
+  ativo            Boolean                          @default(true)
+  ordem            Int                              @default(0)
+  criadoEm         DateTime                         @default(now())
+  atualizadoEm     DateTime                         @updatedAt
+  produtos         Produto[]
+  compatibilidades EmbalagemModeloCompatibilidade[]
+
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model EmbalagemModelo {
+  id                       String                           @id @default(cuid())
+  tipo                     String
+  nomeInterno              String
+  nomePublico              String?
+  slug                     String                           @unique
+  descricaoPublica         String?
+  imagemUrl                String?
+  ativo                    Boolean                          @default(true)
+  exibirNaLoja             Boolean                          @default(false)
+  prioridade               Int                              @default(0)
+  precoCliente             Float                            @default(0)
+  substituiEmbalagemPadrao Boolean                          @default(false)
+  permiteMensagem          Boolean                          @default(false)
+  mensagemLimiteCaracteres Int?
+  mensagemPlaceholder      String?
+  capacidadeUnidades       Float                            @default(1)
+  capacidadeCaixasInternas Int?
+  permiteMisturarClasses   Boolean                          @default(true)
+  pesoGramas               Float                            @default(0)
+  alturaCm                 Float?
+  larguraCm                Float?
+  comprimentoCm            Float?
+  custoEstimadoManual      Float?
+  criadoEm                 DateTime                         @default(now())
+  atualizadoEm             DateTime                         @updatedAt
+  componentes              EmbalagemModeloComponente[]
+  compatibilidades         EmbalagemModeloCompatibilidade[]
+  produtosPreferenciais    Produto[]                        @relation("ProdutoEmbalagemPreferencial")
+  produtosPresentePadrao   Produto[]                        @relation("ProdutoEmbalagemPresentePadrao")
+  pedidosPlanoItens        PedidoEmbalagemPlanoItem[]
+
+  @@index([tipo])
+  @@index([ativo])
+  @@index([exibirNaLoja])
+  @@index([prioridade])
+}
+
+model EmbalagemModeloComponente {
+  id                String          @id @default(cuid())
+  embalagemModeloId String
+  itemAdicionalId   String
+  quantidade        Float           @default(1)
+  observacao        String?
+  criadoEm          DateTime        @default(now())
+  atualizadoEm      DateTime        @updatedAt
+  embalagemModelo   EmbalagemModelo @relation(fields: [embalagemModeloId], references: [id], onDelete: Cascade)
+  itemAdicional     ItemAdicional   @relation(fields: [itemAdicionalId], references: [id])
+
+  @@unique([embalagemModeloId, itemAdicionalId])
+  @@index([embalagemModeloId])
+  @@index([itemAdicionalId])
+}
+
+model EmbalagemModeloCompatibilidade {
+  id                String            @id @default(cuid())
+  embalagemModeloId String
+  classeId          String?
+  categoriaId       String?
+  produtoId         String?
+  ativo             Boolean           @default(true)
+  prioridade        Int               @default(0)
+  criadoEm          DateTime          @default(now())
+  atualizadoEm      DateTime          @updatedAt
+  embalagemModelo   EmbalagemModelo   @relation(fields: [embalagemModeloId], references: [id], onDelete: Cascade)
+  classe            EmbalagemClasse?  @relation(fields: [classeId], references: [id])
+  categoria         CategoriaProduto? @relation(fields: [categoriaId], references: [id])
+  produto           Produto?          @relation(fields: [produtoId], references: [id])
+
+  @@index([embalagemModeloId])
+  @@index([classeId])
+  @@index([categoriaId])
+  @@index([produtoId])
+  @@index([ativo])
+  @@index([prioridade])
+}
+
+model EmbalagemConfiguracao {
+  id                        String   @id @default(cuid())
+  chave                     String   @unique @default("PADRAO")
+  estrategiaSelecao         String   @default("MENOR_CUSTO_TOTAL")
+  permitirMultiplosVolumes  Boolean  @default(false)
+  maxCaixasInternasPorEnvio Int?
+  criadoEm                  DateTime @default(now())
+  atualizadoEm              DateTime @updatedAt
+}
+
 model RegraCategoria {
-  id                       String        @id @default(cuid())
-  categoria                String
-  quantidade               Int           @default(1)
-  itemAdicionalId          String
-  aplicarTodasCategorias   Boolean       @default(false)
-  categorias               Json?
-  criadoEm                 DateTime      @default(now())
-  atualizadoEm             DateTime      @updatedAt
-  itemAdicional            ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
+  id                     String        @id @default(cuid())
+  categoria              String
+  quantidade             Int           @default(1)
+  itemAdicionalId        String
+  aplicarTodasCategorias Boolean       @default(false)
+  categorias             Json?
+  criadoEm               DateTime      @default(now())
+  atualizadoEm           DateTime      @updatedAt
+  itemAdicional          ItemAdicional @relation(fields: [itemAdicionalId], references: [id], onDelete: Cascade)
 }
 
 model Cliente {
@@ -542,6 +665,7 @@ model PedidoOnline {
   envio                      PedidoEnvio?
   cliente                    Cliente?                    @relation(fields: [clienteId], references: [id])
   cupom                      CupomLoja?                  @relation(fields: [cupomId], references: [id])
+  embalagemPlano             PedidoEmbalagemPlano?
   itens                      PedidoOnlineItem[]
   adicionais                 PedidoOnlineItemAdicional[]
   statusHistorico            PedidoStatusHistorico[]
@@ -562,28 +686,74 @@ model PedidoOnline {
 }
 
 model PedidoOnlineItem {
-  id                 String                      @id @default(cuid())
-  pedidoOnlineId     String
-  produtoId          String?
-  codigoInterno      String
-  nomeProduto        String
-  imagemUrl          String?
-  categoria          String
-  tamanhoAnel        String?
-  quantidade         Int
-  precoUnitario      Float
-  precoOriginal      Float?
-  descontoPercentual Float?
-  geraCashback       Boolean                     @default(false)
-  cashbackBaseValor  Float                       @default(0)
-  total              Float
-  criadoEm           DateTime                    @default(now())
-  pedidoOnline       PedidoOnline                @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
-  adicionais         PedidoOnlineItemAdicional[]
+  id                  String                      @id @default(cuid())
+  pedidoOnlineId      String
+  produtoId           String?
+  codigoInterno       String
+  nomeProduto         String
+  imagemUrl           String?
+  categoria           String
+  tamanhoAnel         String?
+  quantidade          Int
+  precoUnitario       Float
+  precoOriginal       Float?
+  descontoPercentual  Float?
+  geraCashback        Boolean                     @default(false)
+  cashbackBaseValor   Float                       @default(0)
+  total               Float
+  criadoEm            DateTime                    @default(now())
+  pedidoOnline        PedidoOnline                @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  embalagemPlanoItens PedidoEmbalagemPlanoItem[]
+  adicionais          PedidoOnlineItemAdicional[]
 
   @@index([pedidoOnlineId])
   @@index([produtoId])
   @@index([codigoInterno])
+}
+
+model PedidoEmbalagemPlano {
+  id                     String                     @id @default(cuid())
+  pedidoOnlineId         String                     @unique
+  status                 String                     @default("CALCULADO")
+  planoJson              Json
+  alertasJson            Json?
+  pesoTotalGramas        Float                      @default(0)
+  alturaCm               Float?
+  larguraCm              Float?
+  comprimentoCm          Float?
+  custoEmbalagens        Float                      @default(0)
+  valorEmbalagensCliente Float                      @default(0)
+  criadoEm               DateTime                   @default(now())
+  atualizadoEm           DateTime                   @updatedAt
+  pedidoOnline           PedidoOnline               @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  itens                  PedidoEmbalagemPlanoItem[]
+
+  @@index([pedidoOnlineId])
+  @@index([status])
+}
+
+model PedidoEmbalagemPlanoItem {
+  id                   String               @id @default(cuid())
+  planoId              String
+  tipo                 String
+  itemAdicionalId      String?
+  embalagemModeloId    String?
+  pedidoOnlineItemId   String?
+  nome                 String
+  quantidade           Float
+  custoUnitario        Float                @default(0)
+  valorClienteUnitario Float                @default(0)
+  criadoEm             DateTime             @default(now())
+  plano                PedidoEmbalagemPlano @relation(fields: [planoId], references: [id], onDelete: Cascade)
+  itemAdicional        ItemAdicional?       @relation(fields: [itemAdicionalId], references: [id])
+  embalagemModelo      EmbalagemModelo?     @relation(fields: [embalagemModeloId], references: [id])
+  pedidoOnlineItem     PedidoOnlineItem?    @relation(fields: [pedidoOnlineItemId], references: [id])
+
+  @@index([planoId])
+  @@index([tipo])
+  @@index([itemAdicionalId])
+  @@index([embalagemModeloId])
+  @@index([pedidoOnlineItemId])
 }
 
 model ClienteCashbackMovimentacao {
@@ -646,23 +816,24 @@ model LojaPaginaBloco {
 }
 
 model CategoriaProduto {
-  id               String                    @id @default(cuid())
-  nome             String
-  slug             String                    @unique
-  descricao        String?
-  ativo            Boolean                   @default(true)
-  ordem            Int                       @default(0)
-  categoriaMaeId   String?
-  criadoEm         DateTime                  @default(now())
-  atualizadoEm     DateTime                  @updatedAt
-  exibirNoMenu     Boolean                   @default(true)
-  imagemUrl        String?
-  ordemMenu        Int                       @default(0)
-  opcoesAdicionais CategoriaOpcaoAdicional[]
-  categoriaMae     CategoriaProduto?         @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id])
-  subcategorias    CategoriaProduto[]        @relation("CategoriaHierarquia")
-  paginasBuilder   LojaPagina[]              @relation("LojaPaginaCategoria")
-  produtos         ProdutoCategoria[]
+  id                         String                           @id @default(cuid())
+  nome                       String
+  slug                       String                           @unique
+  descricao                  String?
+  ativo                      Boolean                          @default(true)
+  ordem                      Int                              @default(0)
+  categoriaMaeId             String?
+  criadoEm                   DateTime                         @default(now())
+  atualizadoEm               DateTime                         @updatedAt
+  exibirNoMenu               Boolean                          @default(true)
+  imagemUrl                  String?
+  ordemMenu                  Int                              @default(0)
+  opcoesAdicionais           CategoriaOpcaoAdicional[]
+  categoriaMae               CategoriaProduto?                @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id])
+  subcategorias              CategoriaProduto[]               @relation("CategoriaHierarquia")
+  paginasBuilder             LojaPagina[]                     @relation("LojaPaginaCategoria")
+  embalagensCompatibilidades EmbalagemModeloCompatibilidade[]
+  produtos                   ProdutoCategoria[]
 
   @@index([categoriaMaeId])
   @@index([slug])
@@ -851,32 +1022,32 @@ model LojaCashbackConfiguracao {
 }
 
 model LojaFreteConfiguracao {
-  id                       String   @id @default(cuid())
-  chave                    String   @unique @default("PADRAO")
-  provedor                 String   @default("MELHOR_ENVIO")
-  cepOrigem                String?
-  ambiente                 String   @default("sandbox")
-  userAgent                String?
-  pesoFallbackKg           Float    @default(0.3)
-  alturaFallbackCm         Float    @default(4)
-  larguraFallbackCm        Float    @default(12)
-  comprimentoFallbackCm    Float    @default(18)
-  prazoAdicionalDias       Int      @default(0)
-  valorAdicional           Float    @default(0)
-  retiradaLocalHabilitada  Boolean  @default(false)
-  retiradaLocalTexto       String?
-  remetenteNome            String?
-  remetenteDocumento       String?
-  remetenteEmail           String?
-  remetenteTelefone        String?
-  remetenteEndereco        String?
-  remetenteNumero          String?
-  remetenteComplemento     String?
-  remetenteBairro          String?
-  remetenteCidade          String?
-  remetenteUf              String?
-  criadoEm                 DateTime @default(now())
-  atualizadoEm             DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  chave                   String   @unique @default("PADRAO")
+  provedor                String   @default("MELHOR_ENVIO")
+  cepOrigem               String?
+  ambiente                String   @default("sandbox")
+  userAgent               String?
+  pesoFallbackKg          Float    @default(0.3)
+  alturaFallbackCm        Float    @default(4)
+  larguraFallbackCm       Float    @default(12)
+  comprimentoFallbackCm   Float    @default(18)
+  prazoAdicionalDias      Int      @default(0)
+  valorAdicional          Float    @default(0)
+  retiradaLocalHabilitada Boolean  @default(false)
+  retiradaLocalTexto      String?
+  remetenteNome           String?
+  remetenteDocumento      String?
+  remetenteEmail          String?
+  remetenteTelefone       String?
+  remetenteEndereco       String?
+  remetenteNumero         String?
+  remetenteComplemento    String?
+  remetenteBairro         String?
+  remetenteCidade         String?
+  remetenteUf             String?
+  criadoEm                DateTime @default(now())
+  atualizadoEm            DateTime @updatedAt
 }
 
 model UsuarioAdmin {

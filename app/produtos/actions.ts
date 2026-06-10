@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { exigirAdmin } from "@/lib/auth/admin";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import { unlink } from "fs/promises";
 import { put, del } from "@vercel/blob";
@@ -52,6 +53,22 @@ function numeroFormulario(value: FormDataEntryValue | string | null) {
 
 function checkboxAtivo(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
+}
+
+function idOpcional(value: FormDataEntryValue | null) {
+  const texto = String(value || "").trim();
+  return texto || null;
+}
+
+function numeroOpcionalFormulario(value: FormDataEntryValue | string | null) {
+  const texto = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+
+  if (!texto) return null;
+
+  const numero = Number(texto);
+  return Number.isNaN(numero) ? null : numero;
 }
 
 function arredondarMoeda(valor: number) {
@@ -255,6 +272,33 @@ function lerKitComponentes(formData: FormData) {
   } catch {
     return [];
   }
+}
+
+function lerEmbalagemProduto(formData: FormData) {
+  return {
+    embalagemClasseId: idOpcional(formData.get("embalagemClasseId")),
+    embalagemUnidades:
+      numeroOpcionalFormulario(formData.get("embalagemUnidades")) ?? 1,
+    embalagemCompartilhavel: checkboxAtivo(
+      formData.get("embalagemCompartilhavel")
+    ),
+    embalagemIndividualObrigatoria: checkboxAtivo(
+      formData.get("embalagemIndividualObrigatoria")
+    ),
+    embalagemModeloPreferencialId: idOpcional(
+      formData.get("embalagemModeloPreferencialId")
+    ),
+    permiteEmbalagemPresente: checkboxAtivo(
+      formData.get("permiteEmbalagemPresente")
+    ),
+    embalagemPresentePadraoId: idOpcional(
+      formData.get("embalagemPresentePadraoId")
+    ),
+    pesoGramas: numeroOpcionalFormulario(formData.get("pesoGramas")),
+    alturaCm: numeroOpcionalFormulario(formData.get("alturaCm")),
+    larguraCm: numeroOpcionalFormulario(formData.get("larguraCm")),
+    comprimentoCm: numeroOpcionalFormulario(formData.get("comprimentoCm")),
+  };
 }
 
 async function calcularCustoBaseProduto({
@@ -764,6 +808,8 @@ async function buscarCategoriaPrincipalObrigatoria(categoriaPrincipalId: string)
 }
 
 export async function criarProduto(formData: FormData) {
+  const usuario = await exigirAdmin();
+  const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -778,6 +824,9 @@ export async function criarProduto(formData: FormData) {
   const tipoProduto = String(formData.get("tipoProduto") || "UNITARIO").trim();
   const tipoProdutoFinal = tipoProduto === "KIT" ? "KIT" : "UNITARIO";
   const kitComponentes = lerKitComponentes(formData);
+  const embalagemProduto = podeEditarEmbalagem
+    ? lerEmbalagemProduto(formData)
+    : {};
 
   const descontoAtivoSolicitado = checkboxAtivo(formData.get("descontoAtivo"));
   const precoPromocionalRaw = String(
@@ -855,6 +904,7 @@ export async function criarProduto(formData: FormData) {
       fornecedorPadrao,
       observacoes: observacoes || null,
       tipoProduto: tipoProdutoFinal,
+      ...embalagemProduto,
     },
   });
 
@@ -887,6 +937,8 @@ export async function criarProduto(formData: FormData) {
 }
 
 export async function atualizarProduto(id: string, formData: FormData) {
+  const usuario = await exigirAdmin();
+  const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -901,6 +953,9 @@ export async function atualizarProduto(id: string, formData: FormData) {
   const tipoProduto = String(formData.get("tipoProduto") || "UNITARIO").trim();
   const tipoProdutoFinal = tipoProduto === "KIT" ? "KIT" : "UNITARIO";
   const kitComponentes = lerKitComponentes(formData);
+  const embalagemProduto = podeEditarEmbalagem
+    ? lerEmbalagemProduto(formData)
+    : {};
 
   const descontoAtivoSolicitado = checkboxAtivo(formData.get("descontoAtivo"));
   const precoPromocionalRaw = String(
@@ -971,6 +1026,7 @@ export async function atualizarProduto(id: string, formData: FormData) {
       fornecedorPadrao,
       observacoes: observacoes || null,
       tipoProduto: tipoProdutoFinal,
+      ...embalagemProduto,
     },
   });
 

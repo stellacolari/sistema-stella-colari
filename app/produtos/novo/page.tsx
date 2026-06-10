@@ -1,11 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { criarProduto } from "../actions";
 import NovoProdutoClient from "@/components/produtos/NovoProdutoClient";
+import { exigirAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoProdutoPage() {
-  const [categorias, produtosDisponiveisKit, regrasAdicionais] =
+  const usuario = await exigirAdmin();
+  const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
+  const [
+    categorias,
+    produtosDisponiveisKit,
+    regrasAdicionais,
+    embalagemClasses,
+    embalagemModelos,
+  ] =
     await Promise.all([
       prisma.categoriaProduto.findMany({
         where: {
@@ -70,6 +79,30 @@ export default async function NovoProdutoPage() {
         },
         orderBy: [{ categoria: "asc" }, { criadoEm: "asc" }],
       }),
+
+      prisma.embalagemClasse.findMany({
+        where: {
+          ativo: true,
+        },
+        select: {
+          id: true,
+          nome: true,
+        },
+        orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+      }),
+
+      prisma.embalagemModelo.findMany({
+        where: {
+          ativo: true,
+        },
+        select: {
+          id: true,
+          tipo: true,
+          nomeInterno: true,
+          nomePublico: true,
+        },
+        orderBy: [{ tipo: "asc" }, { prioridade: "desc" }, { nomeInterno: "asc" }],
+      }),
     ]);
 
   const produtosKitSerializados = produtosDisponiveisKit.map((produto) => ({
@@ -96,6 +129,11 @@ export default async function NovoProdutoPage() {
       categorias={categorias}
       produtosDisponiveisKit={produtosKitSerializados}
       regrasAdicionais={regrasAdicionaisSerializadas}
+      embalagemOptions={{
+        classes: embalagemClasses,
+        modelos: embalagemModelos,
+      }}
+      podeEditarEmbalagem={podeEditarEmbalagem}
       criarProdutoAction={criarProduto}
     />
   );

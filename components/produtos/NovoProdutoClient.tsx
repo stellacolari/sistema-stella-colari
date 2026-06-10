@@ -8,6 +8,9 @@ import ProdutoGaleriaInput from "@/components/produtos/ProdutoGaleriaInput";
 import CategoriasProdutoInput from "@/components/produtos/CategoriasProdutoInput";
 import ComposicaoKitInput from "@/components/produtos/ComposicaoKitInput";
 import VariacoesProdutoInput from "@/components/produtos/VariacoesProdutoInput";
+import EmbalagemProdutoFields, {
+  type EmbalagemProdutoOptions,
+} from "@/components/produtos/EmbalagemProdutoFields";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
 
 type CategoriaProduto = {
@@ -48,6 +51,8 @@ type NovoProdutoClientProps = {
   categorias: CategoriaProduto[];
   produtosDisponiveisKit: ProdutoDisponivelKit[];
   regrasAdicionais: RegraAdicionalProduto[];
+  embalagemOptions?: EmbalagemProdutoOptions;
+  podeEditarEmbalagem?: boolean;
   criarProdutoAction: (formData: FormData) => void | Promise<void>;
 };
 
@@ -205,6 +210,8 @@ export default function NovoProdutoClient({
   categorias,
   produtosDisponiveisKit,
   regrasAdicionais,
+  embalagemOptions = { classes: [], modelos: [] },
+  podeEditarEmbalagem = false,
   criarProdutoAction,
 }: NovoProdutoClientProps) {
   const [custoBase, setCustoBase] = useState("");
@@ -709,6 +716,15 @@ function validarFormularioAntesDeEnviar(
           >
             <ProdutoGaleriaInput name="galeriaProduto" />
           </AccordionSection>
+
+          {podeEditarEmbalagem && (
+            <AccordionSection
+              title="Embalagem e envio"
+              description="Configure dados operacionais para o motor modelável de embalagens. Não altera frete, estoque ou checkout nesta etapa."
+            >
+              <EmbalagemProdutoFields options={embalagemOptions} />
+            </AccordionSection>
+          )}
 
           <AccordionSection
             title="Apoio"

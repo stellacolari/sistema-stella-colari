@@ -10,6 +10,10 @@ import ComposicaoKitInput from "@/components/produtos/ComposicaoKitInput";
 import VariacoesProdutoInput, {
   type ProdutoVariacaoInput,
 } from "@/components/produtos/VariacoesProdutoInput";
+import EmbalagemProdutoFields, {
+  type EmbalagemProdutoInicial,
+  type EmbalagemProdutoOptions,
+} from "@/components/produtos/EmbalagemProdutoFields";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
 
 type CategoriaProduto = {
@@ -72,6 +76,7 @@ type ProdutoEdicao = {
   observacoes: string;
   tipoProduto: string;
   ativo: boolean;
+  embalagem: EmbalagemProdutoInicial;
 };
 
 type EditarProdutoClientProps = {
@@ -84,6 +89,8 @@ type EditarProdutoClientProps = {
   categoriasSelecionadasIniciaisIds: string[];
   componentesKitIniciais: ComponenteKitInicial[];
   variacoesIniciais: ProdutoVariacaoInput[];
+  embalagemOptions?: EmbalagemProdutoOptions;
+  podeEditarEmbalagem?: boolean;
   atualizarProdutoAction: (formData: FormData) => void | Promise<void>;
 };
 
@@ -247,6 +254,8 @@ export default function EditarProdutoClient({
   categoriasSelecionadasIniciaisIds,
   componentesKitIniciais,
   variacoesIniciais,
+  embalagemOptions = { classes: [], modelos: [] },
+  podeEditarEmbalagem = false,
   atualizarProdutoAction,
 }: EditarProdutoClientProps) {
   const [custoBase, setCustoBase] = useState(String(produto.custoBase || ""));
@@ -695,6 +704,18 @@ export default function EditarProdutoClient({
               imagensIniciais={imagensIniciais}
             />
           </AccordionSection>
+
+          {podeEditarEmbalagem && (
+            <AccordionSection
+              title="Embalagem e envio"
+              description="Configure dados operacionais para o motor modelável de embalagens. Não altera frete, estoque ou checkout nesta etapa."
+            >
+              <EmbalagemProdutoFields
+                options={embalagemOptions}
+                inicial={produto.embalagem}
+              />
+            </AccordionSection>
+          )}
 
           <AccordionSection
             title="Apoio"
