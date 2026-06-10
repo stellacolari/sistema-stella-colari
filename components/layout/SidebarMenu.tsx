@@ -320,6 +320,12 @@ const menuSections: MenuSection[] = [
             tone: "site",
           },
           {
+            href: "/configuracoes/loja/embalagens",
+            label: "Embalagens",
+            icon: Boxes,
+            tone: "site",
+          },
+          {
             href: "/configuracoes/loja/formularios",
             label: "Formulários",
             icon: ClipboardList,

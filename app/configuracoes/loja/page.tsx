@@ -406,7 +406,7 @@ export default async function LojaOnlineCentralPage() {
 
         <CentralCard
           href="/configuracoes/loja/embalagens"
-          title="Embalagens"
+          title="Embalagens da loja"
           description="Modele classes, caixas, embalagem de presente, componentes consumidos e compatibilidades."
           icon={Boxes}
           metric={`${modelosEmbalagem}`}

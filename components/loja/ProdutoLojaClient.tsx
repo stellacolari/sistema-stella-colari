@@ -315,12 +315,17 @@ function ProdutoRelacionadoCard({
   const hasHover = Boolean(produto.imagemHoverUrl);
 
   return (
-    <Link
-      href={`/loja/produto/${produto.id}`}
-      className={`stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
+    <article
+      className={`group stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
+      <Link
+        href={`/loja/produto/${produto.id}`}
+        className="absolute inset-0 z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+        aria-label={`Ver produto ${produto.nome}`}
+      />
+
       <div className="relative overflow-hidden">
         <div className={hasHover ? "stella-product-hover-primary" : ""}>
           <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
@@ -372,7 +377,7 @@ function ProdutoRelacionadoCard({
           )}
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 

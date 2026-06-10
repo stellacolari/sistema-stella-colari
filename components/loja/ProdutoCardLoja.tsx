@@ -122,7 +122,7 @@ export default function ProdutoCardLoja({
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
   const produtoHref = href || `/loja/produto/${produto.id}`;
-  const cardClass = `stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
+  const cardClass = `group stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
     semEstoque ? "opacity-75" : ""
   }`;
   const conteudo = (
@@ -164,12 +164,17 @@ export default function ProdutoCardLoja({
   );
 
   if (modoPreview) {
-    return <div className={cardClass}>{conteudo}</div>;
+    return <article className={cardClass}>{conteudo}</article>;
   }
 
   return (
-    <Link href={produtoHref} className={cardClass}>
+    <article className={cardClass}>
+      <Link
+        href={produtoHref}
+        className="absolute inset-0 z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+        aria-label={`Ver produto ${produto.nome}`}
+      />
       {conteudo}
-    </Link>
+    </article>
   );
 }
