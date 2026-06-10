@@ -87,6 +87,20 @@ type CarrinhoItem = {
   estoqueDisponivel: number;
 
   opcaoAdicional?: CarrinhoItemOpcaoAdicional | null;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteNome?: string | null;
+  embalagemPresenteImagemUrl?: string | null;
+  embalagemPresentePreco?: number | null;
+  embalagemPresenteMensagem?: string | null;
+  embalagemPresenteSnapshot?: {
+    modeloId: string;
+    nome: string;
+    descricao?: string | null;
+    imagemUrl?: string | null;
+    preco: number;
+    mensagem?: string | null;
+    substituiEmbalagemPadrao?: boolean | null;
+  } | null;
 };
 
 type CupomAplicado = {
@@ -191,6 +205,41 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
               : Number(item.opcaoAdicional.custoUnitario || 0),
         }
       : null,
+    embalagemPresenteModeloId:
+      item.embalagemPresenteModeloId ??
+      item.embalagemPresenteSnapshot?.modeloId ??
+      null,
+    embalagemPresenteNome:
+      item.embalagemPresenteNome ??
+      item.embalagemPresenteSnapshot?.nome ??
+      null,
+    embalagemPresenteImagemUrl:
+      item.embalagemPresenteImagemUrl ??
+      item.embalagemPresenteSnapshot?.imagemUrl ??
+      null,
+    embalagemPresentePreco:
+      item.embalagemPresentePreco === null ||
+      typeof item.embalagemPresentePreco === "undefined"
+        ? item.embalagemPresenteSnapshot
+          ? Number(item.embalagemPresenteSnapshot.preco || 0)
+          : null
+        : Number(item.embalagemPresentePreco || 0),
+    embalagemPresenteMensagem:
+      item.embalagemPresenteMensagem ??
+      item.embalagemPresenteSnapshot?.mensagem ??
+      null,
+    embalagemPresenteSnapshot: item.embalagemPresenteSnapshot
+      ? {
+          modeloId: String(item.embalagemPresenteSnapshot.modeloId || ""),
+          nome: String(item.embalagemPresenteSnapshot.nome || ""),
+          descricao: item.embalagemPresenteSnapshot.descricao ?? null,
+          imagemUrl: item.embalagemPresenteSnapshot.imagemUrl ?? null,
+          preco: Number(item.embalagemPresenteSnapshot.preco || 0),
+          mensagem: item.embalagemPresenteSnapshot.mensagem ?? null,
+          substituiEmbalagemPadrao:
+            item.embalagemPresenteSnapshot.substituiEmbalagemPadrao ?? null,
+        }
+      : null,
   };
 }
 
@@ -281,8 +330,20 @@ function getTotalAdicionalItem(item: CarrinhoItem) {
   return getValorAdicionalUnitario(item) * item.quantidade;
 }
 
+function getValorEmbalagemPresenteUnitario(item: CarrinhoItem) {
+  return Number(item.embalagemPresentePreco || 0);
+}
+
+function getTotalEmbalagemPresenteItem(item: CarrinhoItem) {
+  return getValorEmbalagemPresenteUnitario(item) * item.quantidade;
+}
+
 function getTotalItem(item: CarrinhoItem) {
-  return getTotalProdutoItem(item) + getTotalAdicionalItem(item);
+  return (
+    getTotalProdutoItem(item) +
+    getTotalAdicionalItem(item) +
+    getTotalEmbalagemPresenteItem(item)
+  );
 }
 
 function getItemKey(item: CarrinhoItem) {
@@ -290,6 +351,8 @@ function getItemKey(item: CarrinhoItem) {
     item.produtoId,
     item.tamanhoAnel ?? "UNICO",
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
+    item.embalagemPresenteModeloId ?? "SEM_EMBALAGEM_PRESENTE",
+    item.embalagemPresenteMensagem?.trim() || "SEM_MENSAGEM_PRESENTE",
   ].join("-");
 }
 function getTextoOpcaoProduto(item: CarrinhoItem) {
@@ -372,9 +435,16 @@ export default function CheckoutClient({
     return itens.reduce((total, item) => total + getTotalAdicionalItem(item), 0);
   }, [itens]);
 
+  const subtotalEmbalagensPresente = useMemo(() => {
+    return itens.reduce(
+      (total, item) => total + getTotalEmbalagemPresenteItem(item),
+      0
+    );
+  }, [itens]);
+
   const subtotalBruto = useMemo(() => {
-    return subtotalProdutos + subtotalAdicionais;
-  }, [subtotalProdutos, subtotalAdicionais]);
+    return subtotalProdutos + subtotalAdicionais + subtotalEmbalagensPresente;
+  }, [subtotalProdutos, subtotalAdicionais, subtotalEmbalagensPresente]);
 
   const descontoCupom = Number(cupomAplicado?.descontoValor || 0);
 
@@ -511,6 +581,7 @@ export default function CheckoutClient({
   }, [itens]);
 
   const possuiAdicionais = subtotalAdicionais > 0;
+  const possuiEmbalagensPresente = subtotalEmbalagensPresente > 0;
 
 function atualizarCampo(campo: keyof typeof form, valor: string) {
   setErroCep("");
@@ -886,6 +957,8 @@ function preencherDadosClienteLogado() {
             produtoId: item.produtoId,
             tamanhoAnel: item.tamanhoAnel,
             quantidade: item.quantidade,
+            embalagemPresenteModeloId: item.embalagemPresenteModeloId || null,
+            embalagemPresenteMensagem: item.embalagemPresenteMensagem || null,
             opcaoAdicionalId: item.opcaoAdicional?.id || null,
             opcaoAdicional: item.opcaoAdicional
               ? {
@@ -1623,6 +1696,8 @@ function preencherDadosClienteLogado() {
                 {itens.map((item) => {
                   const desconto = getDescontoPercentual(item);
                   const totalAdicional = getTotalAdicionalItem(item);
+                  const totalEmbalagemPresente =
+                    getTotalEmbalagemPresenteItem(item);
                   const totalItem = getTotalItem(item);
 
                   return (
@@ -1675,6 +1750,26 @@ function preencherDadosClienteLogado() {
                             </p>
                           </div>
                         )}
+
+                        {item.embalagemPresenteModeloId && (
+                          <div className="mt-2 rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-3 py-2">
+                            <p className="text-xs font-medium text-slate-800">
+                              {item.embalagemPresenteNome ||
+                                "Embalagem para presente"}
+                            </p>
+
+                            <p className="mt-1 text-xs font-light text-slate-500">
+                              + {moeda(totalEmbalagemPresente)}
+                            </p>
+
+                            {item.embalagemPresenteMensagem && (
+                              <p className="mt-1 text-xs font-light leading-5 text-slate-600">
+                                Mensagem: &quot;{item.embalagemPresenteMensagem}
+                                &quot;
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1712,6 +1807,17 @@ function preencherDadosClienteLogado() {
                     </span>
                     <span className="font-medium text-slate-950">
                       {moeda(subtotalAdicionais)}
+                    </span>
+                  </div>
+                )}
+
+                {possuiEmbalagensPresente && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-light text-slate-500">
+                      Embalagens para presente
+                    </span>
+                    <span className="font-medium text-slate-950">
+                      {moeda(subtotalEmbalagensPresente)}
                     </span>
                   </div>
                 )}

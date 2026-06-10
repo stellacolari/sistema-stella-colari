@@ -7,6 +7,7 @@ import ProdutoLojaClient, {
 } from "@/components/loja/ProdutoLojaClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarEmbalagensPresentePublicas } from "@/lib/embalagens/presente-loja";
 import {
   buscarDescontosProduto,
   buscarProdutoDetalhePublico,
@@ -50,6 +51,7 @@ export default async function ProdutoLojaPage({
     relacionados,
     descontos,
     opcoesAdicionaisRaw,
+    embalagensPresente,
   ] = await Promise.all([
     buscarMenusPublicos(),
 
@@ -99,6 +101,19 @@ export default async function ProdutoLojaPage({
           },
         })
       : Promise.resolve([]),
+
+    buscarEmbalagensPresentePublicas({
+      produto: {
+        id: produtoDetalhe.produtoRaw.id,
+        categoria: produtoDetalhe.produtoRaw.categoria,
+        embalagemClasseId: produtoDetalhe.produtoRaw.embalagemClasseId,
+        permiteEmbalagemPresente:
+          produtoDetalhe.produtoRaw.permiteEmbalagemPresente,
+        embalagemPresentePadraoId:
+          produtoDetalhe.produtoRaw.embalagemPresentePadraoId,
+      },
+      categoriaId: categoriaProduto?.id || null,
+    }),
   ]);
 
   const menus: ProdutoLojaMenuItem[] = menusPublicos.map((menu) => ({
@@ -125,6 +140,8 @@ export default async function ProdutoLojaPage({
   const produto = {
     ...produtoDetalhe.produto,
     opcoesAdicionais,
+    embalagensPresente,
+    embalagemPresentePadraoId: produtoDetalhe.produtoRaw.embalagemPresentePadraoId,
     garantia: {
       titulo: garantiaRaw?.titulo || produtoDetalhe.produto.garantia.titulo,
       conteudo:

@@ -58,6 +58,20 @@ type CarrinhoItem = {
   estoqueDisponivel: number;
 
   opcaoAdicional?: CarrinhoItemOpcaoAdicional | null;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteNome?: string | null;
+  embalagemPresenteImagemUrl?: string | null;
+  embalagemPresentePreco?: number | null;
+  embalagemPresenteMensagem?: string | null;
+  embalagemPresenteSnapshot?: {
+    modeloId: string;
+    nome: string;
+    descricao?: string | null;
+    imagemUrl?: string | null;
+    preco: number;
+    mensagem?: string | null;
+    substituiEmbalagemPadrao?: boolean | null;
+  } | null;
 };
 
 function moeda(valor: number) {
@@ -73,11 +87,15 @@ function getItemKey(item: {
   opcaoAdicional?: {
     id: string;
   } | null;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteMensagem?: string | null;
 }) {
   return [
     item.produtoId,
     item.tamanhoAnel ?? "UNICO",
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
+    item.embalagemPresenteModeloId ?? "SEM_EMBALAGEM_PRESENTE",
+    item.embalagemPresenteMensagem?.trim() || "SEM_MENSAGEM_PRESENTE",
   ].join("-");
 }
 
@@ -124,6 +142,41 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
             typeof item.opcaoAdicional.custoUnitario === "undefined"
               ? null
               : Number(item.opcaoAdicional.custoUnitario || 0),
+        }
+      : null,
+    embalagemPresenteModeloId:
+      item.embalagemPresenteModeloId ??
+      item.embalagemPresenteSnapshot?.modeloId ??
+      null,
+    embalagemPresenteNome:
+      item.embalagemPresenteNome ??
+      item.embalagemPresenteSnapshot?.nome ??
+      null,
+    embalagemPresenteImagemUrl:
+      item.embalagemPresenteImagemUrl ??
+      item.embalagemPresenteSnapshot?.imagemUrl ??
+      null,
+    embalagemPresentePreco:
+      item.embalagemPresentePreco === null ||
+      typeof item.embalagemPresentePreco === "undefined"
+        ? item.embalagemPresenteSnapshot
+          ? Number(item.embalagemPresenteSnapshot.preco || 0)
+          : null
+        : Number(item.embalagemPresentePreco || 0),
+    embalagemPresenteMensagem:
+      item.embalagemPresenteMensagem ??
+      item.embalagemPresenteSnapshot?.mensagem ??
+      null,
+    embalagemPresenteSnapshot: item.embalagemPresenteSnapshot
+      ? {
+          modeloId: String(item.embalagemPresenteSnapshot.modeloId || ""),
+          nome: String(item.embalagemPresenteSnapshot.nome || ""),
+          descricao: item.embalagemPresenteSnapshot.descricao ?? null,
+          imagemUrl: item.embalagemPresenteSnapshot.imagemUrl ?? null,
+          preco: Number(item.embalagemPresenteSnapshot.preco || 0),
+          mensagem: item.embalagemPresenteSnapshot.mensagem ?? null,
+          substituiEmbalagemPadrao:
+            item.embalagemPresenteSnapshot.substituiEmbalagemPadrao ?? null,
         }
       : null,
   };
@@ -216,8 +269,20 @@ function getTotalAdicionalItem(item: CarrinhoItem) {
   return getValorAdicionalUnitario(item) * item.quantidade;
 }
 
+function getValorEmbalagemPresenteUnitario(item: CarrinhoItem) {
+  return Number(item.embalagemPresentePreco || 0);
+}
+
+function getTotalEmbalagemPresenteItem(item: CarrinhoItem) {
+  return getValorEmbalagemPresenteUnitario(item) * item.quantidade;
+}
+
 function getTotalItem(item: CarrinhoItem) {
-  return getTotalProdutoItem(item) + getTotalAdicionalItem(item);
+  return (
+    getTotalProdutoItem(item) +
+    getTotalAdicionalItem(item) +
+    getTotalEmbalagemPresenteItem(item)
+  );
 }
 
 function getTextoOpcaoProduto(item: CarrinhoItem) {
@@ -248,9 +313,16 @@ export default function CarrinhoClient({
     );
   }, [itens]);
 
+  const subtotalEmbalagensPresente = useMemo(() => {
+    return itens.reduce(
+      (total: number, item) => total + getTotalEmbalagemPresenteItem(item),
+      0
+    );
+  }, [itens]);
+
   const subtotal = useMemo(() => {
-    return subtotalProdutos + subtotalAdicionais;
-  }, [subtotalProdutos, subtotalAdicionais]);
+    return subtotalProdutos + subtotalAdicionais + subtotalEmbalagensPresente;
+  }, [subtotalProdutos, subtotalAdicionais, subtotalEmbalagensPresente]);
 
   const economia = useMemo(() => {
     return itens.reduce((total: number, item) => {
@@ -275,6 +347,7 @@ export default function CarrinhoClient({
   }, [itens]);
 
   const possuiAdicionais = subtotalAdicionais > 0;
+  const possuiEmbalagensPresente = subtotalEmbalagensPresente > 0;
 
   function atualizarItens(novosItens: CarrinhoItem[]) {
     setItens(novosItens);
@@ -377,10 +450,17 @@ export default function CarrinhoClient({
                 const desconto = getDescontoPercentual(item);
                 const totalProduto = getTotalProdutoItem(item);
                 const totalAdicional = getTotalAdicionalItem(item);
+                const totalEmbalagemPresente =
+                  getTotalEmbalagemPresenteItem(item);
                 const totalItem = getTotalItem(item);
                 const valorAdicionalUnitario = getValorAdicionalUnitario(item);
+                const valorEmbalagemPresenteUnitario =
+                  getValorEmbalagemPresenteUnitario(item);
                 const semEstoque = item.estoqueDisponivel <= 0;
                 const possuiOpcaoAdicional = Boolean(item.opcaoAdicional);
+                const possuiEmbalagemPresente = Boolean(
+                  item.embalagemPresenteModeloId
+                );
                 const textoOpcaoProduto = getTextoOpcaoProduto(item);
 
                 return (
@@ -494,6 +574,33 @@ export default function CarrinhoClient({
                               </div>
                             </div>
                           )}
+
+                          {possuiEmbalagemPresente && (
+                            <div className="mt-4 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-4 py-3">
+                              <div className="flex items-start gap-3">
+                                <Gift className="mt-0.5 h-4 w-4 brand-text" />
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-slate-950">
+                                    {item.embalagemPresenteNome ||
+                                      "Embalagem para presente"}
+                                  </p>
+
+                                  <p className="mt-2 text-xs font-medium text-slate-700">
+                                    + {moeda(valorEmbalagemPresenteUnitario)} por
+                                    item
+                                  </p>
+
+                                  {item.embalagemPresenteMensagem && (
+                                    <p className="mt-2 text-xs font-light leading-5 text-slate-600">
+                                      Mensagem: &quot;
+                                      {item.embalagemPresenteMensagem}&quot;
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="text-left lg:text-right">
@@ -505,12 +612,20 @@ export default function CarrinhoClient({
                             {moeda(totalItem)}
                           </p>
 
-                          {(possuiOpcaoAdicional || textoOpcaoProduto) && (
+                          {(possuiOpcaoAdicional ||
+                            possuiEmbalagemPresente ||
+                            textoOpcaoProduto) && (
                             <div className="mt-2 space-y-1 text-xs font-light text-slate-500">
                               <p>Produto: {moeda(totalProduto)}</p>
 
                               {possuiOpcaoAdicional && (
                                 <p>Adicional: {moeda(totalAdicional)}</p>
+                              )}
+
+                              {possuiEmbalagemPresente && (
+                                <p>
+                                  Presente: {moeda(totalEmbalagemPresente)}
+                                </p>
                               )}
                             </div>
                           )}
@@ -616,6 +731,17 @@ export default function CarrinhoClient({
                     </span>
                     <span className="font-medium text-slate-950">
                       {moeda(subtotalAdicionais)}
+                    </span>
+                  </div>
+                )}
+
+                {possuiEmbalagensPresente && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-light text-slate-500">
+                      Embalagens para presente
+                    </span>
+                    <span className="font-medium text-slate-950">
+                      {moeda(subtotalEmbalagensPresente)}
                     </span>
                   </div>
                 )}

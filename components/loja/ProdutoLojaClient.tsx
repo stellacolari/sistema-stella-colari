@@ -14,6 +14,7 @@ import {
   Ruler,
   ShoppingCart,
   Truck,
+  X,
 } from "lucide-react";
 import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
@@ -71,6 +72,18 @@ export type ProdutoLojaFamiliaProduto = {
   estoqueTotal: number;
 };
 
+export type ProdutoLojaEmbalagemPresente = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  imagemUrl: string | null;
+  preco: number;
+  permiteMensagem: boolean;
+  mensagemLimiteCaracteres: number | null;
+  mensagemPlaceholder: string | null;
+  substituiEmbalagemPadrao: boolean;
+};
+
 export type ProdutoLojaDetalhe = {
   id: string;
   codigoInterno: string;
@@ -103,6 +116,8 @@ export type ProdutoLojaDetalhe = {
     conteudo: string;
   };
   opcoesAdicionais?: ProdutoLojaOpcaoAdicional[];
+  embalagensPresente?: ProdutoLojaEmbalagemPresente[];
+  embalagemPresentePadraoId?: string | null;
 };
 
 export type LojaProdutoRelacionado = {
@@ -147,6 +162,20 @@ type CarrinhoItem = {
   quantidade: number;
   estoqueDisponivel: number;
   opcaoAdicional?: CarrinhoItemOpcaoAdicional | null;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteNome?: string | null;
+  embalagemPresenteImagemUrl?: string | null;
+  embalagemPresentePreco?: number | null;
+  embalagemPresenteMensagem?: string | null;
+  embalagemPresenteSnapshot?: {
+    modeloId: string;
+    nome: string;
+    descricao?: string | null;
+    imagemUrl?: string | null;
+    preco: number;
+    mensagem?: string | null;
+    substituiEmbalagemPadrao?: boolean | null;
+  } | null;
 };
 
 function moeda(valor: number) {
@@ -243,11 +272,15 @@ function getItemKey(item: {
   opcaoAdicional?: {
     id: string;
   } | null;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteMensagem?: string | null;
 }) {
   return [
     item.produtoId,
     item.tamanhoAnel ?? "UNICO",
     item.opcaoAdicional?.id ?? "SEM_OPCAO_ADICIONAL",
+    item.embalagemPresenteModeloId ?? "SEM_EMBALAGEM_PRESENTE",
+    item.embalagemPresenteMensagem?.trim() || "SEM_MENSAGEM_PRESENTE",
   ].join("-");
 }
 
@@ -658,6 +691,7 @@ export default function ProdutoLojaClient({
   const thumbsRef = useRef<HTMLDivElement | null>(null);
 
   const opcoesAdicionais = produto.opcoesAdicionais || [];
+  const embalagensPresente = produto.embalagensPresente || [];
   const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
   const temVariacao = produtoTemVariacao(produto);
   const familiaProdutos = produto.familiaProdutos || [];
@@ -701,6 +735,11 @@ export default function ProdutoLojaClient({
   const [cep, setCep] = useState("");
   const [freteMensagem, setFreteMensagem] = useState("");
   const [opcaoAdicionalSelecionadaId, setOpcaoAdicionalSelecionadaId] =
+    useState<string>("");
+  const [embalagemPresenteSelecionadaId, setEmbalagemPresenteSelecionadaId] =
+    useState<string>("");
+  const [mensagemPresente, setMensagemPresente] = useState("");
+  const [embalagemPresenteModalId, setEmbalagemPresenteModalId] =
     useState<string>("");
 
   const produtoTemTamanho =
@@ -783,13 +822,45 @@ export default function ProdutoLojaClient({
     );
   }, [opcaoAdicionalSelecionadaId, opcoesAdicionais]);
 
+  const embalagemPresenteSelecionada = useMemo(() => {
+    if (!embalagemPresenteSelecionadaId) {
+      return null;
+    }
+
+    return (
+      embalagensPresente.find(
+        (embalagem) => embalagem.id === embalagemPresenteSelecionadaId,
+      ) || null
+    );
+  }, [embalagemPresenteSelecionadaId, embalagensPresente]);
+
+  const embalagemPresenteModal = useMemo(() => {
+    if (!embalagemPresenteModalId) {
+      return null;
+    }
+
+    return (
+      embalagensPresente.find(
+        (embalagem) => embalagem.id === embalagemPresenteModalId,
+      ) || null
+    );
+  }, [embalagemPresenteModalId, embalagensPresente]);
+
   const valorAdicionalSelecionado = Number(
     opcaoAdicionalSelecionada?.valorVenda || 0,
   );
+  const valorEmbalagemPresenteSelecionada = Number(
+    embalagemPresenteSelecionada?.preco || 0,
+  );
 
   const totalAdicionalSelecionado = valorAdicionalSelecionado * quantidade;
+  const totalEmbalagemPresenteSelecionada =
+    valorEmbalagemPresenteSelecionada * quantidade;
   const totalProdutoSelecionado = precoFinalComVariacao * quantidade;
-  const totalComAdicional = totalProdutoSelecionado + totalAdicionalSelecionado;
+  const totalComAdicional =
+    totalProdutoSelecionado +
+    totalAdicionalSelecionado +
+    totalEmbalagemPresenteSelecionada;
   const cashbackValor = totalComAdicional * CASHBACK_PERCENTUAL;
 
   const estoqueDisponivel = useMemo(() => {
@@ -958,7 +1029,31 @@ export default function ProdutoLojaClient({
       return;
     }
 
+    if (
+      embalagemPresenteSelecionada &&
+      !embalagemPresenteSelecionada.permiteMensagem &&
+      mensagemPresente.trim()
+    ) {
+      setErro("A embalagem selecionada não aceita mensagem.");
+      return;
+    }
+
+    if (
+      embalagemPresenteSelecionada?.mensagemLimiteCaracteres !== null &&
+      embalagemPresenteSelecionada?.mensagemLimiteCaracteres !== undefined &&
+      mensagemPresente.trim().length >
+        embalagemPresenteSelecionada.mensagemLimiteCaracteres
+    ) {
+      setErro(
+        `A mensagem do presente deve ter no máximo ${embalagemPresenteSelecionada.mensagemLimiteCaracteres} caracteres.`,
+      );
+      return;
+    }
+
     const tamanhoAnel = produtoTemTamanho ? tamanhoSelecionado : null;
+    const mensagemPresenteNormalizada = embalagemPresenteSelecionada
+      ? mensagemPresente.trim()
+      : "";
 
     const novoItem: CarrinhoItem = {
       produtoId: produto.id,
@@ -993,6 +1088,26 @@ export default function ProdutoLojaClient({
             custoUnitario: Number(opcaoAdicionalSelecionada.custoUnitario || 0),
           }
         : null,
+      embalagemPresenteModeloId: embalagemPresenteSelecionada?.id || null,
+      embalagemPresenteNome: embalagemPresenteSelecionada?.nome || null,
+      embalagemPresenteImagemUrl:
+        embalagemPresenteSelecionada?.imagemUrl || null,
+      embalagemPresentePreco: embalagemPresenteSelecionada
+        ? Number(embalagemPresenteSelecionada.preco || 0)
+        : null,
+      embalagemPresenteMensagem: mensagemPresenteNormalizada || null,
+      embalagemPresenteSnapshot: embalagemPresenteSelecionada
+        ? {
+            modeloId: embalagemPresenteSelecionada.id,
+            nome: embalagemPresenteSelecionada.nome,
+            descricao: embalagemPresenteSelecionada.descricao,
+            imagemUrl: embalagemPresenteSelecionada.imagemUrl,
+            preco: Number(embalagemPresenteSelecionada.preco || 0),
+            mensagem: mensagemPresenteNormalizada || null,
+            substituiEmbalagemPadrao:
+              embalagemPresenteSelecionada.substituiEmbalagemPadrao,
+          }
+        : null,
     };
 
     const carrinhoAtual = getCarrinhoAtual();
@@ -1024,6 +1139,12 @@ export default function ProdutoLojaClient({
               descontoPercentual: novoItem.descontoPercentual,
               estoqueDisponivel,
               opcaoAdicional: novoItem.opcaoAdicional,
+              embalagemPresenteModeloId: novoItem.embalagemPresenteModeloId,
+              embalagemPresenteNome: novoItem.embalagemPresenteNome,
+              embalagemPresenteImagemUrl: novoItem.embalagemPresenteImagemUrl,
+              embalagemPresentePreco: novoItem.embalagemPresentePreco,
+              embalagemPresenteMensagem: novoItem.embalagemPresenteMensagem,
+              embalagemPresenteSnapshot: novoItem.embalagemPresenteSnapshot,
             }
           : item,
       );
@@ -1039,7 +1160,9 @@ export default function ProdutoLojaClient({
     }
 
     setMensagem(
-      opcaoAdicionalSelecionada
+      embalagemPresenteSelecionada
+        ? "Produto com embalagem para presente adicionado ao carrinho."
+        : opcaoAdicionalSelecionada
         ? "Produto com opção adicional adicionado ao carrinho."
         : "Produto adicionado ao carrinho.",
     );
@@ -1492,6 +1615,204 @@ export default function ProdutoLojaClient({
               </div>
             )}
 
+            {embalagensPresente.length > 0 && !semEstoque && (
+              <div className="mt-5 border-t border-slate-200 pt-4">
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-slate-950">
+                    Embalagem para presente
+                  </p>
+
+                  <p className="mt-1 text-xs font-light text-slate-500">
+                    Adicione uma embalagem especial a este produto.
+                  </p>
+                </div>
+
+                {embalagensPresente.length === 1 ? (
+                  <div
+                    className={`border px-3 py-3 transition ${
+                      embalagemPresenteSelecionadaId === embalagensPresente[0].id
+                        ? "border-slate-950 bg-white"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={
+                          embalagemPresenteSelecionadaId ===
+                          embalagensPresente[0].id
+                        }
+                        onChange={(event) => {
+                          setErro("");
+                          setMensagem("");
+                          setMensagemPresente("");
+                          setEmbalagemPresenteSelecionadaId(
+                            event.target.checked ? embalagensPresente[0].id : "",
+                          );
+                        }}
+                        className="mt-1 h-4 w-4 border-slate-300"
+                      />
+
+                      <Gift className="mt-0.5 h-4 w-4 shrink-0 brand-text" />
+
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="text-sm font-medium text-slate-950">
+                            {embalagensPresente[0].nome}
+                          </span>
+
+                          <span className="shrink-0 text-sm font-medium brand-text">
+                            + {moeda(embalagensPresente[0].preco)}
+                          </span>
+                        </span>
+
+                        {embalagensPresente[0].descricao && (
+                          <span className="mt-1 line-clamp-2 block text-xs font-light leading-5 text-slate-500">
+                            {embalagensPresente[0].descricao}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEmbalagemPresenteModalId(embalagensPresente[0].id)
+                      }
+                      className="mt-3 text-xs font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950"
+                    >
+                      Ver embalagem
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {embalagensPresente.map((embalagem) => {
+                      const selecionada =
+                        embalagemPresenteSelecionadaId === embalagem.id;
+
+                      return (
+                        <div
+                          key={embalagem.id}
+                          className={`grid gap-3 border px-3 py-3 transition sm:grid-cols-[64px_1fr] ${
+                            selecionada
+                              ? "border-slate-950 bg-white"
+                              : "border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setEmbalagemPresenteModalId(embalagem.id)}
+                            className="aspect-square overflow-hidden bg-white"
+                            aria-label={`Ver embalagem ${embalagem.nome}`}
+                          >
+                            {embalagem.imagemUrl ? (
+                              <img
+                                src={embalagem.imagemUrl}
+                                alt={embalagem.nome}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center bg-slate-100 text-[10px] text-slate-400">
+                                Sem imagem
+                              </span>
+                            )}
+                          </button>
+
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="embalagemPresente"
+                              checked={selecionada}
+                              onChange={() => {
+                                setErro("");
+                                setMensagem("");
+                                setMensagemPresente("");
+                                setEmbalagemPresenteSelecionadaId(embalagem.id);
+                              }}
+                              className="mt-1 h-4 w-4"
+                            />
+
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-start justify-between gap-3">
+                                <span className="text-sm font-medium text-slate-950">
+                                  {embalagem.nome}
+                                </span>
+
+                                <span className="shrink-0 text-sm font-medium brand-text">
+                                  + {moeda(embalagem.preco)}
+                                </span>
+                              </span>
+
+                              {embalagem.descricao && (
+                                <span className="mt-1 line-clamp-2 block text-xs font-light leading-5 text-slate-500">
+                                  {embalagem.descricao}
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  setEmbalagemPresenteModalId(embalagem.id);
+                                }}
+                                className="mt-2 text-xs font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950"
+                              >
+                                Ver embalagem
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {embalagemPresenteSelecionadaId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmbalagemPresenteSelecionadaId("");
+                          setMensagemPresente("");
+                        }}
+                        className="text-xs font-medium text-slate-500 underline underline-offset-4 hover:text-slate-950"
+                      >
+                        Remover embalagem para presente
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {embalagemPresenteSelecionada?.permiteMensagem && (
+                  <label className="mt-3 block">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                      Mensagem para o presente
+                    </span>
+
+                    <textarea
+                      value={mensagemPresente}
+                      maxLength={
+                        embalagemPresenteSelecionada.mensagemLimiteCaracteres ||
+                        undefined
+                      }
+                      onChange={(event) => setMensagemPresente(event.target.value)}
+                      rows={3}
+                      placeholder={
+                        embalagemPresenteSelecionada.mensagemPlaceholder ||
+                        "Escreva uma mensagem opcional"
+                      }
+                      className="w-full border border-slate-200 px-3 py-3 text-sm outline-none transition focus:border-slate-950"
+                    />
+
+                    {embalagemPresenteSelecionada.mensagemLimiteCaracteres && (
+                      <span className="mt-1 block text-xs text-slate-400">
+                        {mensagemPresente.length}/
+                        {embalagemPresenteSelecionada.mensagemLimiteCaracteres}{" "}
+                        caracteres
+                      </span>
+                    )}
+                  </label>
+                )}
+              </div>
+            )}
+
             <div className="mt-5 grid gap-3 sm:grid-cols-[82px_1fr]">
               <label>
                 <span className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
@@ -1533,7 +1854,7 @@ export default function ProdutoLojaClient({
               Adicionar ao carrinho
             </button>
 
-            {opcaoAdicionalSelecionada && (
+            {(opcaoAdicionalSelecionada || embalagemPresenteSelecionada) && (
               <div className="mt-4 border border-slate-200 bg-white px-4 py-3 text-sm leading-6">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-light text-slate-500">Produto</span>
@@ -1542,14 +1863,27 @@ export default function ProdutoLojaClient({
                   </span>
                 </div>
 
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <span className="font-light text-slate-500">
-                    {opcaoAdicionalSelecionada.nome}
-                  </span>
-                  <span className="font-medium text-slate-950">
-                    {moeda(totalAdicionalSelecionado)}
-                  </span>
-                </div>
+                {opcaoAdicionalSelecionada && (
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <span className="font-light text-slate-500">
+                      {opcaoAdicionalSelecionada.nome}
+                    </span>
+                    <span className="font-medium text-slate-950">
+                      {moeda(totalAdicionalSelecionado)}
+                    </span>
+                  </div>
+                )}
+
+                {embalagemPresenteSelecionada && (
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <span className="font-light text-slate-500">
+                      {embalagemPresenteSelecionada.nome}
+                    </span>
+                    <span className="font-medium text-slate-950">
+                      {moeda(totalEmbalagemPresenteSelecionada)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="mt-1 flex items-center justify-between gap-3">
                   <span className="font-light text-slate-500">Cashback</span>
@@ -1693,6 +2027,76 @@ export default function ProdutoLojaClient({
       </main>
 
       <RodapeLoja menus={menus} />
+
+      {embalagemPresenteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-5 py-8">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
+                  Embalagem para presente
+                </p>
+
+                <h2 className="mt-1 text-lg font-medium text-slate-950">
+                  {embalagemPresenteModal.nome}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEmbalagemPresenteModalId("")}
+                className="flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-500 transition hover:border-slate-950 hover:text-slate-950"
+                aria-label="Fechar embalagem"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {embalagemPresenteModal.imagemUrl ? (
+              <div className="aspect-square overflow-hidden bg-slate-50">
+                <img
+                  src={embalagemPresenteModal.imagemUrl}
+                  alt={embalagemPresenteModal.nome}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex aspect-square items-center justify-center bg-slate-50 text-sm text-slate-400">
+                Embalagem sem imagem
+              </div>
+            )}
+
+            <div className="space-y-4 px-5 py-5">
+              {embalagemPresenteModal.descricao && (
+                <p className="text-sm font-light leading-6 text-slate-600">
+                  {embalagemPresenteModal.descricao}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between border border-slate-200 px-4 py-3 text-sm">
+                <span className="font-light text-slate-500">
+                  Valor adicional
+                </span>
+                <span className="font-semibold brand-text">
+                  + {moeda(embalagemPresenteModal.preco)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmbalagemPresenteSelecionadaId(embalagemPresenteModal.id);
+                  setMensagemPresente("");
+                  setEmbalagemPresenteModalId("");
+                }}
+                className="w-full brand-button px-4 py-3 text-sm font-medium"
+              >
+                Escolher esta embalagem
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

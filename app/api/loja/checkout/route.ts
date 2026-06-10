@@ -14,6 +14,7 @@ import {
   FRETE_MANUAL_ID,
   FRETE_RETIRADA_LOCAL_ID,
 } from "@/lib/frete/configuracao";
+import { validarEmbalagemPresenteCarrinho } from "@/lib/embalagens/presente-loja";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
@@ -23,6 +24,8 @@ type CheckoutItemPayload = {
   produtoId: string;
   tamanhoAnel?: string | null;
   quantidade: number;
+  embalagemPresenteModeloId?: string | null;
+  embalagemPresenteMensagem?: string | null;
   opcaoAdicionalId?: string | null;
   opcaoAdicional?: {
     id?: string;
@@ -984,6 +987,7 @@ export async function POST(request: Request) {
 
         let subtotalProdutos = 0;
         let subtotalAdicionais = 0;
+        let subtotalEmbalagensPresente = 0;
         let cashbackBaseBruta = 0;
 
         type ItemProcessado = {
@@ -1012,6 +1016,11 @@ export async function POST(request: Request) {
           valorVendaAdicionalUnitario: number;
           custoAdicionalUnitario: number;
           valorVendaAdicionalTotal: number;
+          embalagemPresente: Awaited<
+            ReturnType<typeof validarEmbalagemPresenteCarrinho>
+          >;
+          valorEmbalagemPresenteUnitario: number;
+          valorEmbalagemPresenteTotal: number;
           cashbackBaseItemBruta: number;
         };
 
@@ -1140,12 +1149,36 @@ export async function POST(request: Request) {
 
           subtotalAdicionais += valorVendaAdicionalTotal;
 
+          const embalagemPresente = await validarEmbalagemPresenteCarrinho({
+            client: tx,
+            produto: {
+              id: produto.id,
+              categoria: produto.categoria,
+              embalagemClasseId: produto.embalagemClasseId,
+              permiteEmbalagemPresente: produto.permiteEmbalagemPresente,
+              embalagemPresentePadraoId: produto.embalagemPresentePadraoId,
+            },
+            modeloId: item.embalagemPresenteModeloId,
+            mensagem: item.embalagemPresenteMensagem,
+          });
+
+          const valorEmbalagemPresenteUnitario = embalagemPresente
+            ? Number(embalagemPresente.preco || 0)
+            : 0;
+
+          const valorEmbalagemPresenteTotal =
+            valorEmbalagemPresenteUnitario * quantidade;
+
+          subtotalEmbalagensPresente += valorEmbalagemPresenteTotal;
+
           const itemPodeGerarCashback =
             cashbackConfig.permitirProdutoComDesconto ||
             !preco.produtoComDesconto;
 
           const cashbackBaseItemBruta = itemPodeGerarCashback
-            ? totalProdutoItem + valorVendaAdicionalTotal
+            ? totalProdutoItem +
+              valorVendaAdicionalTotal +
+              valorEmbalagemPresenteTotal
             : 0;
 
           cashbackBaseBruta += cashbackBaseItemBruta;
@@ -1163,11 +1196,15 @@ export async function POST(request: Request) {
             valorVendaAdicionalUnitario,
             custoAdicionalUnitario,
             valorVendaAdicionalTotal,
+            embalagemPresente,
+            valorEmbalagemPresenteUnitario,
+            valorEmbalagemPresenteTotal,
             cashbackBaseItemBruta,
           });
         }
 
-        const subtotalBruto = subtotalProdutos + subtotalAdicionais;
+        const subtotalBruto =
+          subtotalProdutos + subtotalAdicionais + subtotalEmbalagensPresente;
 
         const cupomValidado = await buscarCupomValido({
           tx,
@@ -1442,6 +1479,8 @@ export async function POST(request: Request) {
           },
         });
 
+        const embalagensPresenteSnapshot: unknown[] = [];
+
         for (const itemProcessado of itensProcessados) {
           const {
             quantidade,
@@ -1455,6 +1494,9 @@ export async function POST(request: Request) {
             valorVendaAdicionalUnitario,
             custoAdicionalUnitario,
             valorVendaAdicionalTotal,
+            embalagemPresente,
+            valorEmbalagemPresenteUnitario,
+            valorEmbalagemPresenteTotal,
             cashbackBaseItemBruta,
           } = itemProcessado;
 
@@ -1503,7 +1545,9 @@ export async function POST(request: Request) {
             custoAdicionalUnitario * quantidade;
 
           const totalItemAntesCupom =
-            totalProdutoItem + valorVendaAdicionalTotal;
+            totalProdutoItem +
+            valorVendaAdicionalTotal +
+            valorEmbalagemPresenteTotal;
 
           const pedidoItem = await tx.pedidoOnlineItem.create({
             data: {
@@ -1533,6 +1577,25 @@ export async function POST(request: Request) {
             quantidadeProduto: quantidade,
             opcaoAdicional,
           });
+
+          if (embalagemPresente) {
+            embalagensPresenteSnapshot.push({
+              pedidoOnlineItemId: pedidoItem.id,
+              produtoId: produto.id,
+              codigoInterno: produto.codigoInterno,
+              nomeProduto: produto.nome,
+              quantidade,
+              embalagemPresenteModeloId: embalagemPresente.id,
+              nome: embalagemPresente.nome,
+              imagemUrl: embalagemPresente.imagemUrl,
+              descricao: embalagemPresente.descricao,
+              precoUnitario: valorEmbalagemPresenteUnitario,
+              valorTotal: valorEmbalagemPresenteTotal,
+              mensagem: embalagemPresente.mensagem,
+              substituiEmbalagemPadrao:
+                embalagemPresente.substituiEmbalagemPadrao,
+            });
+          }
 
           const custoTotalAdicionaisEstoque = baixasAdicionais.reduce(
             (total, baixa) => total + baixa.custoTotal,
@@ -1629,6 +1692,20 @@ export async function POST(request: Request) {
               });
             }
           }
+        }
+
+        if (embalagensPresenteSnapshot.length > 0) {
+          await tx.pedidoOnline.update({
+            where: {
+              id: pedido.id,
+            },
+            data: {
+              dadosOriginaisJson: toPrismaJson({
+                frete: freteDadosJson,
+                embalagensPresente: embalagensPresenteSnapshot,
+              }),
+            },
+          });
         }
 
         return {
