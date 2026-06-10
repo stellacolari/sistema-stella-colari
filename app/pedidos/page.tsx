@@ -92,22 +92,25 @@ export default async function PedidosPage() {
       pedido.origemCanal === "ADMIN_MANUAL" &&
       (pedido.statusPagamento === "AGUARDANDO_PAGAMENTO" ||
         pedido.statusPagamento === "PENDENTE") &&
-      pedido.gatewayPagamento === "STRIPE"
+      pedido.gatewayPagamento === "STRIPE",
   );
 
   const linksPagamento = new Map<string, string | null>(
     await Promise.all(
-      pedidosManuaisPendentes.map(async (pedido) => [
-        pedido.id,
-        await buscarUrlCheckoutStripe(pedido.gatewayPedidoId),
-      ] as const)
-    )
+      pedidosManuaisPendentes.map(
+        async (pedido) =>
+          [
+            pedido.id,
+            await buscarUrlCheckoutStripe(pedido.gatewayPedidoId),
+          ] as const,
+      ),
+    ),
   );
 
   const pedidosManuaisPagos = pedidosRaw.filter(
     (pedido) =>
       pedido.origemCanal === "ADMIN_MANUAL" &&
-      pedido.statusPagamento === "PAGO"
+      pedido.statusPagamento === "PAGO",
   );
 
   const vendasPedidosManuais =
@@ -135,7 +138,7 @@ export default async function PedidosPage() {
 
   pedidosManuaisPagos.forEach((pedido) => {
     const venda = vendasPedidosManuais.find((item) =>
-      String(item.observacoes || "").includes(pedido.codigo)
+      String(item.observacoes || "").includes(pedido.codigo),
     );
 
     vendasPorPedido.set(
@@ -145,14 +148,14 @@ export default async function PedidosPage() {
             id: venda.id,
             codigo: venda.codigo,
           }
-        : null
+        : null,
     );
   });
 
   const pedidos: PedidoOperacionalItem[] = pedidosRaw.map((pedido) => {
     const quantidadeItens = pedido.itens.reduce(
       (total, item) => total + item.quantidade,
-      0
+      0,
     );
 
     return {
@@ -261,64 +264,63 @@ export default async function PedidosPage() {
   });
 
   const pedidosNovos = pedidos.filter(
-    (pedido) => pedido.status === "PEDIDO_RECEBIDO"
+    (pedido) => pedido.status === "PEDIDO_RECEBIDO",
   ).length;
 
   const pagamentosPendentes = pedidos.filter(
-    (pedido) => pedido.statusPagamento === "AGUARDANDO_PAGAMENTO"
+    (pedido) => pedido.statusPagamento === "AGUARDANDO_PAGAMENTO",
   ).length;
 
   const pedidosPagosParaSeparar = pedidos.filter(
     (pedido) =>
-      pedido.statusPagamento === "PAGO" &&
-      pedido.status === "PEDIDO_RECEBIDO"
+      pedido.statusPagamento === "PAGO" && pedido.status === "PEDIDO_RECEBIDO",
   ).length;
 
   const pedidosEmEnvio = pedidos.filter(
     (pedido) =>
       pedido.envio?.statusEnvio === "PENDENTE" ||
-      pedido.envio?.statusEnvio === "EM_PREPARACAO"
+      pedido.envio?.statusEnvio === "EM_PREPARACAO",
   ).length;
 
   const pedidosComCupom = pedidos.filter(
-    (pedido) => Number(pedido.cupomDescontoValor || 0) > 0
+    (pedido) => Number(pedido.cupomDescontoValor || 0) > 0,
   ).length;
 
   const pedidosComCashbackUsado = pedidos.filter(
-    (pedido) => Number(pedido.cashbackUsadoValor || 0) > 0
+    (pedido) => Number(pedido.cashbackUsadoValor || 0) > 0,
   ).length;
 
   const pedidosComProblema = pedidos.filter(
-    (pedido) => pedido.status === "PROBLEMA"
+    (pedido) => pedido.status === "PROBLEMA",
   ).length;
 
   const pedidosCancelados = pedidos.filter(
-    (pedido) => pedido.status === "CANCELADO"
+    (pedido) => pedido.status === "CANCELADO",
   ).length;
 
   const valorTotalPedidos = pedidos.reduce(
     (total, pedido) => total + Number(pedido.total || 0),
-    0
+    0,
   );
 
   const cashbackPrevistoTotal = pedidos.reduce(
     (total, pedido) => total + Number(pedido.cashbackPrevistoValor || 0),
-    0
+    0,
   );
 
   const cashbackUsadoTotal = pedidos.reduce(
     (total, pedido) => total + Number(pedido.cashbackUsadoValor || 0),
-    0
+    0,
   );
 
   const descontosCupomTotal = pedidos.reduce(
     (total, pedido) => total + Number(pedido.cupomDescontoValor || 0),
-    0
+    0,
   );
 
   return (
-    <main className="space-y-6">
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    <main className="max-w-full space-y-3 overflow-hidden md:space-y-6">
+      <section className="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
@@ -336,7 +338,7 @@ export default async function PedidosPage() {
           </div>
         </div>
       </section>
-      <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <section className="hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:block">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-950">
@@ -344,7 +346,8 @@ export default async function PedidosPage() {
             </p>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Indicadores principais para acompanhar o que precisa de ação agora.
+              Indicadores principais para acompanhar o que precisa de ação
+              agora.
             </p>
           </div>
 

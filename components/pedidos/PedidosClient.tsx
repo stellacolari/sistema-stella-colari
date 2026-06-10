@@ -68,7 +68,7 @@ export type PedidoOperacionalItem = {
 
   quantidadeItens: number;
   totalItensUnicos: number;
-    itens: {
+  itens: {
     id: string;
     codigoInterno: string;
     nomeProduto: string;
@@ -84,7 +84,7 @@ export type PedidoOperacionalItem = {
       valorVendaTotal: number;
     }[];
   }[];
-    envio: {
+  envio: {
     id: string;
     tipoEntrega: string;
     transportadora: string | null;
@@ -153,6 +153,15 @@ function dataCurta(dataIso: string | null | undefined) {
   }).format(new Date(dataIso));
 }
 
+function linkCompacto(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}/...`;
+  } catch {
+    return url;
+  }
+}
+
 function normalizarTexto(value: string | null | undefined) {
   return String(value ?? "")
     .normalize("NFD")
@@ -213,7 +222,11 @@ function statusPagamentoClass(status: string) {
     return "bg-amber-50 text-amber-700 ring-amber-200";
   }
 
-  if (status === "RECUSADO" || status === "CANCELADO" || status === "EXPIRADO") {
+  if (
+    status === "RECUSADO" ||
+    status === "CANCELADO" ||
+    status === "EXPIRADO"
+  ) {
     return "bg-red-50 text-red-700 ring-red-200";
   }
 
@@ -253,21 +266,30 @@ function isPedidoPagoParaSeparar(pedido: PedidoOperacionalItem) {
 }
 
 function isPedidoPago(pedido: PedidoOperacionalItem) {
-  return pedido.statusPagamento === "PAGO" && !isPedidoCanceladoOuExpirado(pedido);
+  return (
+    pedido.statusPagamento === "PAGO" && !isPedidoCanceladoOuExpirado(pedido)
+  );
+}
+
+function isCanalLogisticoElegivel(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.origemCanal === "LOJA_STELLA" ||
+    pedido.origemCanal === "ADMIN_MANUAL"
+  );
 }
 
 function isPedidoPagoAguardandoPreparo(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     isPedidoPago(pedido) &&
     pedido.status === "PEDIDO_RECEBIDO" &&
-    !isPedidoManualComLink(pedido)
+    !(pedido.origemCanal === "ADMIN_MANUAL" && !pedido.envio)
   );
 }
 
 function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -277,7 +299,7 @@ function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
 
 function podeComprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -288,7 +310,7 @@ function podeComprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
 
 function podeGerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -299,7 +321,7 @@ function podeGerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
 
 function podeImprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -310,23 +332,20 @@ function podeImprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
 
 function podeAtualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
     Boolean(pedido.envio.gatewayEnvioId) &&
-    [
-      "ETIQUETA_GERADA",
-      "POSTADO",
-      "ENTREGUE",
-      "PROBLEMA",
-    ].includes(pedido.envio.statusEnvio)
+    ["ETIQUETA_GERADA", "POSTADO", "ENTREGUE", "PROBLEMA"].includes(
+      pedido.envio.statusEnvio,
+    )
   );
 }
 
 function podeImprimirEtiquetaEmLote(pedido: PedidoOperacionalItem) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    isCanalLogisticoElegivel(pedido) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -379,7 +398,10 @@ function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   }
 
   if (filtro === "ENTREGUE") {
-    return pedido.status === "PEDIDO_ENTREGUE" || pedido.envio?.statusEnvio === "ENTREGUE";
+    return (
+      pedido.status === "PEDIDO_ENTREGUE" ||
+      pedido.envio?.statusEnvio === "ENTREGUE"
+    );
   }
 
   if (filtro === "PROBLEMA") {
@@ -432,7 +454,7 @@ function pedidoCombinaBusca(pedido: PedidoOperacionalItem, busca: string) {
       pedido.envio?.servico,
       pedido.envio?.codigoRastreio,
       pedido.cupomCodigo,
-    ].join(" ")
+    ].join(" "),
   );
 
   return texto.includes(termo);
@@ -525,8 +547,7 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
       label: "Enviado",
       confirmacao: `Marcar o pedido ${pedido.codigo} como enviado?`,
       observacao: "Pedido marcado como enviado pela lista operacional.",
-      className:
-        "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+      className: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
     };
   }
 
@@ -552,8 +573,7 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
       confirmacao: `Cancelar o pedido pendente ${pedido.codigo}? O estoque e o cashback usado serão devolvidos automaticamente.`,
       observacao:
         "Pedido pendente cancelado pela lista operacional. Estoque e cashback usados foram estornados.",
-      className:
-        "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+      className: "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
     };
   }
 
@@ -565,6 +585,10 @@ function isPedidoManualComLink(pedido: PedidoOperacionalItem) {
 }
 
 function origemPedidoLabel(pedido: PedidoOperacionalItem) {
+  if (pedido.origemCanal === "ADMIN_MANUAL" && pedido.envio) {
+    return "Manual entrega";
+  }
+
   if (isPedidoManualComLink(pedido)) {
     return "Manual com link";
   }
@@ -651,10 +675,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [filtrosMobileAbertos, setFiltrosMobileAbertos] = useState(false);
   const [erroOperacao, setErroOperacao] = useState("");
   const [linkCopiadoPedidoId, setLinkCopiadoPedidoId] = useState<string | null>(
-    null
+    null,
   );
   const [processandoPedidoId, setProcessandoPedidoId] = useState<string | null>(
-    null
+    null,
   );
   const [cancelandoLinkPedidoId, setCancelandoLinkPedidoId] = useState<
     string | null
@@ -674,7 +698,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const [atualizandoRastreioPedidoId, setAtualizandoRastreioPedidoId] =
     useState<string | null>(null);
   const [pedidoIdsSelecionados, setPedidoIdsSelecionados] = useState<string[]>(
-    []
+    [],
   );
   const [preparandoImpressaoLote, setPreparandoImpressaoLote] = useState(false);
 
@@ -697,14 +721,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   const pedidoIdsSelecionadosValidos = useMemo(() => {
     return pedidoIdsSelecionados.filter((id) =>
-      pedidoIdsImprimiveisVisiveis.has(id)
+      pedidoIdsImprimiveisVisiveis.has(id),
     );
   }, [pedidoIdsImprimiveisVisiveis, pedidoIdsSelecionados]);
 
   const todosImprimiveisVisiveisSelecionados =
     pedidosImprimiveisVisiveis.length > 0 &&
     pedidosImprimiveisVisiveis.every((pedido) =>
-      pedidoIdsSelecionadosValidos.includes(pedido.id)
+      pedidoIdsSelecionadosValidos.includes(pedido.id),
     );
 
   const contadoresFiltro = useMemo(() => {
@@ -713,14 +737,15 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         filtro.value,
         pedidos.filter((pedido) => passaFiltroRapido(pedido, filtro.value))
           .length,
-      ])
+      ]),
     );
   }, [pedidos]);
 
   const resumoOperacional = useMemo(() => {
     return {
       linksPendentes: pedidos.filter(
-        (pedido) => isPedidoManualComLink(pedido) && isPagamentoPendente(pedido)
+        (pedido) =>
+          isPedidoManualComLink(pedido) && isPagamentoPendente(pedido),
       ).length,
       pagosParaSeparar: pedidos.filter(isPedidoPagoParaSeparar).length,
       problemas: pedidos.filter((pedido) => pedido.status === "PROBLEMA")
@@ -732,7 +757,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const totalFiltrado = useMemo(() => {
     return pedidosFiltrados.reduce(
       (total, pedido) => total + Number(pedido.total || 0),
-      0
+      0,
     );
   }, [pedidosFiltrados]);
 
@@ -799,7 +824,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   async function cancelarLinkPagamentoManual(pedido: PedidoOperacionalItem) {
     const confirmado = window.confirm(
-      `Cancelar o link de pagamento do pedido ${pedido.codigo}? A sessão Stripe será expirada quando possível e o estoque não será baixado.`
+      `Cancelar o link de pagamento do pedido ${pedido.codigo}? A sessão Stripe será expirada quando possível e o estoque não será baixado.`,
     );
 
     if (!confirmado) {
@@ -814,14 +839,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         `/api/pedidos/${pedido.id}/cancelar-link-pagamento`,
         {
           method: "PATCH",
-        }
+        },
       );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         setErroOperacao(
-          data.error || "Erro ao cancelar link de pagamento manual."
+          data.error || "Erro ao cancelar link de pagamento manual.",
         );
         return;
       }
@@ -864,7 +889,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   async function comprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
     const confirmado = window.confirm(
-      `Comprar/pagar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? A geração e impressão continuarão pendentes.`
+      `Comprar/pagar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? A geração e impressão continuarão pendentes.`,
     );
 
     if (!confirmado) {
@@ -875,9 +900,12 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     setComprandoEtiquetaPedidoId(pedido.id);
 
     try {
-      const response = await fetch(`/api/pedidos/${pedido.id}/comprar-etiqueta`, {
-        method: "PATCH",
-      });
+      const response = await fetch(
+        `/api/pedidos/${pedido.id}/comprar-etiqueta`,
+        {
+          method: "PATCH",
+        },
+      );
 
       const data = await response.json().catch(() => ({}));
 
@@ -898,7 +926,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   async function gerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
     const confirmado = window.confirm(
-      `Gerar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? Depois disso será possível solicitar o link de impressão.`
+      `Gerar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? Depois disso será possível solicitar o link de impressão.`,
     );
 
     if (!confirmado) {
@@ -939,7 +967,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         `/api/pedidos/${pedido.id}/imprimir-etiqueta`,
         {
           method: "PATCH",
-        }
+        },
       );
 
       const data = await response.json().catch(() => ({}));
@@ -974,7 +1002,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         `/api/pedidos/${pedido.id}/atualizar-rastreio`,
         {
           method: "PATCH",
-        }
+        },
       );
 
       const data = await response.json().catch(() => ({}));
@@ -1006,14 +1034,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     setPedidoIdsSelecionados((idsAtuais) =>
       idsAtuais.includes(pedido.id)
         ? idsAtuais.filter((id) => id !== pedido.id)
-        : [...idsAtuais, pedido.id]
+        : [...idsAtuais, pedido.id],
     );
   }
 
   function alternarTodosImprimiveisVisiveis() {
     if (todosImprimiveisVisiveisSelecionados) {
       setPedidoIdsSelecionados((idsAtuais) =>
-        idsAtuais.filter((id) => !pedidoIdsImprimiveisVisiveis.has(id))
+        idsAtuais.filter((id) => !pedidoIdsImprimiveisVisiveis.has(id)),
       );
       return;
     }
@@ -1022,7 +1050,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       const proximosIds = new Set(idsAtuais);
 
       pedidosImprimiveisVisiveis.forEach((pedido) =>
-        proximosIds.add(pedido.id)
+        proximosIds.add(pedido.id),
       );
 
       return Array.from(proximosIds);
@@ -1066,15 +1094,16 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   return (
-    <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-      <div className="border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">
-              Lista de pedidos
+    <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:rounded-3xl">
+      <div className="border-b border-slate-200 px-3 py-2.5 sm:px-5 sm:py-4">
+        <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0 overflow-hidden">
+            <h2 className="truncate text-base font-semibold text-slate-950 sm:text-lg">
+              <span className="md:hidden">Pedidos</span>
+              <span className="hidden md:inline">Lista de pedidos</span>
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-0.5 truncate text-xs text-slate-500 sm:mt-1 sm:text-sm">
               {pedidosFiltrados.length} pedido
               {pedidosFiltrados.length === 1 ? "" : "s"} exibido
               {pedidosFiltrados.length === 1 ? "" : "s"} ·{" "}
@@ -1082,22 +1111,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             </p>
 
             {erroOperacao && (
-              <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:px-4 sm:py-3">
                 {erroOperacao}
               </div>
             )}
           </div>
 
-          <div className="grid gap-3 md:hidden">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Visão
-              </span>
-
+          <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_88px] items-end gap-2 md:hidden">
+            <label className="min-w-0">
+              <span className="sr-only">Visão</span>
               <select
                 value={filtroRapido}
                 onChange={(event) => setFiltroRapido(event.target.value)}
-                className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-slate-500"
+                className="h-10 w-full min-w-0 max-w-full truncate rounded-2xl border border-slate-300 bg-white px-3 text-base font-semibold text-slate-800 outline-none transition focus:border-slate-500"
               >
                 {FILTROS_RAPIDOS.map((filtro) => (
                   <option key={filtro.value} value={filtro.value}>
@@ -1112,10 +1138,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
               onClick={() =>
                 setFiltrosMobileAbertos((valorAtual) => !valorAtual)
               }
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              <SlidersHorizontal className="h-4 w-4" />
-              {filtrosMobileAbertos ? "Ocultar filtros" : "Filtros e etiquetas"}
+              <SlidersHorizontal className="h-4 w-4 shrink-0" />
+              <span className="truncate">Filtros</span>
             </button>
           </div>
 
@@ -1175,18 +1201,18 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
               placeholder="Buscar cliente, código, origem..."
-              className="h-10 w-full rounded-2xl border border-slate-300 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-slate-500"
+              className="h-10 w-full rounded-2xl border border-slate-300 bg-white pl-10 pr-4 text-base outline-none transition focus:border-slate-500"
             />
           </label>
         </div>
 
         <div
-          className={`mt-4 flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:flex md:flex-row md:items-center md:justify-between md:px-4 ${
+          className={`mt-3 min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 md:mt-4 md:flex md:flex-row md:items-center md:justify-between md:px-4 ${
             filtrosMobileAbertos ? "flex" : "hidden"
           }`}
         >
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+            <label className="inline-flex max-w-full min-w-0 items-center gap-2 text-xs font-semibold text-slate-700">
               <input
                 type="checkbox"
                 checked={todosImprimiveisVisiveisSelecionados}
@@ -1194,27 +1220,28 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                 onChange={alternarTodosImprimiveisVisiveis}
                 className="h-4 w-4 rounded border-slate-300 text-slate-900"
               />
-              Selecionar todos visíveis
+              <span className="truncate">Selecionar todos visíveis</span>
             </label>
 
-            <span className="text-xs text-slate-500">
+            <span className="min-w-0 truncate text-xs text-slate-500">
               {pedidoIdsSelecionadosValidos.length} pedido
               {pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"} selecionado
               {pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"}
             </span>
 
-            <span className="text-xs text-slate-400">
+            <span className="min-w-0 truncate text-xs text-slate-400">
               {pedidosImprimiveisVisiveis.length} pronto
-              {pedidosImprimiveisVisiveis.length === 1 ? "" : "s"} para impressão
+              {pedidosImprimiveisVisiveis.length === 1 ? "" : "s"} para
+              impressão
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             {pedidoIdsSelecionados.length > 0 && (
               <button
                 type="button"
                 onClick={() => setPedidoIdsSelecionados([])}
-                className="inline-flex h-9 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
               >
                 Limpar seleção
               </button>
@@ -1227,21 +1254,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                 pedidoIdsSelecionadosValidos.length === 0 ||
                 preparandoImpressaoLote
               }
-              className="inline-flex h-9 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 min-w-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              {preparandoImpressaoLote
-                ? "Preparando..."
-                : "Imprimir etiquetas selecionadas"}
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {preparandoImpressaoLote
+                  ? "Preparando..."
+                  : "Imprimir etiquetas selecionadas"}
+              </span>
             </button>
           </div>
         </div>
 
-        <div
-          className={`mt-4 gap-2 md:grid md:grid-cols-4 ${
-            filtrosMobileAbertos ? "grid" : "hidden"
-          }`}
-        >
+        <div className="mt-4 hidden gap-2 md:grid md:grid-cols-4">
           <div className="rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
               Links pendentes
@@ -1293,7 +1318,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="max-w-full divide-y divide-slate-100 overflow-hidden">
           {pedidosFiltrados.map((pedido) => {
             const acao = getMensagemAcao(pedido);
             const IconeAcao = acao.icon;
@@ -1322,11 +1347,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             return (
               <article
                 key={pedido.id}
-                className={`grid items-start gap-4 px-5 py-3 transition hover:bg-slate-50 xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] ${
+                className={`relative flex w-full max-w-full min-w-0 flex-col gap-3 overflow-hidden px-3 py-3 transition hover:bg-slate-50 sm:px-5 xl:grid xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] xl:gap-4 ${
                   destaquePedidoClass
                 }`}
               >
-                <div className="pt-1">
+                <div className="absolute right-3 top-3 xl:static xl:pt-1">
                   <input
                     type="checkbox"
                     aria-label={`Selecionar etiqueta do pedido ${pedido.codigo}`}
@@ -1337,29 +1362,33 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   />
                 </div>
 
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0 max-w-full overflow-hidden pr-8 xl:pr-0">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
                     <Link
                       href={`/pedidos/${pedido.id}`}
-                      className="text-sm font-bold text-slate-950 underline-offset-4 hover:underline"
+                      className="max-w-full min-w-0 truncate text-sm font-bold text-slate-950 underline-offset-4 hover:underline"
                     >
                       {pedido.codigo}
                     </Link>
 
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusPedidoClass(
-                        pedido.status
+                      className={`inline-flex max-w-full min-w-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${statusPedidoClass(
+                        pedido.status,
                       )}`}
                     >
-                      Operação: {labelStatusPedido(pedido.status)}
+                      <span className="truncate">
+                        {labelStatusPedido(pedido.status)}
+                      </span>
                     </span>
 
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${origemPedidoClass(
-                        pedido
+                      className={`inline-flex max-w-full min-w-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${origemPedidoClass(
+                        pedido,
                       )}`}
                     >
-                      Origem: {origemPedidoLabel(pedido)}
+                      <span className="truncate">
+                        {origemPedidoLabel(pedido)}
+                      </span>
                     </span>
                   </div>
 
@@ -1368,37 +1397,43 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   </p>
 
                   <p
-                    className={`mt-1.5 inline-flex items-center gap-1 text-xs font-semibold ${acao.className}`}
+                    className={`mt-1.5 inline-flex max-w-full items-center gap-1 text-xs font-semibold ${acao.className}`}
                   >
-                    <IconeAcao className="h-3.5 w-3.5" />
-                    {acao.label}
+                    <IconeAcao className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{acao.label}</span>
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                <div className="min-w-0 max-w-full overflow-hidden">
+                  <p className="truncate text-sm font-semibold text-slate-900">
                     {pedido.clienteNome || pedido.nomeCliente}
                   </p>
 
-                  <p className="mt-1 text-xs text-slate-500">
-                    {pedido.telefoneCliente}
-                    {pedido.cidade || pedido.estado ? " · " : ""}
-                    {[pedido.cidade, pedido.estado].filter(Boolean).join("/")}
+                  <p className="mt-1 truncate text-xs text-slate-500">
+                    {[
+                      pedido.telefoneCliente,
+                      [pedido.cidade, pedido.estado].filter(Boolean).join("/"),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
 
                   <p className="mt-1.5 text-xs text-slate-500">
-                    {pedido.quantidadeItens} un. · {pedido.totalItensUnicos} item
+                    {pedido.quantidadeItens} un. · {pedido.totalItensUnicos}{" "}
+                    item
                     {pedido.totalItensUnicos === 1 ? "" : "s"}
                   </p>
                   {pedido.itens.length > 0 && (
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-2 max-w-full space-y-1 overflow-hidden">
                       {pedido.itens.slice(0, 3).map((item) => {
-                        const textoOpcao = getTextoOpcaoProduto(item.tamanhoAnel);
+                        const textoOpcao = getTextoOpcaoProduto(
+                          item.tamanhoAnel,
+                        );
 
                         return (
                           <div
                             key={item.id}
-                            className="rounded-xl bg-slate-50 px-2.5 py-2 text-xs text-slate-600 ring-1 ring-slate-200"
+                            className="max-w-full overflow-hidden rounded-xl bg-slate-50 px-2.5 py-2 text-xs text-slate-600 ring-1 ring-slate-200"
                           >
                             <p className="line-clamp-1 font-medium text-slate-800">
                               {item.quantidade}x {item.nomeProduto}
@@ -1414,8 +1449,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             )}
 
                             {item.adicionais.length > 0 && (
-                              <p className="mt-0.5 text-blue-700">
-                                + {item.adicionais.map((adicional) => adicional.nome).join(", ")}
+                              <p className="mt-0.5 truncate text-blue-700">
+                                +{" "}
+                                {item.adicionais
+                                  .map((adicional) => adicional.nome)
+                                  .join(", ")}
                               </p>
                             )}
                           </div>
@@ -1432,61 +1470,69 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   )}
                 </div>
 
-                <div>
-                  <div className="flex flex-wrap gap-2">
+                <div className="min-w-0 max-w-full overflow-hidden">
+                  <div className="flex max-w-full flex-wrap gap-1.5 overflow-hidden sm:gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusPagamentoClass(
-                        pedido.statusPagamento
+                      className={`inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${statusPagamentoClass(
+                        pedido.statusPagamento,
                       )}`}
                     >
-                      <CreditCard className="h-3 w-3" />
-                      Pagamento: {labelStatusPagamento(pedido.statusPagamento)}
+                      <CreditCard className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        Pag.: {labelStatusPagamento(pedido.statusPagamento)}
+                      </span>
                     </span>
 
                     {pedido.gatewayPagamento && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                        {pedido.gatewayPagamento}
+                      <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 sm:px-2.5">
+                        <span className="truncate">
+                          {pedido.gatewayPagamento}
+                        </span>
                       </span>
                     )}
 
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                      <Truck className="h-3 w-3" />
-                      {labelStatusEnvio(pedido.envio?.statusEnvio)}
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 sm:px-2.5">
+                      <Truck className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {labelStatusEnvio(pedido.envio?.statusEnvio)}
+                      </span>
                     </span>
                   </div>
 
                   {pedidoManualComLink && pagamentoPendente && (
-                    <div className="mt-3 rounded-2xl border border-violet-200 bg-white px-3 py-2">
+                    <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-violet-200 bg-white px-3 py-2">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
                         Link de pagamento
                       </p>
 
                       {pedido.linkPagamento ? (
                         <>
-                          <p className="mt-1 line-clamp-1 text-xs text-slate-500">
-                            {pedido.linkPagamento}
+                          <p className="mt-1 max-w-full truncate rounded-xl bg-slate-50 px-2 py-1 text-xs text-slate-500 ring-1 ring-slate-100">
+                            {linkCompacto(pedido.linkPagamento)}
                           </p>
 
-                          <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <button
                               type="button"
                               onClick={() => copiarLinkPagamento(pedido)}
-                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                              className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:px-3"
                             >
-                              <Copy className="h-3.5 w-3.5" />
-                              {linkCopiadoPedidoId === pedido.id
-                                ? "Copiado"
-                                : "Copiar"}
+                              <Copy className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">
+                                {linkCopiadoPedidoId === pedido.id
+                                  ? "Copiado"
+                                  : "Copiar"}
+                              </span>
                             </button>
 
                             <a
                               href={pedido.linkPagamento}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                              className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:px-3"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                              Abrir
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">Abrir</span>
                             </a>
 
                             {linkWhatsApp && (
@@ -1494,10 +1540,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                                 href={linkWhatsApp}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:px-3"
                               >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                                WhatsApp
+                                <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">WhatsApp</span>
                               </a>
                             )}
 
@@ -1507,11 +1553,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                                 cancelarLinkPagamentoManual(pedido)
                               }
                               disabled={estaCancelandoLink}
-                              className="inline-flex h-8 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
                             >
-                              {estaCancelandoLink
-                                ? "Cancelando..."
-                                : "Cancelar link"}
+                              <span className="truncate">
+                                {estaCancelandoLink
+                                  ? "Cancelando..."
+                                  : "Cancelar link"}
+                              </span>
                             </button>
                           </div>
                         </>
@@ -1525,11 +1573,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             type="button"
                             onClick={() => cancelarLinkPagamentoManual(pedido)}
                             disabled={estaCancelandoLink}
-                            className="mt-2 inline-flex h-8 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="mt-2 inline-flex h-8 max-w-full min-w-0 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {estaCancelandoLink
-                              ? "Cancelando..."
-                              : "Marcar cancelado"}
+                            <span className="truncate">
+                              {estaCancelandoLink
+                                ? "Cancelando..."
+                                : "Marcar cancelado"}
+                            </span>
                           </button>
                         </>
                       )}
@@ -1537,7 +1587,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   )}
 
                   {pedidoManualComLink && pedido.statusPagamento === "PAGO" && (
-                    <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                       {pedido.vendaGerada ? (
                         <>
                           Venda gerada:{" "}
@@ -1554,15 +1604,15 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     </div>
                   )}
 
-                  {!pedidoManualComLink && pedido.envio && (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                  {pedido.envio && (
+                    <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
                       <p className="font-semibold text-slate-900">
                         {pedido.envio.tipoEntrega === "RETIRADA"
                           ? "Retirada local"
                           : "Frete escolhido"}
                       </p>
 
-                      <p className="mt-1">
+                      <p className="mt-1 truncate">
                         {pedido.envio.tipoEntrega === "RETIRADA"
                           ? pedido.envio.servico || "Retirada local"
                           : [pedido.envio.transportadora, pedido.envio.servico]
@@ -1570,7 +1620,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                               .join(" - ") || "Entrega"}
                       </p>
 
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      <div className="mt-1 flex max-w-full flex-wrap gap-x-3 gap-y-1 overflow-hidden">
                         <span>{moeda(pedido.envio.valorFrete)}</span>
                         {pedido.envio.prazoDias !== null && (
                           <span>
@@ -1578,32 +1628,34 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             {pedido.envio.prazoDias === 1 ? "" : "s"}
                           </span>
                         )}
-                        <span>{labelStatusEnvio(pedido.envio.statusEnvio)}</span>
+                        <span className="truncate">
+                          {labelStatusEnvio(pedido.envio.statusEnvio)}
+                        </span>
                       </div>
 
                       {pedido.envio.statusEnvio === "PREPARADO" &&
                         pedido.envio.gatewayEnvioId && (
-                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                          <p className="mt-2 max-w-full truncate text-[11px] font-semibold text-emerald-700">
                             Envio preparado: {pedido.envio.gatewayEnvioId}
                           </p>
                         )}
 
                       {pedido.envio.statusEnvio === "ETIQUETA_COMPRADA" &&
                         pedido.envio.gatewayEnvioId && (
-                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                          <p className="mt-2 max-w-full truncate text-[11px] font-semibold text-emerald-700">
                             Etiqueta comprada: {pedido.envio.gatewayEnvioId}
                           </p>
                         )}
 
                       {pedido.envio.statusEnvio === "ETIQUETA_GERADA" &&
                         pedido.envio.gatewayEnvioId && (
-                          <p className="mt-2 text-[11px] font-semibold text-emerald-700">
+                          <p className="mt-2 max-w-full truncate text-[11px] font-semibold text-emerald-700">
                             Etiqueta gerada: {pedido.envio.gatewayEnvioId}
                           </p>
                         )}
 
                       {pedido.envio.codigoRastreio && (
-                        <p className="mt-2 text-[11px] font-semibold text-slate-700">
+                        <p className="mt-2 max-w-full break-all text-[11px] font-semibold text-slate-700">
                           Rastreio: {pedido.envio.codigoRastreio}
                         </p>
                       )}
@@ -1616,17 +1668,21 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                       )}
 
                       {podePrepararEnvioMelhorEnvio(pedido) && (
-                        <button
-                          type="button"
-                          onClick={() => prepararEnvioMelhorEnvio(pedido)}
-                          disabled={preparandoEnvioPedidoId === pedido.id}
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Truck className="h-3.5 w-3.5" />
-                          {preparandoEnvioPedidoId === pedido.id
-                            ? "Preparando..."
-                            : "Preparar envio"}
-                        </button>
+                        <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:inline-grid">
+                          <button
+                            type="button"
+                            onClick={() => prepararEnvioMelhorEnvio(pedido)}
+                            disabled={preparandoEnvioPedidoId === pedido.id}
+                            className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Truck className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">
+                              {preparandoEnvioPedidoId === pedido.id
+                                ? "Preparando..."
+                                : "Preparar envio"}
+                            </span>
+                          </button>
+                        </div>
                       )}
 
                       {podeComprarEtiquetaMelhorEnvio(pedido) && (
@@ -1634,12 +1690,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           type="button"
                           onClick={() => comprarEtiquetaMelhorEnvio(pedido)}
                           disabled={comprandoEtiquetaPedidoId === pedido.id}
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-3 inline-flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
-                          <CreditCard className="h-3.5 w-3.5" />
-                          {comprandoEtiquetaPedidoId === pedido.id
-                            ? "Comprando..."
-                            : "Comprar etiqueta"}
+                          <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {comprandoEtiquetaPedidoId === pedido.id
+                              ? "Comprando..."
+                              : "Comprar etiqueta"}
+                          </span>
                         </button>
                       )}
 
@@ -1648,12 +1706,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           type="button"
                           onClick={() => gerarEtiquetaMelhorEnvio(pedido)}
                           disabled={gerandoEtiquetaPedidoId === pedido.id}
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-3 inline-flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
-                          <Package className="h-3.5 w-3.5" />
-                          {gerandoEtiquetaPedidoId === pedido.id
-                            ? "Gerando..."
-                            : "Gerar etiqueta"}
+                          <Package className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {gerandoEtiquetaPedidoId === pedido.id
+                              ? "Gerando..."
+                              : "Gerar etiqueta"}
+                          </span>
                         </button>
                       )}
 
@@ -1662,12 +1722,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           type="button"
                           onClick={() => imprimirEtiquetaMelhorEnvio(pedido)}
                           disabled={imprimindoEtiquetaPedidoId === pedido.id}
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-3 inline-flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          {imprimindoEtiquetaPedidoId === pedido.id
-                            ? "Abrindo..."
-                            : "Imprimir etiqueta"}
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {imprimindoEtiquetaPedidoId === pedido.id
+                              ? "Abrindo..."
+                              : "Imprimir etiqueta"}
+                          </span>
                         </button>
                       )}
 
@@ -1681,10 +1743,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           }
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                          className="mt-3 inline-flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:w-auto"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Abrir etiqueta
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">Abrir etiqueta</span>
                         </a>
                       )}
 
@@ -1693,12 +1755,14 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           type="button"
                           onClick={() => atualizarRastreioMelhorEnvio(pedido)}
                           disabled={atualizandoRastreioPedidoId === pedido.id}
-                          className="mt-3 inline-flex h-8 items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="mt-3 inline-flex h-8 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                         >
-                          <Truck className="h-3.5 w-3.5" />
-                          {atualizandoRastreioPedidoId === pedido.id
-                            ? "Atualizando..."
-                            : "Atualizar rastreio"}
+                          <Truck className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">
+                            {atualizandoRastreioPedidoId === pedido.id
+                              ? "Atualizando..."
+                              : "Atualizar rastreio"}
+                          </span>
                         </button>
                       )}
 
@@ -1713,9 +1777,9 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   {(possuiCupom ||
                     possuiCashbackUsado ||
                     possuiCashbackPrevisto) && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex max-w-full flex-wrap gap-1.5 overflow-hidden">
                       {possuiCupom && (
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                        <span className="max-w-full truncate rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                           Cupom {pedido.cupomCodigo}
                         </span>
                       )}
@@ -1735,8 +1799,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 xl:items-end xl:text-right">
-                  <div>
+                <div className="flex min-w-0 flex-col gap-2 border-t border-slate-100 pt-3 xl:items-end xl:border-t-0 xl:pt-0 xl:text-right">
+                  <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                       Total
                     </p>
@@ -1746,15 +1810,15 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     </p>
 
                     {(possuiCupom || possuiCashbackUsado) && (
-                      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] xl:justify-end">
+                      <div className="mt-1 flex max-w-full flex-wrap gap-x-2 gap-y-0.5 overflow-hidden text-[11px] xl:justify-end">
                         {possuiCupom && (
-                          <span className="text-emerald-700">
+                          <span className="truncate text-emerald-700">
                             Cupom: -{moeda(pedido.cupomDescontoValor)}
                           </span>
                         )}
 
                         {possuiCashbackUsado && (
-                          <span className="text-blue-700">
+                          <span className="truncate text-blue-700">
                             Cashback: -{moeda(pedido.cashbackUsadoValor)}
                           </span>
                         )}
@@ -1762,23 +1826,27 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
                     {acaoRapida && (
                       <button
                         type="button"
                         onClick={() => atualizarStatusRapido(pedido)}
                         disabled={estaProcessando}
-                        className={`inline-flex h-8 items-center justify-center rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${acaoRapida.className}`}
+                        className={`inline-flex h-8 min-w-0 items-center justify-center rounded-xl border px-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 ${acaoRapida.className}`}
                       >
-                        {estaProcessando ? "Atualizando..." : acaoRapida.label}
+                        <span className="truncate">
+                          {estaProcessando
+                            ? "Atualizando..."
+                            : acaoRapida.label}
+                        </span>
                       </button>
                     )}
 
                     <Link
                       href={`/pedidos/${pedido.id}`}
-                      className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                      className="inline-flex h-8 min-w-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:px-3"
                     >
-                      Abrir pedido
+                      <span className="truncate">Abrir pedido</span>
                     </Link>
                   </div>
                 </div>
