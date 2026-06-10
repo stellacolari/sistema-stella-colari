@@ -204,7 +204,8 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
 
   function submitClasse(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     executar(
       () =>
@@ -216,7 +217,9 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
           ordem: numero(formData.get("ordem")),
           ativo: check(formData, "ativo"),
         }).then(() => {
-          event.currentTarget.reset();
+          if (form.isConnected) {
+            form.reset();
+          }
         }),
       "Classe salva."
     );
