@@ -37,6 +37,16 @@ function inteiroOpcional(value: unknown) {
   return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
 }
 
+function inteiroMinimo(value: unknown, fallback = 1, minimo = 1) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(minimo, Math.trunc(parsed));
+}
+
 function textoOpcional(value: unknown) {
   const texto = String(value || "").trim();
   return texto || null;
@@ -300,6 +310,7 @@ export async function POST(req: Request) {
             produtoId: textoOpcional(body.produtoId),
             ativo: body.ativo !== false,
             prioridade: numero(body.prioridade),
+            capacidadeMaximaItens: inteiroMinimo(body.capacidadeMaximaItens),
           },
         });
 

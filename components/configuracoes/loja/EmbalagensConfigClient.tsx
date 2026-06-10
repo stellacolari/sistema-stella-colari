@@ -28,6 +28,7 @@ type Compatibilidade = {
   produtoId: string | null;
   ativo: boolean;
   prioridade: number;
+  capacidadeMaximaItens: number;
   classe?: { nome: string } | null;
   categoria?: { nome: string } | null;
   produto?: { codigoInterno: string; nome: string } | null;
@@ -198,6 +199,10 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
         produtoId: compatibilidade.produtoId,
         ativo: compatibilidade.ativo,
         prioridade: Number(compatibilidade.prioridade || 0),
+        capacidadeMaximaItens: Math.max(
+          1,
+          Number(compatibilidade.capacidadeMaximaItens || 1)
+        ),
       })),
     }));
   }
@@ -293,6 +298,10 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
           categoriaId: formData.get("categoriaId"),
           produtoId: formData.get("produtoId"),
           prioridade: numero(formData.get("prioridade")),
+          capacidadeMaximaItens: numero(
+            formData.get("capacidadeMaximaItens"),
+            1
+          ),
           ativo: check(formData, "ativo"),
         }),
       "Compatibilidade criada."
@@ -706,6 +715,22 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
                   <option key={produto.id} value={produto.id}>{produto.codigoInterno} · {produto.nome}</option>
                 ))}
               </select>
+              <label>
+                <span className={labelClass()}>
+                  Capacidade máxima de itens
+                </span>
+                <input
+                  name="capacidadeMaximaItens"
+                  type="number"
+                  min="1"
+                  step="1"
+                  defaultValue="1"
+                  className={inputClass()}
+                />
+                <span className="mt-1 block text-xs text-slate-500">
+                  Quantas unidades dessa classe cabem neste modelo de embalagem.
+                </span>
+              </label>
               <input name="prioridade" type="number" defaultValue="0" className={inputClass()} />
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                 <input name="ativo" type="checkbox" defaultChecked />
@@ -731,7 +756,12 @@ export default function EmbalagensConfigClient({ dadosIniciais }: { dadosIniciai
                         : compat.categoria?.nome || compat.classe?.nome || "Compatibilidade geral"}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Prioridade {compat.prioridade} · {compat.ativo ? "ativa" : "inativa"}
+                      Prioridade {compat.prioridade} · Capacidade:{" "}
+                      {compat.capacidadeMaximaItens || 1}{" "}
+                      {(compat.capacidadeMaximaItens || 1) === 1
+                        ? "item"
+                        : "itens"}{" "}
+                      · {compat.ativo ? "ativa" : "inativa"}
                     </p>
                   </div>
                   <button

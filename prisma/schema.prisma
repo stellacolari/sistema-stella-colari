@@ -311,19 +311,20 @@ model EmbalagemModeloComponente {
 }
 
 model EmbalagemModeloCompatibilidade {
-  id                String            @id @default(cuid())
-  embalagemModeloId String
-  classeId          String?
-  categoriaId       String?
-  produtoId         String?
-  ativo             Boolean           @default(true)
-  prioridade        Int               @default(0)
-  criadoEm          DateTime          @default(now())
-  atualizadoEm      DateTime          @updatedAt
-  embalagemModelo   EmbalagemModelo   @relation(fields: [embalagemModeloId], references: [id], onDelete: Cascade)
-  classe            EmbalagemClasse?  @relation(fields: [classeId], references: [id])
-  categoria         CategoriaProduto? @relation(fields: [categoriaId], references: [id])
-  produto           Produto?          @relation(fields: [produtoId], references: [id])
+  id                    String            @id @default(cuid())
+  embalagemModeloId     String
+  classeId              String?
+  categoriaId           String?
+  produtoId             String?
+  ativo                 Boolean           @default(true)
+  prioridade            Int               @default(0)
+  capacidadeMaximaItens Int               @default(1)
+  criadoEm              DateTime          @default(now())
+  atualizadoEm          DateTime          @updatedAt
+  embalagemModelo       EmbalagemModelo   @relation(fields: [embalagemModeloId], references: [id], onDelete: Cascade)
+  classe                EmbalagemClasse?  @relation(fields: [classeId], references: [id])
+  categoria             CategoriaProduto? @relation(fields: [categoriaId], references: [id])
+  produto               Produto?          @relation(fields: [produtoId], references: [id])
 
   @@index([embalagemModeloId])
   @@index([classeId])

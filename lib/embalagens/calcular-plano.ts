@@ -30,6 +30,7 @@ export type CompatibilidadeEmbalagemInput = {
   produtoId?: string | null;
   ativo?: boolean;
   prioridade?: number | null;
+  capacidadeMaximaItens?: number | null;
 };
 
 export type ModeloEmbalagemInput = {
@@ -117,38 +118,72 @@ function modeloCompatibilidadeScore(
   modelo: ModeloEmbalagemInput,
   item?: ItemPedidoEmbalagemInput
 ) {
+  if ((modelo.compatibilidades || []).length === 0) {
+    return 0;
+  }
+
+  const compatibilidade = getCompatibilidadeAplicavel(modelo, item);
+
+  if (!compatibilidade) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  return scoreCompatibilidade(compatibilidade, item);
+}
+
+function scoreCompatibilidade(
+  compatibilidade: CompatibilidadeEmbalagemInput,
+  item?: ItemPedidoEmbalagemInput
+) {
+  let score = numero(compatibilidade.prioridade);
+
+  if (item?.produtoId && compatibilidade.produtoId === item.produtoId) {
+    score += 300;
+  } else if (
+    item?.embalagemClasseId &&
+    compatibilidade.classeId === item.embalagemClasseId
+  ) {
+    score += 100;
+  } else if (
+    compatibilidade.produtoId ||
+    compatibilidade.classeId ||
+    compatibilidade.categoriaId
+  ) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  return score;
+}
+
+function getCompatibilidadeAplicavel(
+  modelo: ModeloEmbalagemInput,
+  item?: ItemPedidoEmbalagemInput
+) {
   const compatibilidades = (modelo.compatibilidades || []).filter(
     (compatibilidade) => compatibilidade.ativo !== false
   );
 
   if (compatibilidades.length === 0) {
-    return 0;
+    return null;
   }
 
   let melhorScore = Number.NEGATIVE_INFINITY;
+  let melhorCompatibilidade: CompatibilidadeEmbalagemInput | null = null;
 
   for (const compatibilidade of compatibilidades) {
-    let score = numero(compatibilidade.prioridade);
+    const score = scoreCompatibilidade(compatibilidade, item);
 
-    if (item?.produtoId && compatibilidade.produtoId === item.produtoId) {
-      score += 300;
-    } else if (
-      item?.embalagemClasseId &&
-      compatibilidade.classeId === item.embalagemClasseId
-    ) {
-      score += 100;
-    } else if (
-      compatibilidade.produtoId ||
-      compatibilidade.classeId ||
-      compatibilidade.categoriaId
-    ) {
+    if (score === Number.NEGATIVE_INFINITY) {
       continue;
     }
 
-    melhorScore = Math.max(melhorScore, score);
+    if (score > melhorScore) {
+      melhorScore = score;
+      melhorCompatibilidade = compatibilidade;
+    }
   }
 
-  return melhorScore;
+  return melhorCompatibilidade;
 }
 
 function modeloServeParaItem(
@@ -156,6 +191,21 @@ function modeloServeParaItem(
   item?: ItemPedidoEmbalagemInput
 ) {
   return modeloCompatibilidadeScore(modelo, item) > Number.NEGATIVE_INFINITY;
+}
+
+function capacidadeModeloParaItem(
+  modelo: ModeloEmbalagemInput,
+  item?: ItemPedidoEmbalagemInput
+) {
+  const compatibilidade = getCompatibilidadeAplicavel(modelo, item);
+
+  return Math.max(
+    1,
+    numero(
+      compatibilidade?.capacidadeMaximaItens ?? modelo.capacidadeUnidades,
+      1
+    )
+  );
 }
 
 function volume(modelo: ModeloEmbalagemInput) {
@@ -302,7 +352,7 @@ export function calcularPlanoEmbalagem({
       continue;
     }
 
-    const capacidade = Math.max(1, numero(modelo.capacidadeUnidades, 1));
+    const capacidade = capacidadeModeloParaItem(modelo, itemReferencia);
     const quantidadeModelo = Math.ceil(unidades / capacidade);
     const custo = custoModelo(modelo);
 
