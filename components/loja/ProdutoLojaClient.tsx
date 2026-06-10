@@ -191,7 +191,8 @@ function percentualDesconto(produto: {
   }
 
   return Math.round(
-    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) * 100
+    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) *
+      100,
   );
 }
 
@@ -199,7 +200,7 @@ function getVariacaoPrincipalProduto(produto: ProdutoLojaDetalhe) {
   return (
     produto.variacoes?.find(
       (variacao) =>
-        Array.isArray(variacao.opcoes) && variacao.opcoes.length > 0
+        Array.isArray(variacao.opcoes) && variacao.opcoes.length > 0,
     ) || null
   );
 }
@@ -316,7 +317,7 @@ function ProdutoRelacionadoCard({
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
+      className={`stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
         semEstoque ? "opacity-75" : ""
       }`}
     >
@@ -324,20 +325,20 @@ function ProdutoRelacionadoCard({
         <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
+          <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
             Sem estoque
           </div>
         )}
       </div>
 
-      <div className="relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
-        <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
+      <div className="stella-product-hover-surface relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3">
+        <h3 className="stella-product-hover-title line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900">
           {produto.nome}
         </h3>
 
@@ -361,11 +362,11 @@ function ProdutoRelacionadoCard({
       </div>
 
       {hasHover && produto.imagemHoverUrl && (
-        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100">
+        <div className="stella-product-hover-secondary absolute inset-0 z-20 overflow-hidden bg-white">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
-            className="h-full w-full object-cover object-center"
+            className="pointer-events-none h-full w-full object-cover object-center"
           />
 
           <div className="pointer-events-none absolute inset-0 bg-black/5" />
@@ -676,21 +677,21 @@ export default function ProdutoLojaClient({
   const [indiceImagemSelecionada, setIndiceImagemSelecionada] = useState(0);
   const [imagemVariacaoSelecionada, setImagemVariacaoSelecionada] =
     useState("");
-const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
-  temVariacao && variacaoPrincipal?.obrigatoria !== false
-    ? ""
-    : variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
-        ?.nome ??
-        produto.tamanhosDisponiveis.find(
-          (tamanho) => tamanho.quantidadeAtual > 0
-        )?.tamanhoAnel ??
-        ""
-);
+  const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
+    temVariacao && variacaoPrincipal?.obrigatoria !== false
+      ? ""
+      : (variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
+          ?.nome ??
+          produto.tamanhosDisponiveis.find(
+            (tamanho) => tamanho.quantidadeAtual > 0,
+          )?.tamanhoAnel ??
+          ""),
+  );
   const [quantidade, setQuantidade] = useState(1);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [abaAtiva, setAbaAtiva] = useState<"descricao" | "garantia">(
-    "descricao"
+    "descricao",
   );
   const [cep, setCep] = useState("");
   const [freteMensagem, setFreteMensagem] = useState("");
@@ -717,45 +718,44 @@ const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
 
     return (
       variacaoPrincipal.opcoes.find(
-        (opcao) => opcao.nome === tamanhoSelecionado
+        (opcao) => opcao.nome === tamanhoSelecionado,
       ) || null
     );
   }, [temVariacao, variacaoPrincipal, tamanhoSelecionado]);
 
-const opcoesVariacaoDisponiveis = useMemo(() => {
-  if (!temVariacao || !variacaoPrincipal) {
-    return [];
-  }
+  const opcoesVariacaoDisponiveis = useMemo(() => {
+    if (!temVariacao || !variacaoPrincipal) {
+      return [];
+    }
 
-  return variacaoPrincipal.opcoes.filter(
-    (opcao) => opcao.quantidadeAtual > 0
-  );
-}, [temVariacao, variacaoPrincipal]);
+    return variacaoPrincipal.opcoes.filter(
+      (opcao) => opcao.quantidadeAtual > 0,
+    );
+  }, [temVariacao, variacaoPrincipal]);
 
-const menorPrecoAdicionalVariacao = useMemo(() => {
-  if (opcoesVariacaoDisponiveis.length === 0) {
-    return 0;
-  }
+  const menorPrecoAdicionalVariacao = useMemo(() => {
+    if (opcoesVariacaoDisponiveis.length === 0) {
+      return 0;
+    }
 
-  return Math.min(
-    ...opcoesVariacaoDisponiveis.map((opcao) =>
-      Number(opcao.precoAdicional || 0)
-    )
-  );
-}, [opcoesVariacaoDisponiveis]);
+    return Math.min(
+      ...opcoesVariacaoDisponiveis.map((opcao) =>
+        Number(opcao.precoAdicional || 0),
+      ),
+    );
+  }, [opcoesVariacaoDisponiveis]);
 
-const variacaoObrigatoriaSemSelecao =
-  temVariacao &&
-  variacaoPrincipal?.obrigatoria !== false &&
-  !opcaoVariacaoSelecionada;
+  const variacaoObrigatoriaSemSelecao =
+    temVariacao &&
+    variacaoPrincipal?.obrigatoria !== false &&
+    !opcaoVariacaoSelecionada;
 
-const precoAdicionalVariacao = variacaoObrigatoriaSemSelecao
-  ? menorPrecoAdicionalVariacao
-  : Number(opcaoVariacaoSelecionada?.precoAdicional || 0);
+  const precoAdicionalVariacao = variacaoObrigatoriaSemSelecao
+    ? menorPrecoAdicionalVariacao
+    : Number(opcaoVariacaoSelecionada?.precoAdicional || 0);
 
-const deveMostrarAPartirDe =
-  variacaoObrigatoriaSemSelecao && opcoesVariacaoDisponiveis.length > 0;
-
+  const deveMostrarAPartirDe =
+    variacaoObrigatoriaSemSelecao && opcoesVariacaoDisponiveis.length > 0;
 
   const precoVendaComVariacao = produto.precoVenda + precoAdicionalVariacao;
 
@@ -773,13 +773,13 @@ const deveMostrarAPartirDe =
 
     return (
       opcoesAdicionais.find(
-        (opcao) => opcao.id === opcaoAdicionalSelecionadaId
+        (opcao) => opcao.id === opcaoAdicionalSelecionadaId,
       ) || null
     );
   }, [opcaoAdicionalSelecionadaId, opcoesAdicionais]);
 
   const valorAdicionalSelecionado = Number(
-    opcaoAdicionalSelecionada?.valorVenda || 0
+    opcaoAdicionalSelecionada?.valorVenda || 0,
   );
 
   const totalAdicionalSelecionado = valorAdicionalSelecionado * quantidade;
@@ -791,7 +791,7 @@ const deveMostrarAPartirDe =
     if (temVariacao) {
       return (
         variacaoPrincipal?.opcoes.find(
-          (opcao) => opcao.nome === tamanhoSelecionado
+          (opcao) => opcao.nome === tamanhoSelecionado,
         )?.quantidadeAtual ?? 0
       );
     }
@@ -802,7 +802,7 @@ const deveMostrarAPartirDe =
 
     return (
       produto.tamanhosDisponiveis.find(
-        (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado
+        (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado,
       )?.quantidadeAtual ?? 0
     );
   }, [
@@ -821,7 +821,7 @@ const deveMostrarAPartirDe =
         nome: menu.nome,
         href: menu.href,
       })),
-    [menus]
+    [menus],
   );
 
   const produtosBuscaMenu = useMemo(() => {
@@ -902,7 +902,7 @@ const deveMostrarAPartirDe =
     if (estoqueDisponivel > 0 && value > estoqueDisponivel) {
       setQuantidade(estoqueDisponivel);
       setErro(
-        `Quantidade limitada ao estoque disponível (${estoqueDisponivel}).`
+        `Quantidade limitada ao estoque disponível (${estoqueDisponivel}).`,
       );
       return;
     }
@@ -919,7 +919,7 @@ const deveMostrarAPartirDe =
     }
 
     setFreteMensagem(
-      "Frete e prazo serão confirmados no checkout. Integração automática será adicionada em uma próxima etapa."
+      "Frete e prazo serão confirmados no checkout. Integração automática será adicionada em uma próxima etapa.",
     );
   }
 
@@ -936,7 +936,7 @@ const deveMostrarAPartirDe =
       setErro(
         temVariacao
           ? `Selecione ${variacaoPrincipal?.nome.toLowerCase() || "a variação"}.`
-          : "Selecione uma opção."
+          : "Selecione uma opção.",
       );
       return;
     }
@@ -948,7 +948,7 @@ const deveMostrarAPartirDe =
 
     if (quantidade > estoqueDisponivel) {
       setErro(
-        `Quantidade maior que o estoque disponível (${estoqueDisponivel}).`
+        `Quantidade maior que o estoque disponível (${estoqueDisponivel}).`,
       );
       return;
     }
@@ -993,7 +993,7 @@ const deveMostrarAPartirDe =
     const carrinhoAtual = getCarrinhoAtual();
     const itemKey = getItemKey(novoItem);
     const itemExistente = carrinhoAtual.find(
-      (item) => getItemKey(item) === itemKey
+      (item) => getItemKey(item) === itemKey,
     );
 
     let novoCarrinho: CarrinhoItem[];
@@ -1003,7 +1003,7 @@ const deveMostrarAPartirDe =
 
       if (novaQuantidade > estoqueDisponivel) {
         setErro(
-          `Você já tem ${itemExistente.quantidade} un. no carrinho. O estoque disponível é ${estoqueDisponivel}.`
+          `Você já tem ${itemExistente.quantidade} un. no carrinho. O estoque disponível é ${estoqueDisponivel}.`,
         );
         return;
       }
@@ -1020,7 +1020,7 @@ const deveMostrarAPartirDe =
               estoqueDisponivel,
               opcaoAdicional: novoItem.opcaoAdicional,
             }
-          : item
+          : item,
       );
     } else {
       novoCarrinho = [...carrinhoAtual, novoItem];
@@ -1036,7 +1036,7 @@ const deveMostrarAPartirDe =
     setMensagem(
       opcaoAdicionalSelecionada
         ? "Produto com opção adicional adicionado ao carrinho."
-        : "Produto adicionado ao carrinho."
+        : "Produto adicionado ao carrinho.",
     );
   }
 
@@ -1206,7 +1206,7 @@ const deveMostrarAPartirDe =
 
                   <p className="mt-1 text-xl font-light tracking-tight brand-text">
                     {moeda(
-                      precoPromocionalComVariacao || precoFinalComVariacao
+                      precoPromocionalComVariacao || precoFinalComVariacao,
                     )}
                   </p>
                 </>
@@ -1277,7 +1277,7 @@ const deveMostrarAPartirDe =
                             const semSaldo = opcao.quantidadeAtual <= 0;
                             const possuiImagem = Boolean(opcao.imagemUrl);
                             const precoExtra = Number(
-                              opcao.precoAdicional || 0
+                              opcao.precoAdicional || 0,
                             );
 
                             if (!possuiImagem) {
@@ -1327,7 +1327,7 @@ const deveMostrarAPartirDe =
 
                                   if (opcao.imagemUrl) {
                                     setImagemVariacaoSelecionada(
-                                      opcao.imagemUrl
+                                      opcao.imagemUrl,
                                     );
                                   }
                                 }}
@@ -1461,7 +1461,7 @@ const deveMostrarAPartirDe =
                           checked={selecionada}
                           onChange={() =>
                             setOpcaoAdicionalSelecionadaId((atual) =>
-                              atual === opcao.id ? "" : opcao.id
+                              atual === opcao.id ? "" : opcao.id,
                             )
                           }
                           className="h-4 w-4 border-slate-300"

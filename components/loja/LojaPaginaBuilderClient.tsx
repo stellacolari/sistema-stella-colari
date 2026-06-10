@@ -107,7 +107,11 @@ function asConfig(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function getString(config: Record<string, unknown>, key: string, fallback = "") {
+function getString(
+  config: Record<string, unknown>,
+  key: string,
+  fallback = "",
+) {
   const value = config[key];
 
   if (typeof value === "string") return value;
@@ -126,7 +130,7 @@ function getNumber(config: Record<string, unknown>, key: string, fallback = 0) {
 function getBoolean(
   config: Record<string, unknown>,
   key: string,
-  fallback = false
+  fallback = false,
 ) {
   const value = config[key];
 
@@ -174,7 +178,8 @@ function percentualDesconto(produto: LojaBuilderProduto) {
   }
 
   return Math.round(
-    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) * 100
+    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) *
+      100,
   );
 }
 
@@ -189,7 +194,7 @@ function precoFinalProduto(produto: LojaBuilderProduto) {
 function filtrarProdutosPorConfig(
   produtos: LojaBuilderProduto[],
   config: Record<string, unknown>,
-  categoriaAtual?: LojaBuilderCategoriaAtual | null
+  categoriaAtual?: LojaBuilderCategoriaAtual | null,
 ) {
   const fonte = getString(config, "fonte", "TODOS");
   const categorias = getStringArray(config, "categorias");
@@ -205,10 +210,11 @@ function filtrarProdutosPorConfig(
     ]);
 
     const produtosDaCategoria = resultado.filter((produto) =>
-      nomesCategorias.has(produto.categoria)
+      nomesCategorias.has(produto.categoria),
     );
 
-    resultado = produtosDaCategoria.length > 0 ? produtosDaCategoria : resultado;
+    resultado =
+      produtosDaCategoria.length > 0 ? produtosDaCategoria : resultado;
   }
 
   if (fonte === "DESCONTOS") {
@@ -217,8 +223,7 @@ function filtrarProdutosPorConfig(
 
   if (fonte === "NOVOS") {
     resultado = resultado.sort(
-      (a, b) =>
-        new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+      (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
     );
   }
 
@@ -230,14 +235,16 @@ function filtrarProdutosPorConfig(
     const categoria = categorias[0];
 
     if (categoria) {
-      resultado = resultado.filter((produto) => produto.categoria === categoria);
+      resultado = resultado.filter(
+        (produto) => produto.categoria === categoria,
+      );
     }
   }
 
   if (fonte === "CATEGORIAS_SELECIONADAS") {
     if (categorias.length > 0) {
       resultado = resultado.filter((produto) =>
-        categorias.includes(produto.categoria)
+        categorias.includes(produto.categoria),
       );
     }
   }
@@ -249,8 +256,7 @@ function filtrarProdutosPorConfig(
       resultado = resultado
         .filter((produto) => ordem.has(produto.id))
         .sort(
-          (a, b) =>
-            Number(ordem.get(a.id) ?? 0) - Number(ordem.get(b.id) ?? 0)
+          (a, b) => Number(ordem.get(a.id) ?? 0) - Number(ordem.get(b.id) ?? 0),
         );
     }
   }
@@ -260,13 +266,13 @@ function filtrarProdutosPorConfig(
 
 function aplicarFiltrosGrade(
   produtos: LojaBuilderProduto[],
-  filtros: FiltrosGrade
+  filtros: FiltrosGrade,
 ) {
   let resultado = [...produtos];
 
   if (filtros.categoria) {
     resultado = resultado.filter(
-      (produto) => produto.categoria === filtros.categoria
+      (produto) => produto.categoria === filtros.categoria,
     );
   }
 
@@ -288,13 +294,13 @@ function aplicarFiltrosGrade(
 
   if (filtros.preco === "MENOR_PRECO") {
     resultado = resultado.sort(
-      (a, b) => precoFinalProduto(a) - precoFinalProduto(b)
+      (a, b) => precoFinalProduto(a) - precoFinalProduto(b),
     );
   }
 
   if (filtros.preco === "MAIOR_PRECO") {
     resultado = resultado.sort(
-      (a, b) => precoFinalProduto(b) - precoFinalProduto(a)
+      (a, b) => precoFinalProduto(b) - precoFinalProduto(a),
     );
   }
 
@@ -411,16 +417,12 @@ function ProdutoImagem({ produto }: { produto: LojaBuilderProduto }) {
 
   return (
     <div className="relative overflow-hidden bg-slate-50">
-      <div
-        className={`transition duration-500 ${
-          hasHover ? "group-hover:opacity-0" : ""
-        }`}
-      >
+      <div className={hasHover ? "stella-product-hover-primary" : ""}>
         <ImageBox src={produto.imagemUrl} alt={produto.nome} />
       </div>
 
       {hasHover && (
-        <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
+        <div className="stella-product-hover-secondary absolute inset-0">
           <ImageBox src={produto.imagemHoverUrl} alt={produto.nome} />
         </div>
       )}
@@ -435,26 +437,28 @@ function ProdutoCard({ produto }: { produto: LojaBuilderProduto }) {
   return (
     <Link
       href={`/loja/produto/${produto.id}`}
-      className={`group block bg-white ${semEstoque ? "opacity-75" : ""}`}
+      className={`stella-product-card block bg-white ${
+        semEstoque ? "opacity-75" : ""
+      }`}
     >
       <div className="relative">
         <ProdutoImagem produto={produto} />
 
         {desconto !== null && (
-          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
+          <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
             -{desconto}%
           </div>
         )}
 
         {semEstoque && (
-          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
             Sem estoque
           </div>
         )}
       </div>
 
       <div className="pt-4">
-        <h3 className="line-clamp-2 text-sm font-medium leading-5 text-slate-900 transition group-hover:text-[var(--brand-blue)]">
+        <h3 className="stella-product-hover-title line-clamp-2 text-sm font-medium leading-5 text-slate-900">
           {produto.nome}
         </h3>
 
@@ -553,9 +557,7 @@ function BlocoTexto({ config }: { config: Record<string, unknown> }) {
   return (
     <section className={fundoClasses.section}>
       <div
-        className={`${getEspacamentoClass(
-          espacamento
-        )} px-5 sm:px-6 lg:px-8`}
+        className={`${getEspacamentoClass(espacamento)} px-5 sm:px-6 lg:px-8`}
       >
         <div className={`mx-auto max-w-5xl ${getAlignClass(alinhamento)}`}>
           {titulo && (
@@ -591,7 +593,10 @@ function BlocoImagemTexto({ config }: { config: Record<string, unknown> }) {
   if (!titulo && !texto && !imagemUrl) return null;
 
   const imagem = (
-    <div className="min-h-[240px] bg-slate-100" style={{ height: `${altura}px` }}>
+    <div
+      className="min-h-[240px] bg-slate-100"
+      style={{ height: `${altura}px` }}
+    >
       {imagemUrl ? (
         <img
           src={imagemUrl}
@@ -677,7 +682,6 @@ function BlocoCategoriaHero({
     imagemConfig || (usarImagemCategoria ? categoriaAtual.imagemUrl || "" : "");
 
   const classes =
-  
     fundo === "ESCURO"
       ? {
           section: "bg-slate-950 text-white",
@@ -687,20 +691,20 @@ function BlocoCategoriaHero({
           card: "bg-white/10 ring-white/10",
         }
       : fundo === "AZUL_CLARO"
-      ? {
-          section: "bg-[var(--brand-blue-soft)] text-slate-950",
-          etiqueta: "brand-text",
-          titulo: "text-slate-950",
-          texto: "text-slate-600",
-          card: "bg-white/70 ring-slate-200",
-        }
-      : {
-          section: "bg-white text-slate-950",
-          etiqueta: "brand-text",
-          titulo: "text-slate-950",
-          texto: "text-slate-600",
-          card: "bg-slate-50 ring-slate-200",
-        };
+        ? {
+            section: "bg-[var(--brand-blue-soft)] text-slate-950",
+            etiqueta: "brand-text",
+            titulo: "text-slate-950",
+            texto: "text-slate-600",
+            card: "bg-white/70 ring-slate-200",
+          }
+        : {
+            section: "bg-white text-slate-950",
+            etiqueta: "brand-text",
+            titulo: "text-slate-950",
+            texto: "text-slate-600",
+            card: "bg-slate-50 ring-slate-200",
+          };
 
   if (imagemUrl) {
     return (
@@ -716,9 +720,9 @@ function BlocoCategoriaHero({
 
         <div
           className={`${getEspacamentoClass(
-            espacamento
+            espacamento,
           )} relative mx-auto ${getLarguraContainerClass(
-            largura
+            largura,
           )} px-5 sm:px-6 lg:px-8`}
         >
           <div className={`mx-auto max-w-4xl ${getAlignClass(alinhamento)}`}>
@@ -730,7 +734,7 @@ function BlocoCategoriaHero({
 
             <h1
               className={`mt-4 font-semibold tracking-tight text-white ${getTituloSizeClass(
-                tamanhoTitulo
+                tamanhoTitulo,
               )}`}
             >
               {titulo}
@@ -751,14 +755,12 @@ function BlocoCategoriaHero({
     <section className={classes.section}>
       <div
         className={`${getEspacamentoClass(
-          espacamento
-        )} mx-auto ${getLarguraContainerClass(
-          largura
-        )} px-5 sm:px-6 lg:px-8`}
+          espacamento,
+        )} mx-auto ${getLarguraContainerClass(largura)} px-5 sm:px-6 lg:px-8`}
       >
         <div
           className={`rounded-[2rem] px-6 py-10 ring-1 md:px-10 ${classes.card} ${getAlignClass(
-            alinhamento
+            alinhamento,
           )}`}
         >
           {textoEtiqueta && (
@@ -771,7 +773,7 @@ function BlocoCategoriaHero({
 
           <h1
             className={`mt-4 font-semibold tracking-tight ${classes.titulo} ${getTituloSizeClass(
-              tamanhoTitulo
+              tamanhoTitulo,
             )}`}
           >
             {titulo}
@@ -811,9 +813,7 @@ function BlocoCategoriaDescricao({
   return (
     <section className={fundoClasses.section}>
       <div
-        className={`${getEspacamentoClass(
-          espacamento
-        )} px-5 sm:px-6 lg:px-8`}
+        className={`${getEspacamentoClass(espacamento)} px-5 sm:px-6 lg:px-8`}
       >
         <div className={`mx-auto max-w-4xl ${getAlignClass(alinhamento)}`}>
           {titulo && (
@@ -850,7 +850,7 @@ function BlocoCategoriaSubcategorias({
   const descricao = getString(
     config,
     "descricao",
-    "Veja as subcategorias disponíveis."
+    "Veja as subcategorias disponíveis.",
   );
   const colunas = getNumber(config, "colunas", 4);
   const espacamento = getString(config, "espacamento", "MEDIO");
@@ -859,14 +859,14 @@ function BlocoCategoriaSubcategorias({
     colunas === 2
       ? "sm:grid-cols-2"
       : colunas === 3
-      ? "sm:grid-cols-2 lg:grid-cols-3"
-      : "sm:grid-cols-2 lg:grid-cols-4";
+        ? "sm:grid-cols-2 lg:grid-cols-3"
+        : "sm:grid-cols-2 lg:grid-cols-4";
 
   return (
     <section className="bg-white">
       <div
         className={`mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 ${getEspacamentoClass(
-          espacamento
+          espacamento,
         )}`}
       >
         <div className="mb-8 text-center">
@@ -935,12 +935,12 @@ function BlocoCategoriaCTA({
   const titulo = getString(
     config,
     "titulo",
-    `Encontre sua próxima peça em ${categoriaAtual.nome}`
+    `Encontre sua próxima peça em ${categoriaAtual.nome}`,
   );
   const texto = getString(
     config,
     "texto",
-    "Explore os produtos disponíveis e escolha seus favoritos."
+    "Explore os produtos disponíveis e escolha seus favoritos.",
   );
   const textoBotao = getString(config, "textoBotao", "Ver produtos");
   const linkBotao = getString(config, "linkBotao", categoriaAtual.href);
@@ -1025,7 +1025,7 @@ function CabecalhoProdutos({
           {descricaoPrincipal && (
             <p
               className={`mt-4 max-w-3xl whitespace-pre-line text-sm font-medium leading-7 text-slate-600 md:text-base ${getBlocoTextoWidth(
-                alinhamentoPrincipal
+                alinhamentoPrincipal,
               )}`}
             >
               {descricaoPrincipal}
@@ -1049,7 +1049,7 @@ function CabecalhoProdutos({
           {descricao && (
             <p
               className={`mt-3 max-w-3xl whitespace-pre-line text-sm font-medium leading-7 text-slate-600 md:text-base ${getBlocoTextoWidth(
-                alinhamentoSecao
+                alinhamentoSecao,
               )}`}
             >
               {descricao}
@@ -1073,7 +1073,7 @@ function FiltrosProdutosGrade({
   setFiltros: Dispatch<SetStateAction<FiltrosGrade>>;
 }) {
   const categorias = Array.from(
-    new Set(produtos.map((produto) => produto.categoria).filter(Boolean))
+    new Set(produtos.map((produto) => produto.categoria).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b));
 
   if (
@@ -1224,7 +1224,7 @@ function ProdutosCarrossel({
               type="button"
               onClick={() =>
                 setPaginaAtual((current) =>
-                  Math.min(current + 1, totalPaginas - 1)
+                  Math.min(current + 1, totalPaginas - 1),
                 )
               }
               disabled={paginaAtual >= totalPaginas - 1}
@@ -1260,7 +1260,7 @@ function ProdutosCarrossel({
               type="button"
               onClick={() =>
                 setPaginaAtual((current) =>
-                  Math.min(current + 1, totalPaginas - 1)
+                  Math.min(current + 1, totalPaginas - 1),
                 )
               }
               disabled={paginaAtual >= totalPaginas - 1}
@@ -1337,7 +1337,7 @@ function ProdutosGrade({
 
   const totalPaginas = Math.max(
     1,
-    Math.ceil(produtosFiltrados.length / itensPorPagina)
+    Math.ceil(produtosFiltrados.length / itensPorPagina),
   );
 
   const produtosPagina =
@@ -1345,7 +1345,7 @@ function ProdutosGrade({
       ? produtosFiltrados.slice(0, quantidadeVisivel)
       : produtosFiltrados.slice(
           paginaAtual * itensPorPagina,
-          paginaAtual * itensPorPagina + itensPorPagina
+          paginaAtual * itensPorPagina + itensPorPagina,
         );
 
   if (produtos.length === 0) return null;
@@ -1354,8 +1354,8 @@ function ProdutosGrade({
     produtosPorLinha === 2
       ? "sm:grid-cols-2"
       : produtosPorLinha === 3
-      ? "sm:grid-cols-2 lg:grid-cols-3"
-      : "sm:grid-cols-2 lg:grid-cols-4";
+        ? "sm:grid-cols-2 lg:grid-cols-3"
+        : "sm:grid-cols-2 lg:grid-cols-4";
 
   return (
     <section className="mx-auto max-w-7xl px-5 py-12 sm:px-6 lg:px-8">
@@ -1393,40 +1393,38 @@ function ProdutosGrade({
         </div>
       )}
 
-      {paginacao === "CARREGAR_MAIS" ? (
-        produtosPagina.length < produtosFiltrados.length && (
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() =>
-                setQuantidadeVisivel((current) => current + itensPorPagina)
-              }
-              className="brand-button px-6 py-3 text-sm font-semibold"
-            >
-              Carregar mais
-            </button>
-          </div>
-        )
-      ) : (
-        totalPaginas > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-2">
-            {Array.from({ length: totalPaginas }).map((_, index) => (
+      {paginacao === "CARREGAR_MAIS"
+        ? produtosPagina.length < produtosFiltrados.length && (
+            <div className="mt-8 flex justify-center">
               <button
-                key={`pagina-${index}`}
                 type="button"
-                onClick={() => setPaginaAtual(index)}
-                className={`h-10 min-w-10 border px-3 text-sm font-semibold transition ${
-                  paginaAtual === index
-                    ? "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
-                }`}
+                onClick={() =>
+                  setQuantidadeVisivel((current) => current + itensPorPagina)
+                }
+                className="brand-button px-6 py-3 text-sm font-semibold"
               >
-                {index + 1}
+                Carregar mais
               </button>
-            ))}
-          </div>
-        )
-      )}
+            </div>
+          )
+        : totalPaginas > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              {Array.from({ length: totalPaginas }).map((_, index) => (
+                <button
+                  key={`pagina-${index}`}
+                  type="button"
+                  onClick={() => setPaginaAtual(index)}
+                  className={`h-10 min-w-10 border px-3 text-sm font-semibold transition ${
+                    paginaAtual === index
+                      ? "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          )}
     </section>
   );
 }
@@ -1445,13 +1443,13 @@ function BlocoProdutos({
   const titulo = getString(
     config,
     "titulo",
-    categoriaAtual ? `Produtos em ${categoriaAtual.nome}` : "Produtos"
+    categoriaAtual ? `Produtos em ${categoriaAtual.nome}` : "Produtos",
   );
   const descricao = getString(config, "descricao");
   const alinhamentoPrincipal = getString(
     config,
     "alinhamentoPrincipal",
-    getString(config, "alinhamento", "CENTRO")
+    getString(config, "alinhamento", "CENTRO"),
   );
   const alinhamentoSecao = getString(config, "alinhamento", "ESQUERDA");
   const modo = getString(config, "modo", "CARROSSEL");
@@ -1461,7 +1459,7 @@ function BlocoProdutos({
   const produtosDoBloco = filtrarProdutosPorConfig(
     produtos,
     config,
-    categoriaAtual
+    categoriaAtual,
   );
 
   if (modo === "GRADE") {
@@ -1620,23 +1618,28 @@ export default function LojaPaginaBuilderClient({
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }if (bloco.tipo === "RECOMENDACOES") {
+            }
+            if (bloco.tipo === "RECOMENDACOES") {
               return (
                 <BlocoProdutos
                   key={bloco.id}
                   config={{
-                    titulo: getString(config, "titulo", "Você também pode gostar"),
+                    titulo: getString(
+                      config,
+                      "titulo",
+                      "Você também pode gostar",
+                    ),
                     descricao: getString(
                       config,
                       "descricao",
-                      "Produtos selecionados para complementar sua escolha."
+                      "Produtos selecionados para complementar sua escolha.",
                     ),
                     tituloPrincipal: getString(config, "tituloPrincipal"),
                     descricaoPrincipal: getString(config, "descricaoPrincipal"),
                     alinhamentoPrincipal: getString(
                       config,
                       "alinhamentoPrincipal",
-                      "CENTRO"
+                      "CENTRO",
                     ),
                     alinhamento: getString(config, "alinhamento", "ESQUERDA"),
                     modo: getString(config, "modo", "CARROSSEL"),

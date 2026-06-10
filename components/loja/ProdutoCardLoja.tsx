@@ -43,7 +43,8 @@ function percentualDesconto(produto: ProdutoCardLojaItem) {
   }
 
   return Math.round(
-    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) * 100
+    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) *
+      100,
   );
 }
 
@@ -104,7 +105,7 @@ export default function ProdutoCardLoja({
   const desconto = percentualDesconto(produto);
   const hasHover = Boolean(produto.imagemHoverUrl);
   const produtoHref = href || `/loja/produto/${produto.id}`;
-  const cardClass = `group relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 hover:bg-slate-50 active:bg-slate-50 ${
+  const cardClass = `stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
     semEstoque ? "opacity-75" : ""
   }`;
   const conteudo = (
@@ -113,20 +114,20 @@ export default function ProdutoCardLoja({
         <ProdutoImagem produto={produto} />
 
         {exibirSeloDesconto && desconto !== null ? (
-          <div className="absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
+          <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
             -{desconto}%
           </div>
         ) : null}
 
         {semEstoque ? (
-          <div className="absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
             Sem estoque
           </div>
         ) : null}
       </div>
 
-      <div className="relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3 transition-colors duration-200 group-hover:bg-transparent group-active:bg-transparent">
-        <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900 transition-colors duration-200 group-hover:text-[var(--brand-blue)]">
+      <div className="stella-product-hover-surface relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3">
+        <h3 className="stella-product-hover-title line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900">
           {produto.nome}
         </h3>
 
@@ -137,18 +138,18 @@ export default function ProdutoCardLoja({
         ) : null}
 
         {exibirBotao && textoBotao ? (
-          <span className="mt-3 inline-flex min-h-9 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-xs font-semibold text-white transition group-hover:bg-white group-hover:text-slate-950">
+          <span className="stella-product-hover-button mt-3 inline-flex min-h-9 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-xs font-semibold text-white">
             {textoBotao}
           </span>
         ) : null}
       </div>
 
       {hasHover && produto.imagemHoverUrl ? (
-        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden bg-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100">
+        <div className="stella-product-hover-secondary absolute inset-0 z-20 overflow-hidden bg-white">
           <img
             src={produto.imagemHoverUrl}
             alt={produto.nome}
-            className="h-full w-full object-cover object-center"
+            className="pointer-events-none h-full w-full object-cover object-center"
           />
 
           <div className="pointer-events-none absolute inset-0 bg-black/5" />
