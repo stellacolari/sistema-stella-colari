@@ -111,6 +111,13 @@ export default async function NovaVendaV2Page() {
       documento: true,
       telefone: true,
       email: true,
+      cep: true,
+      rua: true,
+      numero: true,
+      complemento: true,
+      bairro: true,
+      cidade: true,
+      estado: true,
     },
   });
 
@@ -128,9 +135,7 @@ export default async function NovaVendaV2Page() {
       codigoInterno: produto.codigoInterno,
       codigoFornecedor: produto.codigoFornecedor || "",
       nome:
-        produto.tipoProduto === "KIT"
-          ? `${produto.nome} · Kit`
-          : produto.nome,
+        produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
       precoVenda: Number(produto.precoVenda),
       categoria: produto.categoria,
       imagemUrl: produto.imagens[0]?.imagemUrl ?? produto.imagemUrl,
@@ -152,5 +157,7 @@ export default async function NovaVendaV2Page() {
     };
   });
 
-  return <NovaVendaV2Client clientes={clientes} produtos={produtosFormatados} />;
+  return (
+    <NovaVendaV2Client clientes={clientes} produtos={produtosFormatados} />
+  );
 }

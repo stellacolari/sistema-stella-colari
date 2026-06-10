@@ -18,7 +18,9 @@ function normalizarDocumento(value: unknown) {
 }
 
 function normalizarUf(value: unknown) {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .toUpperCase();
 }
 
 function toJson(value: unknown): Prisma.InputJsonValue {
@@ -38,7 +40,7 @@ function extrairIdMelhorEnvio(data: unknown) {
 
 export async function PATCH(
   _request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
@@ -64,49 +66,52 @@ export async function PATCH(
     if (!pedido) {
       return NextResponse.json(
         { error: "Pedido não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    if (pedido.origemCanal !== "LOJA_STELLA") {
+    if (!["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal)) {
       return NextResponse.json(
-        { error: "Preparação de envio disponível apenas para pedidos do site." },
-        { status: 400 }
+        {
+          error:
+            "Preparação de envio disponível apenas para pedidos com entrega.",
+        },
+        { status: 400 },
       );
     }
 
     if (pedido.statusPagamento !== "PAGO") {
       return NextResponse.json(
         { error: "Só é possível preparar envio de pedido pago." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!pedido.envio) {
       return NextResponse.json(
         { error: "Pedido não possui dados de envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega === "RETIRADA") {
       return NextResponse.json(
         { error: "Retirada local não gera envio no Melhor Envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega !== "ENTREGA") {
       return NextResponse.json(
         { error: "Tipo de entrega não elegível para preparação de envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.gatewayLogistico !== "MELHOR_ENVIO") {
       return NextResponse.json(
         { error: "Pedido não utiliza Melhor Envio como gateway logístico." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -116,7 +121,7 @@ export async function PATCH(
           error:
             "Só é possível preparar envio quando o status logístico está pendente.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -128,7 +133,7 @@ export async function PATCH(
           error:
             "Serviço do Melhor Envio não identificado no pedido. Refaça a cotação antes de preparar o envio.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -140,7 +145,7 @@ export async function PATCH(
           error:
             "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -150,7 +155,7 @@ export async function PATCH(
           error:
             "CEP de origem do frete não configurado. Ajuste em Configurações > Frete e entrega.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -197,7 +202,7 @@ export async function PATCH(
         destinatario,
         produtos,
       },
-      freteConfig
+      freteConfig,
     );
 
     const gatewayEnvioId = extrairIdMelhorEnvio(resposta);

@@ -28,7 +28,7 @@ function temEtiquetaGeradaOuPaga(statusEnvio: string) {
 
 export async function PATCH(
   _request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
@@ -45,58 +45,62 @@ export async function PATCH(
     if (!pedido) {
       return NextResponse.json(
         { error: "Pedido não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    if (pedido.origemCanal !== "LOJA_STELLA") {
+    if (!["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal)) {
       return NextResponse.json(
-        { error: "Compra de etiqueta disponível apenas para pedidos do site." },
-        { status: 400 }
+        {
+          error:
+            "Compra de etiqueta disponível apenas para pedidos com entrega.",
+        },
+        { status: 400 },
       );
     }
 
     if (pedido.statusPagamento !== "PAGO") {
       return NextResponse.json(
         { error: "Só é possível comprar etiqueta de pedido pago." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!pedido.envio) {
       return NextResponse.json(
         { error: "Pedido não possui dados de envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega === "RETIRADA") {
       return NextResponse.json(
         { error: "Retirada local não gera compra de etiqueta." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega !== "ENTREGA") {
       return NextResponse.json(
         { error: "Tipo de entrega não elegível para compra de etiqueta." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.gatewayLogistico !== "MELHOR_ENVIO") {
       return NextResponse.json(
         { error: "Pedido não utiliza Melhor Envio como gateway logístico." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (temEtiquetaGeradaOuPaga(pedido.envio.statusEnvio)) {
       return NextResponse.json(
         {
-          error: "Etiqueta já foi comprada, gerada ou enviada para este pedido.",
+          error:
+            "Etiqueta já foi comprada, gerada ou enviada para este pedido.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -106,7 +110,7 @@ export async function PATCH(
           error:
             "Só é possível comprar etiqueta após preparar o envio no Melhor Envio.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -118,7 +122,7 @@ export async function PATCH(
           error:
             "Identificador do envio preparado não encontrado. Prepare o envio novamente antes de comprar a etiqueta.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -130,7 +134,7 @@ export async function PATCH(
           error:
             "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -138,7 +142,7 @@ export async function PATCH(
       {
         orderId: gatewayEnvioId,
       },
-      freteConfig
+      freteConfig,
     );
 
     const observacoesAnteriores = parseObservacoes(pedido.envio.observacoes);

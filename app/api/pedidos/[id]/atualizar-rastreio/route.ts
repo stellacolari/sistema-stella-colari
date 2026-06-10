@@ -60,7 +60,7 @@ function mapearStatusEnvioMelhorEnvio(status: string, statusAtual: string) {
 
   if (
     ["generated", "released", "paid", "printed", "pending"].includes(
-      normalizado
+      normalizado,
     )
   ) {
     return statusAtual === "POSTADO" || statusAtual === "ENTREGUE"
@@ -74,7 +74,7 @@ function mapearStatusEnvioMelhorEnvio(status: string, statusAtual: string) {
 function extrairPrimeiroTexto(
   data: unknown,
   campos: string[],
-  visitados = new Set<unknown>()
+  visitados = new Set<unknown>(),
 ): string {
   if (!data || visitados.has(data)) {
     return "";
@@ -119,10 +119,13 @@ function extrairPrimeiroTexto(
   return "";
 }
 
-function getDatasEnvio(statusEnvio: string, envioAtual: {
-  postadoEm: Date | null;
-  entregueEm: Date | null;
-}) {
+function getDatasEnvio(
+  statusEnvio: string,
+  envioAtual: {
+    postadoEm: Date | null;
+    entregueEm: Date | null;
+  },
+) {
   const agora = new Date();
 
   if (statusEnvio === "POSTADO") {
@@ -147,7 +150,7 @@ function getDatasEnvio(statusEnvio: string, envioAtual: {
 
 export async function PATCH(
   _request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
@@ -164,49 +167,49 @@ export async function PATCH(
     if (!pedido) {
       return NextResponse.json(
         { error: "Pedido não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    if (pedido.origemCanal !== "LOJA_STELLA") {
+    if (!["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal)) {
       return NextResponse.json(
-        { error: "Rastreio disponível apenas para pedidos do site." },
-        { status: 400 }
+        { error: "Rastreio disponível apenas para pedidos com entrega." },
+        { status: 400 },
       );
     }
 
     if (pedido.statusPagamento !== "PAGO") {
       return NextResponse.json(
         { error: "Só é possível atualizar rastreio de pedido pago." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!pedido.envio) {
       return NextResponse.json(
         { error: "Pedido não possui dados de envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega === "RETIRADA") {
       return NextResponse.json(
         { error: "Retirada local não possui rastreio no Melhor Envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega !== "ENTREGA") {
       return NextResponse.json(
         { error: "Tipo de entrega não elegível para rastreio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.gatewayLogistico !== "MELHOR_ENVIO") {
       return NextResponse.json(
         { error: "Pedido não utiliza Melhor Envio como gateway logístico." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -215,24 +218,21 @@ export async function PATCH(
     if (!gatewayEnvioId) {
       return NextResponse.json(
         { error: "Identificador do envio no Melhor Envio não encontrado." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (
-      ![
-        "ETIQUETA_GERADA",
-        "POSTADO",
-        "ENTREGUE",
-        "PROBLEMA",
-      ].includes(pedido.envio.statusEnvio)
+      !["ETIQUETA_GERADA", "POSTADO", "ENTREGUE", "PROBLEMA"].includes(
+        pedido.envio.statusEnvio,
+      )
     ) {
       return NextResponse.json(
         {
           error:
             "Rastreio disponível apenas após a etiqueta ser gerada no Melhor Envio.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -244,7 +244,7 @@ export async function PATCH(
           error:
             "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -252,7 +252,7 @@ export async function PATCH(
       {
         orderId: gatewayEnvioId,
       },
-      freteConfig
+      freteConfig,
     );
     const statusMelhorEnvio = extrairPrimeiroTexto(resposta, [
       "status",
@@ -268,7 +268,7 @@ export async function PATCH(
     const protocolo = extrairPrimeiroTexto(resposta, ["protocol", "id"]);
     const statusEnvio = mapearStatusEnvioMelhorEnvio(
       statusMelhorEnvio,
-      pedido.envio.statusEnvio
+      pedido.envio.statusEnvio,
     );
     const datasEnvio = getDatasEnvio(statusEnvio, {
       postadoEm: pedido.envio.postadoEm,

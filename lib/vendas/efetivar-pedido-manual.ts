@@ -45,7 +45,9 @@ function produtoExigeTamanhoAnel(categoria: string) {
 }
 
 function normalizarTamanhoAnel(tamanho: string | null | undefined) {
-  const value = String(tamanho ?? "").trim().toUpperCase();
+  const value = String(tamanho ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!value || value === "UNICO") {
     return "";
@@ -121,7 +123,7 @@ async function baixarEstoqueProduto({
     throw new Error(
       tamanhoEstoque !== "UNICO"
         ? `Produto sem estoque no tamanho ${tamanhoEstoque}: ${descricao}`
-        : `Produto sem estoque: ${descricao}`
+        : `Produto sem estoque: ${descricao}`,
     );
   }
 
@@ -129,7 +131,7 @@ async function baixarEstoqueProduto({
     throw new Error(
       tamanhoEstoque !== "UNICO"
         ? `Saldo insuficiente para ${descricao} no tamanho ${tamanhoEstoque}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
-        : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
+        : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`,
     );
   }
 
@@ -189,12 +191,14 @@ async function consumirAdicionaisDaCategoria({
     });
 
     if (!estoqueAdicional) {
-      throw new Error(`Item adicional sem estoque: ${regra.itemAdicional.nome}`);
+      throw new Error(
+        `Item adicional sem estoque: ${regra.itemAdicional.nome}`,
+      );
     }
 
     if (estoqueAdicional.quantidadeAtual < quantidadeNecessaria) {
       throw new Error(
-        `Saldo insuficiente do item adicional ${regra.itemAdicional.nome} para vender ${nomeProduto}`
+        `Saldo insuficiente do item adicional ${regra.itemAdicional.nome} para vender ${nomeProduto}`,
       );
     }
 
@@ -243,10 +247,22 @@ export async function efetivarPedidoManualPagoComoVenda({
   pedidoId,
   gatewayPagamentoId,
   valorPago,
+  gatewayPagamento = "STRIPE",
+  metodoPagamento = "STRIPE_CHECKOUT",
+  origemHistorico = "STRIPE",
+  usuarioNomeHistorico = "Stripe",
+  pagamentoObservacao,
+  historicoObservacao,
 }: {
   pedidoId: string;
   gatewayPagamentoId: string | null;
   valorPago: number;
+  gatewayPagamento?: string | null;
+  metodoPagamento?: string | null;
+  origemHistorico?: string;
+  usuarioNomeHistorico?: string;
+  pagamentoObservacao?: string;
+  historicoObservacao?: string;
 }) {
   return prisma.$transaction(
     async (tx) => {
@@ -314,7 +330,9 @@ export async function efetivarPedidoManualPagoComoVenda({
 
       for (const itemPedido of pedido.itens) {
         if (!itemPedido.produtoId) {
-          throw new Error(`Item sem produto vinculado: ${itemPedido.nomeProduto}`);
+          throw new Error(
+            `Item sem produto vinculado: ${itemPedido.nomeProduto}`,
+          );
         }
 
         const produto = await tx.produto.findUnique({
@@ -344,7 +362,7 @@ export async function efetivarPedidoManualPagoComoVenda({
 
         if (produtoEhKit && produto.componentesDoKit.length === 0) {
           throw new Error(
-            `O kit ${produto.nome} não possui componentes cadastrados.`
+            `O kit ${produto.nome} não possui componentes cadastrados.`,
           );
         }
 
@@ -357,11 +375,13 @@ export async function efetivarPedidoManualPagoComoVenda({
 
         if (exigeTamanho && !tamanhoAnel) {
           throw new Error(
-            `Informe o tamanho do anel para o produto: ${produto.nome}`
+            `Informe o tamanho do anel para o produto: ${produto.nome}`,
           );
         }
 
-        const valorUnitarioBase = Number(itemPedido.precoOriginal ?? produto.precoVenda);
+        const valorUnitarioBase = Number(
+          itemPedido.precoOriginal ?? produto.precoVenda,
+        );
         const valorUnitarioFinal = Number(itemPedido.precoUnitario);
         const valorTotalLinha = valorUnitarioFinal * quantidade;
 
@@ -404,16 +424,13 @@ export async function efetivarPedidoManualPagoComoVenda({
           }
         }
 
-        const {
-          gastoAdicionais,
-          gastosPorAdicional,
-          adicionaisConsumidos,
-        } = await consumirAdicionaisDaCategoria({
-          tx,
-          categoria: produto.categoria,
-          quantidadeProduto: quantidade,
-          nomeProduto: produto.nome,
-        });
+        const { gastoAdicionais, gastosPorAdicional, adicionaisConsumidos } =
+          await consumirAdicionaisDaCategoria({
+            tx,
+            categoria: produto.categoria,
+            quantidadeProduto: quantidade,
+            nomeProduto: produto.nome,
+          });
 
         const lucroLinha = valorTotalLinha - gastoProduto - gastoAdicionais;
 
@@ -516,20 +533,24 @@ export async function efetivarPedidoManualPagoComoVenda({
         data: {
           status: "PAGO",
           statusPagamento: "PAGO",
-          gatewayPagamento: "STRIPE",
+          gatewayPagamento,
           gatewayPagamentoId,
-          metodoPagamento: "STRIPE_CHECKOUT",
+          metodoPagamento,
           valorPago,
           pagoEm: new Date(),
-          pagamentoObservacao: `Pagamento confirmado via Stripe. Venda ${codigoVenda} gerada e estoque baixado.`,
+          pagamentoObservacao:
+            pagamentoObservacao ||
+            `Pagamento confirmado via Stripe. Venda ${codigoVenda} gerada e estoque baixado.`,
           statusHistorico: {
             create: {
               statusAnterior: pedido.status,
               statusNovo: "PAGO",
               tipoEvento: "PAGAMENTO",
-              origem: "STRIPE",
-              usuarioNome: "Stripe",
-              observacao: `Link manual pago. Venda gerada: ${codigoVenda}.`,
+              origem: origemHistorico,
+              usuarioNome: usuarioNomeHistorico,
+              observacao:
+                historicoObservacao ||
+                `Link manual pago. Venda gerada: ${codigoVenda}.`,
             },
           },
         },
@@ -544,6 +565,6 @@ export async function efetivarPedidoManualPagoComoVenda({
     {
       maxWait: 15000,
       timeout: 120000,
-    }
+    },
   );
 }

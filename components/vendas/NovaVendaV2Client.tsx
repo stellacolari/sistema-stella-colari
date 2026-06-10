@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ImageIcon, Plus, Trash2, X } from "lucide-react";
+import { ImageIcon, Plus, Trash2, Truck, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 type ClienteBusca = {
@@ -12,6 +12,13 @@ type ClienteBusca = {
   documento: string;
   telefone?: string | null;
   email?: string | null;
+  cep?: string | null;
+  rua?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 };
 
 type EstoquePorTamanho = {
@@ -59,6 +66,19 @@ type MedidaDisponivel = {
   label: string;
   estoqueDisponivel: number;
   imagemUrl?: string | null;
+};
+
+type FreteOpcaoVenda = {
+  id: string;
+  servicoId: string;
+  nome: string;
+  transportadora: string;
+  valor: number;
+  prazoDias: number | null;
+  descricao: string;
+  provider?: "MELHOR_ENVIO" | "MANUAL" | "RETIRADA_LOCAL";
+  tipoEntrega?: "ENTREGA" | "RETIRADA";
+  erro?: string | null;
 };
 
 function moeda(valor: number) {
@@ -109,7 +129,7 @@ function getEstoqueDisponivel(item: {
 
   const estoquePorTamanho =
     item.estoquesPorTamanho.find(
-      (estoque) => normalizarTamanhoAnel(estoque.tamanhoAnel) === tamanho
+      (estoque) => normalizarTamanhoAnel(estoque.tamanhoAnel) === tamanho,
     )?.quantidadeAtual ?? null;
 
   if (estoquePorTamanho !== null) {
@@ -117,7 +137,7 @@ function getEstoqueDisponivel(item: {
   }
 
   const medidaPorVariacao = getOpcoesVariacaoAtivas(item).some(
-    (opcao) => normalizarTamanhoAnel(opcao.nome) === tamanho
+    (opcao) => normalizarTamanhoAnel(opcao.nome) === tamanho,
   );
 
   return medidaPorVariacao ? item.estoqueAtual : 0;
@@ -129,7 +149,7 @@ function getOpcoesVariacaoAtivas(produto: {
   return (produto.variacoes || []).flatMap((variacao) =>
     variacao.opcoes
       .filter((opcao) => opcao.ativo !== false)
-      .sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0))
+      .sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0)),
   );
 }
 
@@ -142,7 +162,7 @@ function produtoTemMedidas(produto: {
   const temEstoquePorMedida = produto.estoquesPorTamanho.some(
     (estoque) =>
       normalizarTamanhoAnel(estoque.tamanhoAnel) !== "UNICO" &&
-      estoque.quantidadeAtual > 0
+      estoque.quantidadeAtual > 0,
   );
 
   if (temEstoquePorMedida) {
@@ -152,7 +172,7 @@ function produtoTemMedidas(produto: {
   const temVariacaoAtiva =
     produto.estoqueAtual > 0 &&
     getOpcoesVariacaoAtivas(produto).some(
-      (opcao) => normalizarTamanhoAnel(opcao.nome) !== "UNICO"
+      (opcao) => normalizarTamanhoAnel(opcao.nome) !== "UNICO",
     );
 
   return temVariacaoAtiva || produtoEhAnel(produto);
@@ -165,12 +185,12 @@ function getMedidasDisponiveis(produto: ProdutoBusca): MedidaDisponivel[] {
     .filter(
       (estoque) =>
         normalizarTamanhoAnel(estoque.tamanhoAnel) !== "UNICO" &&
-        estoque.quantidadeAtual > 0
+        estoque.quantidadeAtual > 0,
     )
     .map((estoque) => {
       const valor = normalizarTamanhoAnel(estoque.tamanhoAnel);
       const opcaoVariacao = opcoesVariacao.find(
-        (opcao) => normalizarTamanhoAnel(opcao.nome) === valor
+        (opcao) => normalizarTamanhoAnel(opcao.nome) === valor,
       );
 
       return {
@@ -222,7 +242,7 @@ function getOpcaoVariacaoSelecionada(item: ItemPedido) {
     const opcao = variacao.opcoes.find(
       (opcaoVariacao) =>
         opcaoVariacao.ativo !== false &&
-        normalizarTamanhoAnel(opcaoVariacao.nome) === tamanho
+        normalizarTamanhoAnel(opcaoVariacao.nome) === tamanho,
     );
 
     if (opcao) {
@@ -235,7 +255,9 @@ function getOpcaoVariacaoSelecionada(item: ItemPedido) {
 
 function getImagemProduto(item: ProdutoBusca | ItemPedido) {
   if ("itemKey" in item) {
-    return getOpcaoVariacaoSelecionada(item)?.imagemUrl || item.imagemUrl || null;
+    return (
+      getOpcaoVariacaoSelecionada(item)?.imagemUrl || item.imagemUrl || null
+    );
   }
 
   return item.imagemUrl || null;
@@ -311,6 +333,10 @@ function normalizarTelefoneWhatsApp(value: string | null | undefined) {
   return `55${digits}`;
 }
 
+function normalizarCep(value: string | null | undefined) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function linkCompacto(url: string) {
   try {
     const parsed = new URL(url);
@@ -381,6 +407,21 @@ export default function NovaVendaV2Client({
     pedidoCodigo: string;
     assinatura: string;
   } | null>(null);
+  const [enviarEntrega, setEnviarEntrega] = useState(false);
+  const [usarEnderecoCliente, setUsarEnderecoCliente] = useState(false);
+  const [entrega, setEntrega] = useState({
+    cep: "",
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+  });
+  const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcaoVenda[]>([]);
+  const [freteSelecionadoId, setFreteSelecionadoId] = useState("");
+  const [cotandoFrete, setCotandoFrete] = useState(false);
+  const [erroFrete, setErroFrete] = useState("");
   const [novoCliente, setNovoCliente] = useState({
     nome: "",
     telefone: "",
@@ -392,8 +433,9 @@ export default function NovaVendaV2Client({
 
   const clienteSelecionado = useMemo(() => {
     return (
-      clientesDisponiveis.find((cliente) => cliente.id === clienteSelecionadoId) ||
-      null
+      clientesDisponiveis.find(
+        (cliente) => cliente.id === clienteSelecionadoId,
+      ) || null
     );
   }, [clientesDisponiveis, clienteSelecionadoId]);
 
@@ -433,19 +475,37 @@ export default function NovaVendaV2Client({
       clienteId: clienteSelecionadoId,
       meioVenda,
       descontoNumero,
+      enviarEntrega,
+      entrega,
+      freteSelecionadoId,
       itens: itensPedido.map((item) => ({
         id: item.id,
         quantidade: item.quantidade,
         tamanhoAnel: item.tamanhoAnel,
       })),
     });
-  }, [clienteSelecionadoId, descontoNumero, itensPedido, meioVenda]);
+  }, [
+    clienteSelecionadoId,
+    descontoNumero,
+    entrega,
+    enviarEntrega,
+    freteSelecionadoId,
+    itensPedido,
+    meioVenda,
+  ]);
 
   const linkPagamentoDesatualizado =
     Boolean(linkPagamento) && linkPagamento?.assinatura !== assinaturaPagamento;
 
+  function limparFreteCotado() {
+    setFreteSelecionadoId("");
+    setOpcoesFrete([]);
+    setErroFrete("");
+  }
+
   function adicionarProduto(produto: ProdutoBusca) {
     setErro("");
+    limparFreteCotado();
 
     if (produto.estoqueAtual <= 0) {
       setErro(`O produto ${produto.nome} está sem saldo no estoque.`);
@@ -467,13 +527,13 @@ export default function NovaVendaV2Client({
 
     setItensPedido((atual) => {
       const existente = atual.find(
-        (item) => item.id === produto.id && !produtoTemMedidas(item)
+        (item) => item.id === produto.id && !produtoTemMedidas(item),
       );
 
       if (existente) {
         if (existente.quantidade + 1 > produto.estoqueAtual) {
           setErro(
-            `Não é possível adicionar mais unidades de ${produto.nome}. Saldo atual: ${produto.estoqueAtual}.`
+            `Não é possível adicionar mais unidades de ${produto.nome}. Saldo atual: ${produto.estoqueAtual}.`,
           );
           return atual;
         }
@@ -481,7 +541,7 @@ export default function NovaVendaV2Client({
         return atual.map((item) =>
           item.itemKey === existente.itemKey
             ? { ...item, quantidade: item.quantidade + 1 }
-            : item
+            : item,
         );
       }
 
@@ -507,9 +567,11 @@ export default function NovaVendaV2Client({
       return;
     }
 
+    limparFreteCotado();
+
     const medidaNormalizada = normalizarTamanhoAnel(medidaSelecionada);
     const medida = getMedidasDisponiveis(produtoMedidaSelecionado).find(
-      (opcao) => opcao.valor === medidaNormalizada
+      (opcao) => opcao.valor === medidaNormalizada,
     );
 
     if (!medida) {
@@ -532,6 +594,7 @@ export default function NovaVendaV2Client({
 
   function alterarQuantidade(itemKey: string, quantidade: number) {
     setErro("");
+    limparFreteCotado();
 
     if (quantidade <= 0) return;
 
@@ -545,18 +608,19 @@ export default function NovaVendaV2Client({
           setErro(
             produtoTemMedidas(item)
               ? `A quantidade de ${item.nome} medida ${item.tamanhoAnel} não pode ser maior que o estoque atual (${estoqueDisponivel}).`
-              : `A quantidade de ${item.nome} não pode ser maior que o estoque atual (${estoqueDisponivel}).`
+              : `A quantidade de ${item.nome} não pode ser maior que o estoque atual (${estoqueDisponivel}).`,
           );
           return item;
         }
 
         return { ...item, quantidade };
-      })
+      }),
     );
   }
 
   function alterarTamanhoAnel(itemKey: string, tamanho: string) {
     setErro("");
+    limparFreteCotado();
 
     setItensPedido((atual) =>
       atual.map((item) => {
@@ -565,7 +629,7 @@ export default function NovaVendaV2Client({
         const tamanhoNormalizado = normalizarTamanhoAnel(tamanho);
 
         const medidaNova = getMedidasDisponiveis(item).find(
-          (medida) => medida.valor === tamanhoNormalizado
+          (medida) => medida.valor === tamanhoNormalizado,
         );
         const estoqueNovoTamanho = medidaNova?.estoqueDisponivel ?? 0;
 
@@ -577,12 +641,13 @@ export default function NovaVendaV2Client({
               ? Math.max(estoqueNovoTamanho, 1)
               : item.quantidade,
         };
-      })
+      }),
     );
   }
 
   function removerItem(itemKey: string) {
     setErro("");
+    limparFreteCotado();
     setItensPedido((atual) => atual.filter((item) => item.itemKey !== itemKey));
   }
 
@@ -593,7 +658,7 @@ export default function NovaVendaV2Client({
   const subtotal = useMemo(() => {
     return itensPedido.reduce(
       (acc, item) => acc + item.precoVenda * item.quantidade,
-      0
+      0,
     );
   }, [itensPedido]);
 
@@ -601,13 +666,178 @@ export default function NovaVendaV2Client({
     return subtotal * (descontoNumero / 100);
   }, [subtotal, descontoNumero]);
 
-  const totalFinal = useMemo(() => {
+  const subtotalComDesconto = useMemo(() => {
     return subtotal - valorDesconto;
   }, [subtotal, valorDesconto]);
+
+  const freteSelecionado = useMemo(() => {
+    return (
+      opcoesFrete.find(
+        (opcao) => opcao.id === freteSelecionadoId && !opcao.erro,
+      ) || null
+    );
+  }, [freteSelecionadoId, opcoesFrete]);
+
+  const valorFrete = enviarEntrega ? Number(freteSelecionado?.valor || 0) : 0;
+
+  const totalFinal = useMemo(() => {
+    return subtotalComDesconto + valorFrete;
+  }, [subtotalComDesconto, valorFrete]);
 
   const totalItens = useMemo(() => {
     return itensPedido.reduce((acc, item) => acc + item.quantidade, 0);
   }, [itensPedido]);
+
+  function atualizarCampoEntrega(campo: keyof typeof entrega, valor: string) {
+    setEntrega((atual) => ({
+      ...atual,
+      [campo]: campo === "estado" ? valor.toUpperCase().slice(0, 2) : valor,
+    }));
+    setFreteSelecionadoId("");
+    setOpcoesFrete([]);
+    setErroFrete("");
+  }
+
+  function aplicarEnderecoDoCliente() {
+    if (!clienteSelecionado) {
+      return;
+    }
+
+    setEntrega({
+      cep: clienteSelecionado.cep || "",
+      rua: clienteSelecionado.rua || "",
+      numero: clienteSelecionado.numero || "",
+      complemento: clienteSelecionado.complemento || "",
+      bairro: clienteSelecionado.bairro || "",
+      cidade: clienteSelecionado.cidade || "",
+      estado: clienteSelecionado.estado || "",
+    });
+    setFreteSelecionadoId("");
+    setOpcoesFrete([]);
+    setErroFrete("");
+  }
+
+  function alternarEnviarEntrega(checked: boolean) {
+    setEnviarEntrega(checked);
+    setErroFrete("");
+
+    if (!checked) {
+      setUsarEnderecoCliente(false);
+      setFreteSelecionadoId("");
+      setOpcoesFrete([]);
+    }
+  }
+
+  function getPayloadEnvio() {
+    if (!enviarEntrega) {
+      return null;
+    }
+
+    return {
+      habilitado: true,
+      cep: entrega.cep,
+      rua: entrega.rua,
+      numero: entrega.numero,
+      complemento: entrega.complemento,
+      bairro: entrega.bairro,
+      cidade: entrega.cidade,
+      estado: entrega.estado,
+      freteOpcaoId: freteSelecionadoId,
+    };
+  }
+
+  function validarEntregaAntesDeFinalizar() {
+    if (!enviarEntrega) {
+      return true;
+    }
+
+    if (normalizarCep(entrega.cep).length !== 8) {
+      setErroFrete("Informe um CEP válido para entrega.");
+      return false;
+    }
+
+    if (!freteSelecionado) {
+      setErroFrete("Calcule e selecione uma opção de frete.");
+      return false;
+    }
+
+    if (freteSelecionado.tipoEntrega !== "RETIRADA") {
+      const camposObrigatorios = [
+        entrega.rua,
+        entrega.numero,
+        entrega.bairro,
+        entrega.cidade,
+        entrega.estado,
+      ];
+
+      if (camposObrigatorios.some((campo) => !String(campo || "").trim())) {
+        setErroFrete(
+          "Preencha endereço, número, bairro, cidade e UF para entrega.",
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  async function cotarFrete() {
+    try {
+      setErroFrete("");
+      setOpcoesFrete([]);
+      setFreteSelecionadoId("");
+
+      if (itensPedido.length === 0) {
+        setErroFrete("Adicione ao menos um produto para calcular frete.");
+        return;
+      }
+
+      if (normalizarCep(entrega.cep).length !== 8) {
+        setErroFrete("Informe um CEP válido para calcular o frete.");
+        return;
+      }
+
+      setCotandoFrete(true);
+
+      const response = await fetch("/api/loja/frete/cotar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cepDestino: entrega.cep,
+          itens: itensPedido.map((item) => ({
+            produtoId: item.id,
+            quantidade: item.quantidade,
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      const opcoes = Array.isArray(data.opcoes)
+        ? (data.opcoes as FreteOpcaoVenda[])
+        : [];
+
+      setOpcoesFrete(opcoes);
+
+      if (!response.ok) {
+        setErroFrete(data.error || "Erro ao calcular frete.");
+        return;
+      }
+
+      const primeiraOpcaoValida = opcoes.find((opcao) => !opcao.erro);
+
+      if (primeiraOpcaoValida) {
+        setFreteSelecionadoId(primeiraOpcaoValida.id);
+      } else {
+        setErroFrete("Nenhuma opção de frete disponível para este CEP.");
+      }
+    } catch {
+      setErroFrete("Erro ao calcular frete.");
+    } finally {
+      setCotandoFrete(false);
+    }
+  }
 
   async function confirmarVenda() {
     try {
@@ -630,13 +860,11 @@ export default function NovaVendaV2Client({
 
       const itemSemMedida = itensPedido.find(
         (item) =>
-          produtoTemMedidas(item) && !normalizarTamanhoAnel(item.tamanhoAnel)
+          produtoTemMedidas(item) && !normalizarTamanhoAnel(item.tamanhoAnel),
       );
 
       if (itemSemMedida) {
-        setErro(
-          `Informe a medida para o produto ${itemSemMedida.nome}.`
-        );
+        setErro(`Informe a medida para o produto ${itemSemMedida.nome}.`);
         return;
       }
 
@@ -649,8 +877,12 @@ export default function NovaVendaV2Client({
         setErro(
           produtoTemMedidas(itemSemSaldo)
             ? `O item ${itemSemSaldo.nome} medida ${itemSemSaldo.tamanhoAnel} está com quantidade acima do estoque disponível.`
-            : `O item ${itemSemSaldo.nome} está com quantidade acima do estoque disponível.`
+            : `O item ${itemSemSaldo.nome} está com quantidade acima do estoque disponível.`,
         );
+        return;
+      }
+
+      if (!validarEntregaAntesDeFinalizar()) {
         return;
       }
 
@@ -667,6 +899,7 @@ export default function NovaVendaV2Client({
           meioVenda,
           descontoPercentual: descontoNumero,
           observacoes,
+          envio: getPayloadEnvio(),
           itens: itensPedido.map((item) => ({
             id: item.id,
             codigoInterno: item.codigoInterno,
@@ -704,7 +937,7 @@ export default function NovaVendaV2Client({
 
   function atualizarCampoNovoCliente(
     campo: keyof typeof novoCliente,
-    valor: string
+    valor: string,
   ) {
     setNovoCliente((atual) => ({
       ...atual,
@@ -818,6 +1051,10 @@ export default function NovaVendaV2Client({
         return;
       }
 
+      if (!validarEntregaAntesDeFinalizar()) {
+        return;
+      }
+
       setGerandoLinkPagamento(true);
 
       const response = await fetch("/api/vendas/link-pagamento", {
@@ -830,6 +1067,7 @@ export default function NovaVendaV2Client({
           meioVenda,
           descontoPercentual: descontoNumero,
           observacoes,
+          envio: getPayloadEnvio(),
           itens: itensPedido.map((item) => ({
             id: item.id,
             quantidade: item.quantidade,
@@ -871,7 +1109,9 @@ export default function NovaVendaV2Client({
     }
   }
 
-  const telefoneWhatsApp = normalizarTelefoneWhatsApp(clienteSelecionado?.telefone);
+  const telefoneWhatsApp = normalizarTelefoneWhatsApp(
+    clienteSelecionado?.telefone,
+  );
   const mensagemWhatsApp =
     clienteSelecionado && linkPagamento?.url
       ? `Olá, ${clienteSelecionado.nome}! Segue o link para pagamento do seu pedido na Stella: ${linkPagamento.url}`
@@ -879,371 +1119,545 @@ export default function NovaVendaV2Client({
 
   return (
     <>
-    <div className="space-y-6 pb-36 md:pb-0 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
-      <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Vendas
-            </p>
+      <div className="space-y-6 pb-36 md:pb-0 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
+        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
+                Vendas
+              </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Nova Venda
-            </h1>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Nova Venda
+              </h1>
 
-            <p className="mt-2 text-sm text-slate-600">
-              Monte o pedido em uma única tela, pesquisando cliente por
-              documento ou nome.
-            </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Monte o pedido em uma única tela, pesquisando cliente por
+                documento ou nome.
+              </p>
+            </div>
+
+            <Link
+              href="/vendas"
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              Voltar para lista
+            </Link>
           </div>
-
-          <Link
-            href="/vendas"
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-          >
-            Voltar para lista
-          </Link>
         </div>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="min-w-0 space-y-6">
-          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Cliente e dados da venda
-            </h2>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="min-w-0 space-y-6">
+            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Cliente e dados da venda
+              </h2>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Buscar cliente por documento ou nome
-                  </label>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <label className="block text-sm font-medium text-slate-700">
+                      Buscar cliente por documento ou nome
+                    </label>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErroCliente("");
-                      setModalClienteAberto(true);
-                    }}
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    Novo cliente
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErroCliente("");
+                        setModalClienteAberto(true);
+                      }}
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Novo cliente
+                    </button>
+                  </div>
 
-                <div className="relative">
-                  <input
-                    value={buscaCliente}
-                    onChange={(event) => {
-                      setBuscaCliente(event.target.value);
-                      setClienteSelecionadoId("");
-                    }}
-                    placeholder="Digite documento ou nome"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                  />
-
-                  {buscaCliente.trim() !== "" &&
-                  !clienteSelecionado &&
-                  clientesFiltrados.length > 0 ? (
-                    <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
-                      {clientesFiltrados.map((cliente) => (
-                        <button
-                          key={cliente.id}
-                          type="button"
-                          onClick={() => selecionarCliente(cliente)}
-                          className="flex w-full flex-col items-start gap-1 border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50 last:border-b-0"
-                        >
-                          <span className="font-medium text-slate-900">
-                            {cliente.nome}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {cliente.documento}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Documento do cliente
-                </label>
-                <input
-                  value={clienteSelecionado?.documento || ""}
-                  disabled
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Nome do cliente
-                </label>
-                <input
-                  value={clienteSelecionado?.nome || ""}
-                  disabled
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Meio de venda
-                </label>
-                <select
-                  value={meioVenda}
-                  onChange={(event) => setMeioVenda(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                >
-                  <option value="">Selecione</option>
-                  <option>Venda Direta</option>
-                  <option>WhatsApp</option>
-                  <option>Instagram</option>
-                  <option>Telefone</option>
-                  <option>Revenda</option>
-                  <option>Outro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Desconto da venda (%)
-                </label>
-                <input
-                  value={descontoPercentual}
-                  onChange={(event) => setDescontoPercentual(event.target.value)}
-                  placeholder="0"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Busca de produtos
-            </h2>
-
-            <div className="mt-5">
-              <input
-                value={buscaProduto}
-                onChange={(event) => setBuscaProduto(event.target.value)}
-                placeholder="Buscar por código ou nome"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-              />
-            </div>
-
-            <div className="mt-5 space-y-3 md:hidden">
-              {produtosFiltrados.map((produto) => (
-                <article
-                  key={produto.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex gap-3">
-                    <MiniaturaProduto
-                      imagemUrl={getImagemProduto(produto)}
-                      nome={produto.nome}
+                  <div className="relative">
+                    <input
+                      value={buscaCliente}
+                      onChange={(event) => {
+                        setBuscaCliente(event.target.value);
+                        setClienteSelecionadoId("");
+                      }}
+                      placeholder="Digite documento ou nome"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
                     />
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">
-                            {produto.nome}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {produto.codigoInterno} · {produto.categoria}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            produto.estoqueAtual <= 0
-                              ? "bg-rose-100 text-rose-700"
-                              : produto.estoqueAtual <= 3
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {produto.estoqueAtual <= 0
-                            ? "Sem estoque"
-                            : `${produto.estoqueAtual} em estoque`}
-                        </span>
+                    {buscaCliente.trim() !== "" &&
+                    !clienteSelecionado &&
+                    clientesFiltrados.length > 0 ? (
+                      <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                        {clientesFiltrados.map((cliente) => (
+                          <button
+                            key={cliente.id}
+                            type="button"
+                            onClick={() => selecionarCliente(cliente)}
+                            className="flex w-full flex-col items-start gap-1 border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50 last:border-b-0"
+                          >
+                            <span className="font-medium text-slate-900">
+                              {cliente.nome}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {cliente.documento}
+                            </span>
+                          </button>
+                        ))}
                       </div>
-
-                      <div className="mt-4 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                            Preço
-                          </p>
-                          <p className="text-base font-bold text-slate-950">
-                            {moeda(produto.precoVenda)}
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => adicionarProduto(produto)}
-                          disabled={produto.estoqueAtual <= 0}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Adicionar
-                        </button>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
-                </article>
-              ))}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Documento do cliente
+                  </label>
+                  <input
+                    value={clienteSelecionado?.documento || ""}
+                    disabled
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Nome do cliente
+                  </label>
+                  <input
+                    value={clienteSelecionado?.nome || ""}
+                    disabled
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Meio de venda
+                  </label>
+                  <select
+                    value={meioVenda}
+                    onChange={(event) => setMeioVenda(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                  >
+                    <option value="">Selecione</option>
+                    <option>Venda Direta</option>
+                    <option>WhatsApp</option>
+                    <option>Instagram</option>
+                    <option>Telefone</option>
+                    <option>Revenda</option>
+                    <option>Outro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Desconto da venda (%)
+                  </label>
+                  <input
+                    value={descontoPercentual}
+                    onChange={(event) =>
+                      setDescontoPercentual(event.target.value)
+                    }
+                    placeholder="0"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="mt-6 hidden overflow-x-auto md:block">
-              <table className="min-w-[860px] w-full text-left">
-                <thead className="bg-slate-50">
-                  <tr className="text-sm text-slate-600">
-                    <th className="px-4 py-3 font-semibold">Código</th>
-                    <th className="px-4 py-3 font-semibold">Nome</th>
-                    <th className="px-4 py-3 font-semibold">Categoria</th>
-                    <th className="px-4 py-3 font-semibold">Preço</th>
-                    <th className="px-4 py-3 font-semibold">Estoque</th>
-                    <th className="px-4 py-3 text-right font-semibold">Ação</th>
-                  </tr>
-                </thead>
+            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Busca de produtos
+              </h2>
 
-                <tbody className="divide-y divide-slate-200">
-                  {produtosFiltrados.map((produto) => (
-                    <tr key={produto.id} className="text-sm text-slate-700">
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        {produto.codigoInterno}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <MiniaturaProduto
-                            imagemUrl={getImagemProduto(produto)}
-                            nome={produto.nome}
-                          />
+              <div className="mt-5">
+                <input
+                  value={buscaProduto}
+                  onChange={(event) => setBuscaProduto(event.target.value)}
+                  placeholder="Buscar por código ou nome"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                />
+              </div>
 
-                          <div className="flex min-w-0 flex-col">
-                            <span className="truncate font-medium text-slate-900">
+              <div className="mt-5 space-y-3 md:hidden">
+                {produtosFiltrados.map((produto) => (
+                  <article
+                    key={produto.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex gap-3">
+                      <MiniaturaProduto
+                        imagemUrl={getImagemProduto(produto)}
+                        nome={produto.nome}
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">
                               {produto.nome}
-                            </span>
-                            <span className="mt-0.5 text-xs text-slate-400">
-                              {produto.tipoProduto === "KIT" ? "Kit" : "Produto"}
-                            </span>
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {produto.codigoInterno} · {produto.categoria}
+                            </p>
                           </div>
+
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              produto.estoqueAtual <= 0
+                                ? "bg-rose-100 text-rose-700"
+                                : produto.estoqueAtual <= 3
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {produto.estoqueAtual <= 0
+                              ? "Sem estoque"
+                              : `${produto.estoqueAtual} em estoque`}
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">{produto.categoria}</td>
-                      <td className="px-4 py-3">{moeda(produto.precoVenda)}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                            produto.estoqueAtual <= 0
-                              ? "bg-rose-100 text-rose-700"
-                              : produto.estoqueAtual <= 3
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-emerald-100 text-emerald-700"
-                          }`}
-                        >
-                          {produto.estoqueAtual}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end">
+
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                              Preço
+                            </p>
+                            <p className="text-base font-bold text-slate-950">
+                              {moeda(produto.precoVenda)}
+                            </p>
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => adicionarProduto(produto)}
                             disabled={produto.estoqueAtual <= 0}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Adicionar produto"
-                            aria-label={`Adicionar ${produto.nome}`}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                           >
                             <Plus className="h-4 w-4" />
+                            Adicionar
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-            <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Itens da venda
-              </h2>
-            </div>
-
-            {itensPedido.length === 0 ? (
-              <div className="px-4 py-10 text-sm text-slate-500 sm:px-6">
-                Ainda não há produtos adicionados.
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
-            ) : (
-              <>
-                <div className="space-y-3 p-4 md:hidden">
-                  {itensPedido.map((item) => {
-                    const unitFinal = valorUnitarioFinal(item);
-                    const totalLinha = unitFinal * item.quantidade;
-                    const estoqueDisponivel = getEstoqueDisponivel(item);
-                    const saldoRestante = estoqueDisponivel - item.quantidade;
-                    const saldo = statusSaldo(estoqueDisponivel, item.quantidade);
-                    const temMedidas = produtoTemMedidas(item);
-                    const labelMedida = getLabelMedida(item);
-                    const tamanhosDisponiveis = getTamanhosDisponiveis(item);
 
-                    return (
-                      <article
-                        key={item.itemKey}
-                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                      >
-                        <div className="flex gap-3">
-                          <MiniaturaProduto
-                            imagemUrl={getImagemProduto(item)}
-                            nome={item.nome}
-                          />
+              <div className="mt-6 hidden overflow-x-auto md:block">
+                <table className="min-w-[860px] w-full text-left">
+                  <thead className="bg-slate-50">
+                    <tr className="text-sm text-slate-600">
+                      <th className="px-4 py-3 font-semibold">Código</th>
+                      <th className="px-4 py-3 font-semibold">Nome</th>
+                      <th className="px-4 py-3 font-semibold">Categoria</th>
+                      <th className="px-4 py-3 font-semibold">Preço</th>
+                      <th className="px-4 py-3 font-semibold">Estoque</th>
+                      <th className="px-4 py-3 text-right font-semibold">
+                        Ação
+                      </th>
+                    </tr>
+                  </thead>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-950">
-                                  {item.nome}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {item.codigoInterno} · {item.categoria}
-                                </p>
+                  <tbody className="divide-y divide-slate-200">
+                    {produtosFiltrados.map((produto) => (
+                      <tr key={produto.id} className="text-sm text-slate-700">
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {produto.codigoInterno}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <MiniaturaProduto
+                              imagemUrl={getImagemProduto(produto)}
+                              nome={produto.nome}
+                            />
+
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate font-medium text-slate-900">
+                                {produto.nome}
+                              </span>
+                              <span className="mt-0.5 text-xs text-slate-400">
+                                {produto.tipoProduto === "KIT"
+                                  ? "Kit"
+                                  : "Produto"}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{produto.categoria}</td>
+                        <td className="px-4 py-3">
+                          {moeda(produto.precoVenda)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                              produto.estoqueAtual <= 0
+                                ? "bg-rose-100 text-rose-700"
+                                : produto.estoqueAtual <= 3
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {produto.estoqueAtual}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => adicionarProduto(produto)}
+                              disabled={produto.estoqueAtual <= 0}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-300 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Adicionar produto"
+                              aria-label={`Adicionar ${produto.nome}`}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+              <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Itens da venda
+                </h2>
+              </div>
+
+              {itensPedido.length === 0 ? (
+                <div className="px-4 py-10 text-sm text-slate-500 sm:px-6">
+                  Ainda não há produtos adicionados.
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 p-4 md:hidden">
+                    {itensPedido.map((item) => {
+                      const unitFinal = valorUnitarioFinal(item);
+                      const totalLinha = unitFinal * item.quantidade;
+                      const estoqueDisponivel = getEstoqueDisponivel(item);
+                      const saldoRestante = estoqueDisponivel - item.quantidade;
+                      const saldo = statusSaldo(
+                        estoqueDisponivel,
+                        item.quantidade,
+                      );
+                      const temMedidas = produtoTemMedidas(item);
+                      const labelMedida = getLabelMedida(item);
+                      const tamanhosDisponiveis = getTamanhosDisponiveis(item);
+
+                      return (
+                        <article
+                          key={item.itemKey}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                        >
+                          <div className="flex gap-3">
+                            <MiniaturaProduto
+                              imagemUrl={getImagemProduto(item)}
+                              nome={item.nome}
+                            />
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-950">
+                                    {item.nome}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {item.codigoInterno} · {item.categoria}
+                                  </p>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => removerItem(item.itemKey)}
+                                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                  title="Remover item"
+                                  aria-label={`Remover ${item.nome}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => removerItem(item.itemKey)}
-                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                                title="Remover item"
-                                aria-label={`Remover ${item.nome}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
+                              <div className="mt-4 grid grid-cols-2 gap-3">
+                                {temMedidas ? (
+                                  <label>
+                                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                      {labelMedida}
+                                    </span>
+                                    <select
+                                      value={item.tamanhoAnel}
+                                      onChange={(event) =>
+                                        alterarTamanhoAnel(
+                                          item.itemKey,
+                                          event.target.value,
+                                        )
+                                      }
+                                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
+                                    >
+                                      {tamanhosDisponiveis.map((estoque) => (
+                                        <option
+                                          key={estoque.tamanhoAnel}
+                                          value={estoque.tamanhoAnel}
+                                        >
+                                          {estoque.label || estoque.tamanhoAnel}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                ) : (
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                      Medida
+                                    </p>
+                                    <p className="mt-2 text-sm font-medium text-slate-500">
+                                      -
+                                    </p>
+                                  </div>
+                                )}
 
-                            <div className="mt-4 grid grid-cols-2 gap-3">
-                              {temMedidas ? (
                                 <label>
                                   <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                    {labelMedida}
+                                    Quantidade
                                   </span>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={item.quantidade}
+                                    onChange={(event) =>
+                                      alterarQuantidade(
+                                        item.itemKey,
+                                        Number(event.target.value || 1),
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                              </div>
+
+                              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Estoque
+                                  </p>
+                                  <p className="mt-1 font-semibold text-slate-900">
+                                    {estoqueDisponivel}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Saldo
+                                  </p>
+                                  <span
+                                    className={`mt-1 inline-flex min-w-10 justify-center rounded-full border px-3 py-1 text-xs font-semibold ${saldo.numberClassName}`}
+                                    title={saldo.label}
+                                  >
+                                    {saldoRestante}
+                                  </span>
+                                </div>
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                    Unitário
+                                  </p>
+                                  <p className="mt-1 font-semibold text-slate-900">
+                                    {moeda(unitFinal)}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl bg-slate-900 px-3 py-2 text-white">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                                    Total
+                                  </p>
+                                  <p className="mt-1 font-bold">
+                                    {moeda(totalLinha)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="min-w-[1040px] w-full text-left">
+                      <thead className="bg-slate-50">
+                        <tr className="text-sm text-slate-600">
+                          <th className="px-6 py-4 font-semibold">Código</th>
+                          <th className="px-6 py-4 font-semibold">Descrição</th>
+                          <th className="px-6 py-4 font-semibold">Medida</th>
+                          <th className="px-6 py-4 font-semibold">Qtd</th>
+                          <th className="px-6 py-4 font-semibold">Estoque</th>
+                          <th className="px-6 py-4 font-semibold">
+                            Saldo restante
+                          </th>
+                          <th className="px-6 py-4 font-semibold">
+                            Unit. base
+                          </th>
+                          <th className="px-6 py-4 font-semibold">
+                            Unit. final
+                          </th>
+                          <th className="px-6 py-4 font-semibold">Total</th>
+                          <th className="px-6 py-4 text-right font-semibold">
+                            Ação
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-slate-200">
+                        {itensPedido.map((item) => {
+                          const unitFinal = valorUnitarioFinal(item);
+                          const totalLinha = unitFinal * item.quantidade;
+                          const estoqueDisponivel = getEstoqueDisponivel(item);
+                          const saldoRestante =
+                            estoqueDisponivel - item.quantidade;
+                          const saldo = statusSaldo(
+                            estoqueDisponivel,
+                            item.quantidade,
+                          );
+                          const temMedidas = produtoTemMedidas(item);
+                          const tamanhosDisponiveis =
+                            getTamanhosDisponiveis(item);
+
+                          return (
+                            <tr
+                              key={item.itemKey}
+                              className="text-sm text-slate-700"
+                            >
+                              <td className="px-6 py-4 font-medium text-slate-900">
+                                {item.codigoInterno}
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <MiniaturaProduto
+                                    imagemUrl={getImagemProduto(item)}
+                                    nome={item.nome}
+                                  />
+
+                                  <div className="flex min-w-0 flex-col">
+                                    <span className="truncate font-medium text-slate-900">
+                                      {item.nome}
+                                    </span>
+                                    <span className="mt-0.5 text-xs text-slate-400">
+                                      {item.categoria}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4">
+                                {temMedidas ? (
                                   <select
                                     value={item.tamanhoAnel}
                                     onChange={(event) =>
                                       alterarTamanhoAnel(
                                         item.itemKey,
-                                        event.target.value
+                                        event.target.value,
                                       )
                                     }
-                                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
+                                    className="w-24 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                                   >
                                     {tamanhosDisponiveis.map((estoque) => (
                                       <option
@@ -1254,22 +1668,12 @@ export default function NovaVendaV2Client({
                                       </option>
                                     ))}
                                   </select>
-                                </label>
-                              ) : (
-                                <div>
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                    Medida
-                                  </p>
-                                  <p className="mt-2 text-sm font-medium text-slate-500">
-                                    -
-                                  </p>
-                                </div>
-                              )}
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
 
-                              <label>
-                                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                  Quantidade
-                                </span>
+                              <td className="px-6 py-4">
                                 <input
                                   type="number"
                                   min={1}
@@ -1277,792 +1681,922 @@ export default function NovaVendaV2Client({
                                   onChange={(event) =>
                                     alterarQuantidade(
                                       item.itemKey,
-                                      Number(event.target.value || 1)
+                                      Number(event.target.value || 1),
                                     )
                                   }
-                                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
+                                  className="w-20 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                                 />
-                              </label>
-                            </div>
+                              </td>
 
-                            <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                  Estoque
-                                </p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                  {estoqueDisponivel}
-                                </p>
-                              </div>
-                              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                  Saldo
-                                </p>
+                              <td className="px-6 py-4">{estoqueDisponivel}</td>
+
+                              <td className="px-6 py-4">
                                 <span
-                                  className={`mt-1 inline-flex min-w-10 justify-center rounded-full border px-3 py-1 text-xs font-semibold ${saldo.numberClassName}`}
+                                  className={`inline-flex min-w-10 justify-center rounded-full border px-3 py-1 text-xs font-semibold ${saldo.numberClassName}`}
                                   title={saldo.label}
                                 >
                                   {saldoRestante}
                                 </span>
-                              </div>
-                              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                  Unitário
-                                </p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                  {moeda(unitFinal)}
-                                </p>
-                              </div>
-                              <div className="rounded-xl bg-slate-900 px-3 py-2 text-white">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
-                                  Total
-                                </p>
-                                <p className="mt-1 font-bold">
-                                  {moeda(totalLinha)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                              </td>
 
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="min-w-[1040px] w-full text-left">
-                    <thead className="bg-slate-50">
-                      <tr className="text-sm text-slate-600">
-                        <th className="px-6 py-4 font-semibold">Código</th>
-                        <th className="px-6 py-4 font-semibold">Descrição</th>
-                        <th className="px-6 py-4 font-semibold">Medida</th>
-                        <th className="px-6 py-4 font-semibold">Qtd</th>
-                        <th className="px-6 py-4 font-semibold">Estoque</th>
-                        <th className="px-6 py-4 font-semibold">
-                          Saldo restante
-                        </th>
-                        <th className="px-6 py-4 font-semibold">Unit. base</th>
-                        <th className="px-6 py-4 font-semibold">Unit. final</th>
-                        <th className="px-6 py-4 font-semibold">Total</th>
-                        <th className="px-6 py-4 text-right font-semibold">
-                          Ação
-                        </th>
-                      </tr>
-                    </thead>
+                              <td className="px-6 py-4">
+                                {moeda(item.precoVenda)}
+                              </td>
 
-                    <tbody className="divide-y divide-slate-200">
-                      {itensPedido.map((item) => {
-                        const unitFinal = valorUnitarioFinal(item);
-                        const totalLinha = unitFinal * item.quantidade;
-                        const estoqueDisponivel = getEstoqueDisponivel(item);
-                        const saldoRestante = estoqueDisponivel - item.quantidade;
-                        const saldo = statusSaldo(
-                          estoqueDisponivel,
-                          item.quantidade
-                        );
-                        const temMedidas = produtoTemMedidas(item);
-                        const tamanhosDisponiveis = getTamanhosDisponiveis(item);
+                              <td className="px-6 py-4">{moeda(unitFinal)}</td>
 
-                        return (
-                          <tr key={item.itemKey} className="text-sm text-slate-700">
-                            <td className="px-6 py-4 font-medium text-slate-900">
-                              {item.codigoInterno}
-                            </td>
+                              <td className="px-6 py-4">{moeda(totalLinha)}</td>
 
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <MiniaturaProduto
-                                  imagemUrl={getImagemProduto(item)}
-                                  nome={item.nome}
-                                />
-
-                                <div className="flex min-w-0 flex-col">
-                                  <span className="truncate font-medium text-slate-900">
-                                    {item.nome}
-                                  </span>
-                                  <span className="mt-0.5 text-xs text-slate-400">
-                                    {item.categoria}
-                                  </span>
+                              <td className="px-6 py-4">
+                                <div className="flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => removerItem(item.itemKey)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
+                                    title="Remover item"
+                                    aria-label={`Remover ${item.nome}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
                                 </div>
-                              </div>
-                            </td>
-
-                            <td className="px-6 py-4">
-                              {temMedidas ? (
-                                <select
-                                  value={item.tamanhoAnel}
-                                  onChange={(event) =>
-                                    alterarTamanhoAnel(
-                                      item.itemKey,
-                                      event.target.value
-                                    )
-                                  }
-                                  className="w-24 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                                >
-                                  {tamanhosDisponiveis.map((estoque) => (
-                                    <option
-                                      key={estoque.tamanhoAnel}
-                                      value={estoque.tamanhoAnel}
-                                    >
-                                      {estoque.label || estoque.tamanhoAnel}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                <span className="text-slate-400">-</span>
-                              )}
-                            </td>
-
-                            <td className="px-6 py-4">
-                              <input
-                                type="number"
-                                min={1}
-                                value={item.quantidade}
-                                onChange={(event) =>
-                                  alterarQuantidade(
-                                    item.itemKey,
-                                    Number(event.target.value || 1)
-                                  )
-                                }
-                                className="w-20 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                              />
-                            </td>
-
-                            <td className="px-6 py-4">{estoqueDisponivel}</td>
-
-                            <td className="px-6 py-4">
-                              <span
-                                className={`inline-flex min-w-10 justify-center rounded-full border px-3 py-1 text-xs font-semibold ${saldo.numberClassName}`}
-                                title={saldo.label}
-                              >
-                                {saldoRestante}
-                              </span>
-                            </td>
-
-                            <td className="px-6 py-4">
-                              {moeda(item.precoVenda)}
-                            </td>
-
-                            <td className="px-6 py-4">{moeda(unitFinal)}</td>
-
-                            <td className="px-6 py-4">{moeda(totalLinha)}</td>
-
-                            <td className="px-6 py-4">
-                              <div className="flex justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => removerItem(item.itemKey)}
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-300 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                                  title="Remover item"
-                                  aria-label={`Remover ${item.nome}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
-          <div className="space-y-6">
-            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Resumo do pedido
-              </h2>
-
-              <div className="mt-5 space-y-4">
-                <Info label="Subtotal" value={moeda(subtotal)} />
-                <Info label="Desconto" value={moeda(valorDesconto)} />
-                <Info label="Total final" value={moeda(totalFinal)} destaque />
-              </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
+          </section>
 
-            <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Finalização da venda
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Escolha se o pagamento já foi recebido ou se o cliente vai pagar
-                online pelo Stripe.
-              </p>
+          <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+            <div className="space-y-6">
+              <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Resumo do pedido
+                </h2>
 
-              <div className="mt-5 space-y-4">
-                <div className="grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTipoFinalizacao("PAGO_AGORA")}
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      tipoFinalizacao === "PAGO_AGORA"
-                        ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
-                          tipoFinalizacao === "PAGO_AGORA"
-                            ? "border-slate-900"
-                            : "border-slate-300"
-                        }`}
-                      >
-                        {tipoFinalizacao === "PAGO_AGORA" ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
-                        ) : null}
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold text-slate-950">
-                          Já pagou
-                        </span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500">
-                          Registre a venda como paga quando o valor já foi
-                          recebido por Pix externo, dinheiro, maquininha ou
-                          outro meio.
-                        </span>
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTipoFinalizacao("PAGAR_ONLINE")}
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      tipoFinalizacao === "PAGAR_ONLINE"
-                        ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
-                          tipoFinalizacao === "PAGAR_ONLINE"
-                            ? "border-indigo-600"
-                            : "border-slate-300"
-                        }`}
-                      >
-                        {tipoFinalizacao === "PAGAR_ONLINE" ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
-                        ) : null}
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold text-slate-950">
-                          Pagar agora
-                        </span>
-                        <span className="mt-1 block text-xs leading-5 text-slate-500">
-                          Gere um link do Stripe para o cliente pagar online.
-                        </span>
-                      </span>
-                    </div>
-                  </button>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Observações
-                  </label>
-                  <textarea
-                    value={observacoes}
-                    onChange={(event) => setObservacoes(event.target.value)}
-                    rows={4}
-                    placeholder="Observações da venda"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                <div className="mt-5 space-y-4">
+                  <Info label="Subtotal" value={moeda(subtotal)} />
+                  <Info label="Desconto" value={moeda(valorDesconto)} />
+                  {enviarEntrega && (
+                    <Info
+                      label="Frete"
+                      value={freteSelecionado ? moeda(valorFrete) : "Selecione"}
+                    />
+                  )}
+                  <Info
+                    label="Total final"
+                    value={moeda(totalFinal)}
+                    destaque
                   />
                 </div>
-
-                {erro ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {erro}
-                  </div>
-                ) : null}
-
-                {erroPagamento ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {erroPagamento}
-                  </div>
-                ) : null}
-
-                {linkPagamento && tipoFinalizacao === "PAGAR_ONLINE" ? (
-                  <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold">
-                        Link gerado
-                        {linkPagamento.pedidoCodigo
-                          ? ` para ${linkPagamento.pedidoCodigo}`
-                          : ""}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setModalLinkPagamentoAberto(true)}
-                        className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
-                      >
-                        Ver QR
-                      </button>
-                    </div>
-                    <p className="truncate rounded-xl bg-white/70 px-3 py-2 text-xs text-emerald-800 ring-1 ring-emerald-100">
-                      {linkCompacto(linkPagamento.url)}
-                    </p>
-                    {linkPagamentoDesatualizado ? (
-                      <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-                        A venda foi alterada depois da geração. Gere um novo
-                        link antes de enviar ao cliente.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={
-                    tipoFinalizacao === "PAGO_AGORA"
-                      ? confirmarVenda
-                      : gerarLinkPagamento
-                  }
-                  disabled={
-                    tipoFinalizacao === "PAGO_AGORA"
-                      ? salvando
-                      : gerandoLinkPagamento
-                  }
-                  className={`min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                    tipoFinalizacao === "PAGO_AGORA"
-                      ? "bg-slate-900 text-white hover:bg-slate-800"
-                      : "bg-indigo-600 text-white hover:bg-indigo-500"
-                  }`}
-                >
-                  {tipoFinalizacao === "PAGO_AGORA"
-                    ? salvando
-                      ? "Salvando..."
-                      : "Registrar venda paga"
-                    : gerandoLinkPagamento
-                    ? "Gerando link..."
-                    : linkPagamentoDesatualizado
-                    ? "Gerar novo link atualizado"
-                    : "Gerar link de pagamento"}
-                </button>
               </div>
-            </div>
-          </div>
-        </aside>
-      </div>
-    </div>
 
-    <div
-      className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white px-4 pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.16)] ring-1 ring-slate-200 md:hidden"
-      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-    >
-      <div className="mx-auto flex max-w-screen-sm items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {totalItens} {totalItens === 1 ? "item" : "itens"}
-          </p>
-          <p className="truncate text-lg font-bold text-slate-950">
-            {moeda(totalFinal)}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={
-            tipoFinalizacao === "PAGO_AGORA"
-              ? confirmarVenda
-              : gerarLinkPagamento
-          }
-          disabled={
-            tipoFinalizacao === "PAGO_AGORA" ? salvando : gerandoLinkPagamento
-          }
-          className={`inline-flex min-h-12 shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            tipoFinalizacao === "PAGO_AGORA"
-              ? "bg-slate-900 hover:bg-slate-800"
-              : "bg-indigo-600 hover:bg-indigo-500"
-          }`}
-        >
-          {tipoFinalizacao === "PAGO_AGORA"
-            ? salvando
-              ? "Salvando..."
-              : "Registrar"
-            : gerandoLinkPagamento
-            ? "Gerando..."
-            : "Gerar link"}
-        </button>
-      </div>
-    </div>
-
-    {produtoMedidaSelecionado ? (
-      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-        <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                {getLabelMedida(produtoMedidaSelecionado)}
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                Escolha a medida
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={fecharModalMedida}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
-              aria-label="Fechar escolha de medida"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="space-y-4 px-4 py-5 sm:px-6">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <MiniaturaProduto
-                imagemUrl={getImagemProduto(produtoMedidaSelecionado)}
-                nome={produtoMedidaSelecionado.nome}
-              />
-
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-sm font-semibold text-slate-950">
-                  {produtoMedidaSelecionado.nome}
+              <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Finalização da venda
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Escolha se o pagamento já foi recebido ou se o cliente vai
+                  pagar online pelo Stripe.
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
-                  {moeda(produtoMedidaSelecionado.precoVenda)}
-                </p>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {getMedidasDisponiveis(produtoMedidaSelecionado).map((medida) => (
-                <button
-                  key={medida.valor}
-                  type="button"
-                  onClick={() => setMedidaSelecionada(medida.valor)}
-                  className={`rounded-2xl border p-3 text-left transition ${
-                    medidaSelecionada === medida.valor
-                      ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                      : "border-slate-200 bg-white hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {medida.imagemUrl ? (
-                      <MiniaturaProduto
-                        imagemUrl={medida.imagemUrl}
-                        nome={medida.label}
+                <div className="mt-5 space-y-4">
+                  <div className="grid gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTipoFinalizacao("PAGO_AGORA")}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        tipoFinalizacao === "PAGO_AGORA"
+                          ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                            tipoFinalizacao === "PAGO_AGORA"
+                              ? "border-slate-900"
+                              : "border-slate-300"
+                          }`}
+                        >
+                          {tipoFinalizacao === "PAGO_AGORA" ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
+                          ) : null}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-950">
+                            Já pagou
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">
+                            Registre a venda como paga quando o valor já foi
+                            recebido por Pix externo, dinheiro, maquininha ou
+                            outro meio.
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTipoFinalizacao("PAGAR_ONLINE")}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        tipoFinalizacao === "PAGAR_ONLINE"
+                          ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                            tipoFinalizacao === "PAGAR_ONLINE"
+                              ? "border-indigo-600"
+                              : "border-slate-300"
+                          }`}
+                        >
+                          {tipoFinalizacao === "PAGAR_ONLINE" ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+                          ) : null}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-950">
+                            Pagar agora
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-slate-500">
+                            Gere um link do Stripe para o cliente pagar online.
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={enviarEntrega}
+                        onChange={(event) =>
+                          alternarEnviarEntrega(event.target.checked)
+                        }
+                        className="mt-1 h-4 w-4 rounded border-slate-300"
                       />
-                    ) : null}
 
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-bold text-slate-950">
-                        {medida.label}
-                      </p>
-                      <p className="mt-0.5 text-xs font-medium text-slate-500">
-                        {medida.estoqueDisponivel} em estoque
-                      </p>
-                    </div>
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                          <Truck className="h-4 w-4 text-slate-500" />
+                          Enviar para entrega
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          Com entrega, o pedido aparecerá na Central de Pedidos
+                          para geração de etiqueta quando aplicável.
+                        </span>
+                      </span>
+                    </label>
+
+                    {enviarEntrega && (
+                      <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                        {clienteSelecionado &&
+                          (clienteSelecionado.cep ||
+                            clienteSelecionado.rua ||
+                            clienteSelecionado.cidade) && (
+                            <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                              <input
+                                type="checkbox"
+                                checked={usarEnderecoCliente}
+                                onChange={(event) => {
+                                  const checked = event.target.checked;
+                                  setUsarEnderecoCliente(checked);
+
+                                  if (checked) {
+                                    aplicarEnderecoDoCliente();
+                                  }
+                                }}
+                                className="mt-1 h-4 w-4 rounded border-slate-300"
+                              />
+                              <span>
+                                <span className="block font-semibold text-slate-900">
+                                  Usar endereço do cliente
+                                </span>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  {[
+                                    clienteSelecionado.rua,
+                                    clienteSelecionado.numero,
+                                    clienteSelecionado.bairro,
+                                    clienteSelecionado.cidade,
+                                    clienteSelecionado.estado,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(", ") || clienteSelecionado.cep}
+                                </span>
+                              </span>
+                            </label>
+                          )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label>
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              CEP destino
+                            </span>
+                            <input
+                              value={entrega.cep}
+                              onChange={(event) =>
+                                atualizarCampoEntrega("cep", event.target.value)
+                              }
+                              placeholder="00000-000"
+                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+
+                          <label>
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Endereço
+                            </span>
+                            <input
+                              value={entrega.rua}
+                              onChange={(event) =>
+                                atualizarCampoEntrega("rua", event.target.value)
+                              }
+                              placeholder="Rua, avenida..."
+                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+
+                          <label>
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Número
+                            </span>
+                            <input
+                              value={entrega.numero}
+                              onChange={(event) =>
+                                atualizarCampoEntrega(
+                                  "numero",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="123"
+                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+
+                          <label>
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Complemento
+                            </span>
+                            <input
+                              value={entrega.complemento}
+                              onChange={(event) =>
+                                atualizarCampoEntrega(
+                                  "complemento",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Apto, bloco..."
+                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+
+                          <label>
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Bairro
+                            </span>
+                            <input
+                              value={entrega.bairro}
+                              onChange={(event) =>
+                                atualizarCampoEntrega(
+                                  "bairro",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Bairro"
+                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+
+                          <div className="grid grid-cols-[minmax(0,1fr)_76px] gap-3">
+                            <label>
+                              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Cidade
+                              </span>
+                              <input
+                                value={entrega.cidade}
+                                onChange={(event) =>
+                                  atualizarCampoEntrega(
+                                    "cidade",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Cidade"
+                                className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                              />
+                            </label>
+
+                            <label>
+                              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                UF
+                              </span>
+                              <input
+                                value={entrega.estado}
+                                onChange={(event) =>
+                                  atualizarCampoEntrega(
+                                    "estado",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="SP"
+                                className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm uppercase outline-none transition focus:border-slate-500"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={cotarFrete}
+                          disabled={cotandoFrete || itensPedido.length === 0}
+                          className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cotandoFrete ? "Calculando..." : "Calcular frete"}
+                        </button>
+
+                        {erroFrete ? (
+                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {erroFrete}
+                          </div>
+                        ) : null}
+
+                        {opcoesFrete.length > 0 && (
+                          <div className="space-y-2">
+                            {opcoesFrete.map((opcao) => {
+                              const selecionada =
+                                freteSelecionadoId === opcao.id && !opcao.erro;
+
+                              return (
+                                <label
+                                  key={opcao.id}
+                                  className={`flex min-w-0 items-start gap-3 rounded-2xl border bg-white p-3 text-sm transition ${
+                                    selecionada
+                                      ? "border-slate-900 ring-1 ring-slate-900"
+                                      : "border-slate-200"
+                                  } ${
+                                    opcao.erro
+                                      ? "cursor-not-allowed opacity-60"
+                                      : "cursor-pointer"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="frete-manual"
+                                    value={opcao.id}
+                                    checked={selecionada}
+                                    disabled={Boolean(opcao.erro)}
+                                    onChange={() =>
+                                      setFreteSelecionadoId(opcao.id)
+                                    }
+                                    className="mt-1 h-4 w-4 border-slate-300"
+                                  />
+
+                                  <span className="min-w-0 flex-1">
+                                    <span className="flex items-center justify-between gap-3">
+                                      <span className="truncate font-semibold text-slate-950">
+                                        {opcao.transportadora} - {opcao.nome}
+                                      </span>
+                                      <span className="shrink-0 font-bold text-slate-950">
+                                        {moeda(Number(opcao.valor || 0))}
+                                      </span>
+                                    </span>
+
+                                    <span className="mt-1 block truncate text-xs text-slate-500">
+                                      {opcao.tipoEntrega === "RETIRADA"
+                                        ? "Retirada local"
+                                        : opcao.prazoDias !== null
+                                          ? `${opcao.prazoDias} dia${
+                                              opcao.prazoDias === 1 ? "" : "s"
+                                            }`
+                                          : "Prazo indisponível"}
+                                      {opcao.erro ? ` · ${opcao.erro}` : ""}
+                                    </span>
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </button>
-              ))}
-            </div>
 
-            <div className="grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Observações
+                    </label>
+                    <textarea
+                      value={observacoes}
+                      onChange={(event) => setObservacoes(event.target.value)}
+                      rows={4}
+                      placeholder="Observações da venda"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                    />
+                  </div>
+
+                  {erro ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {erro}
+                    </div>
+                  ) : null}
+
+                  {erroPagamento ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {erroPagamento}
+                    </div>
+                  ) : null}
+
+                  {linkPagamento && tipoFinalizacao === "PAGAR_ONLINE" ? (
+                    <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold">
+                          Link gerado
+                          {linkPagamento.pedidoCodigo
+                            ? ` para ${linkPagamento.pedidoCodigo}`
+                            : ""}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setModalLinkPagamentoAberto(true)}
+                          className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 transition hover:bg-emerald-100"
+                        >
+                          Ver QR
+                        </button>
+                      </div>
+                      <p className="truncate rounded-xl bg-white/70 px-3 py-2 text-xs text-emerald-800 ring-1 ring-emerald-100">
+                        {linkCompacto(linkPagamento.url)}
+                      </p>
+                      {linkPagamentoDesatualizado ? (
+                        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                          A venda foi alterada depois da geração. Gere um novo
+                          link antes de enviar ao cliente.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    onClick={
+                      tipoFinalizacao === "PAGO_AGORA"
+                        ? confirmarVenda
+                        : gerarLinkPagamento
+                    }
+                    disabled={
+                      tipoFinalizacao === "PAGO_AGORA"
+                        ? salvando
+                        : gerandoLinkPagamento
+                    }
+                    className={`min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      tipoFinalizacao === "PAGO_AGORA"
+                        ? "bg-slate-900 text-white hover:bg-slate-800"
+                        : "bg-indigo-600 text-white hover:bg-indigo-500"
+                    }`}
+                  >
+                    {tipoFinalizacao === "PAGO_AGORA"
+                      ? salvando
+                        ? "Salvando..."
+                        : "Registrar venda paga"
+                      : gerandoLinkPagamento
+                        ? "Gerando link..."
+                        : linkPagamentoDesatualizado
+                          ? "Gerar novo link atualizado"
+                          : "Gerar link de pagamento"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white px-4 pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.16)] ring-1 ring-slate-200 md:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto flex max-w-screen-sm items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {totalItens} {totalItens === 1 ? "item" : "itens"}
+            </p>
+            <p className="truncate text-lg font-bold text-slate-950">
+              {moeda(totalFinal)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              tipoFinalizacao === "PAGO_AGORA"
+                ? confirmarVenda
+                : gerarLinkPagamento
+            }
+            disabled={
+              tipoFinalizacao === "PAGO_AGORA" ? salvando : gerandoLinkPagamento
+            }
+            className={`inline-flex min-h-12 shrink-0 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              tipoFinalizacao === "PAGO_AGORA"
+                ? "bg-slate-900 hover:bg-slate-800"
+                : "bg-indigo-600 hover:bg-indigo-500"
+            }`}
+          >
+            {tipoFinalizacao === "PAGO_AGORA"
+              ? salvando
+                ? "Salvando..."
+                : "Registrar"
+              : gerandoLinkPagamento
+                ? "Gerando..."
+                : "Gerar link"}
+          </button>
+        </div>
+      </div>
+
+      {produtoMedidaSelecionado ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {getLabelMedida(produtoMedidaSelecionado)}
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                  Escolha a medida
+                </h2>
+              </div>
+
               <button
                 type="button"
                 onClick={fecharModalMedida}
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Fechar escolha de medida"
               >
-                Cancelar
+                <X className="h-5 w-5" />
               </button>
+            </div>
 
-              <button
-                type="button"
-                onClick={confirmarAdicionarProdutoComMedida}
-                disabled={!medidaSelecionada}
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-              >
-                Adicionar
-              </button>
+            <div className="space-y-4 px-4 py-5 sm:px-6">
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <MiniaturaProduto
+                  imagemUrl={getImagemProduto(produtoMedidaSelecionado)}
+                  nome={produtoMedidaSelecionado.nome}
+                />
+
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-semibold text-slate-950">
+                    {produtoMedidaSelecionado.nome}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {moeda(produtoMedidaSelecionado.precoVenda)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {getMedidasDisponiveis(produtoMedidaSelecionado).map(
+                  (medida) => (
+                    <button
+                      key={medida.valor}
+                      type="button"
+                      onClick={() => setMedidaSelecionada(medida.valor)}
+                      className={`rounded-2xl border p-3 text-left transition ${
+                        medidaSelecionada === medida.valor
+                          ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {medida.imagemUrl ? (
+                          <MiniaturaProduto
+                            imagemUrl={medida.imagemUrl}
+                            nome={medida.label}
+                          />
+                        ) : null}
+
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-bold text-slate-950">
+                            {medida.label}
+                          </p>
+                          <p className="mt-0.5 text-xs font-medium text-slate-500">
+                            {medida.estoqueDisponivel} em estoque
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <div className="grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={fecharModalMedida}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmarAdicionarProdutoComMedida}
+                  disabled={!medidaSelecionada}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  Adicionar
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    ) : null}
+      ) : null}
 
-    {modalLinkPagamentoAberto && linkPagamento ? (
-      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-        <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Stripe
-              </p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950">
-                Link de pagamento gerado
-              </h2>
-              {linkPagamento.pedidoCodigo ? (
-                <p className="mt-1 text-sm text-slate-500">
-                  Pedido {linkPagamento.pedidoCodigo}
+      {modalLinkPagamentoAberto && linkPagamento ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+          <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Stripe
                 </p>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setModalLinkPagamentoAberto(false)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
-              aria-label="Fechar link de pagamento"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="space-y-4 px-4 py-4 sm:px-5">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Pedido
-                </p>
-                <p className="mt-1 truncate text-sm font-bold text-slate-950">
-                  {linkPagamento.pedidoCodigo || "-"}
-                </p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                  Link de pagamento gerado
+                </h2>
+                {linkPagamento.pedidoCodigo ? (
+                  <p className="mt-1 text-sm text-slate-500">
+                    Pedido {linkPagamento.pedidoCodigo}
+                  </p>
+                ) : null}
               </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  Total
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-950">
-                  {moeda(totalFinal)}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm leading-5 text-slate-600">
-              Escaneie o QR Code ou envie o link para o cliente.
-            </p>
-
-            {linkPagamentoDesatualizado ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-                A venda foi alterada depois da geração. Gere um novo link antes
-                de enviar ao cliente.
-              </div>
-            ) : null}
-
-            <div className="flex justify-center rounded-3xl border border-slate-200 bg-white p-3">
-              <QRCodeSVG
-                value={linkPagamento.url}
-                size={180}
-                level="M"
-                includeMargin
-                className="h-auto max-w-[180px] sm:max-w-[220px]"
-              />
-            </div>
-
-            <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Link Stripe
-              </p>
-              <p className="mt-1 truncate text-sm font-medium text-slate-700">
-                {linkCompacto(linkPagamento.url)}
-              </p>
-            </div>
-
-            {erroPagamento ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {erroPagamento}
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={copiarLinkPagamento}
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Copiar link
-              </button>
-
-              <a
-                href={linkPagamento.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Abrir link
-              </a>
-
-              {telefoneWhatsApp && !linkPagamentoDesatualizado ? (
-                <a
-                  href={`https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(
-                    mensagemWhatsApp
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                >
-                  Enviar WhatsApp
-                </a>
-              ) : null}
 
               <button
                 type="button"
                 onClick={() => setModalLinkPagamentoAberto(false)}
-                className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Fechar link de pagamento"
               >
-                Fechar
+                <X className="h-5 w-5" />
               </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4 sm:px-5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Pedido
+                  </p>
+                  <p className="mt-1 truncate text-sm font-bold text-slate-950">
+                    {linkPagamento.pedidoCodigo || "-"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Total
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-950">
+                    {moeda(totalFinal)}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm leading-5 text-slate-600">
+                Escaneie o QR Code ou envie o link para o cliente.
+              </p>
+
+              {linkPagamentoDesatualizado ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                  A venda foi alterada depois da geração. Gere um novo link
+                  antes de enviar ao cliente.
+                </div>
+              ) : null}
+
+              <div className="flex justify-center rounded-3xl border border-slate-200 bg-white p-3">
+                <QRCodeSVG
+                  value={linkPagamento.url}
+                  size={180}
+                  level="M"
+                  includeMargin
+                  className="h-auto max-w-[180px] sm:max-w-[220px]"
+                />
+              </div>
+
+              <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Link Stripe
+                </p>
+                <p className="mt-1 truncate text-sm font-medium text-slate-700">
+                  {linkCompacto(linkPagamento.url)}
+                </p>
+              </div>
+
+              {erroPagamento ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {erroPagamento}
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={copiarLinkPagamento}
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Copiar link
+                </button>
+
+                <a
+                  href={linkPagamento.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Abrir link
+                </a>
+
+                {telefoneWhatsApp && !linkPagamentoDesatualizado ? (
+                  <a
+                    href={`https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(
+                      mensagemWhatsApp,
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                  >
+                    Enviar WhatsApp
+                  </a>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => setModalLinkPagamentoAberto(false)}
+                  className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    ) : null}
+      ) : null}
 
-    {modalClienteAberto ? (
-      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-        <div className="max-h-[96vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Cliente
-              </p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                Novo cliente
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Cadastre sem sair da venda. Os itens adicionados serão mantidos.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={fecharModalCliente}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
-              aria-label="Fechar cadastro de cliente"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="space-y-5 px-4 py-5 sm:px-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="md:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Nome
-                </span>
-                <input
-                  value={novoCliente.nome}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("nome", event.target.value)
-                  }
-                  placeholder="Nome do cliente"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Telefone/WhatsApp
-                </span>
-                <input
-                  value={novoCliente.telefone}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("telefone", event.target.value)
-                  }
-                  placeholder="(11) 99999-9999"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  E-mail
-                </span>
-                <input
-                  value={novoCliente.email}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("email", event.target.value)
-                  }
-                  placeholder="email@cliente.com"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  CPF/CNPJ
-                </span>
-                <input
-                  value={novoCliente.documento}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("documento", event.target.value)
-                  }
-                  placeholder="Documento"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Tipo de cliente
-                </span>
-                <select
-                  value={novoCliente.tipoCliente}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("tipoCliente", event.target.value)
-                  }
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
-                >
-                  <option>PESSOA FÍSICA</option>
-                  <option>REVENDEDORA</option>
-                  <option>LOJA FISICA</option>
-                </select>
-              </label>
-
-              <label className="md:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Observações
-                </span>
-                <textarea
-                  value={novoCliente.observacoes}
-                  onChange={(event) =>
-                    atualizarCampoNovoCliente("observacoes", event.target.value)
-                  }
-                  rows={3}
-                  placeholder="Observações internas"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
-                />
-              </label>
-            </div>
-
-            {erroCliente ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {erroCliente}
+      {modalClienteAberto ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+          <div className="max-h-[96vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Cliente
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                  Novo cliente
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Cadastre sem sair da venda. Os itens adicionados serão
+                  mantidos.
+                </p>
               </div>
-            ) : null}
 
-            <div className="grid gap-3 border-t border-slate-100 pt-5 sm:flex sm:flex-wrap sm:justify-end">
               <button
                 type="button"
                 onClick={fecharModalCliente}
-                disabled={salvandoCliente}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Fechar cadastro de cliente"
               >
-                Cancelar
+                <X className="h-5 w-5" />
               </button>
-              <button
-                type="button"
-                onClick={criarClienteRapido}
-                disabled={salvandoCliente}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {salvandoCliente ? "Salvando..." : "Salvar e selecionar"}
-              </button>
+            </div>
+
+            <div className="space-y-5 px-4 py-5 sm:px-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="md:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Nome
+                  </span>
+                  <input
+                    value={novoCliente.nome}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente("nome", event.target.value)
+                    }
+                    placeholder="Nome do cliente"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Telefone/WhatsApp
+                  </span>
+                  <input
+                    value={novoCliente.telefone}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente("telefone", event.target.value)
+                    }
+                    placeholder="(11) 99999-9999"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    E-mail
+                  </span>
+                  <input
+                    value={novoCliente.email}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente("email", event.target.value)
+                    }
+                    placeholder="email@cliente.com"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    CPF/CNPJ
+                  </span>
+                  <input
+                    value={novoCliente.documento}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente("documento", event.target.value)
+                    }
+                    placeholder="Documento"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Tipo de cliente
+                  </span>
+                  <select
+                    value={novoCliente.tipoCliente}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente(
+                        "tipoCliente",
+                        event.target.value,
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                  >
+                    <option>PESSOA FÍSICA</option>
+                    <option>REVENDEDORA</option>
+                    <option>LOJA FISICA</option>
+                  </select>
+                </label>
+
+                <label className="md:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Observações
+                  </span>
+                  <textarea
+                    value={novoCliente.observacoes}
+                    onChange={(event) =>
+                      atualizarCampoNovoCliente(
+                        "observacoes",
+                        event.target.value,
+                      )
+                    }
+                    rows={3}
+                    placeholder="Observações internas"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </label>
+              </div>
+
+              {erroCliente ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {erroCliente}
+                </div>
+              ) : null}
+
+              <div className="grid gap-3 border-t border-slate-100 pt-5 sm:flex sm:flex-wrap sm:justify-end">
+                <button
+                  type="button"
+                  onClick={fecharModalCliente}
+                  disabled={salvandoCliente}
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={criarClienteRapido}
+                  disabled={salvandoCliente}
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {salvandoCliente ? "Salvando..." : "Salvar e selecionar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    ) : null}
+      ) : null}
     </>
   );
 }

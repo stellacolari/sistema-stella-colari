@@ -54,7 +54,7 @@ function extrairUrlEtiqueta(data: unknown): string {
   ];
 
   const encontrado = candidatos.find(
-    (value) => typeof value === "string" && value.startsWith("http")
+    (value) => typeof value === "string" && value.startsWith("http"),
   );
 
   if (typeof encontrado === "string") {
@@ -74,7 +74,7 @@ function extrairUrlEtiqueta(data: unknown): string {
 
 export async function PATCH(
   _request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
@@ -91,56 +91,59 @@ export async function PATCH(
     if (!pedido) {
       return NextResponse.json(
         { error: "Pedido não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    if (pedido.origemCanal !== "LOJA_STELLA") {
+    if (!["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal)) {
       return NextResponse.json(
-        { error: "Impressão de etiqueta disponível apenas para pedidos do site." },
-        { status: 400 }
+        {
+          error:
+            "Impressão de etiqueta disponível apenas para pedidos com entrega.",
+        },
+        { status: 400 },
       );
     }
 
     if (pedido.statusPagamento !== "PAGO") {
       return NextResponse.json(
         { error: "Só é possível imprimir etiqueta de pedido pago." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!pedido.envio) {
       return NextResponse.json(
         { error: "Pedido não possui dados de envio." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega === "RETIRADA") {
       return NextResponse.json(
         { error: "Retirada local não gera impressão de etiqueta." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.tipoEntrega !== "ENTREGA") {
       return NextResponse.json(
         { error: "Tipo de entrega não elegível para impressão de etiqueta." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.gatewayLogistico !== "MELHOR_ENVIO") {
       return NextResponse.json(
         { error: "Pedido não utiliza Melhor Envio como gateway logístico." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (pedido.envio.statusEnvio !== "ETIQUETA_GERADA") {
       return NextResponse.json(
         { error: "Só é possível imprimir etiqueta após gerar a etiqueta." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -149,7 +152,7 @@ export async function PATCH(
     if (!gatewayEnvioId) {
       return NextResponse.json(
         { error: "Identificador do envio no Melhor Envio não encontrado." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -161,7 +164,7 @@ export async function PATCH(
           error:
             "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -170,7 +173,7 @@ export async function PATCH(
         orderId: gatewayEnvioId,
         mode: "public",
       },
-      freteConfig
+      freteConfig,
     );
     const etiquetaUrl = extrairUrlEtiqueta(resposta);
     const observacoesAnteriores = parseObservacoes(pedido.envio.observacoes);

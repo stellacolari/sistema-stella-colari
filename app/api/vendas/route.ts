@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizarTamanhoEstoque } from "@/lib/loja/estoque";
+import { criarPedidoManualOnline } from "@/lib/vendas/pedido-manual-online";
+import { efetivarPedidoManualPagoComoVenda } from "@/lib/vendas/efetivar-pedido-manual";
 
 type ItemVendaPayload = {
   id: string;
@@ -57,7 +59,9 @@ function produtoExigeTamanhoAnel(categoria: string) {
 }
 
 function normalizarTamanhoAnel(tamanho: string | null | undefined) {
-  const value = String(tamanho ?? "").trim().toUpperCase();
+  const value = String(tamanho ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!value || value === "UNICO") {
     return "";
@@ -94,7 +98,7 @@ async function baixarEstoqueProduto({
     throw new Error(
       tamanhoEstoque !== "UNICO"
         ? `Produto sem estoque no tamanho ${tamanhoEstoque}: ${descricao}`
-        : `Produto sem estoque: ${descricao}`
+        : `Produto sem estoque: ${descricao}`,
     );
   }
 
@@ -102,7 +106,7 @@ async function baixarEstoqueProduto({
     throw new Error(
       tamanhoEstoque !== "UNICO"
         ? `Saldo insuficiente para ${descricao} no tamanho ${tamanhoEstoque}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
-        : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
+        : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`,
     );
   }
 
@@ -164,12 +168,14 @@ async function consumirAdicionaisDaCategoria({
     });
 
     if (!estoqueAdicional) {
-      throw new Error(`Item adicional sem estoque: ${regra.itemAdicional.nome}`);
+      throw new Error(
+        `Item adicional sem estoque: ${regra.itemAdicional.nome}`,
+      );
     }
 
     if (estoqueAdicional.quantidadeAtual < quantidadeNecessaria) {
       throw new Error(
-        `Saldo insuficiente do item adicional ${regra.itemAdicional.nome} para vender ${nomeProduto}`
+        `Saldo insuficiente do item adicional ${regra.itemAdicional.nome} para vender ${nomeProduto}`,
       );
     }
 
@@ -225,6 +231,8 @@ export async function POST(req: Request) {
     const meioVenda = String(body.meioVenda || "").trim();
     const descontoPercentual = Number(body.descontoPercentual || 0);
     const observacoes = String(body.observacoes || "").trim();
+    const envio =
+      body.envio && typeof body.envio === "object" ? body.envio : null;
     const itens: ItemVendaPayload[] = Array.isArray(body.itens)
       ? body.itens
       : [];
@@ -232,28 +240,28 @@ export async function POST(req: Request) {
     if (!clienteId) {
       return NextResponse.json(
         { error: "Cliente é obrigatório." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!meioVenda) {
       return NextResponse.json(
         { error: "Meio de venda é obrigatório." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (meioVenda.trim().toUpperCase() === "SITE") {
       return NextResponse.json(
         { error: "Site é reservado para pedidos online." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (itens.length === 0) {
       return NextResponse.json(
         { error: "Adicione pelo menos um produto à venda." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -261,13 +269,13 @@ export async function POST(req: Request) {
       (item) =>
         !item.id ||
         !Number.isFinite(Number(item.quantidade)) ||
-        Number(item.quantidade) <= 0
+        Number(item.quantidade) <= 0,
     );
 
     if (itemInvalido) {
       return NextResponse.json(
         { error: "Existe um item inválido na venda." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -278,8 +286,46 @@ export async function POST(req: Request) {
     if (!cliente) {
       return NextResponse.json(
         { error: "Cliente não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
+    }
+
+    if (envio?.habilitado) {
+      const pedido = await criarPedidoManualOnline({
+        clienteId,
+        meioVenda,
+        descontoPercentual,
+        observacoes,
+        itens,
+        envio,
+      });
+
+      const vendaGerada = await efetivarPedidoManualPagoComoVenda({
+        pedidoId: pedido.id,
+        gatewayPagamentoId: null,
+        valorPago: Number(pedido.total || 0),
+        gatewayPagamento: null,
+        metodoPagamento: "MANUAL",
+        origemHistorico: "ADMIN_MANUAL",
+        usuarioNomeHistorico: "Admin",
+        pagamentoObservacao: `Pagamento manual confirmado. Venda gerada e estoque baixado para o pedido ${pedido.codigo}.`,
+        historicoObservacao:
+          "Pedido manual com entrega registrado como pago pelo admin.",
+      });
+
+      if (!vendaGerada) {
+        return NextResponse.json(
+          { error: "Pedido manual com entrega não pôde ser efetivado." },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        vendaId: vendaGerada.vendaId,
+        pedidoId: pedido.id,
+        pedidoCodigo: pedido.codigo,
+      });
     }
 
     const ultimoRegistro = await prisma.venda.findFirst({
@@ -348,7 +394,7 @@ export async function POST(req: Request) {
 
           if (produtoEhKit && produto.componentesDoKit.length === 0) {
             throw new Error(
-              `O kit ${produto.nome} não possui componentes cadastrados.`
+              `O kit ${produto.nome} não possui componentes cadastrados.`,
             );
           }
 
@@ -361,7 +407,7 @@ export async function POST(req: Request) {
 
           if (exigeTamanho && !tamanhoAnel) {
             throw new Error(
-              `Informe o tamanho do anel para o produto: ${produto.nome}`
+              `Informe o tamanho do anel para o produto: ${produto.nome}`,
             );
           }
 
@@ -412,16 +458,13 @@ export async function POST(req: Request) {
             }
           }
 
-          const {
-            gastoAdicionais,
-            gastosPorAdicional,
-            adicionaisConsumidos,
-          } = await consumirAdicionaisDaCategoria({
-            tx,
-            categoria: produto.categoria,
-            quantidadeProduto: quantidade,
-            nomeProduto: produto.nome,
-          });
+          const { gastoAdicionais, gastosPorAdicional, adicionaisConsumidos } =
+            await consumirAdicionaisDaCategoria({
+              tx,
+              categoria: produto.categoria,
+              quantidadeProduto: quantidade,
+              nomeProduto: produto.nome,
+            });
 
           const lucroLinha = valorTotalLinha - gastoProduto - gastoAdicionais;
 
@@ -522,7 +565,7 @@ export async function POST(req: Request) {
       {
         maxWait: 15000,
         timeout: 120000,
-      }
+      },
     );
 
     return NextResponse.json({ ok: true, vendaId: resultado.id });

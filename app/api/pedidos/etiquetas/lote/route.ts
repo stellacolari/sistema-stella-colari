@@ -8,10 +8,8 @@ function normalizarIds(value: unknown) {
 
   return Array.from(
     new Set(
-      value
-        .map((id) => String(id || "").trim())
-        .filter((id) => id.length > 0)
-    )
+      value.map((id) => String(id || "").trim()).filter((id) => id.length > 0),
+    ),
   );
 }
 
@@ -27,7 +25,7 @@ function isPedidoImprimivel(pedido: {
   } | null;
 }) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    ["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -44,7 +42,7 @@ export async function POST(request: Request) {
     if (ids.length === 0) {
       return NextResponse.json(
         { error: "Selecione ao menos uma etiqueta para impressão." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -73,11 +71,13 @@ export async function POST(request: Request) {
     if (pedidos.length !== ids.length) {
       return NextResponse.json(
         { error: "Um ou mais pedidos selecionados não foram encontrados." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const pedidosInvalidos = pedidos.filter((pedido) => !isPedidoImprimivel(pedido));
+    const pedidosInvalidos = pedidos.filter(
+      (pedido) => !isPedidoImprimivel(pedido),
+    );
 
     if (pedidosInvalidos.length > 0) {
       return NextResponse.json(
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           error:
             "A seleção contém pedido sem etiqueta gerada ou sem link de impressão.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { error: "Erro ao preparar impressão em lote." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
