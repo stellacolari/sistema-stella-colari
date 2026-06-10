@@ -322,7 +322,19 @@ function ProdutoRelacionadoCard({
       }`}
     >
       <div className="relative overflow-hidden">
-        <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
+        <div className={hasHover ? "stella-product-hover-primary" : ""}>
+          <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
+        </div>
+
+        {hasHover && produto.imagemHoverUrl && (
+          <div className="stella-product-hover-secondary absolute inset-0 overflow-hidden bg-white">
+            <ProdutoImagemQuadrada
+              src={produto.imagemHoverUrl}
+              alt={produto.nome}
+              className="h-full"
+            />
+          </div>
+        )}
 
         {desconto !== null && (
           <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
@@ -360,18 +372,6 @@ function ProdutoRelacionadoCard({
           )}
         </div>
       </div>
-
-      {hasHover && produto.imagemHoverUrl && (
-        <div className="stella-product-hover-secondary absolute inset-0 z-20 overflow-hidden bg-white">
-          <img
-            src={produto.imagemHoverUrl}
-            alt={produto.nome}
-            className="pointer-events-none h-full w-full object-cover object-center"
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-black/5" />
-        </div>
-      )}
     </Link>
   );
 }

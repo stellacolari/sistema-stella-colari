@@ -73,19 +73,37 @@ function ProdutoPreco({ produto }: { produto: ProdutoCardLojaItem }) {
 }
 
 function ProdutoImagem({ produto }: { produto: ProdutoCardLojaItem }) {
+  const hasHover = Boolean(produto.imagemHoverUrl);
+
   return (
     <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
-      {produto.imagemUrl ? (
-        <img
-          src={produto.imagemUrl}
-          alt={produto.nome}
-          className="h-full w-full object-cover object-center"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
-          Sem imagem
+      <div
+        className={hasHover ? "stella-product-hover-primary h-full" : "h-full"}
+      >
+        {produto.imagemUrl ? (
+          <img
+            src={produto.imagemUrl}
+            alt={produto.nome}
+            className="h-full w-full object-cover object-center"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
+            Sem imagem
+          </div>
+        )}
+      </div>
+
+      {hasHover && produto.imagemHoverUrl ? (
+        <div className="stella-product-hover-secondary absolute inset-0 overflow-hidden bg-white">
+          <img
+            src={produto.imagemHoverUrl}
+            alt={produto.nome}
+            className="pointer-events-none h-full w-full object-cover object-center"
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-black/5" />
         </div>
-      )}
+      ) : null}
 
       <div className="pointer-events-none absolute inset-0 bg-black/5" />
     </div>
@@ -103,7 +121,6 @@ export default function ProdutoCardLoja({
 }: ProdutoCardLojaProps) {
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
-  const hasHover = Boolean(produto.imagemHoverUrl);
   const produtoHref = href || `/loja/produto/${produto.id}`;
   const cardClass = `stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
     semEstoque ? "opacity-75" : ""
@@ -143,18 +160,6 @@ export default function ProdutoCardLoja({
           </span>
         ) : null}
       </div>
-
-      {hasHover && produto.imagemHoverUrl ? (
-        <div className="stella-product-hover-secondary absolute inset-0 z-20 overflow-hidden bg-white">
-          <img
-            src={produto.imagemHoverUrl}
-            alt={produto.nome}
-            className="pointer-events-none h-full w-full object-cover object-center"
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-black/5" />
-        </div>
-      ) : null}
     </>
   );
 

@@ -165,6 +165,14 @@ select:focus {
   -webkit-tap-highlight-color: transparent;
 }
 
+.stella-product-card:active .stella-product-hover-primary {
+  opacity: 0;
+}
+
+.stella-product-card:active .stella-product-hover-secondary {
+  opacity: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .stella-product-card:hover {
     background-color: #f8fafc;
