@@ -33,6 +33,7 @@ export type ProdutoPublico = {
 export type BlocoPublicoProps = {
   bloco: BlocoPublico;
   produtos?: ProdutoPublico[];
+  listaCompletaProdutos?: boolean;
 };
 
 export const TIPOS_BLOCOS_VISUAIS_PUBLICOS = new Set([

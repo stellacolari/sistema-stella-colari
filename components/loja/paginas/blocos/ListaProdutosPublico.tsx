@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import CarouselScrollArea from "@/components/loja/paginas/CarouselScrollArea";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
@@ -106,11 +109,13 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
 export default function ListaProdutosPublico({
   bloco,
   produtos = [],
+  listaCompletaProdutos = false,
 }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
   const produtosFiltrados = filtrarProdutos(produtos, config);
+  const [mostrarTodos, setMostrarTodos] = useState(false);
   const layoutMobile = getString(config, "layoutMobile", "GRID");
   const layoutDesktop = getString(config, "layoutDesktop", "GRID");
   const isCarousel = layoutMobile === "CARROSSEL" || layoutDesktop === "CARROSSEL";
@@ -145,6 +150,11 @@ export default function ListaProdutosPublico({
   const hasTitulo = hasTextContent(tituloRichText, titulo);
   const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
   const textoBotao = getStringWithDefault(config, "textoBotao", "Comprar");
+  const ehListaCompletaCategoria =
+    listaCompletaProdutos || getString(config, "fonte") === "CATEGORIA_ATUAL";
+  const deveLimitar = !ehListaCompletaCategoria && produtosFiltrados.length > 4;
+  const produtosVisiveis =
+    deveLimitar && !mostrarTodos ? produtosFiltrados.slice(0, 4) : produtosFiltrados;
 
   if (!hasTitulo && !hasSubtitulo && produtosFiltrados.length === 0) {
     return null;
@@ -182,16 +192,16 @@ export default function ListaProdutosPublico({
               isCarousel
                 ? "mt-10 flex snap-x gap-5 overflow-x-auto scroll-smooth pb-4"
                 : `mt-10 grid gap-x-5 gap-y-10 ${getGridColumnsClass(
-                    getNumber(config, "colunasMobile", 2),
+                    1,
                     getNumber(config, "colunasTablet", 3),
                     getNumber(config, "colunasDesktop", 4)
                   )}`
             }
           >
-            {produtosFiltrados.map((produto) => (
+            {produtosVisiveis.map((produto) => (
               <div
                 key={produto.id}
-                className={isCarousel ? "w-[68vw] shrink-0 snap-start sm:w-64" : ""}
+                className={isCarousel ? "w-[82vw] shrink-0 snap-start sm:w-64" : ""}
               >
                 <ProdutoCardLoja
                   produto={produto}
@@ -203,6 +213,18 @@ export default function ListaProdutosPublico({
               </div>
             ))}
           </CarouselScrollArea>
+        ) : null}
+
+        {deveLimitar && !mostrarTodos ? (
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setMostrarTodos(true)}
+              className="brand-button-outline px-6 py-3 text-sm font-semibold"
+            >
+              Ver mais
+            </button>
+          </div>
         ) : null}
       </div>
     </section>

@@ -16,9 +16,11 @@ export { isBlocoVisualPublico };
 export default function BlocoPublicoRenderer({
   bloco,
   produtos = [],
+  listaCompletaProdutos = false,
 }: {
   bloco: BlocoPublico;
   produtos?: ProdutoPublico[];
+  listaCompletaProdutos?: boolean;
 }) {
   if (bloco.tipo === "BANNER" || bloco.tipo === "HERO") {
     return <BannerPublico bloco={bloco} produtos={produtos} />;
@@ -37,7 +39,13 @@ export default function BlocoPublicoRenderer({
   }
 
   if (bloco.tipo === "LISTA_PRODUTOS") {
-    return <ListaProdutosPublico bloco={bloco} produtos={produtos} />;
+    return (
+      <ListaProdutosPublico
+        bloco={bloco}
+        produtos={produtos}
+        listaCompletaProdutos={listaCompletaProdutos}
+      />
+    );
   }
 
   if (bloco.tipo === "CTA") {

@@ -20,6 +20,7 @@ import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
+import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 const LOGO_URL = "/logo-stella.png";
@@ -284,36 +285,6 @@ function getItemKey(item: {
   ].join("-");
 }
 
-function ProdutoImagemQuadrada({
-  src,
-  alt,
-  className = "",
-}: {
-  src?: string | null;
-  alt: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`relative aspect-square w-full overflow-hidden bg-slate-50 ${className}`}
-    >
-      {src ? (
-        <img
-          src={src}
-          alt={alt}
-          className="h-full w-full object-cover object-center"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
-          Sem imagem
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-0 bg-black/5" />
-    </div>
-  );
-}
-
 function LogoLoja() {
   const [logoErro, setLogoErro] = useState(false);
 
@@ -342,76 +313,7 @@ function ProdutoRelacionadoCard({
 }: {
   produto: LojaProdutoRelacionado;
 }) {
-  const semEstoque = produto.estoqueTotal <= 0;
-  const desconto = percentualDesconto(produto);
-  const temDesconto = produtoTemDesconto(produto);
-  const hasHover = Boolean(produto.imagemHoverUrl);
-
-  return (
-    <article
-      className={`group stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
-        semEstoque ? "opacity-75" : ""
-      }`}
-    >
-      <Link
-        href={`/loja/produto/${produto.id}`}
-        className="absolute inset-0 z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
-        aria-label={`Ver produto ${produto.nome}`}
-      />
-
-      <div className="relative overflow-hidden">
-        <div className={hasHover ? "stella-product-hover-primary" : ""}>
-          <ProdutoImagemQuadrada src={produto.imagemUrl} alt={produto.nome} />
-        </div>
-
-        {hasHover && produto.imagemHoverUrl && (
-          <div className="stella-product-hover-secondary absolute inset-0 overflow-hidden bg-white">
-            <ProdutoImagemQuadrada
-              src={produto.imagemHoverUrl}
-              alt={produto.nome}
-              className="h-full"
-            />
-          </div>
-        )}
-
-        {desconto !== null && (
-          <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
-            -{desconto}%
-          </div>
-        )}
-
-        {semEstoque && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700">
-            Sem estoque
-          </div>
-        )}
-      </div>
-
-      <div className="stella-product-hover-surface relative z-10 flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3">
-        <h3 className="stella-product-hover-title line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900">
-          {produto.nome}
-        </h3>
-
-        <div className="mt-auto">
-          {temDesconto && produto.precoPromocional !== null ? (
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-xs font-normal tracking-wide text-slate-400 line-through">
-                {moeda(produto.precoVenda)}
-              </span>
-
-              <span className="text-sm font-semibold tracking-wide brand-text">
-                {moeda(produto.precoPromocional)}
-              </span>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm font-medium tracking-wide text-slate-700">
-              {moeda(produto.precoVenda)}
-            </p>
-          )}
-        </div>
-      </div>
-    </article>
-  );
+  return <ProdutoCardLoja produto={produto} />;
 }
 
 function ProdutosRelacionadosSection({

@@ -141,8 +141,8 @@ export default function ProdutoCardLoja({
         observer.unobserve(element);
       },
       {
-        threshold: 0.16,
-        rootMargin: "0px 0px -36px 0px",
+        threshold: 0.01,
+        rootMargin: "120px 0px",
       },
     );
 
@@ -350,10 +350,10 @@ export default function ProdutoCardLoja({
           : `Adicionar ${produto.nome} aos favoritos`
       }
       aria-pressed={favorito}
-      className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white/95 text-slate-500 shadow-sm backdrop-blur transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)] sm:h-8 sm:w-8"
+      className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center text-slate-700 transition hover:text-[var(--brand-blue)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
     >
       <Heart
-        className={`h-4 w-4 ${
+        className={`h-5 w-5 drop-shadow-sm ${
           favorito ? "fill-[var(--brand-blue)] text-[var(--brand-blue)]" : ""
         }`}
         fill={favorito ? "currentColor" : "none"}

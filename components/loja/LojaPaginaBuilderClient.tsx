@@ -12,7 +12,7 @@ import {
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
-import ImageBox from "@/components/ui/ImageBox";
+import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
@@ -92,13 +92,6 @@ type FiltrosGrade = {
   disponibilidade: string;
 };
 
-function moeda(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(valor);
-}
-
 function asConfig(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -169,17 +162,6 @@ function produtoTemDesconto(produto: {
     produto.precoPromocional !== null &&
     produto.precoPromocional > 0 &&
     produto.precoPromocional < produto.precoVenda
-  );
-}
-
-function percentualDesconto(produto: LojaBuilderProduto) {
-  if (!produtoTemDesconto(produto) || produto.precoPromocional === null) {
-    return null;
-  }
-
-  return Math.round(
-    ((produto.precoVenda - produto.precoPromocional) / produto.precoVenda) *
-      100,
   );
 }
 
@@ -388,84 +370,8 @@ function LogoLoja() {
   );
 }
 
-function ProdutoPreco({ produto }: { produto: LojaBuilderProduto }) {
-  const temDesconto = produtoTemDesconto(produto);
-
-  if (!temDesconto || produto.precoPromocional === null) {
-    return (
-      <p className="mt-2 text-sm font-medium tracking-wide text-slate-700">
-        {moeda(produto.precoVenda)}
-      </p>
-    );
-  }
-
-  return (
-    <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="text-xs font-normal tracking-wide text-slate-400 line-through">
-        {moeda(produto.precoVenda)}
-      </span>
-
-      <span className="text-sm font-semibold tracking-wide brand-text">
-        {moeda(produto.precoPromocional)}
-      </span>
-    </div>
-  );
-}
-
-function ProdutoImagem({ produto }: { produto: LojaBuilderProduto }) {
-  const hasHover = Boolean(produto.imagemHoverUrl);
-
-  return (
-    <div className="relative overflow-hidden bg-slate-50">
-      <div className={hasHover ? "stella-product-hover-primary" : ""}>
-        <ImageBox src={produto.imagemUrl} alt={produto.nome} />
-      </div>
-
-      {hasHover && (
-        <div className="stella-product-hover-secondary absolute inset-0">
-          <ImageBox src={produto.imagemHoverUrl} alt={produto.nome} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ProdutoCard({ produto }: { produto: LojaBuilderProduto }) {
-  const semEstoque = produto.estoqueTotal <= 0;
-  const desconto = percentualDesconto(produto);
-
-  return (
-    <Link
-      href={`/loja/produto/${produto.id}`}
-      className={`stella-product-card block bg-white ${
-        semEstoque ? "opacity-75" : ""
-      }`}
-    >
-      <div className="relative">
-        <ProdutoImagem produto={produto} />
-
-        {desconto !== null && (
-          <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] shadow-sm">
-            -{desconto}%
-          </div>
-        )}
-
-        {semEstoque && (
-          <div className="pointer-events-none absolute left-3 top-3 z-10 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-700 shadow-sm">
-            Sem estoque
-          </div>
-        )}
-      </div>
-
-      <div className="pt-4">
-        <h3 className="stella-product-hover-title line-clamp-2 text-sm font-medium leading-5 text-slate-900">
-          {produto.nome}
-        </h3>
-
-        <ProdutoPreco produto={produto} />
-      </div>
-    </Link>
-  );
+  return <ProdutoCardLoja produto={produto} />;
 }
 
 function BlocoBanner({ config }: { config: Record<string, unknown> }) {
@@ -1173,6 +1079,7 @@ function ProdutosCarrossel({
   alinhamentoSecao,
   produtos,
   mostrarSetas,
+  listaCompleta,
 }: {
   tituloPrincipal: string;
   descricaoPrincipal: string;
@@ -1182,15 +1089,18 @@ function ProdutosCarrossel({
   alinhamentoSecao: string;
   produtos: LojaBuilderProduto[];
   mostrarSetas: boolean;
+  listaCompleta: boolean;
 }) {
   const [paginaAtual, setPaginaAtual] = useState(0);
+  const [mostrarTodos, setMostrarTodos] = useState(listaCompleta);
   const itensPorPagina = 4;
-  const totalPaginas = Math.max(1, Math.ceil(produtos.length / itensPorPagina));
+  const totalPaginas = 1;
 
   const produtosPagina = useMemo(() => {
-    const inicio = paginaAtual * itensPorPagina;
-    return produtos.slice(inicio, inicio + itensPorPagina);
-  }, [paginaAtual, produtos]);
+    return mostrarTodos || listaCompleta
+      ? produtos
+      : produtos.slice(0, itensPorPagina);
+  }, [listaCompleta, mostrarTodos, produtos]);
 
   if (produtos.length === 0) return null;
 
@@ -1290,6 +1200,18 @@ function ProdutosCarrossel({
           ))}
         </div>
       )}
+
+      {!listaCompleta && !mostrarTodos && produtos.length > itensPorPagina ? (
+        <div className="mt-8 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setMostrarTodos(true)}
+            className="brand-button-outline px-6 py-3 text-sm font-semibold"
+          >
+            Ver mais
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1307,6 +1229,7 @@ function ProdutosGrade({
   paginacao,
   mostrarFiltros,
   filtrosAtivos,
+  listaCompleta,
 }: {
   tituloPrincipal: string;
   descricaoPrincipal: string;
@@ -1320,8 +1243,11 @@ function ProdutosGrade({
   paginacao: string;
   mostrarFiltros: boolean;
   filtrosAtivos: Record<string, unknown>;
+  listaCompleta: boolean;
 }) {
-  const itensPorPagina = produtosPorLinha * linhasPorPagina;
+  const itensPorPagina = listaCompleta
+    ? Math.max(1, produtos.length)
+    : Math.min(4, Math.max(1, produtosPorLinha * linhasPorPagina));
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [quantidadeVisivel, setQuantidadeVisivel] = useState(itensPorPagina);
   const [filtros, setFiltros] = useState<FiltrosGrade>({
@@ -1335,13 +1261,13 @@ function ProdutosGrade({
     ? aplicarFiltrosGrade(produtos, filtros)
     : produtos;
 
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil(produtosFiltrados.length / itensPorPagina),
-  );
+  const totalPaginas = listaCompleta
+    ? 1
+    : Math.max(1, Math.ceil(produtosFiltrados.length / itensPorPagina));
 
-  const produtosPagina =
-    paginacao === "CARREGAR_MAIS"
+  const produtosPagina = listaCompleta
+    ? produtosFiltrados
+    : paginacao === "CARREGAR_MAIS"
       ? produtosFiltrados.slice(0, quantidadeVisivel)
       : produtosFiltrados.slice(
           paginaAtual * itensPorPagina,
@@ -1394,7 +1320,7 @@ function ProdutosGrade({
       )}
 
       {paginacao === "CARREGAR_MAIS"
-        ? produtosPagina.length < produtosFiltrados.length && (
+        ? !listaCompleta && produtosPagina.length < produtosFiltrados.length && (
             <div className="mt-8 flex justify-center">
               <button
                 type="button"
@@ -1403,11 +1329,11 @@ function ProdutosGrade({
                 }
                 className="brand-button px-6 py-3 text-sm font-semibold"
               >
-                Carregar mais
+                Ver mais
               </button>
             </div>
           )
-        : totalPaginas > 1 && (
+        : !listaCompleta && totalPaginas > 1 && (
             <div className="mt-8 flex items-center justify-center gap-2">
               {Array.from({ length: totalPaginas }).map((_, index) => (
                 <button
@@ -1477,6 +1403,7 @@ function BlocoProdutos({
         paginacao={getString(config, "paginacao", "NUMEROS")}
         mostrarFiltros={mostrarFiltros}
         filtrosAtivos={filtrosAtivos}
+        listaCompleta={Boolean(categoriaAtual)}
       />
     );
   }
@@ -1491,6 +1418,7 @@ function BlocoProdutos({
       alinhamentoSecao={alinhamentoSecao}
       produtos={produtosDoBloco}
       mostrarSetas={mostrarSetas}
+      listaCompleta={Boolean(categoriaAtual)}
     />
   );
 }
@@ -1589,6 +1517,7 @@ export default function LojaPaginaBuilderClient({
                   key={bloco.id}
                   bloco={bloco}
                   produtos={produtos}
+                  listaCompletaProdutos={Boolean(categoriaAtual)}
                 />
               );
             }

@@ -1,9 +1,8 @@
 "use client";
 
-import type { TouchEvent } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
@@ -188,109 +187,32 @@ function MicroFaixaDiferenciais() {
 function SecaoProdutos({
   titulo,
   produtos,
+  listaCompleta = false,
 }: {
   titulo: string;
   produtos: LojaProdutoItem[];
+  listaCompleta?: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const touchStartXRef = useRef<number | null>(null);
-  const touchEndXRef = useRef<number | null>(null);
+  const [mostrarTodos, setMostrarTodos] = useState(listaCompleta);
+  const deveLimitar = !listaCompleta && produtos.length > 4;
+  const produtosDaPagina =
+    deveLimitar && !mostrarTodos ? produtos.slice(0, 4) : produtos;
+  const totalPaginas = 1;
+  const paginaAtual = 0;
 
-  const [itensPorPagina, setItensPorPagina] = useState(4);
-  const [paginaAtual, setPaginaAtual] = useState(0);
+  function proximaPagina() {
+    return undefined;
+  }
 
-  useEffect(() => {
-    function calcularItensPorPagina(largura: number) {
-      if (largura < 640) return 1;
-      if (largura < 900) return 2;
-      if (largura < 1180) return 3;
-      return 4;
-    }
-
-    function atualizarLayout() {
-      const largura = containerRef.current?.offsetWidth ?? window.innerWidth;
-      setItensPorPagina(calcularItensPorPagina(largura));
-    }
-
-    atualizarLayout();
-
-    const observer = new ResizeObserver(() => {
-      atualizarLayout();
-    });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    window.addEventListener("resize", atualizarLayout);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", atualizarLayout);
-    };
-  }, []);
-
-  const totalPaginas = Math.max(1, Math.ceil(produtos.length / itensPorPagina));
-
-  useEffect(() => {
-    setPaginaAtual((current) => Math.min(current, totalPaginas - 1));
-  }, [totalPaginas]);
-
-  const produtosDaPagina = useMemo(() => {
-    const inicio = paginaAtual * itensPorPagina;
-    const fim = inicio + itensPorPagina;
-
-    return produtos.slice(inicio, fim);
-  }, [produtos, paginaAtual, itensPorPagina]);
+  function setPaginaAtual(_index: number) {
+    void _index;
+  }
 
   if (produtos.length === 0) return null;
 
-  function paginaAnterior() {
-    setPaginaAtual((current) => Math.max(current - 1, 0));
-  }
-
-  function proximaPagina() {
-    setPaginaAtual((current) => Math.min(current + 1, totalPaginas - 1));
-  }
-
-  function iniciarToque(event: TouchEvent<HTMLDivElement>) {
-    touchStartXRef.current = event.touches[0]?.clientX ?? null;
-    touchEndXRef.current = null;
-  }
-
-  function moverToque(event: TouchEvent<HTMLDivElement>) {
-    touchEndXRef.current = event.touches[0]?.clientX ?? null;
-  }
-
-  function finalizarToque() {
-    const inicio = touchStartXRef.current;
-    const fim = touchEndXRef.current;
-
-    touchStartXRef.current = null;
-    touchEndXRef.current = null;
-
-    if (inicio === null || fim === null) {
-      return;
-    }
-
-    const distancia = inicio - fim;
-    const distanciaMinima = 45;
-
-    if (Math.abs(distancia) < distanciaMinima) {
-      return;
-    }
-
-    if (distancia > 0) {
-      proximaPagina();
-      return;
-    }
-
-    paginaAnterior();
-  }
-
   return (
     <section className="relative px-5 py-12 sm:px-6 lg:px-8">
-      <div ref={containerRef} className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-8">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
             {titulo}
@@ -298,32 +220,7 @@ function SecaoProdutos({
         </div>
 
         <div className="relative">
-          {totalPaginas > 1 && (
-            <button
-              type="button"
-              onClick={paginaAnterior}
-              disabled={paginaAtual === 0}
-              aria-label={`Ver produtos anteriores em ${titulo}`}
-              className="absolute left-0 top-[38%] z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center border brand-border bg-white/95 brand-text shadow-lg backdrop-blur transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)] disabled:pointer-events-none disabled:opacity-30 lg:flex"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-
-          <div
-            onTouchStart={iniciarToque}
-            onTouchMove={moverToque}
-            onTouchEnd={finalizarToque}
-            className={`grid touch-pan-y gap-1 sm:gap-2 ${
-              itensPorPagina === 1
-                ? "grid-cols-1"
-                : itensPorPagina === 2
-                ? "grid-cols-2"
-                : itensPorPagina === 3
-                ? "grid-cols-3"
-                : "grid-cols-4"
-            }`}
-          >
+          <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {produtosDaPagina.map((produto, index) => (
               <ProdutoCardLoja
                 key={produto.id}
@@ -362,6 +259,18 @@ function SecaoProdutos({
               ))}
             </div>
           )}
+
+          {deveLimitar && !mostrarTodos ? (
+            <div className="mt-8 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setMostrarTodos(true)}
+                className="brand-button-outline px-6 py-3 text-sm font-semibold"
+              >
+                Ver mais
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -571,6 +480,7 @@ export default function LojaClient({
           <SecaoProdutos
             titulo={secoesComProdutos[0].titulo}
             produtos={secoesComProdutos[0].produtos}
+            listaCompleta={!mostrarTodosProdutos}
           />
         )}
 
@@ -581,6 +491,7 @@ export default function LojaClient({
             key={secao.id}
             titulo={secao.titulo}
             produtos={secao.produtos}
+            listaCompleta={!mostrarTodosProdutos}
           />
         ))}
 
