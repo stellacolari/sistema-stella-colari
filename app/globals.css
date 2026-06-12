@@ -156,6 +156,15 @@ select:focus {
     background-color 200ms ease;
 }
 
+.stella-product-card img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.stella-product-card a {
+  -webkit-touch-callout: none;
+}
+
 .stella-product-card.is-visible {
   opacity: 1;
   transform: translateY(0) scale(1);
@@ -165,7 +174,7 @@ select:focus {
   opacity: 0.75;
 }
 
-.stella-product-normal,
+.stella-product-normal-content,
 .stella-product-hover-overlay,
 .stella-product-hover-image {
   transition-duration: 220ms;
@@ -182,31 +191,17 @@ select:focus {
   transform: scale(1.04);
 }
 
-.stella-product-card.is-touch-preview .stella-product-normal {
+.stella-product-card[data-touch-preview="true"] .stella-product-normal-content {
   opacity: 0;
   transform: scale(0.985);
 }
 
-.stella-product-card.is-touch-preview .stella-product-hover-overlay {
+.stella-product-card[data-touch-preview="true"] .stella-product-hover-overlay {
   opacity: 1;
   transform: scale(1);
 }
 
-.stella-product-card.is-touch-preview .stella-product-hover-image {
-  transform: scale(1.08);
-}
-
-.stella-product-card:focus-within .stella-product-normal {
-  opacity: 0;
-  transform: scale(0.985);
-}
-
-.stella-product-card:focus-within .stella-product-hover-overlay {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.stella-product-card:focus-within .stella-product-hover-image {
+.stella-product-card[data-touch-preview="true"] .stella-product-hover-image {
   transform: scale(1.08);
 }
 
@@ -217,7 +212,7 @@ select:focus {
     box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
   }
 
-  .stella-product-card:hover .stella-product-normal {
+  .stella-product-card:hover .stella-product-normal-content {
     opacity: 0;
     transform: scale(0.985);
   }
@@ -292,7 +287,7 @@ select:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .stella-product-card,
-  .stella-product-normal,
+  .stella-product-normal-content,
   .stella-product-hover-overlay,
   .stella-product-hover-image {
     transition: none;

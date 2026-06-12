@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type DragEvent,
   type MouseEvent,
   type PointerEvent,
 } from "react";
@@ -102,10 +103,10 @@ export default function ProdutoCardLoja({
   const [touchPreview, setTouchPreview] = useState(false);
   const [revelado, setRevelado] = useState(modoPreview);
   const articleRef = useRef<HTMLElement | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const touchDraggedRef = useRef(false);
+  const startPointRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
   const suppressClickRef = useRef(false);
-  const suppressClickTimeoutRef = useRef<number | null>(null);
+  const resetTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setFavorito(produtoEstaFavorito(produto.id));
@@ -142,7 +143,7 @@ export default function ProdutoCardLoja({
       },
       {
         threshold: 0.01,
-        rootMargin: "120px 0px",
+        rootMargin: "160px 0px",
       },
     );
 
@@ -155,8 +156,8 @@ export default function ProdutoCardLoja({
 
   useEffect(() => {
     return () => {
-      if (suppressClickTimeoutRef.current !== null) {
-        window.clearTimeout(suppressClickTimeoutRef.current);
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
       }
     };
   }, []);
@@ -187,51 +188,69 @@ export default function ProdutoCardLoja({
     setFavorito(proximo);
   }
 
+  function limparTimerReset() {
+    if (resetTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = null;
+  }
+
+  function limparInteracaoTouch() {
+    limparTimerReset();
+    startPointRef.current = null;
+    movedRef.current = false;
+    suppressClickRef.current = false;
+    setTouchPreview(false);
+  }
+
+  function bloquearDragImagem(event: DragEvent<HTMLImageElement>) {
+    event.preventDefault();
+  }
+
   function handlePointerDown(event: PointerEvent<HTMLAnchorElement>) {
     if (event.pointerType !== "touch") {
       return;
     }
 
-    if (suppressClickTimeoutRef.current !== null) {
-      window.clearTimeout(suppressClickTimeoutRef.current);
-      suppressClickTimeoutRef.current = null;
-    }
+    limparTimerReset();
 
-    touchStartRef.current = {
+    startPointRef.current = {
       x: event.clientX,
       y: event.clientY,
     };
-    touchDraggedRef.current = false;
+    movedRef.current = false;
     suppressClickRef.current = false;
   }
 
   function handlePointerMove(event: PointerEvent<HTMLAnchorElement>) {
-    if (event.pointerType !== "touch" || !touchStartRef.current) {
+    if (event.pointerType !== "touch" || !startPointRef.current) {
       return;
     }
 
-    const deltaX = event.clientX - touchStartRef.current.x;
-    const deltaY = event.clientY - touchStartRef.current.y;
+    const deltaX = event.clientX - startPointRef.current.x;
+    const deltaY = event.clientY - startPointRef.current.y;
     const distance = Math.hypot(deltaX, deltaY);
 
-    if (distance < 9) {
+    if (distance <= 12) {
       return;
     }
 
-    touchDraggedRef.current = true;
+    movedRef.current = true;
     suppressClickRef.current = true;
     setTouchPreview(true);
   }
 
-  function finalizarPointerTouch(event: PointerEvent<HTMLAnchorElement>) {
+  function handlePointerUp(event: PointerEvent<HTMLAnchorElement>) {
     if (event.pointerType !== "touch") {
       return;
     }
 
-    const houveArraste = touchDraggedRef.current;
+    const houveArraste = movedRef.current;
 
-    touchStartRef.current = null;
-    touchDraggedRef.current = false;
+    startPointRef.current = null;
+    movedRef.current = false;
     setTouchPreview(false);
 
     if (!houveArraste) {
@@ -239,10 +258,22 @@ export default function ProdutoCardLoja({
       return;
     }
 
-    suppressClickTimeoutRef.current = window.setTimeout(() => {
+    limparTimerReset();
+    resetTimerRef.current = window.setTimeout(() => {
+      startPointRef.current = null;
+      movedRef.current = false;
       suppressClickRef.current = false;
-      suppressClickTimeoutRef.current = null;
-    }, 120);
+      setTouchPreview(false);
+      resetTimerRef.current = null;
+    }, 350);
+  }
+
+  function handlePointerCancel(event: PointerEvent<HTMLAnchorElement>) {
+    if (event.pointerType !== "touch") {
+      return;
+    }
+
+    limparInteracaoTouch();
   }
 
   function handleLinkClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -251,7 +282,8 @@ export default function ProdutoCardLoja({
     }
 
     event.preventDefault();
-    suppressClickRef.current = false;
+    event.stopPropagation();
+    limparInteracaoTouch();
   }
 
   const semEstoque = produto.estoqueTotal <= 0;
@@ -259,21 +291,22 @@ export default function ProdutoCardLoja({
   const produtoHref = href || `/loja/produto/${produto.id}`;
   const imagemOverlayUrl = produto.imagemHoverUrl || produto.imagemUrl;
   const cardClass = [
-    "group stella-product-card relative h-full overflow-hidden bg-white p-2 active:bg-slate-50",
+    "group stella-product-card relative h-full overflow-hidden bg-white p-2",
     revelado ? "is-visible" : "",
-    touchPreview ? "is-touch-preview" : "",
     semEstoque ? "stella-product-card-out-of-stock" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   const conteudoNormal = (
-    <div className="stella-product-normal relative z-10 flex h-full flex-col">
+    <div className="stella-product-normal-content relative z-10 flex h-full flex-col">
       <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
         {produto.imagemUrl ? (
           <img
             src={produto.imagemUrl}
             alt={produto.nome}
+            draggable={false}
+            onDragStart={bloquearDragImagem}
             className="h-full w-full object-cover object-center"
           />
         ) : (
@@ -328,6 +361,8 @@ export default function ProdutoCardLoja({
           src={imagemOverlayUrl}
           alt=""
           aria-hidden="true"
+          draggable={false}
+          onDragStart={bloquearDragImagem}
           className="stella-product-hover-image h-full w-full object-cover object-center"
         />
       ) : (
@@ -366,6 +401,7 @@ export default function ProdutoCardLoja({
       <article
         ref={articleRef}
         className={cardClass}
+        data-touch-preview={touchPreview ? "true" : "false"}
         style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
       >
         <div className="relative block h-full">
@@ -381,6 +417,7 @@ export default function ProdutoCardLoja({
     <article
       ref={articleRef}
       className={cardClass}
+      data-touch-preview={touchPreview ? "true" : "false"}
       style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
     >
       <Link
@@ -389,8 +426,8 @@ export default function ProdutoCardLoja({
         aria-label={`Ver produto ${produto.nome}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={finalizarPointerTouch}
-        onPointerCancel={finalizarPointerTouch}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onClick={handleLinkClick}
       >
         {conteudoNormal}
