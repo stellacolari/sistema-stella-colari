@@ -4,6 +4,7 @@ import PedidosClient, {
   type PedidoOperacionalItem,
 } from "@/components/pedidos/PedidosClient";
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
+import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
 
 export const metadata: Metadata = {
   title: "Pedidos | Sistema Stella",
@@ -204,6 +205,9 @@ export default async function PedidosPage() {
         item.embalagemPresente ? [item.embalagemPresente] : [],
       ),
     );
+    const alertasOperacionais = extrairAlertasOperacionais(
+      pedido.dadosOriginaisJson,
+    );
 
     const quantidadeItens = pedido.itens.reduce(
       (total, item) => total + item.quantidade,
@@ -256,6 +260,7 @@ export default async function PedidosPage() {
       status: pedido.status,
       criadoEm: pedido.criadoEm.toISOString(),
       atualizadoEm: pedido.atualizadoEm.toISOString(),
+      alertasOperacionais,
 
       quantidadeItens,
       totalItensUnicos: pedido.itens.length,

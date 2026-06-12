@@ -17,6 +17,7 @@ import {
   Truck,
 } from "lucide-react";
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
+import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
 
 export type PedidoOperacionalItem = {
   id: string;
@@ -67,6 +68,7 @@ export type PedidoOperacionalItem = {
   status: string;
   criadoEm: string;
   atualizadoEm: string;
+  alertasOperacionais?: PedidoAlertaOperacional[];
 
   quantidadeItens: number;
   totalItensUnicos: number;
@@ -1393,6 +1395,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         {origemPedidoLabel(pedido)}
                       </span>
                     </span>
+
+                    {pedido.alertasOperacionais &&
+                      pedido.alertasOperacionais.length > 0 && (
+                        <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-200 sm:px-2.5">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span className="truncate">
+                            {pedido.alertasOperacionais.length} alerta
+                            {pedido.alertasOperacionais.length === 1
+                              ? ""
+                              : "s"}
+                          </span>
+                        </span>
+                      )}
                   </div>
 
                   <p className="mt-2 text-xs text-slate-500">
@@ -1405,6 +1420,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     <IconeAcao className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{acao.label}</span>
                   </p>
+
+                  {pedido.alertasOperacionais &&
+                    pedido.alertasOperacionais.length > 0 && (
+                      <p className="mt-1.5 line-clamp-2 text-xs font-medium text-red-700">
+                        {pedido.alertasOperacionais[0].mensagem}
+                      </p>
+                    )}
                 </div>
 
                 <div className="min-w-0 max-w-full overflow-hidden">

@@ -749,6 +749,10 @@ model PedidoEmbalagemPlano {
   comprimentoCm          Float?
   custoEmbalagens        Float                      @default(0)
   valorEmbalagensCliente Float                      @default(0)
+  baixadoEm              DateTime?
+  baixadoPor             String?
+  baixaOrigem            String?
+  erroBaixa              String?
   criadoEm               DateTime                   @default(now())
   atualizadoEm           DateTime                   @updatedAt
   pedidoOnline           PedidoOnline               @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)

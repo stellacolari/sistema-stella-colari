@@ -87,6 +87,7 @@ const STATUS_OPTIONS_FIXOS = [
   { value: "EM_PREPARACAO", label: "Em preparação" },
   { value: "ENVIADA", label: "Enviada" },
   { value: "ENTREGUE", label: "Entregue" },
+  { value: "PEDIDO_ONLINE_PAGO", label: "Pedido online pago" },
   { value: "CANCELADA", label: "Cancelada" },
   { value: "NA_LIXEIRA", label: "Na lixeira" },
 ];
@@ -132,6 +133,7 @@ function labelStatus(status: string) {
   if (status === "EM_PREPARACAO") return "Em preparação";
   if (status === "ENVIADA") return "Enviada";
   if (status === "ENTREGUE") return "Entregue";
+  if (status === "PEDIDO_ONLINE_PAGO") return "Pedido online pago";
   if (status === "CANCELADA") return "Cancelada";
   if (status === "NA_LIXEIRA") return "Na lixeira";
 
@@ -153,6 +155,10 @@ function statusBadgeClass(status: string) {
 
   if (status === "ENTREGUE") {
     return "border-indigo-200 bg-indigo-50 text-indigo-700";
+  }
+
+  if (status === "PEDIDO_ONLINE_PAGO") {
+    return "border-blue-200 bg-blue-50 text-blue-700";
   }
 
   if (status === "CANCELADA") {

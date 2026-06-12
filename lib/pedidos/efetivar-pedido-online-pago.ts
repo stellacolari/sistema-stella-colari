@@ -3,6 +3,11 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizarTamanhoEstoque } from "@/lib/loja/estoque";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
+import { baixarComponentesPlanoEmbalagem } from "@/lib/embalagens/baixar-componentes-plano";
+import {
+  adicionarAlertasOperacionaisPedido,
+  criarAlertaOperacional,
+} from "@/lib/pedidos/alertas-operacionais";
 
 type BaixaAdicionalResultado = {
   codigoItem: string;
@@ -335,6 +340,20 @@ async function marcarProblemaOperacional({
 
     const observacao = `Pagamento confirmado, mas a baixa de estoque precisa de acao operacional: ${message}`;
 
+    await adicionarAlertasOperacionaisPedido({
+      tx,
+      pedidoOnlineId: params.pedidoId,
+      alertas: [
+        criarAlertaOperacional({
+          tipo: "ESTOQUE",
+          severidade: "CRITICO",
+          mensagem:
+            "Pagamento confirmado, mas a baixa de estoque precisa de acao operacional.",
+          detalhe: message,
+        }),
+      ],
+    });
+
     const pedido = await tx.pedidoOnline.update({
       where: {
         id: params.pedidoId,
@@ -628,11 +647,32 @@ export async function efetivarPedidoOnlinePago(params: PedidoOnlinePagoParams) {
           }
         }
 
+        const baixaEmbalagem = await baixarComponentesPlanoEmbalagem({
+          tx,
+          pedidoOnlineId: pedido.id,
+          origem: params.origemHistorico || "PAGAMENTO_APROVADO",
+          baixadoPor: params.usuarioNomeHistorico || "Sistema",
+        });
+
+        if (baixaEmbalagem.alertas.length > 0) {
+          await adicionarAlertasOperacionaisPedido({
+            tx,
+            pedidoOnlineId: pedido.id,
+            alertas: baixaEmbalagem.alertas,
+          });
+        }
+
+        const statusOperacionalFinal =
+          baixaEmbalagem.alertas.length > 0 ? "PROBLEMA" : pedido.status;
+
         const pedidoPago = await tx.pedidoOnline.update({
           where: {
             id: pedido.id,
           },
-          data: dadosPagamento(params),
+          data: {
+            ...dadosPagamento(params),
+            status: statusOperacionalFinal,
+          },
           select: {
             id: true,
             codigo: true,
@@ -645,21 +685,29 @@ export async function efetivarPedidoOnlinePago(params: PedidoOnlinePagoParams) {
           data: {
             pedidoOnlineId: pedido.id,
             statusAnterior: pedido.status,
-            statusNovo: pedido.status,
+            statusNovo: statusOperacionalFinal,
             tipoEvento: "PAGAMENTO",
             origem: params.origemHistorico || "SISTEMA",
             usuarioNome: params.usuarioNomeHistorico || "Sistema",
             observacao:
-              params.historicoObservacao ||
-              "Pagamento confirmado. Estoque de produtos e adicionais baixado.",
+              baixaEmbalagem.alertas.length > 0
+                ? "Pagamento confirmado. Produtos/adicionais processados, mas ha alerta de embalagem para acao operacional."
+                : params.historicoObservacao ||
+                  "Pagamento confirmado. Estoque de produtos e adicionais baixado.",
           },
         });
 
         return {
           pedido: pedidoPago,
           estoqueBaixado: true,
-          problemaOperacional: false,
-          motivo: null,
+          embalagemBaixada:
+            baixaEmbalagem.status === "BAIXADO" ||
+            baixaEmbalagem.status === "BAIXA_PARCIAL",
+          problemaOperacional: baixaEmbalagem.alertas.length > 0,
+          motivo:
+            baixaEmbalagem.alertas.length > 0
+              ? "Componentes de embalagem exigem acao operacional."
+              : null,
         };
       },
       {

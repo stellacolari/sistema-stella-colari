@@ -22,20 +22,58 @@ type VendaComRelacoes = Prisma.VendaGetPayload<{
   };
 }>;
 
+type PedidoOnlineComRelacoes = Prisma.PedidoOnlineGetPayload<{
+  include: {
+    cliente: true;
+    itens: true;
+  };
+}>;
+
 export default async function ResumoVendasPage() {
-  const vendasRaw = await prisma.venda.findMany({
-    orderBy: {
-      criadoEm: "desc",
-    },
-    include: {
-      cliente: true,
-      itens: {
-        include: {
-          produto: true,
+  const [vendasRaw, pedidosOnlineRaw] = await Promise.all([
+    prisma.venda.findMany({
+      orderBy: {
+        criadoEm: "desc",
+      },
+      include: {
+        cliente: true,
+        itens: {
+          include: {
+            produto: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.pedidoOnline.findMany({
+      where: {
+        origemCanal: "LOJA_STELLA",
+        statusPagamento: "PAGO",
+        status: {
+          not: "CANCELADO",
+        },
+      },
+      orderBy: {
+        pagoEm: "desc",
+      },
+      include: {
+        cliente: true,
+        itens: true,
+      },
+    }),
+  ]);
+
+  const pedidoOnlineIds = pedidosOnlineRaw.map((pedido) => pedido.id);
+  const movimentacoesPedidosOnline =
+    pedidoOnlineIds.length > 0
+      ? await prisma.movimentacao.findMany({
+          where: {
+            origemId: {
+              in: pedidoOnlineIds,
+            },
+            status: "ATIVA",
+          },
+        })
+      : [];
 
   const vendas: ResumoVendaItem[] = vendasRaw.map((venda: VendaComRelacoes) => {
     const produtos = venda.itens.map((item) => ({
@@ -79,5 +117,79 @@ export default async function ResumoVendasPage() {
     };
   });
 
-  return <ResumoVendasClient vendas={vendas} />;
+  const pedidosOnline: ResumoVendaItem[] = pedidosOnlineRaw.map(
+    (pedido: PedidoOnlineComRelacoes) => {
+      const movimentacoesPedido = movimentacoesPedidosOnline.filter(
+        (movimentacao) => movimentacao.origemId === pedido.id,
+      );
+
+      const gastoTotal = movimentacoesPedido.reduce(
+        (total, movimentacao) => total + Number(movimentacao.custo || 0),
+        0,
+      );
+
+      const produtos = pedido.itens.map((item) => {
+        const movimentacoesItem = movimentacoesPedido.filter(
+          (movimentacao) => movimentacao.relacionadoA === item.id,
+        );
+        const gastoProduto = movimentacoesItem.reduce(
+          (total, movimentacao) =>
+            total + Number(movimentacao.gastoProdutoPrincipal || 0),
+          0,
+        );
+        const gastoAdicionais = movimentacoesItem.reduce(
+          (total, movimentacao) =>
+            total +
+            Number(movimentacao.gastoAdd1 || 0) +
+            Number(movimentacao.gastoAdd2 || 0) +
+            Number(movimentacao.gastoAdd3 || 0),
+          0,
+        );
+        const valorTotal = Number(item.total || 0);
+
+        return {
+          id: item.id,
+          produtoId: item.produtoId || "",
+          codigo: item.codigoInterno,
+          nome: item.nomeProduto,
+          categoria: item.categoria,
+          tamanhoAnel: item.tamanhoAnel,
+          quantidade: item.quantidade,
+          valorUnitarioFinal:
+            item.quantidade > 0 ? valorTotal / item.quantidade : 0,
+          valorTotal,
+          gastoProduto,
+          gastoAdicionais,
+          lucroTotal: valorTotal - gastoProduto - gastoAdicionais,
+        };
+      });
+
+      const quantidadeItens = pedido.itens.reduce(
+        (total, item) => total + item.quantidade,
+        0,
+      );
+
+      return {
+        id: pedido.id,
+        codigo: pedido.codigo,
+        clienteId: pedido.clienteId || "",
+        clienteNome: pedido.cliente?.nome || pedido.nomeCliente,
+        clienteDocumento: pedido.cliente?.documento || pedido.documento || "",
+        meioVenda: "LOJA_ONLINE",
+        descontoPercentual: 0,
+        valorTotal: Number(pedido.total || 0),
+        gastoTotal,
+        lucroTotal: Number(pedido.total || 0) - gastoTotal,
+        status: "PEDIDO_ONLINE_PAGO",
+        observacoes: pedido.observacoes,
+        criadoEm: (pedido.pagoEm || pedido.criadoEm).toISOString(),
+        atualizadoEm: pedido.atualizadoEm.toISOString(),
+        quantidadeItens,
+        itensTotais: pedido.itens.length,
+        produtos,
+      };
+    },
+  );
+
+  return <ResumoVendasClient vendas={[...vendas, ...pedidosOnline]} />;
 }

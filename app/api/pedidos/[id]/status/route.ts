@@ -86,6 +86,7 @@ const pedidoAtual = await prisma.pedidoOnline.findUnique({
     id: true,
     status: true,
     statusPagamento: true,
+    origemCanal: true,
     cep: true,
   },
 });
@@ -102,6 +103,7 @@ if (statusNovo === "CANCELADO") {
     pedidoId: id,
     origem,
     usuarioNome,
+    permitirPedidoPago: pedidoAtual.origemCanal === "LOJA_STELLA",
     observacao:
       observacao ||
       "Pedido cancelado manualmente pela área administrativa.",

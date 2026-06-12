@@ -145,11 +145,13 @@ export async function cancelarPedidoOnlineNaoPago({
   origem = "SISTEMA",
   usuarioNome = "Sistema",
   observacao,
+  permitirPedidoPago = false,
 }: {
   pedidoId: string;
   origem?: string;
   usuarioNome?: string | null;
   observacao?: string | null;
+  permitirPedidoPago?: boolean;
 }) {
   return prisma.$transaction(async (tx) => {
     const pedido = await tx.pedidoOnline.findUnique({
@@ -179,7 +181,7 @@ export async function cancelarPedidoOnlineNaoPago({
       };
     }
 
-    if (pedido.statusPagamento === "PAGO") {
+    if (pedido.statusPagamento === "PAGO" && !permitirPedidoPago) {
       throw new Error(
         "Este pedido já está pago. Para cancelar, faça um fluxo de reembolso/estorno."
       );
@@ -275,13 +277,14 @@ export async function cancelarPedidoOnlineNaoPago({
       }
     }
 
+    const pedidoPago = pedido.statusPagamento === "PAGO";
     const pedidoCancelado = await tx.pedidoOnline.update({
       where: {
         id: pedido.id,
       },
       data: {
         status: "CANCELADO",
-        statusPagamento: "CANCELADO",
+        statusPagamento: pedidoPago ? "PAGO" : "CANCELADO",
         pagamentoObservacao:
           observacao ||
           "Pedido cancelado automaticamente antes da confirmação do pagamento.",
@@ -328,6 +331,8 @@ export async function cancelarPedidoOnlineNaoPago({
       cancelado: true,
       cashbackDevolvido: cashbackUsadoValor,
       movimentacoesCanceladas: movimentacoes.length,
+      estoqueRestaurado: movimentacoes.length > 0,
+      pagamentoMantidoPago: pedidoPago,
     };
   });
 }

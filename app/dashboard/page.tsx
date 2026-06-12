@@ -42,6 +42,12 @@ type EstoqueAdicionalResumo = Prisma.EstoqueAdicionalGetPayload<{
 
 type MovimentacaoResumo = Prisma.MovimentacaoGetPayload<object>;
 
+type PedidoOnlineResumo = Prisma.PedidoOnlineGetPayload<{
+  include: {
+    itens: true;
+  };
+}>;
+
 function getStatusLabel(status: string) {
   if (status === "VENDA_FINALIZADA") return "Venda finalizada";
   if (status === "EM_PREPARACAO") return "Em preparação";
@@ -69,6 +75,7 @@ export default async function DashboardPage() {
     estoqueProdutosRaw,
     estoqueAdicionaisRaw,
     movimentacoesRaw,
+    pedidosOnlineRaw,
   ] = await Promise.all([
     prisma.venda.findMany({
       include: {
@@ -118,6 +125,22 @@ export default async function DashboardPage() {
       },
       take: 8,
     }),
+
+    prisma.pedidoOnline.findMany({
+      where: {
+        origemCanal: "LOJA_STELLA",
+        statusPagamento: "PAGO",
+        status: {
+          not: "CANCELADO",
+        },
+      },
+      include: {
+        itens: true,
+      },
+      orderBy: {
+        pagoEm: "desc",
+      },
+    }),
   ]);
 
   const vendas = vendasRaw as VendaResumo[];
@@ -126,6 +149,19 @@ export default async function DashboardPage() {
   const estoqueProdutos = estoqueProdutosRaw as EstoqueProdutoResumo[];
   const estoqueAdicionais = estoqueAdicionaisRaw as EstoqueAdicionalResumo[];
   const movimentacoes = movimentacoesRaw as MovimentacaoResumo[];
+  const pedidosOnline = pedidosOnlineRaw as PedidoOnlineResumo[];
+  const pedidoOnlineIds = pedidosOnline.map((pedido) => pedido.id);
+  const movimentacoesPedidosOnline =
+    pedidoOnlineIds.length > 0
+      ? await prisma.movimentacao.findMany({
+          where: {
+            origemId: {
+              in: pedidoOnlineIds,
+            },
+            status: "ATIVA",
+          },
+        })
+      : [];
 
   const vendasOperacionais = vendas.filter(
     (venda) => venda.status !== "CANCELADA" && venda.status !== "NA_LIXEIRA"
@@ -139,27 +175,43 @@ export default async function DashboardPage() {
     (cliente) => cliente.status !== "NA_LIXEIRA"
   );
 
-  const totalVendido = vendasOperacionais.reduce(
+  const totalVendidoVendas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.valorTotal),
     0
   );
 
-  const lucroTotal = vendasOperacionais.reduce(
+  const lucroTotalVendas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.lucroTotal),
     0
   );
 
-  const gastoTotalVendas = vendasOperacionais.reduce(
+  const gastoTotalVendasInternas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.gastoTotal),
     0
   );
+
+  const totalPedidosOnlinePagos = pedidosOnline.reduce(
+    (total, pedido) => total + Number(pedido.total || 0),
+    0
+  );
+
+  const gastoPedidosOnlinePagos = movimentacoesPedidosOnline.reduce(
+    (total, movimentacao) => total + Number(movimentacao.custo || 0),
+    0
+  );
+
+  const totalVendido = totalVendidoVendas + totalPedidosOnlinePagos;
+  const gastoTotalVendas =
+    gastoTotalVendasInternas + gastoPedidosOnlinePagos;
+  const lucroTotal =
+    lucroTotalVendas + (totalPedidosOnlinePagos - gastoPedidosOnlinePagos);
 
   const totalComprado = comprasOperacionais.reduce(
     (total: number, compra) => total + Number(compra.valorTotalFinal),
     0
   );
 
-  const quantidadeItensVendidos = vendasOperacionais.reduce(
+  const quantidadeItensVendidosVendas = vendasOperacionais.reduce(
     (total: number, venda) =>
       total +
       venda.itens.reduce(
@@ -168,6 +220,16 @@ export default async function DashboardPage() {
       ),
     0
   );
+
+  const quantidadeItensPedidosOnline = pedidosOnline.reduce(
+    (total, pedido) =>
+      total +
+      pedido.itens.reduce((subtotal, item) => subtotal + item.quantidade, 0),
+    0
+  );
+
+  const quantidadeItensVendidos =
+    quantidadeItensVendidosVendas + quantidadeItensPedidosOnline;
 
   const quantidadeItensComprados = comprasOperacionais.reduce(
     (total: number, compra) =>
@@ -287,7 +349,9 @@ export default async function DashboardPage() {
       gastoTotalVendas,
       totalComprado,
       clientesAtivos: clientesAtivos.length,
-      vendasAtivas: vendasOperacionais.length,
+      vendasAtivas: vendasOperacionais.length + pedidosOnline.length,
+      pedidosOnlinePagos: pedidosOnline.length,
+      totalPedidosOnlinePagos,
       comprasAtivas: comprasOperacionais.length,
       quantidadeItensVendidos,
       quantidadeItensComprados,

@@ -54,6 +54,8 @@ export type DashboardData = {
     totalComprado: number;
     clientesAtivos: number;
     vendasAtivas: number;
+    pedidosOnlinePagos: number;
+    totalPedidosOnlinePagos: number;
     comprasAtivas: number;
     quantidadeItensVendidos: number;
     quantidadeItensComprados: number;
@@ -337,18 +339,18 @@ export default function DashboardClient({ data }: DashboardClientProps) {
         <DashboardCard
           label="Total vendido"
           value={moeda(data.cards.totalVendido)}
-          description={`${numero(data.cards.vendasAtivas)} venda(s) operacional(is), sem canceladas/lixeira.`}
+          description={`${numero(data.cards.vendasAtivas)} venda(s)/pedido(s) pago(s). Online: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
           icon={<ShoppingBag className="h-5 w-5" />}
-          href="/vendas"
+          href="/resumos/vendas"
           tone="emerald"
         />
 
         <DashboardCard
           label="Lucro total"
           value={moeda(data.cards.lucroTotal)}
-          description={`Gasto das vendas: ${moeda(data.cards.gastoTotalVendas)}.`}
+          description={`Gasto de vendas e pedidos online efetivados: ${moeda(data.cards.gastoTotalVendas)}.`}
           icon={<TrendingUp className="h-5 w-5" />}
-          href="/vendas"
+          href="/resumos/vendas"
           tone="blue"
         />
 
@@ -373,9 +375,9 @@ export default function DashboardClient({ data }: DashboardClientProps) {
         <DashboardCard
           label="Itens vendidos"
           value={numero(data.cards.quantidadeItensVendidos)}
-          description="Soma das quantidades vendidas nas vendas operacionais."
+          description={`${numero(data.cards.pedidosOnlinePagos)} pedido(s) online pago(s) incluidos.`}
           icon={<ReceiptText className="h-5 w-5" />}
-          href="/vendas"
+          href="/pedidos"
           tone="emerald"
         />
 

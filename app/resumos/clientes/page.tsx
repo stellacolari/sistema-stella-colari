@@ -18,6 +18,11 @@ type ClienteComVendas = Prisma.ClienteGetPayload<{
         itens: true;
       };
     };
+    pedidosOnline: {
+      include: {
+        itens: true;
+      };
+    };
   };
 }>;
 
@@ -32,8 +37,35 @@ export default async function ResumoClientesPage() {
           itens: true,
         },
       },
+      pedidosOnline: {
+        where: {
+          origemCanal: "LOJA_STELLA",
+          statusPagamento: "PAGO",
+          status: {
+            not: "CANCELADO",
+          },
+        },
+        include: {
+          itens: true,
+        },
+      },
     },
   });
+
+  const pedidoOnlineIds = clientesRaw.flatMap((cliente) =>
+    cliente.pedidosOnline.map((pedido) => pedido.id),
+  );
+  const movimentacoesPedidosOnline =
+    pedidoOnlineIds.length > 0
+      ? await prisma.movimentacao.findMany({
+          where: {
+            origemId: {
+              in: pedidoOnlineIds,
+            },
+            status: "ATIVA",
+          },
+        })
+      : [];
 
   const clientes: ResumoClienteItem[] = clientesRaw.map(
     (cliente: ClienteComVendas) => {
@@ -41,23 +73,37 @@ export default async function ResumoClientesPage() {
         (venda) =>
           venda.status !== "CANCELADA" && venda.status !== "NA_LIXEIRA"
       );
+      const pedidosOnlinePagos = cliente.pedidosOnline;
 
-      const totalComprado = vendasOperacionais.reduce(
+      const totalCompradoVendas = vendasOperacionais.reduce(
         (total: number, venda) => total + Number(venda.valorTotal),
         0
       );
+      const totalCompradoOnline = pedidosOnlinePagos.reduce(
+        (total, pedido) => total + Number(pedido.total || 0),
+        0,
+      );
+      const totalComprado = totalCompradoVendas + totalCompradoOnline;
 
-      const lucroTotal = vendasOperacionais.reduce(
+      const lucroTotalVendas = vendasOperacionais.reduce(
         (total: number, venda) => total + Number(venda.lucroTotal),
         0
       );
 
-      const gastoTotal = vendasOperacionais.reduce(
+      const gastoTotalVendas = vendasOperacionais.reduce(
         (total: number, venda) => total + Number(venda.gastoTotal),
         0
       );
+      const gastoTotalOnline = movimentacoesPedidosOnline
+        .filter((movimentacao) =>
+          pedidosOnlinePagos.some((pedido) => pedido.id === movimentacao.origemId),
+        )
+        .reduce((total, movimentacao) => total + Number(movimentacao.custo || 0), 0);
+      const gastoTotal = gastoTotalVendas + gastoTotalOnline;
+      const lucroTotal =
+        lucroTotalVendas + (totalCompradoOnline - gastoTotalOnline);
 
-      const quantidadeItens = vendasOperacionais.reduce(
+      const quantidadeItensVendas = vendasOperacionais.reduce(
         (total: number, venda) =>
           total +
           venda.itens.reduce(
@@ -66,21 +112,32 @@ export default async function ResumoClientesPage() {
           ),
         0
       );
+      const quantidadeItensOnline = pedidosOnlinePagos.reduce(
+        (total, pedido) =>
+          total +
+          pedido.itens.reduce((subtotal, item) => subtotal + item.quantidade, 0),
+        0,
+      );
+      const quantidadeItens = quantidadeItensVendas + quantidadeItensOnline;
+
+      const quantidadeCompras =
+        vendasOperacionais.length + pedidosOnlinePagos.length;
 
       const ticketMedio =
-        vendasOperacionais.length > 0
-          ? totalComprado / vendasOperacionais.length
+        quantidadeCompras > 0
+          ? totalComprado / quantidadeCompras
           : 0;
 
-      const vendasOrdenadas = [...vendasOperacionais].sort(
-        (a, b) => b.criadoEm.getTime() - a.criadoEm.getTime()
+      const comprasOrdenadas = [
+        ...vendasOperacionais.map((venda) => venda.criadoEm),
+        ...pedidosOnlinePagos.map((pedido) => pedido.pagoEm || pedido.criadoEm),
+      ].sort(
+        (a, b) => b.getTime() - a.getTime()
       );
 
-      const ultimaVenda = vendasOrdenadas[0] ?? null;
-      const primeiraVenda = vendasOperacionais.length
-        ? [...vendasOperacionais].sort(
-            (a, b) => a.criadoEm.getTime() - b.criadoEm.getTime()
-          )[0]
+      const ultimaCompra = comprasOrdenadas[0] ?? null;
+      const primeiraCompra = comprasOrdenadas.length
+        ? [...comprasOrdenadas].sort((a, b) => a.getTime() - b.getTime())[0]
         : null;
 
       const meiosMap = new Map<string, number>();
@@ -88,6 +145,12 @@ export default async function ResumoClientesPage() {
       vendasOperacionais.forEach((venda) => {
         meiosMap.set(venda.meioVenda, (meiosMap.get(venda.meioVenda) ?? 0) + 1);
       });
+      if (pedidosOnlinePagos.length > 0) {
+        meiosMap.set(
+          "LOJA_ONLINE",
+          (meiosMap.get("LOJA_ONLINE") ?? 0) + pedidosOnlinePagos.length,
+        );
+      }
 
       const meioMaisUsado =
         Array.from(meiosMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ??
@@ -105,16 +168,16 @@ export default async function ResumoClientesPage() {
         observacoes: cliente.observacoes,
         criadoEm: cliente.criadoEm.toISOString(),
         atualizadoEm: cliente.atualizadoEm.toISOString(),
-        quantidadeVendas: vendasOperacionais.length,
-        quantidadeVendasTotal: cliente.vendas.length,
+        quantidadeVendas: quantidadeCompras,
+        quantidadeVendasTotal: cliente.vendas.length + cliente.pedidosOnline.length,
         quantidadeItens,
         totalComprado,
         lucroTotal,
         gastoTotal,
         ticketMedio,
         meioMaisUsado,
-        primeiraCompraEm: primeiraVenda ? primeiraVenda.criadoEm.toISOString() : null,
-        ultimaCompraEm: ultimaVenda ? ultimaVenda.criadoEm.toISOString() : null,
+        primeiraCompraEm: primeiraCompra ? primeiraCompra.toISOString() : null,
+        ultimaCompraEm: ultimaCompra ? ultimaCompra.toISOString() : null,
       };
     }
   );

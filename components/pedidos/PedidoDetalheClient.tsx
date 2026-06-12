@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   CalendarClock,
   History,
   MapPin,
@@ -12,6 +13,7 @@ import {
   User,
 } from "lucide-react";
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
+import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
 import ImageBox from "@/components/ui/ImageBox";
 
 export type PedidoDetalhe = {
@@ -56,6 +58,7 @@ export type PedidoDetalhe = {
   observacoes: string | null;
   criadoEm: string;
   atualizadoEm: string;
+  alertasOperacionais?: PedidoAlertaOperacional[];
 
   itens: {
     id: string;
@@ -287,6 +290,7 @@ export default function PedidoDetalheClient({
   const possuiEmbalagensPresente = subtotalEmbalagensPresente > 0;
   const possuiCupom = cupomDescontoValor > 0;
   const possuiCashbackUsado = cashbackUsado > 0;
+  const alertasOperacionais = pedido.alertasOperacionais || [];
 
   return (
     <div className="space-y-6">
@@ -351,6 +355,62 @@ export default function PedidoDetalheClient({
           </p>
         </div>
       </section>
+
+      {alertasOperacionais.length > 0 && (
+        <section className="rounded-[2rem] border border-red-200 bg-red-50 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-700">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-red-950">
+                Alerta operacional
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 text-red-800">
+                O pagamento foi registrado, mas este pedido precisa de
+                conferencia antes da separacao ou embalagem.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {alertasOperacionais.map((alerta) => (
+              <div
+                key={alerta.id}
+                className="rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm text-red-900"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                    {alerta.tipo}
+                  </span>
+
+                  {alerta.itemNome && (
+                    <span className="text-xs font-medium text-slate-500">
+                      Item: {alerta.itemNome}
+                    </span>
+                  )}
+
+                  {alerta.componenteNome && (
+                    <span className="text-xs font-medium text-slate-500">
+                      Componente: {alerta.componenteNome}
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-2 font-semibold">{alerta.mensagem}</p>
+
+                {alerta.detalhe && (
+                  <p className="mt-1 leading-6 text-red-800">
+                    {alerta.detalhe}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2">
