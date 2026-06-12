@@ -7,6 +7,7 @@ import PedidoPagamentoClient from "@/components/pedidos/PedidoPagamentoClient";
 import PedidoDetalheClient, {
   type PedidoDetalhe,
 } from "@/components/pedidos/PedidoDetalheClient";
+import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 
 export const metadata: Metadata = {
   title: "Detalhe do pedido | Sistema Stella",
@@ -23,7 +24,48 @@ export default async function PedidoDetalhePage({
 
   const pedidoRaw = await prisma.pedidoOnline.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      codigo: true,
+      status: true,
+      origemCanal: true,
+      codigoPedidoExterno: true,
+      statusExterno: true,
+      substatusExterno: true,
+      clienteId: true,
+      nomeCliente: true,
+      telefoneCliente: true,
+      emailCliente: true,
+      documento: true,
+      cep: true,
+      rua: true,
+      numero: true,
+      complemento: true,
+      bairro: true,
+      cidade: true,
+      estado: true,
+      subtotal: true,
+      frete: true,
+      total: true,
+      cupomCodigo: true,
+      cupomDescontoValor: true,
+      cashbackBaseValor: true,
+      cashbackPrevistoValor: true,
+      cashbackCreditadoValor: true,
+      cashbackUsadoValor: true,
+      cashbackStatus: true,
+      observacoes: true,
+      criadoEm: true,
+      atualizadoEm: true,
+      statusPagamento: true,
+      metodoPagamento: true,
+      gatewayPagamento: true,
+      gatewayPedidoId: true,
+      gatewayPagamentoId: true,
+      pagoEm: true,
+      valorPago: true,
+      pagamentoObservacao: true,
+      dadosOriginaisJson: true,
       cliente: {
         select: {
           id: true,
@@ -80,6 +122,10 @@ export default async function PedidoDetalhePage({
   if (!pedidoRaw) {
     notFound();
   }
+
+  const embalagensPresentePorItem = mapearEmbalagensPresentePorItem(
+    pedidoRaw.dadosOriginaisJson,
+  );
 
   const pedido: PedidoDetalhe = {
     id: pedidoRaw.id,
@@ -146,6 +192,7 @@ export default async function PedidoDetalhePage({
       geraCashback: item.geraCashback,
       cashbackBaseValor: Number(item.cashbackBaseValor || 0),
       total: Number(item.total || 0),
+      embalagemPresente: embalagensPresentePorItem.get(item.id) || null,
       adicionais: item.adicionais.map((adicional) => ({
         id: adicional.id,
         opcaoAdicionalId: adicional.opcaoAdicionalId,

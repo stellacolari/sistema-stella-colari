@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import PedidosClient, {
   type PedidoOperacionalItem,
 } from "@/components/pedidos/PedidosClient";
+import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 
 export const metadata: Metadata = {
   title: "Pedidos | Sistema Stella",
@@ -37,7 +38,40 @@ export default async function PedidosPage() {
     orderBy: {
       criadoEm: "desc",
     },
-    include: {
+    select: {
+      id: true,
+      codigo: true,
+      origemCanal: true,
+      codigoPedidoExterno: true,
+      statusExterno: true,
+      substatusExterno: true,
+      clienteId: true,
+      nomeCliente: true,
+      telefoneCliente: true,
+      emailCliente: true,
+      documento: true,
+      cidade: true,
+      estado: true,
+      cep: true,
+      subtotal: true,
+      frete: true,
+      total: true,
+      statusPagamento: true,
+      metodoPagamento: true,
+      gatewayPagamento: true,
+      gatewayPedidoId: true,
+      pagoEm: true,
+      valorPago: true,
+      cashbackStatus: true,
+      cashbackPrevistoValor: true,
+      cashbackCreditadoValor: true,
+      cashbackUsadoValor: true,
+      cupomCodigo: true,
+      cupomDescontoValor: true,
+      status: true,
+      criadoEm: true,
+      atualizadoEm: true,
+      dadosOriginaisJson: true,
       cliente: {
         select: {
           id: true,
@@ -153,6 +187,10 @@ export default async function PedidosPage() {
   });
 
   const pedidos: PedidoOperacionalItem[] = pedidosRaw.map((pedido) => {
+    const embalagensPresentePorItem = mapearEmbalagensPresentePorItem(
+      pedido.dadosOriginaisJson,
+    );
+
     const quantidadeItens = pedido.itens.reduce(
       (total, item) => total + item.quantidade,
       0,
@@ -217,6 +255,7 @@ export default async function PedidosPage() {
         quantidade: item.quantidade,
         precoUnitario: Number(item.precoUnitario || 0),
         total: Number(item.total || 0),
+        embalagemPresente: embalagensPresentePorItem.get(item.id) || null,
         adicionais: item.adicionais.map((adicional) => ({
           id: adicional.id,
           nome: adicional.nome,

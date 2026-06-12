@@ -9,12 +9,14 @@ import {
   Copy,
   CreditCard,
   ExternalLink,
+  Gift,
   MessageCircle,
   Package,
   Search,
   SlidersHorizontal,
   Truck,
 } from "lucide-react";
+import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
 
 export type PedidoOperacionalItem = {
   id: string;
@@ -77,6 +79,7 @@ export type PedidoOperacionalItem = {
     quantidade: number;
     precoUnitario: number;
     total: number;
+    embalagemPresente?: PedidoItemEmbalagemPresente | null;
     adicionais: {
       id: string;
       nome: string;
@@ -1455,6 +1458,27 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                                   .map((adicional) => adicional.nome)
                                   .join(", ")}
                               </p>
+                            )}
+
+                            {item.embalagemPresente && (
+                              <div className="mt-1.5 rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-2 py-1.5 text-[11px] text-[var(--brand-blue)]">
+                                <p className="flex min-w-0 items-center gap-1 font-semibold">
+                                  <Gift className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">
+                                    Presente: {item.embalagemPresente.nome}
+                                  </span>
+                                </p>
+
+                                <p className="mt-0.5 text-slate-600">
+                                  {moeda(item.embalagemPresente.valorTotal)}
+                                </p>
+
+                                {item.embalagemPresente.mensagem && (
+                                  <p className="mt-0.5 line-clamp-1 text-slate-600">
+                                    Mensagem: {item.embalagemPresente.mensagem}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         );

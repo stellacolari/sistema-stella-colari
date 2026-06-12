@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   CalendarClock,
-  Gift,
   History,
   MapPin,
   Package,
@@ -12,6 +11,8 @@ import {
   Truck,
   User,
 } from "lucide-react";
+import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
+import ImageBox from "@/components/ui/ImageBox";
 
 export type PedidoDetalhe = {
   id: string;
@@ -71,6 +72,7 @@ export type PedidoDetalhe = {
     geraCashback: boolean;
     cashbackBaseValor: number;
     total: number;
+    embalagemPresente?: PedidoItemEmbalagemPresente | null;
     adicionais?: {
       id: string;
       opcaoAdicionalId: string | null;
@@ -574,8 +576,11 @@ export default function PedidoDetalheClient({
               (total, adicional) => total + valorSeguro(adicional.valorVendaTotal),
               0
             );
+            const totalEmbalagemPresenteItem =
+              item.embalagemPresente?.valorTotal || 0;
 
-            const totalCompletoItem = item.total + totalAdicionaisItem;
+            const totalCompletoItem =
+              item.total + totalAdicionaisItem + totalEmbalagemPresenteItem;
 
             return (
               <article
@@ -682,6 +687,60 @@ export default function PedidoDetalheClient({
                     </div>
                   )}
 
+                  {item.embalagemPresente && (
+                    <div className="mt-3 rounded-2xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-3 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                        <div className="h-16 w-16 shrink-0 bg-white ring-1 ring-white/80 [&>div]:h-full [&>div]:w-full [&>div]:rounded-none">
+                          <ImageBox
+                            src={item.embalagemPresente.imagemUrl}
+                            alt={item.embalagemPresente.nome}
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-blue)]">
+                            Preparar como presente
+                          </p>
+
+                          <div className="mt-1 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-950">
+                                {item.embalagemPresente.nome}
+                              </p>
+
+                              {item.embalagemPresente.descricao && (
+                                <p className="mt-1 text-xs leading-5 text-slate-600">
+                                  {item.embalagemPresente.descricao}
+                                </p>
+                              )}
+                            </div>
+
+                            <p className="shrink-0 text-sm font-semibold text-slate-950">
+                              {moeda(item.embalagemPresente.valorTotal)}
+                            </p>
+                          </div>
+
+                          <p className="mt-1 text-xs text-slate-600">
+                            {item.quantidade} un. x{" "}
+                            {moeda(item.embalagemPresente.precoUnitario)}
+                          </p>
+
+                          {item.embalagemPresente.mensagem && (
+                            <div className="mt-3 rounded-xl bg-white/80 px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Mensagem do presente
+                              </p>
+
+                              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                                {item.embalagemPresente.mensagem}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {item.geraCashback && (
                     <p className="mt-2 text-xs font-medium text-[var(--brand-blue)]">
                       Cashback base: {moeda(item.cashbackBaseValor)}
@@ -701,6 +760,12 @@ export default function PedidoDetalheClient({
                   {totalAdicionaisItem > 0 && (
                     <p className="mt-1 text-xs text-blue-700">
                       Adicionais: {moeda(totalAdicionaisItem)}
+                    </p>
+                  )}
+
+                  {item.embalagemPresente && (
+                    <p className="mt-1 text-xs text-[var(--brand-blue)]">
+                      Presente: {moeda(totalEmbalagemPresenteItem)}
                     </p>
                   )}
 
