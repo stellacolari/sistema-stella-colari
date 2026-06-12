@@ -252,6 +252,11 @@ export default function PedidoDetalheClient({
     );
   }, 0);
 
+  const subtotalEmbalagensPresente = pedido.itens.reduce(
+    (total, item) => total + valorSeguro(item.embalagemPresente?.valorTotal),
+    0
+  );
+
   const custoAdicionais = pedido.itens.reduce((total, item) => {
     const adicionais = item.adicionais || [];
 
@@ -279,6 +284,7 @@ export default function PedidoDetalheClient({
   const cupomDescontoValor = valorSeguro(pedido.cupomDescontoValor);
   const cashbackUsado = valorSeguro(pedido.cashbackUsadoValor);
   const possuiAdicionais = subtotalAdicionais > 0;
+  const possuiEmbalagensPresente = subtotalEmbalagensPresente > 0;
   const possuiCupom = cupomDescontoValor > 0;
   const possuiCashbackUsado = cashbackUsado > 0;
 
@@ -358,6 +364,9 @@ export default function PedidoDetalheClient({
         <p className="mt-1 text-sm text-slate-500">
           Produtos {moeda(subtotalProdutos)}
           {possuiAdicionais ? ` · Adicionais ${moeda(subtotalAdicionais)}` : ""}
+          {possuiEmbalagensPresente
+            ? ` · Embalagens presente ${moeda(subtotalEmbalagensPresente)}`
+            : ""}
           {possuiCupom ? ` · Cupom -${moeda(cupomDescontoValor)}` : ""}
           {possuiCashbackUsado ? ` · Cashback usado -${moeda(cashbackUsado)}` : ""}
           {" · "}
@@ -383,6 +392,22 @@ export default function PedidoDetalheClient({
 
               <p className="mt-2 text-xl font-semibold text-slate-950">
                 {moeda(subtotalAdicionais)}
+              </p>
+            </div>
+          )}
+
+          {possuiEmbalagensPresente && (
+            <div className="rounded-2xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-blue)]">
+                Embalagens presente
+              </p>
+
+              <p className="mt-2 text-xl font-semibold text-slate-950">
+                {moeda(subtotalEmbalagensPresente)}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                Valor jÃ¡ incluÃ­do no total final do pedido.
               </p>
             </div>
           )}
