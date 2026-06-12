@@ -467,12 +467,12 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/favoritos"
                 aria-label="Favoritos"
-                className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white/95 text-slate-900 shadow-sm transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)] sm:h-10 sm:w-10"
               >
                 <div className="relative">
-                  <Heart className="h-5 w-5" />
+                  <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
                   {favoritosCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[var(--brand-blue)] px-1 text-[10px] font-semibold text-white">
+                    <span className="absolute -right-2 -top-2 flex h-4 min-w-[1rem] items-center justify-center rounded bg-[var(--brand-blue)] px-1 text-[10px] font-semibold text-white">
                       {favoritosCount}
                     </span>
                   )}

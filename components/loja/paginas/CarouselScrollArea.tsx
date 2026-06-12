@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type CarouselScrollAreaProps = {
   children: ReactNode;
@@ -16,13 +17,13 @@ type CarouselScrollAreaProps = {
 
 function getArrowButtonClass(arrowStyle: string) {
   const base =
-    "inline-flex h-10 w-10 items-center justify-center border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35";
+    "inline-flex h-9 w-9 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35";
 
   if (arrowStyle === "MINIMALISTA") {
     return `${base} border-transparent bg-transparent text-slate-700 hover:bg-slate-100`;
   }
 
-  return `${base} rounded-full border-slate-200 bg-white text-slate-900 shadow-sm hover:border-slate-300 hover:bg-slate-50`;
+  return `${base} border-slate-200 bg-white text-slate-900 shadow-sm hover:border-slate-300 hover:bg-slate-50`;
 }
 
 export default function CarouselScrollArea({
@@ -104,7 +105,7 @@ export default function CarouselScrollArea({
           onClick={() => scroll("prev")}
           className={getArrowButtonClass(arrowStyle)}
         >
-          ←
+          <ChevronLeft className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -113,7 +114,7 @@ export default function CarouselScrollArea({
           onClick={() => scroll("next")}
           className={getArrowButtonClass(arrowStyle)}
         >
-          →
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     ) : null;
@@ -137,10 +138,10 @@ export default function CarouselScrollArea({
               disabled={!canScrollPrev}
               onClick={() => scroll("prev")}
               className={`${getArrowButtonClass(
-                arrowStyle
+                arrowStyle,
               )} absolute left-2 top-1/2 z-10 -translate-y-1/2`}
             >
-              ←
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -148,15 +149,18 @@ export default function CarouselScrollArea({
               disabled={!canScrollNext}
               onClick={() => scroll("next")}
               className={`${getArrowButtonClass(
-                arrowStyle
+                arrowStyle,
               )} absolute right-2 top-1/2 z-10 -translate-y-1/2`}
             >
-              →
+              <ChevronRight className="h-4 w-4" />
             </button>
           </>
         ) : null}
 
-        <div ref={scrollRef} className={`${containerClassName} scrollbar-hidden`}>
+        <div
+          ref={scrollRef}
+          className={`${containerClassName} scrollbar-hidden overscroll-x-contain`}
+        >
           {children}
         </div>
       </div>

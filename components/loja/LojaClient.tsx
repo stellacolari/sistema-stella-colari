@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, TouchEvent } from "react";
+import type { TouchEvent } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -103,58 +103,6 @@ function normalizarTexto(value: string | null | undefined) {
 
 function slugify(value: string) {
   return normalizarTexto(value).replace(/\s+/g, "-");
-}
-
-function ProdutoReveal({
-  children,
-  delay = 0,
-}: {
-  children: ReactNode;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [visivel, setVisivel] = useState(false);
-
-  useEffect(() => {
-    const element = ref.current;
-
-    if (!element) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisivel(true);
-          observer.unobserve(element);
-        }
-      },
-      {
-        threshold: 0.18,
-        rootMargin: "0px 0px -40px 0px",
-      }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`transition duration-500 ease-out ${
-        visivel ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-      }`}
-      style={{
-        transitionDelay: visivel ? `${delay}ms` : "0ms",
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 function LogoLoja() {
@@ -377,9 +325,11 @@ function SecaoProdutos({
             }`}
           >
             {produtosDaPagina.map((produto, index) => (
-              <ProdutoReveal key={produto.id} delay={index * 70}>
-                <ProdutoCardLoja produto={produto} />
-              </ProdutoReveal>
+              <ProdutoCardLoja
+                key={produto.id}
+                produto={produto}
+                revealDelayMs={index * 70}
+              />
             ))}
           </div>
 
