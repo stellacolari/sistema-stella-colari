@@ -1,10 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { pbkdf2Sync, randomBytes, randomUUID } from "crypto";
+import { pbkdf2Sync, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { normalizarTamanhoEstoque } from "@/lib/loja/estoque";
-import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import {
   cotarFreteMelhorEnvio,
   getCepOrigemMelhorEnvio,
@@ -42,24 +40,6 @@ type CheckoutItemPayload = {
     itemAdicionalConsumidoNome?: string | null;
     custoUnitario?: number | string | null;
   } | null;
-};
-
-type MovimentoComponenteKit = {
-  codigoItem: string;
-  nomeItem: string;
-  produtoId: string;
-  quantidade: number;
-  tamanhoAnel: string;
-  custoTotal: number;
-};
-
-type BaixaAdicionalResultado = {
-  codigoItem: string;
-  nomeItem: string;
-  quantidade: number;
-  custoUnitario: number;
-  custoTotal: number;
-  origem: "REGRA_CATEGORIA" | "OPCAO_ADICIONAL";
 };
 
 function gerarCodigoPedido(numero: number) {
@@ -319,14 +299,6 @@ function criarSenhaHash(senha: string) {
   return `pbkdf2$${salt}$${hash}`;
 }
 
-function calcularCustoMedio(valorAcumulado: number, quantidadeAtual: number) {
-  if (quantidadeAtual <= 0) {
-    return 0;
-  }
-
-  return valorAcumulado / quantidadeAtual;
-}
-
 function produtoTemDesconto(produto: {
   descontoAtivo: boolean;
   precoPromocional: number | null;
@@ -380,147 +352,6 @@ function calcularDescontoCupom({
   }
 
   return Math.min(subtotal, valor);
-}
-
-async function baixarEstoqueProduto({
-  tx,
-  produtoId,
-  tamanhoAnel,
-  quantidade,
-  descricao,
-}: {
-  tx: Prisma.TransactionClient;
-  produtoId: string;
-  tamanhoAnel: string | null | undefined;
-  quantidade: number;
-  descricao: string;
-}) {
-  const tamanhoEstoque = normalizarTamanhoEstoque(tamanhoAnel);
-
-  const estoqueProduto = await tx.estoqueProduto.findUnique({
-    where: {
-      produtoId_tamanhoAnel: {
-        produtoId,
-        tamanhoAnel: tamanhoEstoque,
-      },
-    },
-  });
-
-  if (!estoqueProduto) {
-    throw new Error(
-      tamanhoEstoque !== "UNICO"
-        ? `Produto sem estoque na opção ${tamanhoEstoque}: ${descricao}`
-        : `Produto sem estoque: ${descricao}`
-    );
-  }
-
-  if (estoqueProduto.quantidadeAtual < quantidade) {
-    throw new Error(
-      tamanhoEstoque !== "UNICO"
-        ? `Saldo insuficiente para ${descricao} na opção ${tamanhoEstoque}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
-        : `Saldo insuficiente para ${descricao}. Saldo atual: ${estoqueProduto.quantidadeAtual}.`
-    );
-  }
-
-  const custoMedioProduto = Number(estoqueProduto.custoMedio || 0);
-  const gastoProduto = custoMedioProduto * quantidade;
-
-  const novaQuantidadeProduto = estoqueProduto.quantidadeAtual - quantidade;
-  const novoValorProduto =
-    Number(estoqueProduto.valorAcumulado || 0) - gastoProduto;
-  const valorProdutoSeguro = novoValorProduto > 0 ? novoValorProduto : 0;
-
-  await tx.estoqueProduto.update({
-    where: {
-      id: estoqueProduto.id,
-    },
-    data: {
-      quantidadeAtual: novaQuantidadeProduto,
-      valorAcumulado: valorProdutoSeguro,
-      custoMedio: calcularCustoMedio(valorProdutoSeguro, novaQuantidadeProduto),
-    },
-  });
-
-  return {
-    tamanhoEstoque,
-    gastoProduto,
-    custoMedioProduto,
-  };
-}
-
-async function baixarEstoqueAdicional({
-  tx,
-  itemAdicionalId,
-  quantidade,
-  descricao,
-  origem,
-}: {
-  tx: Prisma.TransactionClient;
-  itemAdicionalId: string;
-  quantidade: number;
-  descricao: string;
-  origem: "REGRA_CATEGORIA" | "OPCAO_ADICIONAL";
-}): Promise<BaixaAdicionalResultado> {
-  const estoque = await tx.estoqueAdicional.findUnique({
-    where: {
-      itemAdicionalId,
-    },
-    include: {
-      itemAdicional: {
-        select: {
-          id: true,
-          codigoInterno: true,
-          nome: true,
-          ativo: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  if (!estoque) {
-    throw new Error(`Item adicional sem estoque cadastrado: ${descricao}`);
-  }
-
-  if (
-    !estoque.itemAdicional.ativo ||
-    estoque.itemAdicional.status === "NA_LIXEIRA"
-  ) {
-    throw new Error(`Item adicional indisponível: ${estoque.itemAdicional.nome}`);
-  }
-
-  if (estoque.quantidadeAtual < quantidade) {
-    throw new Error(
-      `Saldo insuficiente do item adicional ${estoque.itemAdicional.nome}. Saldo atual: ${estoque.quantidadeAtual}.`
-    );
-  }
-
-  const custoUnitario = Number(estoque.custoMedio || 0);
-  const custoTotal = custoUnitario * quantidade;
-
-  const novaQuantidade = estoque.quantidadeAtual - quantidade;
-  const novoValorAcumulado = Number(estoque.valorAcumulado || 0) - custoTotal;
-  const valorSeguro = novoValorAcumulado > 0 ? novoValorAcumulado : 0;
-
-  await tx.estoqueAdicional.update({
-    where: {
-      id: estoque.id,
-    },
-    data: {
-      quantidadeAtual: novaQuantidade,
-      valorAcumulado: valorSeguro,
-      custoMedio: calcularCustoMedio(valorSeguro, novaQuantidade),
-    },
-  });
-
-  return {
-    codigoItem: estoque.itemAdicional.codigoInterno,
-    nomeItem: estoque.itemAdicional.nome,
-    quantidade,
-    custoUnitario,
-    custoTotal,
-    origem,
-  };
 }
 
 async function buscarOpcaoAdicionalValida({
@@ -683,93 +514,6 @@ async function buscarCupomValido({
     cupom,
     descontoValor,
   };
-}
-
-async function baixarAdicionaisDaCategoria({
-  tx,
-  categoria,
-  quantidadeProduto,
-  opcaoAdicional,
-}: {
-  tx: Prisma.TransactionClient;
-  categoria: string;
-  quantidadeProduto: number;
-  opcaoAdicional: Awaited<ReturnType<typeof buscarOpcaoAdicionalValida>>;
-}) {
-  const baixas: BaixaAdicionalResultado[] = [];
-
-  const regras = await tx.regraCategoria.findMany({
-    include: {
-      itemAdicional: {
-        select: {
-          id: true,
-          codigoInterno: true,
-          nome: true,
-          ativo: true,
-          status: true,
-        },
-      },
-    },
-    orderBy: {
-      criadoEm: "asc",
-    },
-  });
-
-  for (const regra of regras) {
-    if (!regraAplicaACategoria(regra, categoria)) {
-      continue;
-    }
-
-    const itemPadraoFoiSubstituido =
-      opcaoAdicional?.itemPadraoSubstituidoId &&
-      regra.itemAdicionalId === opcaoAdicional.itemPadraoSubstituidoId;
-
-    const itemPremiumJaSeraConsumido =
-      opcaoAdicional?.itemAdicionalConsumidoId &&
-      regra.itemAdicionalId === opcaoAdicional.itemAdicionalConsumidoId;
-
-    if (itemPadraoFoiSubstituido || itemPremiumJaSeraConsumido) {
-      continue;
-    }
-
-    if (
-      !regra.itemAdicional.ativo ||
-      regra.itemAdicional.status === "NA_LIXEIRA"
-    ) {
-      continue;
-    }
-
-    const quantidadeConsumida =
-      Number(regra.quantidade || 0) * quantidadeProduto;
-
-    if (quantidadeConsumida <= 0) {
-      continue;
-    }
-
-    const baixa = await baixarEstoqueAdicional({
-      tx,
-      itemAdicionalId: regra.itemAdicionalId,
-      quantidade: quantidadeConsumida,
-      descricao: `${regra.itemAdicional.nome} da categoria ${categoria}`,
-      origem: "REGRA_CATEGORIA",
-    });
-
-    baixas.push(baixa);
-  }
-
-  if (opcaoAdicional) {
-    const baixaPremium = await baixarEstoqueAdicional({
-      tx,
-      itemAdicionalId: opcaoAdicional.itemAdicionalConsumidoId,
-      quantidade: quantidadeProduto,
-      descricao: opcaoAdicional.itemAdicionalConsumido.nome,
-      origem: "OPCAO_ADICIONAL",
-    });
-
-    baixas.push(baixaPremium);
-  }
-
-  return baixas;
 }
 
 export async function POST(request: Request) {
@@ -1011,8 +755,6 @@ export async function POST(request: Request) {
               };
             };
           }>;
-          produtoEhKit: boolean;
-          exigeTamanho: boolean;
           tamanhoAnel: string | null;
           preco: ReturnType<typeof calcularPrecoProduto>;
           totalProdutoItem: number;
@@ -1191,8 +933,6 @@ export async function POST(request: Request) {
             item,
             quantidade,
             produto,
-            produtoEhKit,
-            exigeTamanho: exigeVariacao || exigeTamanhoAnel,
             tamanhoAnel,
             preco,
             totalProdutoItem,
@@ -1490,8 +1230,6 @@ export async function POST(request: Request) {
           const {
             quantidade,
             produto,
-            produtoEhKit,
-            exigeTamanho,
             tamanhoAnel,
             preco,
             totalProdutoItem,
@@ -1505,54 +1243,8 @@ export async function POST(request: Request) {
             cashbackBaseItemBruta,
           } = itemProcessado;
 
-          let gastoProduto = 0;
-          const movimentosComponentesKit: MovimentoComponenteKit[] = [];
-
-          if (!produtoEhKit) {
-            const tamanhoEstoque = exigeTamanho ? tamanhoAnel : "UNICO";
-
-            const baixa = await baixarEstoqueProduto({
-              tx,
-              produtoId: produto.id,
-              tamanhoAnel: tamanhoEstoque,
-              quantidade,
-              descricao: produto.nome,
-            });
-
-            gastoProduto = baixa.gastoProduto;
-          } else {
-            for (const componente of produto.componentesDoKit) {
-              const produtoComponente = componente.componenteProduto;
-              const quantidadeComponente = quantidade * componente.quantidade;
-
-              const baixaComponente = await baixarEstoqueProduto({
-                tx,
-                produtoId: produtoComponente.id,
-                tamanhoAnel: "UNICO",
-                quantidade: quantidadeComponente,
-                descricao: `${produtoComponente.nome} do kit ${produto.nome}`,
-              });
-
-              gastoProduto += baixaComponente.gastoProduto;
-
-              movimentosComponentesKit.push({
-                codigoItem: produtoComponente.codigoInterno,
-                nomeItem: produtoComponente.nome,
-                produtoId: produtoComponente.id,
-                quantidade: quantidadeComponente,
-                tamanhoAnel: baixaComponente.tamanhoEstoque,
-                custoTotal: baixaComponente.gastoProduto,
-              });
-            }
-          }
-
           const custoAdicionalTotalInformado =
             custoAdicionalUnitario * quantidade;
-
-          const totalItemAntesCupom =
-            totalProdutoItem +
-            valorVendaAdicionalTotal +
-            valorEmbalagemPresenteTotal;
 
           const pedidoItem = await tx.pedidoOnlineItem.create({
             data: {
@@ -1588,13 +1280,6 @@ export async function POST(request: Request) {
               produto.embalagemIndividualObrigatoria,
             embalagemPresenteModeloId: embalagemPresente?.id || null,
             pesoGramas: produto.pesoGramas,
-          });
-
-          const baixasAdicionais = await baixarAdicionaisDaCategoria({
-            tx,
-            categoria: produto.categoria,
-            quantidadeProduto: quantidade,
-            opcaoAdicional,
           });
 
           if (embalagemPresente) {
@@ -1633,20 +1318,7 @@ export async function POST(request: Request) {
             });
           }
 
-          const custoTotalAdicionaisEstoque = baixasAdicionais.reduce(
-            (total, baixa) => total + baixa.custoTotal,
-            0
-          );
-
           if (opcaoAdicional) {
-            const custoRealPremium =
-              baixasAdicionais.find(
-                (baixa) =>
-                  baixa.origem === "OPCAO_ADICIONAL" &&
-                  baixa.codigoItem ===
-                    opcaoAdicional.itemAdicionalConsumido.codigoInterno
-              )?.custoTotal ?? custoAdicionalTotalInformado;
-
             await tx.pedidoOnlineItemAdicional.create({
               data: {
                 pedidoOnlineId: pedido.id,
@@ -1658,75 +1330,14 @@ export async function POST(request: Request) {
                 itemAdicionalConsumidoId:
                   opcaoAdicional.itemAdicionalConsumidoId || null,
                 quantidade,
-                custoUnitario:
-                  quantidade > 0 ? custoRealPremium / quantidade : 0,
+                custoUnitario: custoAdicionalUnitario,
                 valorVendaUnitario: valorVendaAdicionalUnitario,
-                custoTotal: custoRealPremium,
+                custoTotal: custoAdicionalTotalInformado,
                 valorVendaTotal: valorVendaAdicionalTotal,
-                lucroTotal: valorVendaAdicionalTotal - custoRealPremium,
+                lucroTotal:
+                  valorVendaAdicionalTotal - custoAdicionalTotalInformado,
               },
             });
-          }
-
-          const movimentacao = await tx.movimentacao.create({
-            data: {
-              codigoMovimentacao: `MOV-${randomUUID()}`,
-              tipoMovimentacao: produtoEhKit ? "SAÍDA KIT" : "SAÍDA",
-              origemTipo: produtoEhKit ? "pedido_online_kit" : "pedido_online",
-              origemId: pedido.id,
-              codigoItem: produto.codigoInterno,
-              itemTipo: produtoEhKit ? "kit" : "produto",
-              quantidade,
-              tamanhoAnel,
-              custo: gastoProduto + custoTotalAdicionaisEstoque,
-              faturamento: totalItemAntesCupom,
-              documentoCliente: documento || null,
-              status: "ATIVA",
-              relacionadoA: pedidoItem.id,
-              gastoProdutoPrincipal: gastoProduto,
-              gastoAdd1: custoTotalAdicionaisEstoque,
-              gastoAdd2: 0,
-              gastoAdd3: 0,
-            },
-          });
-
-          for (const baixaAdicional of baixasAdicionais) {
-            await tx.movimentacaoAdicional.create({
-              data: {
-                movimentacaoId: movimentacao.id,
-                codigoItem: baixaAdicional.codigoItem,
-                nomeItem: baixaAdicional.nomeItem,
-                quantidade: baixaAdicional.quantidade,
-                custoUnitario: baixaAdicional.custoUnitario,
-                custoTotal: baixaAdicional.custoTotal,
-              },
-            });
-          }
-
-          if (produtoEhKit) {
-            for (const componente of movimentosComponentesKit) {
-              await tx.movimentacao.create({
-                data: {
-                  codigoMovimentacao: `MOV-${randomUUID()}`,
-                  tipoMovimentacao: "SAÍDA COMPONENTE KIT",
-                  origemTipo: "pedido_online_kit_componente",
-                  origemId: pedido.id,
-                  codigoItem: componente.codigoItem,
-                  itemTipo: "produto",
-                  quantidade: componente.quantidade,
-                  tamanhoAnel: componente.tamanhoAnel,
-                  custo: componente.custoTotal,
-                  faturamento: 0,
-                  documentoCliente: documento || null,
-                  status: "ATIVA",
-                  relacionadoA: pedidoItem.id,
-                  gastoProdutoPrincipal: componente.custoTotal,
-                  gastoAdd1: 0,
-                  gastoAdd2: 0,
-                  gastoAdd3: 0,
-                },
-              });
-            }
           }
         }
 

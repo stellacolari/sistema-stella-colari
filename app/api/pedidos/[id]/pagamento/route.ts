@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { efetivarPedidoOnlinePago } from "@/lib/pedidos/efetivar-pedido-online-pago";
 
 const STATUS_PAGAMENTO_VALIDOS = new Set([
   "AGUARDANDO_PAGAMENTO",
@@ -39,6 +40,74 @@ function parseNumero(value: unknown) {
   return numero;
 }
 
+async function creditarCashbackDoPedido(pedidoId: string) {
+  const pedidoAtual = await prisma.pedidoOnline.findUnique({
+    where: {
+      id: pedidoId,
+    },
+    select: {
+      id: true,
+      codigo: true,
+      clienteId: true,
+      cashbackStatus: true,
+      cashbackPrevistoValor: true,
+    },
+  });
+
+  if (
+    !pedidoAtual ||
+    pedidoAtual.cashbackStatus !== "PENDENTE" ||
+    !pedidoAtual.clienteId ||
+    Number(pedidoAtual.cashbackPrevistoValor || 0) <= 0
+  ) {
+    return null;
+  }
+
+  const valorCashback = Number(pedidoAtual.cashbackPrevistoValor || 0);
+  const agora = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.cliente.update({
+      where: {
+        id: pedidoAtual.clienteId as string,
+      },
+      data: {
+        cashbackSaldo: {
+          increment: valorCashback,
+        },
+      },
+    });
+
+    await tx.clienteCashbackMovimentacao.create({
+      data: {
+        clienteId: pedidoAtual.clienteId as string,
+        tipo: "CREDITO",
+        status: "EFETIVADO",
+        origemTipo: "PEDIDO_ONLINE",
+        origemId: pedidoAtual.id,
+        valor: valorCashback,
+        observacao: `Cashback creditado pelo pedido ${pedidoAtual.codigo}.`,
+      },
+    });
+
+    await tx.pedidoOnline.update({
+      where: {
+        id: pedidoAtual.id,
+      },
+      data: {
+        cashbackStatus: "CREDITADO",
+        cashbackCreditadoValor: valorCashback,
+        cashbackCreditadoEm: agora,
+      },
+    });
+  });
+
+  return {
+    creditado: true,
+    valor: valorCashback,
+  };
+}
+
 export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -66,6 +135,7 @@ export async function PATCH(
         total: true,
         pagoEm: true,
         statusPagamento: true,
+        origemCanal: true,
 
         clienteId: true,
         cashbackStatus: true,
@@ -89,6 +159,33 @@ export async function PATCH(
           ? valorPagoInformado
           : Number(pedidoAtual.total || 0)
         : valorPagoInformado;
+
+    if (
+      statusPagamento === "PAGO" &&
+      pedidoAtual.origemCanal === "LOJA_STELLA"
+    ) {
+      const efetivacao = await efetivarPedidoOnlinePago({
+        pedidoId: id,
+        gatewayPagamentoId: parseStringOrNull(body.gatewayPagamentoId),
+        gatewayPedidoId: parseStringOrNull(body.gatewayPedidoId),
+        gatewayPagamento: parseStringOrNull(body.gatewayPagamento),
+        metodoPagamento: parseStringOrNull(body.metodoPagamento),
+        valorPago,
+        origemHistorico: "ADMIN",
+        usuarioNomeHistorico: parseStringOrNull(body.usuarioNome) || "Admin",
+        pagamentoObservacao: parseStringOrNull(body.pagamentoObservacao),
+        historicoObservacao:
+          "Pagamento marcado como pago no admin. Estoque de produtos e adicionais processado.",
+      });
+
+      const cashback = await creditarCashbackDoPedido(id);
+
+      return NextResponse.json({
+        pagamento: efetivacao?.pedido || null,
+        efetivacao,
+        cashback,
+      });
+    }
 
     const resultado = await prisma.$transaction(async (tx) => {
       const pagamento = await tx.pedidoOnline.update({

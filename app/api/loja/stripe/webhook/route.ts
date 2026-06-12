@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { cancelarPedidoOnlineNaoPago } from "@/lib/pedidos/cancelar-pedido-online";
+import { efetivarPedidoOnlinePago } from "@/lib/pedidos/efetivar-pedido-online-pago";
 import { efetivarPedidoManualPagoComoVenda } from "@/lib/vendas/efetivar-pedido-manual";
 
 export const runtime = "nodejs";
@@ -168,30 +169,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
 
-      const pedidoAtualizado = await prisma.pedidoOnline.update({
-        where: {
-          id: pedidoId,
-        },
-        data: {
-          statusPagamento: "PAGO",
-          metodoPagamento: "STRIPE_CHECKOUT",
-          gatewayPagamento: "STRIPE",
-          gatewayPedidoId: session.id,
-          gatewayPagamentoId: paymentIntentId,
-          valorPago,
-          pagoEm: new Date(),
-          pagamentoObservacao: `Pagamento confirmado via Stripe para o pedido ${pedidoCodigo}.`,
-        },
-        select: {
-          id: true,
-          codigo: true,
-          statusPagamento: true,
-        },
+      const efetivacao = await efetivarPedidoOnlinePago({
+        pedidoId,
+        gatewayPedidoId: session.id,
+        gatewayPagamentoId: paymentIntentId,
+        gatewayPagamento: "STRIPE",
+        metodoPagamento: "STRIPE_CHECKOUT",
+        valorPago,
+        origemHistorico: "STRIPE",
+        usuarioNomeHistorico: "Stripe",
+        pagamentoObservacao: `Pagamento confirmado via Stripe para o pedido ${pedidoCodigo}.`,
+        historicoObservacao:
+          "Pagamento confirmado via Stripe. Estoque de produtos e adicionais processado.",
       });
 
-      console.log("Pedido atualizado pelo Stripe:", pedidoAtualizado);
+      console.log("Pedido efetivado pelo Stripe:", efetivacao);
 
-      const cashback = await creditarCashbackDoPedido(pedidoAtualizado.id);
+      const cashback = await creditarCashbackDoPedido(pedidoId);
 
       if (cashback) {
         console.log("Cashback creditado pelo Stripe:", cashback);
