@@ -156,7 +156,7 @@ export default function CarouselScrollArea({
           </>
         ) : null}
 
-        <div ref={scrollRef} className={containerClassName}>
+        <div ref={scrollRef} className={`${containerClassName} scrollbar-hidden`}>
           {children}
         </div>
       </div>

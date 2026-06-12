@@ -1,4 +1,11 @@
 import Link from "next/link";
+import { Heart } from "lucide-react";
+import { useEffect, useState, type MouseEvent } from "react";
+import {
+  alternarFavoritoId,
+  FAVORITOS_UPDATED_EVENT,
+  produtoEstaFavorito,
+} from "./favoritos";
 
 export type ProdutoCardLojaItem = {
   id: string;
@@ -119,16 +126,62 @@ export default function ProdutoCardLoja({
   href,
   modoPreview = false,
 }: ProdutoCardLojaProps) {
+  const [favorito, setFavorito] = useState(false);
+  const [mostrarHoverMobile, setMostrarHoverMobile] = useState(false);
+
+  useEffect(() => {
+    setFavorito(produtoEstaFavorito(produto.id));
+  }, [produto.id]);
+
+  useEffect(() => {
+    function atualizarFavorito() {
+      setFavorito(produtoEstaFavorito(produto.id));
+    }
+
+    window.addEventListener(FAVORITOS_UPDATED_EVENT, atualizarFavorito);
+    window.addEventListener("storage", atualizarFavorito);
+
+    return () => {
+      window.removeEventListener(FAVORITOS_UPDATED_EVENT, atualizarFavorito);
+      window.removeEventListener("storage", atualizarFavorito);
+    };
+  }, [produto.id]);
+
+  function handleToggleFavorito(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const proximo = alternarFavoritoId(produto.id);
+    setFavorito(proximo);
+  }
+
   const semEstoque = produto.estoqueTotal <= 0;
   const desconto = percentualDesconto(produto);
   const produtoHref = href || `/loja/produto/${produto.id}`;
   const cardClass = `group stella-product-card relative block h-full overflow-hidden bg-white p-2 transition-colors duration-200 active:bg-slate-50 ${
     semEstoque ? "opacity-75" : ""
-  }`;
+  } ${mostrarHoverMobile ? "hover-mobile" : ""}`;
   const conteudo = (
     <>
       <div className="relative overflow-hidden">
         <ProdutoImagem produto={produto} />
+
+        <button
+          type="button"
+          onClick={handleToggleFavorito}
+          aria-label={
+            favorito
+              ? `Remover ${produto.nome} dos favoritos`
+              : `Adicionar ${produto.nome} aos favoritos`
+          }
+          aria-pressed={favorito}
+          className="absolute right-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-900 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-blue)]"
+        >
+          <Heart
+            className={`h-5 w-5 ${favorito ? "fill-[var(--brand-blue)] text-[var(--brand-blue)]" : "text-slate-400"}`}
+            fill="currentColor"
+          />
+        </button>
 
         {exibirSeloDesconto && desconto !== null ? (
           <div className="pointer-events-none absolute right-3 top-3 z-10 brand-bg px-3 py-1 text-xs font-medium uppercase tracking-[0.16em]">
@@ -168,7 +221,12 @@ export default function ProdutoCardLoja({
   }
 
   return (
-    <article className={cardClass}>
+    <article
+      className={cardClass}
+      onTouchStart={() => setMostrarHoverMobile(true)}
+      onTouchEnd={() => setMostrarHoverMobile(false)}
+      onTouchCancel={() => setMostrarHoverMobile(false)}
+    >
       <Link
         href={produtoHref}
         className="absolute inset-0 z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"

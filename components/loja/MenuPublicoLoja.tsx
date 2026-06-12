@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
+import { Heart, ChevronRight, Menu, Search, ShoppingBag, X } from "lucide-react";
 import {
-  ChevronRight,
-  Menu,
-  Search,
-  ShoppingBag,
-  X,
-} from "lucide-react";
+  FAVORITOS_UPDATED_EVENT,
+  lerFavoritosIds,
+} from "./favoritos";
 
 const LOGO_URL = "/logo-stella.png";
 const CONTATO_URL = "/loja/quem-somos";
@@ -55,6 +53,7 @@ type MenuPublicoLojaProps = {
   mostrarBusca?: boolean;
   mostrarPerfil?: boolean;
   mostrarCarrinho?: boolean;
+  mostrarFavoritos?: boolean;
 };
 
 function normalizarTexto(value: string | null | undefined) {
@@ -293,6 +292,7 @@ export default function MenuPublicoLoja({
     string[]
   >([]);
   const [busca, setBusca] = useState("");
+  const [favoritosCount, setFavoritosCount] = useState(0);
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
 
   const categoriasArvore = useMemo(
@@ -306,6 +306,22 @@ export default function MenuPublicoLoja({
     ) ?? null;
 
   const termoBusca = normalizarTexto(busca);
+
+  useEffect(() => {
+    function atualizarContador() {
+      setFavoritosCount(lerFavoritosIds().length);
+    }
+
+    atualizarContador();
+
+    window.addEventListener(FAVORITOS_UPDATED_EVENT, atualizarContador);
+    window.addEventListener("storage", atualizarContador);
+
+    return () => {
+      window.removeEventListener(FAVORITOS_UPDATED_EVENT, atualizarContador);
+      window.removeEventListener("storage", atualizarContador);
+    };
+  }, []);
 
   const sugestoesBusca = useMemo(() => {
     if (!termoBusca) return [];
@@ -446,6 +462,23 @@ export default function MenuPublicoLoja({
               </button>
             )}
 
+            {mostrarFavoritos && (
+              <Link
+                href="/loja/favoritos"
+                aria-label="Favoritos"
+                className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+              >
+                <div className="relative">
+                  <Heart className="h-5 w-5" />
+                  {favoritosCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[var(--brand-blue)] px-1 text-[10px] font-semibold text-white">
+                      {favoritosCount}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+
             {mostrarPerfil && (
               <div className="hidden md:block">
                 <PerfilClienteLink className="h-10 w-10" />
@@ -566,6 +599,19 @@ export default function MenuPublicoLoja({
                           Minha conta
                         </span>
                       </div>
+                    )}
+
+                    {mostrarFavoritos && (
+                      <Link
+                        href="/loja/favoritos"
+                        onClick={fecharMenu}
+                        className="flex items-center gap-3 border border-slate-200 px-3 py-3"
+                      >
+                        <Heart className="h-5 w-5 text-slate-900" />
+                        <span className="text-sm font-medium text-slate-900">
+                          Favoritos
+                        </span>
+                      </Link>
                     )}
 
                     {mostrarCarrinho && (
