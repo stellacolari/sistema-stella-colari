@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImageIcon, Plus, Trash2, Truck, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -82,6 +82,7 @@ type FreteOpcaoVenda = {
 };
 
 type ModalidadeEntregaManual =
+  | "SEM_ENTREGA"
   | "MELHOR_ENVIO"
   | "RETIRADA_COMBINADA"
   | "ENTREGA_LOCAL"
@@ -92,6 +93,11 @@ const MODALIDADES_ENTREGA_MANUAL: {
   label: string;
   descricao: string;
 }[] = [
+  {
+    value: "SEM_ENTREGA",
+    label: "Sem entrega",
+    descricao: "Venda sem logistica vinculada ao pedido.",
+  },
   {
     value: "RETIRADA_COMBINADA",
     label: "Retirada",
@@ -370,6 +376,13 @@ function normalizarCep(value: string | null | undefined) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function labelModalidadeEntrega(value: ModalidadeEntregaManual) {
+  return (
+    MODALIDADES_ENTREGA_MANUAL.find((modalidade) => modalidade.value === value)
+      ?.label || "Entrega"
+  );
+}
+
 function numeroInput(value: string, fallback = 0) {
   const parsed = Number(String(value || "").replace(",", "."));
 
@@ -457,8 +470,9 @@ export default function NovaVendaV2Client({
     assinatura: string;
   } | null>(null);
   const [enviarEntrega, setEnviarEntrega] = useState(false);
+  const [modalEntregaAberto, setModalEntregaAberto] = useState(false);
   const [modalidadeEntrega, setModalidadeEntrega] =
-    useState<ModalidadeEntregaManual>("RETIRADA_COMBINADA");
+    useState<ModalidadeEntregaManual>("SEM_ENTREGA");
   const [usarEnderecoCliente, setUsarEnderecoCliente] = useState(false);
   const [entrega, setEntrega] = useState({
     cep: "",
@@ -469,11 +483,12 @@ export default function NovaVendaV2Client({
     cidade: "",
     estado: "",
   });
+  const [buscandoCepEntrega, setBuscandoCepEntrega] = useState(false);
+  const [ultimoCepEntregaBuscado, setUltimoCepEntregaBuscado] = useState("");
   const [entregaManual, setEntregaManual] = useState({
     kmEstimado: "",
     consumoKmPorLitro: "16",
     precoCombustivel: "6",
-    cobrarIdaVolta: true,
     taxaFixa: "0",
     valorMinimo: "0",
     valorManual: "",
@@ -759,8 +774,7 @@ export default function NovaVendaV2Client({
     const precoCombustivel = numeroInput(entregaManual.precoCombustivel);
     const taxaFixa = numeroInput(entregaManual.taxaFixa);
     const valorMinimo = numeroInput(entregaManual.valorMinimo);
-    const distanciaCobrada =
-      kmEstimado * (entregaManual.cobrarIdaVolta ? 2 : 1);
+    const distanciaCobrada = kmEstimado * 2;
     const custoCombustivel =
       consumoKmPorLitro > 0
         ? (distanciaCobrada / consumoKmPorLitro) * precoCombustivel
@@ -768,6 +782,19 @@ export default function NovaVendaV2Client({
 
     return Math.max(custoCombustivel + taxaFixa, valorMinimo);
   }, [entregaManual, modalidadeEntrega]);
+
+  const kmIdaEntrega = numeroInput(entregaManual.kmEstimado);
+  const kmIdaVoltaEntrega = kmIdaEntrega * 2;
+  const consumoKmPorLitroEntrega = numeroInput(
+    entregaManual.consumoKmPorLitro,
+    16,
+  );
+  const litrosEstimadosEntrega =
+    consumoKmPorLitroEntrega > 0
+      ? kmIdaVoltaEntrega / consumoKmPorLitroEntrega
+      : 0;
+  const custoCombustivelEntrega =
+    litrosEstimadosEntrega * numeroInput(entregaManual.precoCombustivel);
 
   const valorEntregaManual =
     numeroInputOuNull(entregaManual.valorManual) ?? entregaManualSugerida;
@@ -788,6 +815,32 @@ export default function NovaVendaV2Client({
     return itensPedido.reduce((acc, item) => acc + item.quantidade, 0);
   }, [itensPedido]);
 
+  const clienteTemEndereco = Boolean(
+    clienteSelecionado &&
+      (clienteSelecionado.cep ||
+        clienteSelecionado.rua ||
+        clienteSelecionado.cidade),
+  );
+  const enderecoEntregaResumo =
+    [
+      entrega.rua,
+      entrega.numero,
+      entrega.bairro,
+      entrega.cidade,
+      entrega.estado,
+    ]
+      .filter(Boolean)
+      .join(", ") || entrega.cep || "";
+  const mostrarEnderecoEntrega =
+    modalidadeEntrega === "ENTREGA_LOCAL" ||
+    modalidadeEntrega === "CIDADE_PROXIMA" ||
+    modalidadeEntrega === "MELHOR_ENVIO";
+  const mostrarCalculoEntrega =
+    modalidadeEntrega === "ENTREGA_LOCAL" ||
+    modalidadeEntrega === "CIDADE_PROXIMA";
+  const entregaConfigurada =
+    enviarEntrega && modalidadeEntrega !== "SEM_ENTREGA";
+
   function atualizarCampoEntrega(campo: keyof typeof entrega, valor: string) {
     setEntrega((atual) => ({
       ...atual,
@@ -796,6 +849,10 @@ export default function NovaVendaV2Client({
     setFreteSelecionadoId("");
     setOpcoesFrete([]);
     setErroFrete("");
+
+    if (campo === "cep") {
+      setUltimoCepEntregaBuscado("");
+    }
   }
 
   function atualizarCampoEntregaManual(
@@ -811,6 +868,8 @@ export default function NovaVendaV2Client({
 
   function alterarModalidadeEntrega(value: ModalidadeEntregaManual) {
     setModalidadeEntrega(value);
+    setEnviarEntrega(value !== "SEM_ENTREGA");
+    setUsarEnderecoCliente(false);
     setErroFrete("");
     setFreteSelecionadoId("");
     setOpcoesFrete([]);
@@ -835,19 +894,78 @@ export default function NovaVendaV2Client({
     setErroFrete("");
   }
 
-  function alternarEnviarEntrega(checked: boolean) {
-    setEnviarEntrega(checked);
+  const buscarEnderecoEntregaPorCep = useCallback(
+    async (cepInformado?: string) => {
+    const cep = normalizarCep(cepInformado || entrega.cep);
+
+    if (!cep || cep.length !== 8 || cep === ultimoCepEntregaBuscado) {
+      return;
+    }
+
+    setBuscandoCepEntrega(true);
     setErroFrete("");
 
-    if (!checked) {
-      setUsarEnderecoCliente(false);
-      setFreteSelecionadoId("");
-      setOpcoesFrete([]);
+    try {
+      const response = await fetch(`/api/loja/cep?cep=${cep}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.endereco) {
+        setErroFrete(data.error || "CEP nao encontrado.");
+        setUltimoCepEntregaBuscado(cep);
+        return;
+      }
+
+      setEntrega((atual) => ({
+        ...atual,
+        cep: data.endereco.cep || cep,
+        rua: data.endereco.rua || atual.rua,
+        bairro: data.endereco.bairro || atual.bairro,
+        cidade: data.endereco.cidade || atual.cidade,
+        estado: data.endereco.estado || atual.estado,
+      }));
+      setUltimoCepEntregaBuscado(cep);
+    } catch {
+      setErroFrete("Nao foi possivel buscar o CEP automaticamente.");
+    } finally {
+      setBuscandoCepEntrega(false);
     }
-  }
+    },
+    [entrega.cep, ultimoCepEntregaBuscado],
+  );
+
+  useEffect(() => {
+    if (!modalEntregaAberto) {
+      return;
+    }
+
+    if (
+      modalidadeEntrega !== "ENTREGA_LOCAL" &&
+      modalidadeEntrega !== "CIDADE_PROXIMA" &&
+      modalidadeEntrega !== "MELHOR_ENVIO"
+    ) {
+      return;
+    }
+
+    const cep = normalizarCep(entrega.cep);
+
+    if (cep.length !== 8 || cep === ultimoCepEntregaBuscado) {
+      return;
+    }
+
+    void buscarEnderecoEntregaPorCep(cep);
+  }, [
+    entrega.cep,
+    buscarEnderecoEntregaPorCep,
+    modalidadeEntrega,
+    modalEntregaAberto,
+    ultimoCepEntregaBuscado,
+  ]);
 
   function getPayloadEnvio() {
-    if (!enviarEntrega) {
+    if (!enviarEntrega || modalidadeEntrega === "SEM_ENTREGA") {
       return null;
     }
 
@@ -863,10 +981,14 @@ export default function NovaVendaV2Client({
       estado: entrega.estado,
       freteOpcaoId:
         modalidadeEntrega === "MELHOR_ENVIO" ? freteSelecionadoId : null,
+      kmIda: kmIdaEntrega,
       kmEstimado: entregaManual.kmEstimado,
+      kmIdaVolta: kmIdaVoltaEntrega,
       consumoKmPorLitro: entregaManual.consumoKmPorLitro,
       precoCombustivel: entregaManual.precoCombustivel,
-      cobrarIdaVolta: entregaManual.cobrarIdaVolta,
+      litrosEstimados: litrosEstimadosEntrega,
+      custoCombustivel: custoCombustivelEntrega,
+      cobrarIdaVolta: true,
       taxaFixa: entregaManual.taxaFixa,
       valorMinimo: entregaManual.valorMinimo,
       valorSugerido: entregaManualSugerida,
@@ -1922,17 +2044,17 @@ export default function NovaVendaV2Client({
                 </p>
 
                 <div className="mt-5 space-y-4">
-                  <div className="grid gap-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <button
                       type="button"
                       onClick={() => setTipoFinalizacao("PAGO_AGORA")}
-                      className={`rounded-2xl border p-4 text-left transition ${
+                      className={`h-full min-h-[112px] rounded-2xl border p-4 text-left transition ${
                         tipoFinalizacao === "PAGO_AGORA"
                           ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
                           : "border-slate-200 bg-white hover:bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex h-full items-start gap-3">
                         <span
                           className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
                             tipoFinalizacao === "PAGO_AGORA"
@@ -1944,7 +2066,7 @@ export default function NovaVendaV2Client({
                             <span className="h-2.5 w-2.5 rounded-full bg-slate-900" />
                           ) : null}
                         </span>
-                        <span>
+                        <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold text-slate-950">
                             Já pagou
                           </span>
@@ -1960,13 +2082,13 @@ export default function NovaVendaV2Client({
                     <button
                       type="button"
                       onClick={() => setTipoFinalizacao("PAGAR_ONLINE")}
-                      className={`rounded-2xl border p-4 text-left transition ${
+                      className={`h-full min-h-[112px] rounded-2xl border p-4 text-left transition ${
                         tipoFinalizacao === "PAGAR_ONLINE"
                           ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200"
                           : "border-slate-200 bg-white hover:bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex h-full items-start gap-3">
                         <span
                           className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
                             tipoFinalizacao === "PAGAR_ONLINE"
@@ -1978,7 +2100,7 @@ export default function NovaVendaV2Client({
                             <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
                           ) : null}
                         </span>
-                        <span>
+                        <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold text-slate-950">
                             Pagar agora
                           </span>
@@ -1990,31 +2112,113 @@ export default function NovaVendaV2Client({
                     </button>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={enviarEntrega}
-                        onChange={(event) =>
-                          alternarEnviarEntrega(event.target.checked)
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300"
-                      />
-
-                      <span className="min-w-0">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
                         <span className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                          <Truck className="h-4 w-4 text-slate-500" />
-                          Enviar para entrega
+                          <Truck className="h-4 w-4 shrink-0 text-slate-500" />
+                          Entrega
                         </span>
                         <span className="mt-1 block text-xs leading-5 text-slate-500">
-                          Com entrega, o pedido aparecerá na Central de Pedidos
-                          para geração de etiqueta quando aplicável.
+                          {entregaConfigurada
+                            ? labelModalidadeEntrega(modalidadeEntrega)
+                            : "Sem entrega vinculada ao pedido."}
                         </span>
-                      </span>
-                    </label>
+                      </div>
 
-                    {enviarEntrega && (
-                      <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setModalEntregaAberto(true)}
+                        className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Configurar
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-xs leading-5 text-slate-600">
+                      <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
+                        <span>Modalidade</span>
+                        <strong className="text-right font-semibold text-slate-900">
+                          {labelModalidadeEntrega(modalidadeEntrega)}
+                        </strong>
+                      </div>
+
+                      {entregaConfigurada ? (
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
+                          <span>Valor</span>
+                          <strong className="font-semibold text-slate-900">
+                            {modalidadeEntrega === "MELHOR_ENVIO" &&
+                            !freteSelecionado
+                              ? "Selecione"
+                              : moeda(valorFrete)}
+                          </strong>
+                        </div>
+                      ) : null}
+
+                      {entregaConfigurada && enderecoEntregaResumo ? (
+                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
+                          <span className="font-semibold text-slate-700">
+                            Endereço:
+                          </span>{" "}
+                          <span>{enderecoEntregaResumo}</span>
+                        </div>
+                      ) : null}
+
+                      {modalidadeEntrega === "MELHOR_ENVIO" &&
+                      !freteSelecionado ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+                          Calcule e selecione o frete no modal.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {modalEntregaAberto ? (
+                    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
+                      <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
+                        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                              Venda manual
+                            </p>
+                            <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                              Configurar entrega
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Defina retirada, entrega própria ou frete Melhor
+                              Envio sem ocupar a finalização da venda.
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setModalEntregaAberto(false)}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                            aria-label="Fechar configuração de entrega"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+
+                        <div className="space-y-4 px-4 py-5 sm:px-6">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            <div className="flex items-start gap-3">
+                              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
+                                <Truck className="h-4 w-4" />
+                              </span>
+
+                              <span className="min-w-0">
+                                <span className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                                  Entrega do pedido
+                                </span>
+                                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                  Use &quot;sem entrega&quot; quando o pedido não tiver
+                                  logística vinculada.
+                                </span>
+                              </span>
+                            </div>
+
+                            <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
                         <div className="grid gap-2">
                           {MODALIDADES_ENTREGA_MANUAL.map((modalidade) => {
                             const selecionada =
@@ -2044,10 +2248,7 @@ export default function NovaVendaV2Client({
                           })}
                         </div>
 
-                        {clienteSelecionado &&
-                          (clienteSelecionado.cep ||
-                            clienteSelecionado.rua ||
-                            clienteSelecionado.cidade) && (
+                        {mostrarEnderecoEntrega && clienteTemEndereco ? (
                             <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
                               <input
                                 type="checkbox"
@@ -2068,33 +2269,43 @@ export default function NovaVendaV2Client({
                                 </span>
                                 <span className="mt-1 block text-xs text-slate-500">
                                   {[
-                                    clienteSelecionado.rua,
-                                    clienteSelecionado.numero,
-                                    clienteSelecionado.bairro,
-                                    clienteSelecionado.cidade,
-                                    clienteSelecionado.estado,
+                                    clienteSelecionado?.rua,
+                                    clienteSelecionado?.numero,
+                                    clienteSelecionado?.bairro,
+                                    clienteSelecionado?.cidade,
+                                    clienteSelecionado?.estado,
                                   ]
                                     .filter(Boolean)
-                                    .join(", ") || clienteSelecionado.cep}
+                                    .join(", ") || clienteSelecionado?.cep}
                                 </span>
                               </span>
                             </label>
-                          )}
+                        ) : null}
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label>
-                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                              CEP destino
-                            </span>
-                            <input
-                              value={entrega.cep}
-                              onChange={(event) =>
-                                atualizarCampoEntrega("cep", event.target.value)
-                              }
-                              placeholder="00000-000"
-                              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
-                            />
-                          </label>
+                        {mostrarEnderecoEntrega ? (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label>
+                              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                CEP destino
+                              </span>
+                              <input
+                                value={entrega.cep}
+                                onChange={(event) =>
+                                  atualizarCampoEntrega(
+                                    "cep",
+                                    event.target.value,
+                                  )
+                                }
+                                onBlur={() => buscarEnderecoEntregaPorCep()}
+                                placeholder="00000-000"
+                                className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                              />
+                              {buscandoCepEntrega ? (
+                                <span className="mt-1 block text-xs text-slate-500">
+                                  Buscando CEP...
+                                </span>
+                              ) : null}
+                            </label>
 
                           <label>
                             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -2196,10 +2407,10 @@ export default function NovaVendaV2Client({
                               />
                             </label>
                           </div>
-                        </div>
+                          </div>
+                        ) : null}
 
-                        {(modalidadeEntrega === "ENTREGA_LOCAL" ||
-                          modalidadeEntrega === "CIDADE_PROXIMA") && (
+                        {mostrarCalculoEntrega && (
                           <div className="rounded-2xl border border-slate-200 bg-white p-3">
                             <p className="text-sm font-semibold text-slate-950">
                               Calculo da entrega propria
@@ -2207,7 +2418,7 @@ export default function NovaVendaV2Client({
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <label>
                                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Km estimado
+                                  Distância de ida (km)
                                 </span>
                                 <input
                                   value={entregaManual.kmEstimado}
@@ -2221,6 +2432,18 @@ export default function NovaVendaV2Client({
                                   className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
                                 />
                               </label>
+
+                              <div className="rounded-2xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+                                <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Ida e volta
+                                </span>
+                                <strong className="mt-1 block text-sm text-slate-950">
+                                  {kmIdaVoltaEntrega.toLocaleString("pt-BR", {
+                                    maximumFractionDigits: 2,
+                                  })}{" "}
+                                  km
+                                </strong>
+                              </div>
 
                               <label>
                                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -2304,26 +2527,35 @@ export default function NovaVendaV2Client({
                               </label>
                             </div>
 
-                            <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
-                              <input
-                                type="checkbox"
-                                checked={entregaManual.cobrarIdaVolta}
-                                onChange={(event) =>
-                                  atualizarCampoEntregaManual(
-                                    "cobrarIdaVolta",
-                                    event.target.checked,
-                                  )
-                                }
-                                className="mt-1 h-4 w-4 rounded border-slate-300"
-                              />
-                              <span>Cobrar ida e volta no calculo</span>
-                            </label>
-
-                            <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
-                              Sugerido:{" "}
-                              <strong>{moeda(entregaManualSugerida)}</strong>{" "}
-                              | usado no pedido:{" "}
-                              <strong>{moeda(valorEntregaManual)}</strong>
+                            <div className="mt-3 grid gap-2 rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-700 ring-1 ring-slate-200 sm:grid-cols-3">
+                              <div>
+                                <span className="block text-xs text-slate-500">
+                                  Litros estimados
+                                </span>
+                                <strong className="text-slate-950">
+                                  {litrosEstimadosEntrega.toLocaleString(
+                                    "pt-BR",
+                                    { maximumFractionDigits: 2 },
+                                  )}{" "}
+                                  L
+                                </strong>
+                              </div>
+                              <div>
+                                <span className="block text-xs text-slate-500">
+                                  Combustível
+                                </span>
+                                <strong className="text-slate-950">
+                                  {moeda(custoCombustivelEntrega)}
+                                </strong>
+                              </div>
+                              <div>
+                                <span className="block text-xs text-slate-500">
+                                  Usado no pedido
+                                </span>
+                                <strong className="text-slate-950">
+                                  {moeda(valorEntregaManual)}
+                                </strong>
+                              </div>
                             </div>
 
                             <label className="mt-3 block">
@@ -2344,6 +2576,26 @@ export default function NovaVendaV2Client({
                             </label>
                           </div>
                         )}
+
+                        {modalidadeEntrega === "RETIRADA_COMBINADA" ? (
+                          <label className="block rounded-2xl border border-slate-200 bg-white p-3">
+                            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Observação para retirada
+                            </span>
+                            <textarea
+                              value={entregaManual.observacaoManual}
+                              onChange={(event) =>
+                                atualizarCampoEntregaManual(
+                                  "observacaoManual",
+                                  event.target.value,
+                                )
+                              }
+                              rows={3}
+                              placeholder="Combine local, data ou orientação para retirada."
+                              className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500"
+                            />
+                          </label>
+                        ) : null}
 
                         {modalidadeEntrega === "MELHOR_ENVIO" && (
                           <button
@@ -2420,9 +2672,29 @@ export default function NovaVendaV2Client({
                             })}
                           </div>
                         )}
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 border-t border-slate-100 pt-5 sm:flex sm:flex-wrap sm:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setModalEntregaAberto(false)}
+                              className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setModalEntregaAberto(false)}
+                              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+                            >
+                              Concluir
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">

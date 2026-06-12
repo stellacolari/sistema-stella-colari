@@ -29,10 +29,14 @@ export type EnvioPedidoManualOnlinePayload = {
   cidade?: string | null;
   estado?: string | null;
   freteOpcaoId?: string | null;
+  kmIda?: number | string | null;
   kmEstimado?: number | string | null;
+  kmIdaVolta?: number | string | null;
   consumoKmPorLitro?: number | string | null;
   precoCombustivel?: number | string | null;
   cobrarIdaVolta?: boolean | null;
+  litrosEstimados?: number | string | null;
+  custoCombustivel?: number | string | null;
   taxaFixa?: number | string | null;
   valorMinimo?: number | string | null;
   valorSugerido?: number | string | null;
@@ -288,17 +292,15 @@ function montarEntregaManual(
   modalidade: ModalidadeEntregaManual,
   envio: EnvioPedidoManualOnlinePayload,
 ) {
-  const kmEstimado = numeroNaoNegativo(envio.kmEstimado);
+  const kmIda = numeroNaoNegativo(envio.kmIda ?? envio.kmEstimado);
+  const kmIdaVolta = kmIda * 2;
   const consumoKmPorLitro = numeroNaoNegativo(envio.consumoKmPorLitro, 16);
   const precoCombustivel = numeroNaoNegativo(envio.precoCombustivel);
-  const cobrarIdaVolta = envio.cobrarIdaVolta !== false;
   const taxaFixa = numeroNaoNegativo(envio.taxaFixa);
   const valorMinimo = numeroNaoNegativo(envio.valorMinimo);
-  const distanciaCobrada = kmEstimado * (cobrarIdaVolta ? 2 : 1);
-  const custoCombustivel =
-    consumoKmPorLitro > 0
-      ? (distanciaCobrada / consumoKmPorLitro) * precoCombustivel
-      : 0;
+  const litrosEstimados =
+    consumoKmPorLitro > 0 ? kmIdaVolta / consumoKmPorLitro : 0;
+  const custoCombustivel = litrosEstimados * precoCombustivel;
   const valorCalculado = custoCombustivel + taxaFixa;
   const valorSugerido = Math.max(
     numeroNaoNegativo(envio.valorSugerido, valorCalculado),
@@ -312,13 +314,18 @@ function montarEntregaManual(
 
   return {
     modalidade,
-    kmEstimado,
+    kmIda,
+    kmEstimado: kmIda,
+    kmIdaVolta,
     consumoKmPorLitro,
     precoCombustivel,
-    cobrarIdaVolta,
+    cobrarIdaVolta: true,
+    litrosEstimados,
+    custoCombustivel,
     taxaFixa,
     valorMinimo,
     valorSugerido,
+    valorFinalCalculado: valorSugerido,
     valorFinal,
     observacaoManual: texto(envio.observacaoManual) || null,
     endereco: {

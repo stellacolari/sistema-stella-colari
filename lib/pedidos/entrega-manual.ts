@@ -2,8 +2,13 @@ export type PedidoEntregaManual = {
   modalidade: string;
   label: string;
   valor: number;
+  kmIda: number | null;
   kmEstimado: number | null;
+  kmIdaVolta: number | null;
+  litrosEstimados: number | null;
+  custoCombustivel: number | null;
   valorSugerido: number | null;
+  valorFinalCalculado: number | null;
   observacao: string | null;
   endereco: string | null;
 };
@@ -90,8 +95,13 @@ function normalizarEntregaManual(
     modalidade,
     label: labelModalidadeEntregaManual(modalidade),
     valor: numero(record.valorFinal ?? record.valor ?? record.valorManual) || 0,
-    kmEstimado: numero(record.kmEstimado),
+    kmIda: numero(record.kmIda ?? record.kmEstimado),
+    kmEstimado: numero(record.kmEstimado ?? record.kmIda),
+    kmIdaVolta: numero(record.kmIdaVolta),
+    litrosEstimados: numero(record.litrosEstimados),
+    custoCombustivel: numero(record.custoCombustivel),
     valorSugerido: numero(record.valorSugerido),
+    valorFinalCalculado: numero(record.valorFinalCalculado),
     observacao: texto(record.observacao ?? record.observacaoManual),
     endereco: montarEndereco(record),
   };
