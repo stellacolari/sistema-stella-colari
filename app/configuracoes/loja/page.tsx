@@ -18,7 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
 
 export const metadata: Metadata = {
-  title: "Loja Online | Sistema Stella",
+  title: "Loja Online | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

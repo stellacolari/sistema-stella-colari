@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Quem somos | Loja Stella",
+  title: "Quem somos | Stella Colari",
+  description: "Conheça a loja online Stella Colari.",
 };
 
 export default function QuemSomosPage() {
@@ -12,7 +13,7 @@ export default function QuemSomosPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Sistema Stella
+              Stella Colari
             </p>
 
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
@@ -47,8 +48,8 @@ export default function QuemSomosPage() {
             </p>
 
             <p>
-              A proposta é conectar o catálogo público ao estoque real do
-              Sistema Stella, permitindo uma gestão mais integrada entre
+              A proposta é conectar o catálogo público à operação da
+              Stella Colari, permitindo uma gestão mais integrada entre
               produtos, vendas e atendimento ao cliente.
             </p>
           </div>

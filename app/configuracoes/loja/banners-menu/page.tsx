@@ -4,7 +4,7 @@ import ConfiguracoesLojaClient from "@/components/configuracoes/loja/Configuraco
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
 
 export const metadata: Metadata = {
-  title: "Banners e menu | Sistema Stella",
+  title: "Banners e menu | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

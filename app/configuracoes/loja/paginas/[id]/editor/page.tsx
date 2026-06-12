@@ -11,7 +11,7 @@ import EditorVisualPaginaClient, {
 } from "@/components/configuracoes/loja/EditorVisualPaginaClient";
 
 export const metadata: Metadata = {
-  title: "Editor visual da página | Sistema Stella",
+  title: "Editor visual da página | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

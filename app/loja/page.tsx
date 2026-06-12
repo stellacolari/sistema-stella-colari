@@ -18,7 +18,9 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 
 export const metadata: Metadata = {
-  title: "Loja | Sistema Stella",
+  title: "Stella Colari | Loja Online",
+  description:
+    "Joias e peças selecionadas da Stella Colari para comprar online com praticidade.",
 };
 
 export const dynamic = "force-dynamic";

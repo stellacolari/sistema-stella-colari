@@ -317,7 +317,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
               </p>
 
               <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">
-                Visão geral do Sistema Stella
+                Visão geral da Plataforma Stella Colari
               </h1>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">

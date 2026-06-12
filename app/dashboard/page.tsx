@@ -9,7 +9,7 @@ import DashboardClient, {
 } from "@/components/dashboard/DashboardClient";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Sistema Stella",
+  title: "Dashboard | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

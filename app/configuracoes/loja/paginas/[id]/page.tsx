@@ -8,7 +8,7 @@ import PaginaBlocosClient, {
 } from "@/components/configuracoes/loja/PaginaBlocosClient";
 
 export const metadata: Metadata = {
-  title: "Blocos da página | Sistema Stella",
+  title: "Blocos da página | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

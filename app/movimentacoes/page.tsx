@@ -6,7 +6,7 @@ import MovimentacoesClient, {
 } from "@/components/movimentacoes/MovimentacoesClient";
 
 export const metadata: Metadata = {
-  title: "Movimentações | Sistema Stella",
+  title: "Movimentações | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

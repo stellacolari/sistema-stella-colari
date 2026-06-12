@@ -7,7 +7,7 @@ import FormulariosRespostasClient, {
 } from "@/components/configuracoes/loja/FormulariosRespostasClient";
 
 export const metadata: Metadata = {
-  title: "Respostas de formulários | Sistema Stella",
+  title: "Respostas de formulários | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

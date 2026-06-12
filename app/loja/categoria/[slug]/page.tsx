@@ -175,7 +175,7 @@ export async function generateMetadata({
 
   if (!resultado) {
     return {
-      title: `${montarTituloSlug(slug)} | Loja Stella`,
+      title: `${montarTituloSlug(slug)} | Stella Colari`,
     };
   }
 
@@ -197,7 +197,7 @@ export async function generateMetadata({
     return {
       title: `${
         paginaBuilder.seoTitle || paginaBuilder.titulo || resultado.categoria.nome
-      } | Loja Stella`,
+      } | Stella Colari`,
       description:
         paginaBuilder.seoDescription ||
         resultado.categoria.descricao ||
@@ -206,7 +206,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${resultado.categoria.nome} | Loja Stella`,
+    title: `${resultado.categoria.nome} | Stella Colari`,
     description: resultado.categoria.descricao || undefined,
   };
 }

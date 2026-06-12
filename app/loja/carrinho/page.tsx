@@ -4,7 +4,7 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 
 export const metadata: Metadata = {
-  title: "Carrinho | Loja Stella",
+  title: "Carrinho | Stella Colari",
 };
 
 export default async function CarrinhoPage() {

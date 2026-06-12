@@ -20,7 +20,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Prévia da página | Loja Stella",
+  title: "Prévia da página | Stella Colari",
   robots: {
     index: false,
     follow: false,

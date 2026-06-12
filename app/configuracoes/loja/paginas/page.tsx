@@ -8,7 +8,7 @@ import PaginasLojaClient, {
 } from "@/components/configuracoes/loja/PaginasLojaClient";
 
 export const metadata: Metadata = {
-  title: "Páginas da loja | Sistema Stella",
+  title: "Páginas da loja | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

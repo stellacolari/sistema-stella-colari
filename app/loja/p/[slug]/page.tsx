@@ -40,8 +40,8 @@ export async function generateMetadata({
 
   return {
     title: pagina
-      ? `${pagina.seoTitle || pagina.titulo} | Loja Stella`
-      : "Loja Stella",
+      ? `${pagina.seoTitle || pagina.titulo} | Stella Colari`
+      : "Stella Colari | Loja Online",
     description: pagina?.seoDescription || undefined,
   };
 }

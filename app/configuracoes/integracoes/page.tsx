@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Integrações | Sistema Stella",
+  title: "Integrações | Plataforma Stella Colari",
 };
 
 const integracoes = [

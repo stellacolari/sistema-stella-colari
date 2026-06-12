@@ -8,7 +8,7 @@ import ProdutosCanaisClient, {
 } from "@/components/configuracoes/integracoes/ProdutosCanaisClient";
 
 export const metadata: Metadata = {
-  title: "Produtos por canal | Sistema Stella",
+  title: "Produtos por canal | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

@@ -10,7 +10,7 @@ import LixeiraClient, {
 } from "@/components/lixeira/LixeiraClient";
 
 export const metadata: Metadata = {
-  title: "Lixeira | Sistema Stella",
+  title: "Lixeira | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

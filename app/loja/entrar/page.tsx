@@ -4,7 +4,7 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 
 export const metadata: Metadata = {
-  title: "Entrar | Loja Stella",
+  title: "Entrar | Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

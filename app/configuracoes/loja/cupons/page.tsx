@@ -6,7 +6,7 @@ import CuponsLojaClient, {
 } from "@/components/configuracoes/loja/CuponsLojaClient";
 
 export const metadata: Metadata = {
-  title: "Cupons | Sistema Stella",
+  title: "Cupons | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

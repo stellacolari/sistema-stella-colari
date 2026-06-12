@@ -3,7 +3,7 @@ import CategoriasLojaClient from "@/components/configuracoes/loja/CategoriasLoja
 import { prisma } from "@/lib/prisma";
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
 export const metadata: Metadata = {
-  title: "Categorias da Loja | Sistema Stella",
+  title: "Categorias da Loja | Plataforma Stella Colari",
 };
 
 export default async function CategoriasLojaPage() {

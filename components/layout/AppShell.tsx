@@ -237,7 +237,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:flex-col">
         <div className="border-b border-slate-200 px-6 py-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Sistema Stella
+            Plataforma Stella Colari
           </p>
 
           <h1 className="mt-2 text-2xl font-bold tracking-tight">Gestão</h1>
@@ -256,7 +256,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </p>
 
             <p className="mt-1 text-sm font-medium text-slate-800">
-              Sistema interno
+              Plataforma interna
             </p>
 
             <LogoutButton />
@@ -277,7 +277,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Sistema Stella
+                  Plataforma Stella Colari
                 </p>
 
                 <p className="mt-1 text-lg font-bold tracking-tight text-slate-950">
@@ -328,7 +328,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 </p>
 
                 <h2 className="truncate text-base font-semibold tracking-tight text-slate-950 sm:mt-1 sm:text-xl">
-                  <span className="sm:hidden">Sistema Stella</span>
+                  <span className="sm:hidden">Plataforma Stella Colari</span>
                   <span className="hidden sm:inline">{pageInfo.title}</span>
                 </h2>
 
@@ -351,7 +351,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               )}
 
               <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 xl:block">
-                Sistema Stella
+                Plataforma Stella Colari
               </div>
             </div>
           </div>

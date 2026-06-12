@@ -545,7 +545,7 @@ function RodapeLoja({ menus }: { menus: ProdutoLojaMenuItem[] }) {
           <LogoLoja />
 
           <p className="mt-4 max-w-md text-sm font-light leading-6 text-slate-500">
-            Loja Stella. Produtos selecionados para compra online.
+            Stella Colari. Produtos selecionados para compra online.
           </p>
         </div>
 

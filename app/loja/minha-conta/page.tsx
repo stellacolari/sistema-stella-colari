@@ -9,7 +9,7 @@ import MinhaContaClient, {
 } from "@/components/loja/MinhaContaClient";
 
 export const metadata: Metadata = {
-  title: "Minha conta | Loja Stella",
+  title: "Minha conta | Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

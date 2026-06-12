@@ -6,7 +6,7 @@ import CashbackConfiguracaoClient, {
 } from "@/components/configuracoes/loja/CashbackConfiguracaoClient";
 
 export const metadata: Metadata = {
-  title: "Cashback | Sistema Stella",
+  title: "Cashback | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

@@ -12,8 +12,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema Stella",
-  description: "Controle de compras, vendas, estoque e clientes",
+  title: "Plataforma Stella Colari",
+  description: "Gestão de compras, vendas, estoque, clientes e loja online.",
 };
 
 export default function RootLayout({

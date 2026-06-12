@@ -15,7 +15,7 @@ import {
 } from "@/lib/loja/produto-detalhe";
 
 export const metadata: Metadata = {
-  title: "Produto | Loja Stella",
+  title: "Produto | Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

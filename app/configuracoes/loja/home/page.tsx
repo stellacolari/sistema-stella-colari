@@ -10,7 +10,7 @@ import HomeLojaClient, {
 } from "@/components/configuracoes/loja/HomeLojaClient";
 
 export const metadata: Metadata = {
-  title: "Home da loja | Sistema Stella",
+  title: "Home da loja | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

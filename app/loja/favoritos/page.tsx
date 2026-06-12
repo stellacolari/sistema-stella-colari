@@ -5,7 +5,7 @@ import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import FavoritosClient from "@/components/loja/FavoritosClient";
 
 export const metadata: Metadata = {
-  title: "Favoritos | Loja Stella",
+  title: "Favoritos | Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

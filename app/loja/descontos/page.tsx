@@ -9,7 +9,7 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 
 export const metadata: Metadata = {
-  title: "Descontos | Loja Stella",
+  title: "Descontos | Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

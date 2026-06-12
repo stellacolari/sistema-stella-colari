@@ -258,7 +258,7 @@ export default function FormulariosRespostasClient({
     const mensagem = [
       `Olá, ${resposta.nome || "tudo bem"}!`,
       "",
-      "Recebemos seu contato pela Loja Stella e estamos retornando por aqui.",
+      "Recebemos seu contato pela Stella Colari e estamos retornando por aqui.",
     ].join("\n");
 
     const url = `https://wa.me/${telefone}?text=${encodeURIComponent(
