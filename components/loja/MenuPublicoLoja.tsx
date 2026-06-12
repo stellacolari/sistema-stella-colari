@@ -118,7 +118,7 @@ function LogoLoja() {
   return (
     <Link
       href="/loja"
-      className="flex min-w-0 shrink items-center justify-center"
+      className="flex min-w-0 shrink-0 items-center justify-center"
       aria-label="Ir para a loja"
     >
       {!logoErro && (
@@ -126,12 +126,12 @@ function LogoLoja() {
           src={LOGO_URL}
           alt="Stella"
           onError={() => setLogoErro(true)}
-          className="block h-8 max-h-8 w-auto max-w-[132px] object-contain sm:h-9 sm:max-h-9 sm:max-w-[160px]"
+          className="block h-7 max-h-7 w-auto max-w-[116px] object-contain sm:h-8 sm:max-h-8 sm:max-w-[150px] lg:h-9 lg:max-h-9 lg:max-w-[170px]"
         />
       )}
 
       {logoErro && (
-        <div className="flex h-8 max-w-full items-center truncate brand-bg px-3 text-xs font-semibold tracking-[0.18em] text-white sm:h-9 sm:px-4 sm:text-sm">
+        <div className="flex h-7 max-w-full items-center truncate brand-bg px-3 text-xs font-semibold tracking-[0.16em] text-white sm:h-8 sm:px-4 sm:text-sm lg:h-9">
           STELLA
         </div>
       )}
@@ -416,34 +416,34 @@ export default function MenuPublicoLoja({
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-        <div className="brand-bg px-4 py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-white sm:text-[13px] sm:tracking-[0.28em]">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
+        <div className="hidden brand-bg px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-white md:block lg:text-[13px] lg:tracking-[0.28em]">
           10% de cashback na primeira compra
         </div>
 
-        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[72px_minmax(0,1fr)_72px] items-center px-4 sm:h-[72px] sm:grid-cols-[160px_minmax(0,1fr)_160px] sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-8">
+        <div className="mx-auto grid h-14 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-16 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:px-5 lg:h-[68px] lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:px-8">
           <div className="flex min-w-0 items-center justify-start">
             <button
               type="button"
               onClick={abrirMenu}
               aria-label="Abrir menu"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-start bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-auto sm:gap-2"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-auto sm:justify-start sm:gap-2"
             >
               <Menu className="h-5 w-5" />
-              <span className="hidden text-xs font-light uppercase tracking-[0.14em] sm:inline">
+              <span className="hidden text-xs font-light uppercase tracking-[0.14em] lg:inline">
                 Menu
               </span>
             </button>
           </div>
 
-          <div className="flex min-w-0 items-center justify-center overflow-hidden">
+          <div className="flex min-w-0 items-center justify-center overflow-hidden px-1">
             <LogoLoja />
           </div>
 
-          <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-0.5 sm:gap-1 lg:gap-2">
             <Link
               href={CONTATO_URL}
-              className="hidden h-11 items-center justify-center gap-2 bg-white text-xs font-light text-slate-900 transition hover:text-[var(--brand-blue)] md:inline-flex"
+              className="hidden h-10 shrink-0 items-center justify-center gap-2 bg-white px-2 text-xs font-light text-slate-900 transition hover:text-[var(--brand-blue)] lg:inline-flex"
             >
               Fale Conosco
             </Link>
@@ -453,7 +453,7 @@ export default function MenuPublicoLoja({
                 type="button"
                 onClick={buscaAberta ? fecharBusca : abrirBusca}
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
-                className="inline-flex h-11 w-9 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+                className="hidden h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] md:inline-flex"
               >
                 {buscaAberta ? (
                   <X className="h-5 w-5" />
@@ -467,7 +467,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/favoritos"
                 aria-label="Favoritos"
-                className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+                className="inline-flex h-10 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
               >
                 <div className="relative">
                   <Heart
@@ -488,8 +488,8 @@ export default function MenuPublicoLoja({
             )}
 
             {mostrarPerfil && (
-              <div className="hidden md:block">
-                <PerfilClienteLink className="h-10 w-10" />
+              <div className="hidden lg:block">
+                <PerfilClienteLink className="h-10 w-10 shrink-0" />
               </div>
             )}
 
@@ -497,7 +497,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/carrinho"
                 aria-label="Carrinho"
-                className="inline-flex h-11 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-11"
+                className="inline-flex h-10 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
               >
                 <ShoppingBag className="h-5 w-5" />
               </Link>
