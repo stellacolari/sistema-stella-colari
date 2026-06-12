@@ -281,6 +281,7 @@ export default function MenuPublicoLoja({
   mostrarBusca = true,
   mostrarPerfil = true,
   mostrarCarrinho = true,
+  mostrarFavoritos = true,
 }: MenuPublicoLojaProps) {
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
