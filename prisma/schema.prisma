@@ -257,36 +257,37 @@ model EmbalagemClasse {
 }
 
 model EmbalagemModelo {
-  id                       String                           @id @default(cuid())
+  id                       String                              @id @default(cuid())
   tipo                     String
   nomeInterno              String
   nomePublico              String?
-  slug                     String                           @unique
+  slug                     String                              @unique
   descricaoPublica         String?
   imagemUrl                String?
-  ativo                    Boolean                          @default(true)
-  exibirNaLoja             Boolean                          @default(false)
-  prioridade               Int                              @default(0)
-  precoCliente             Float                            @default(0)
-  substituiEmbalagemPadrao Boolean                          @default(false)
-  permiteMensagem          Boolean                          @default(false)
+  ativo                    Boolean                             @default(true)
+  exibirNaLoja             Boolean                             @default(false)
+  prioridade               Int                                 @default(0)
+  precoCliente             Float                               @default(0)
+  substituiEmbalagemPadrao Boolean                             @default(false)
+  permiteMensagem          Boolean                             @default(false)
   mensagemLimiteCaracteres Int?
   mensagemPlaceholder      String?
-  capacidadeUnidades       Float                            @default(1)
+  capacidadeUnidades       Float                               @default(1)
   capacidadeCaixasInternas Int?
-  permiteMisturarClasses   Boolean                          @default(true)
-  pesoGramas               Float                            @default(0)
+  permiteMisturarClasses   Boolean                             @default(true)
+  pesoGramas               Float                               @default(0)
   alturaCm                 Float?
   larguraCm                Float?
   comprimentoCm            Float?
   custoEstimadoManual      Float?
-  criadoEm                 DateTime                         @default(now())
-  atualizadoEm             DateTime                         @updatedAt
+  criadoEm                 DateTime                            @default(now())
+  atualizadoEm             DateTime                            @updatedAt
   componentes              EmbalagemModeloComponente[]
   compatibilidades         EmbalagemModeloCompatibilidade[]
-  produtosPreferenciais    Produto[]                        @relation("ProdutoEmbalagemPreferencial")
-  produtosPresentePadrao   Produto[]                        @relation("ProdutoEmbalagemPresentePadrao")
+  produtosPreferenciais    Produto[]                           @relation("ProdutoEmbalagemPreferencial")
+  produtosPresentePadrao   Produto[]                           @relation("ProdutoEmbalagemPresentePadrao")
   pedidosPlanoItens        PedidoEmbalagemPlanoItem[]
+  pedidosItensPresente     PedidoOnlineItemEmbalagemPresente[]
 
   @@index([tipo])
   @@index([ativo])
@@ -617,10 +618,10 @@ model LojaTextoInstitucional {
 }
 
 model PedidoOnline {
-  id                         String                      @id @default(cuid())
-  codigo                     String                      @unique
+  id                         String                              @id @default(cuid())
+  codigo                     String                              @unique
   clienteId                  String?
-  clienteCriadoCheckout      Boolean                     @default(false)
+  clienteCriadoCheckout      Boolean                             @default(false)
   nomeCliente                String
   telefoneCliente            String
   emailCliente               String?
@@ -632,41 +633,42 @@ model PedidoOnline {
   bairro                     String?
   cidade                     String?
   estado                     String?
-  subtotal                   Float                       @default(0)
-  frete                      Float                       @default(0)
-  total                      Float                       @default(0)
-  cashbackBaseValor          Float                       @default(0)
-  cashbackPrevistoValor      Float                       @default(0)
-  cashbackCreditadoValor     Float                       @default(0)
+  subtotal                   Float                               @default(0)
+  frete                      Float                               @default(0)
+  total                      Float                               @default(0)
+  cashbackBaseValor          Float                               @default(0)
+  cashbackPrevistoValor      Float                               @default(0)
+  cashbackCreditadoValor     Float                               @default(0)
   cashbackCreditadoEm        DateTime?
-  cashbackStatus             String                      @default("NAO_APLICAVEL")
-  status                     String                      @default("AGUARDANDO_PAGAMENTO")
+  cashbackStatus             String                              @default("NAO_APLICAVEL")
+  status                     String                              @default("AGUARDANDO_PAGAMENTO")
   observacoes                String?
-  criadoEm                   DateTime                    @default(now())
-  atualizadoEm               DateTime                    @updatedAt
+  criadoEm                   DateTime                            @default(now())
+  atualizadoEm               DateTime                            @updatedAt
   gatewayPagamento           String?
   gatewayPagamentoId         String?
   gatewayPedidoId            String?
   metodoPagamento            String?
   pagamentoObservacao        String?
   pagoEm                     DateTime?
-  statusPagamento            String                      @default("AGUARDANDO_PAGAMENTO")
-  valorPago                  Float                       @default(0)
+  statusPagamento            String                              @default("AGUARDANDO_PAGAMENTO")
+  valorPago                  Float                               @default(0)
   codigoPedidoExterno        String?
   dadosOriginaisJson         Json?
-  origemCanal                String                      @default("LOJA_STELLA")
+  origemCanal                String                              @default("LOJA_STELLA")
   statusExterno              String?
   substatusExterno           String?
   cashbackBloqueadoMotivo    String?
-  cashbackPercentualAplicado Float                       @default(0)
+  cashbackPercentualAplicado Float                               @default(0)
   cupomCodigo                String?
-  cupomDescontoValor         Float                       @default(0)
+  cupomDescontoValor         Float                               @default(0)
   cupomId                    String?
-  cashbackUsadoValor         Float                       @default(0)
+  cashbackUsadoValor         Float                               @default(0)
   envio                      PedidoEnvio?
-  cliente                    Cliente?                    @relation(fields: [clienteId], references: [id])
-  cupom                      CupomLoja?                  @relation(fields: [cupomId], references: [id])
+  cliente                    Cliente?                            @relation(fields: [clienteId], references: [id])
+  cupom                      CupomLoja?                          @relation(fields: [cupomId], references: [id])
   embalagemPlano             PedidoEmbalagemPlano?
+  embalagensPresente         PedidoOnlineItemEmbalagemPresente[]
   itens                      PedidoOnlineItem[]
   adicionais                 PedidoOnlineItemAdicional[]
   statusHistorico            PedidoStatusHistorico[]
@@ -687,7 +689,7 @@ model PedidoOnline {
 }
 
 model PedidoOnlineItem {
-  id                  String                      @id @default(cuid())
+  id                  String                             @id @default(cuid())
   pedidoOnlineId      String
   produtoId           String?
   codigoInterno       String
@@ -699,17 +701,40 @@ model PedidoOnlineItem {
   precoUnitario       Float
   precoOriginal       Float?
   descontoPercentual  Float?
-  geraCashback        Boolean                     @default(false)
-  cashbackBaseValor   Float                       @default(0)
+  geraCashback        Boolean                            @default(false)
+  cashbackBaseValor   Float                              @default(0)
   total               Float
-  criadoEm            DateTime                    @default(now())
-  pedidoOnline        PedidoOnline                @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  criadoEm            DateTime                           @default(now())
+  pedidoOnline        PedidoOnline                       @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  embalagemPresente   PedidoOnlineItemEmbalagemPresente?
   embalagemPlanoItens PedidoEmbalagemPlanoItem[]
   adicionais          PedidoOnlineItemAdicional[]
 
   @@index([pedidoOnlineId])
   @@index([produtoId])
   @@index([codigoInterno])
+}
+
+model PedidoOnlineItemEmbalagemPresente {
+  id                       String           @id @default(cuid())
+  pedidoOnlineId           String
+  pedidoOnlineItemId       String           @unique
+  embalagemModeloId        String?
+  nomeSnapshot             String
+  descricaoSnapshot        String?
+  imagemUrlSnapshot        String?
+  precoUnitario            Float            @default(0)
+  valorTotal               Float            @default(0)
+  quantidade               Int              @default(1)
+  mensagem                 String?
+  substituiEmbalagemPadrao Boolean          @default(false)
+  criadoEm                 DateTime         @default(now())
+  pedidoOnline             PedidoOnline     @relation(fields: [pedidoOnlineId], references: [id], onDelete: Cascade)
+  pedidoOnlineItem         PedidoOnlineItem @relation(fields: [pedidoOnlineItemId], references: [id], onDelete: Cascade)
+  embalagemModelo          EmbalagemModelo? @relation(fields: [embalagemModeloId], references: [id], onDelete: SetNull)
+
+  @@index([pedidoOnlineId])
+  @@index([embalagemModeloId])
 }
 
 model PedidoEmbalagemPlano {

@@ -108,6 +108,17 @@ export default async function PedidoDetalhePage({
               },
             },
           },
+          embalagemPresente: {
+            select: {
+              pedidoOnlineItemId: true,
+              nomeSnapshot: true,
+              imagemUrlSnapshot: true,
+              descricaoSnapshot: true,
+              precoUnitario: true,
+              valorTotal: true,
+              mensagem: true,
+            },
+          },
         },
       },
       envio: true,
@@ -125,6 +136,9 @@ export default async function PedidoDetalhePage({
 
   const embalagensPresentePorItem = mapearEmbalagensPresentePorItem(
     pedidoRaw.dadosOriginaisJson,
+    pedidoRaw.itens.flatMap((item) =>
+      item.embalagemPresente ? [item.embalagemPresente] : [],
+    ),
   );
 
   const pedido: PedidoDetalhe = {

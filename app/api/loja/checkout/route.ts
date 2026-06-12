@@ -1579,6 +1579,23 @@ export async function POST(request: Request) {
           });
 
           if (embalagemPresente) {
+            await tx.pedidoOnlineItemEmbalagemPresente.create({
+              data: {
+                pedidoOnlineId: pedido.id,
+                pedidoOnlineItemId: pedidoItem.id,
+                embalagemModeloId: embalagemPresente.id,
+                nomeSnapshot: embalagemPresente.nome,
+                descricaoSnapshot: embalagemPresente.descricao,
+                imagemUrlSnapshot: embalagemPresente.imagemUrl,
+                precoUnitario: valorEmbalagemPresenteUnitario,
+                valorTotal: valorEmbalagemPresenteTotal,
+                quantidade,
+                mensagem: embalagemPresente.mensagem,
+                substituiEmbalagemPadrao:
+                  embalagemPresente.substituiEmbalagemPadrao,
+              },
+            });
+
             embalagensPresenteSnapshot.push({
               pedidoOnlineItemId: pedidoItem.id,
               produtoId: produto.id,

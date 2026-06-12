@@ -10,6 +10,16 @@ export type PedidoItemEmbalagemPresente = {
   mensagem: string | null;
 };
 
+export type PedidoItemEmbalagemPresenteEstruturada = {
+  pedidoOnlineItemId: string;
+  nomeSnapshot: string;
+  imagemUrlSnapshot: string | null;
+  descricaoSnapshot: string | null;
+  precoUnitario: number;
+  valorTotal: number;
+  mensagem: string | null;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -64,11 +74,33 @@ export function extrairEmbalagensPresentePedido(
 
 export function mapearEmbalagensPresentePorItem(
   dadosOriginaisJson: Prisma.JsonValue | null | undefined,
+  embalagensEstruturadas: PedidoItemEmbalagemPresenteEstruturada[] = [],
 ) {
-  return new Map(
+  const embalagensPorItem = new Map(
     extrairEmbalagensPresentePedido(dadosOriginaisJson).map((embalagem) => [
       embalagem.pedidoOnlineItemId,
       embalagem,
     ]),
   );
+
+  for (const embalagem of embalagensEstruturadas) {
+    const pedidoOnlineItemId = stringOrNull(embalagem.pedidoOnlineItemId);
+
+    if (!pedidoOnlineItemId) {
+      continue;
+    }
+
+    embalagensPorItem.set(pedidoOnlineItemId, {
+      pedidoOnlineItemId,
+      nome:
+        stringOrNull(embalagem.nomeSnapshot) || "Embalagem para presente",
+      imagemUrl: stringOrNull(embalagem.imagemUrlSnapshot),
+      descricao: stringOrNull(embalagem.descricaoSnapshot),
+      precoUnitario: numberOrZero(embalagem.precoUnitario),
+      valorTotal: numberOrZero(embalagem.valorTotal),
+      mensagem: stringOrNull(embalagem.mensagem),
+    });
+  }
+
+  return embalagensPorItem;
 }

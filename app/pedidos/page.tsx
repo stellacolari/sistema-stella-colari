@@ -93,6 +93,17 @@ export default async function PedidosPage() {
           quantidade: true,
           precoUnitario: true,
           total: true,
+          embalagemPresente: {
+            select: {
+              pedidoOnlineItemId: true,
+              nomeSnapshot: true,
+              imagemUrlSnapshot: true,
+              descricaoSnapshot: true,
+              precoUnitario: true,
+              valorTotal: true,
+              mensagem: true,
+            },
+          },
           adicionais: {
             orderBy: {
               criadoEm: "asc",
@@ -189,6 +200,9 @@ export default async function PedidosPage() {
   const pedidos: PedidoOperacionalItem[] = pedidosRaw.map((pedido) => {
     const embalagensPresentePorItem = mapearEmbalagensPresentePorItem(
       pedido.dadosOriginaisJson,
+      pedido.itens.flatMap((item) =>
+        item.embalagemPresente ? [item.embalagemPresente] : [],
+      ),
     );
 
     const quantidadeItens = pedido.itens.reduce(
