@@ -20,6 +20,7 @@ export type ItemPedidoManualOnlinePayload = {
 
 export type EnvioPedidoManualOnlinePayload = {
   habilitado?: boolean;
+  modalidade?: string | null;
   cep?: string | null;
   rua?: string | null;
   numero?: string | null;
@@ -28,7 +29,23 @@ export type EnvioPedidoManualOnlinePayload = {
   cidade?: string | null;
   estado?: string | null;
   freteOpcaoId?: string | null;
+  kmEstimado?: number | string | null;
+  consumoKmPorLitro?: number | string | null;
+  precoCombustivel?: number | string | null;
+  cobrarIdaVolta?: boolean | null;
+  taxaFixa?: number | string | null;
+  valorMinimo?: number | string | null;
+  valorSugerido?: number | string | null;
+  valorManual?: number | string | null;
+  observacaoManual?: string | null;
 };
+
+type ModalidadeEntregaManual =
+  | "SEM_ENTREGA"
+  | "MELHOR_ENVIO"
+  | "RETIRADA_COMBINADA"
+  | "ENTREGA_LOCAL"
+  | "CIDADE_PROXIMA";
 
 function gerarCodigoPedido(numero: number) {
   return `PO${String(numero).padStart(6, "0")}`;
@@ -117,6 +134,33 @@ function normalizarUf(value: unknown) {
 
 function texto(value: unknown) {
   return String(value || "").trim();
+}
+
+function numeroNaoNegativo(value: unknown, fallback = 0) {
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  return Number.isFinite(numero) && numero >= 0 ? numero : fallback;
+}
+
+function normalizarModalidadeEntrega(
+  envio: EnvioPedidoManualOnlinePayload | null | undefined,
+): ModalidadeEntregaManual {
+  if (!envio?.habilitado) {
+    return "SEM_ENTREGA";
+  }
+
+  const modalidade = texto(envio.modalidade).toUpperCase();
+
+  if (
+    modalidade === "RETIRADA_COMBINADA" ||
+    modalidade === "ENTREGA_LOCAL" ||
+    modalidade === "CIDADE_PROXIMA"
+  ) {
+    return modalidade;
+  }
+
+  return "MELHOR_ENVIO";
 }
 
 function selecionarOpcaoFrete(opcoes: FreteOpcao[], freteOpcaoId: string) {
@@ -211,6 +255,92 @@ function validarEnderecoEntrega({
   };
 }
 
+function validarEnderecoEntregaManual(envio: EnvioPedidoManualOnlinePayload) {
+  const cep = normalizarCep(envio.cep);
+  const rua = texto(envio.rua);
+  const numero = texto(envio.numero);
+  const bairro = texto(envio.bairro);
+  const cidade = texto(envio.cidade);
+  const estado = normalizarUf(envio.estado);
+
+  if (cep && cep.length !== 8) {
+    throw new Error("Informe um CEP valido para entrega.");
+  }
+
+  if (!rua || !numero || !bairro || !cidade || estado.length !== 2) {
+    throw new Error(
+      "Preencha endereco, numero, bairro, cidade e UF para entrega.",
+    );
+  }
+
+  return {
+    cep: cep || null,
+    rua,
+    numero,
+    complemento: texto(envio.complemento),
+    bairro,
+    cidade,
+    estado,
+  };
+}
+
+function montarEntregaManual(
+  modalidade: ModalidadeEntregaManual,
+  envio: EnvioPedidoManualOnlinePayload,
+) {
+  const kmEstimado = numeroNaoNegativo(envio.kmEstimado);
+  const consumoKmPorLitro = numeroNaoNegativo(envio.consumoKmPorLitro, 16);
+  const precoCombustivel = numeroNaoNegativo(envio.precoCombustivel);
+  const cobrarIdaVolta = envio.cobrarIdaVolta !== false;
+  const taxaFixa = numeroNaoNegativo(envio.taxaFixa);
+  const valorMinimo = numeroNaoNegativo(envio.valorMinimo);
+  const distanciaCobrada = kmEstimado * (cobrarIdaVolta ? 2 : 1);
+  const custoCombustivel =
+    consumoKmPorLitro > 0
+      ? (distanciaCobrada / consumoKmPorLitro) * precoCombustivel
+      : 0;
+  const valorCalculado = custoCombustivel + taxaFixa;
+  const valorSugerido = Math.max(
+    numeroNaoNegativo(envio.valorSugerido, valorCalculado),
+    valorMinimo,
+  );
+  const valorManualRaw =
+    envio.valorManual === null || typeof envio.valorManual === "undefined"
+      ? null
+      : numeroNaoNegativo(envio.valorManual);
+  const valorFinal = valorManualRaw === null ? valorSugerido : valorManualRaw;
+
+  return {
+    modalidade,
+    kmEstimado,
+    consumoKmPorLitro,
+    precoCombustivel,
+    cobrarIdaVolta,
+    taxaFixa,
+    valorMinimo,
+    valorSugerido,
+    valorFinal,
+    observacaoManual: texto(envio.observacaoManual) || null,
+    endereco: {
+      cep: normalizarCep(envio.cep) || null,
+      rua: texto(envio.rua) || null,
+      numero: texto(envio.numero) || null,
+      complemento: texto(envio.complemento) || null,
+      bairro: texto(envio.bairro) || null,
+      cidade: texto(envio.cidade) || null,
+      estado: normalizarUf(envio.estado) || null,
+    },
+  };
+}
+
+function labelModalidadeEntrega(modalidade: ModalidadeEntregaManual) {
+  if (modalidade === "RETIRADA_COMBINADA") return "Retirada combinada";
+  if (modalidade === "ENTREGA_LOCAL") return "Entrega local propria";
+  if (modalidade === "CIDADE_PROXIMA") return "Cidade proxima";
+
+  return "Melhor Envio";
+}
+
 export async function criarPedidoManualOnline({
   clienteId,
   meioVenda,
@@ -226,8 +356,10 @@ export async function criarPedidoManualOnline({
   itens: ItemPedidoManualOnlinePayload[];
   envio?: EnvioPedidoManualOnlinePayload | null;
 }) {
-  const usarEnvio = Boolean(envio?.habilitado);
-  const freteConfig = usarEnvio ? await buscarConfiguracaoFrete() : null;
+  const modalidadeEntrega = normalizarModalidadeEntrega(envio);
+  const usarEnvio = modalidadeEntrega !== "SEM_ENTREGA";
+  const usaFretePublico = modalidadeEntrega === "MELHOR_ENVIO";
+  const freteConfig = usaFretePublico ? await buscarConfiguracaoFrete() : null;
 
   return prisma.$transaction(async (tx) => {
     const cliente = await tx.cliente.findUnique({
@@ -395,7 +527,70 @@ export async function criarPedidoManualOnline({
       estado?: string | null;
     } = {};
 
-    if (usarEnvio && envio && freteConfig) {
+    let entregaManualData:
+      | ReturnType<typeof montarEntregaManual>
+      | null = null;
+
+    if (usarEnvio && envio && modalidadeEntrega === "RETIRADA_COMBINADA") {
+      entregaManualData = montarEntregaManual(modalidadeEntrega, envio);
+      valorFrete = 0;
+      enderecoPedido = {
+        cep: normalizarCep(envio.cep) || null,
+        rua: texto(envio.rua) || null,
+        numero: texto(envio.numero) || null,
+        complemento: texto(envio.complemento) || null,
+        bairro: texto(envio.bairro) || null,
+        cidade: texto(envio.cidade) || null,
+        estado: normalizarUf(envio.estado) || null,
+      };
+
+      envioData = {
+        tipoEntrega: "RETIRADA",
+        transportadora: "Stella Colari",
+        servico: labelModalidadeEntrega(modalidadeEntrega),
+        statusEnvio: "AGUARDANDO_RETIRADA",
+        cepOrigem: null,
+        cepDestino: normalizarCep(envio.cep) || null,
+        valorFrete,
+        prazoDias: null,
+        gatewayLogistico: "ENTREGA_MANUAL",
+        gatewayEnvioId: modalidadeEntrega,
+        observacoes: JSON.stringify({
+          provider: "ENTREGA_MANUAL",
+          entregaManual: entregaManualData,
+        }),
+      };
+    }
+
+    if (
+      usarEnvio &&
+      envio &&
+      (modalidadeEntrega === "ENTREGA_LOCAL" ||
+        modalidadeEntrega === "CIDADE_PROXIMA")
+    ) {
+      enderecoPedido = validarEnderecoEntregaManual(envio);
+      entregaManualData = montarEntregaManual(modalidadeEntrega, envio);
+      valorFrete = entregaManualData.valorFinal;
+
+      envioData = {
+        tipoEntrega: "ENTREGA",
+        transportadora: "Stella Colari",
+        servico: labelModalidadeEntrega(modalidadeEntrega),
+        statusEnvio: "PENDENTE",
+        cepOrigem: null,
+        cepDestino: enderecoPedido.cep || null,
+        valorFrete,
+        prazoDias: null,
+        gatewayLogistico: "ENTREGA_MANUAL",
+        gatewayEnvioId: modalidadeEntrega,
+        observacoes: JSON.stringify({
+          provider: "ENTREGA_MANUAL",
+          entregaManual: entregaManualData,
+        }),
+      };
+    }
+
+    if (usarEnvio && envio && freteConfig && modalidadeEntrega === "MELHOR_ENVIO") {
       const cepDestino = normalizarCep(envio.cep);
       const freteOpcaoId = texto(envio.freteOpcaoId);
 
@@ -517,7 +712,17 @@ export async function criarPedidoManualOnline({
               cepOrigem: envioData.cepOrigem,
               cepDestino: envioData.cepDestino,
               opcao: envioData,
+              ...(entregaManualData
+                ? {
+                    entregaManual: entregaManualData,
+                  }
+                : {}),
             },
+            ...(entregaManualData
+              ? {
+                  entregaManual: entregaManualData,
+                }
+              : {}),
           }
         : {}),
     });

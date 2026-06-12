@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
 import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
+import type { PedidoEntregaManual } from "@/lib/pedidos/entrega-manual";
 import ImageBox from "@/components/ui/ImageBox";
 
 export type PedidoDetalhe = {
@@ -59,6 +60,7 @@ export type PedidoDetalhe = {
   criadoEm: string;
   atualizadoEm: string;
   alertasOperacionais?: PedidoAlertaOperacional[];
+  entregaManual?: PedidoEntregaManual | null;
 
   itens: {
     id: string;
@@ -159,11 +161,17 @@ function dataCompleta(dataIso: string | null | undefined) {
 
 function labelStatusPedido(status: string) {
   if (status === "PEDIDO_RECEBIDO") return "Pedido recebido";
+  if (status === "EM_SEPARACAO") return "Em separacao";
+  if (status === "SEPARADO") return "Separado";
   if (status === "PEDIDO_SEPARADO") return "Separado";
+  if (status === "AGUARDANDO_RETIRADA") return "Aguardando retirada";
+  if (status === "SAIU_PARA_ENTREGA") return "Saiu para entrega";
   if (status === "PEDIDO_ENVIADO") return "Enviado";
+  if (status === "ENTREGUE") return "Entregue";
   if (status === "PEDIDO_ENTREGUE") return "Entregue";
   if (status === "CANCELADO") return "Cancelado";
   if (status === "PROBLEMA") return "Problema";
+  if (status === "PROBLEMA_OPERACIONAL") return "Problema operacional";
 
   return status.replaceAll("_", " ");
 }
@@ -173,11 +181,15 @@ function statusPedidoClass(status: string) {
     return "border-blue-200 bg-blue-50 text-blue-700";
   }
 
-  if (status === "PEDIDO_ENTREGUE") {
+  if (status === "PEDIDO_ENTREGUE" || status === "ENTREGUE") {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 
-  if (status === "CANCELADO" || status === "PROBLEMA") {
+  if (
+    status === "CANCELADO" ||
+    status === "PROBLEMA" ||
+    status === "PROBLEMA_OPERACIONAL"
+  ) {
     return "border-red-200 bg-red-50 text-red-700";
   }
 
@@ -877,7 +889,8 @@ export default function PedidoDetalheClient({
           </div>
 
           {pedido.envio ? (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Status
@@ -890,7 +903,7 @@ export default function PedidoDetalheClient({
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Frete
+                  Entrega
                 </p>
 
                 <p className="mt-1 text-sm font-semibold text-slate-950">
@@ -917,6 +930,34 @@ export default function PedidoDetalheClient({
                   {pedido.envio.codigoRastreio || "—"}
                 </p>
               </div>
+              </div>
+
+              {pedido.entregaManual && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-950">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    Entrega manual
+                  </p>
+                  <p className="mt-2 font-semibold">
+                    {pedido.entregaManual.label} |{" "}
+                    {moeda(pedido.entregaManual.valor)}
+                  </p>
+                  {pedido.entregaManual.kmEstimado !== null && (
+                    <p className="mt-1 text-blue-800">
+                      Km estimado: {pedido.entregaManual.kmEstimado}
+                    </p>
+                  )}
+                  {pedido.entregaManual.endereco && (
+                    <p className="mt-1 leading-6 text-blue-800">
+                      {pedido.entregaManual.endereco}
+                    </p>
+                  )}
+                  {pedido.entregaManual.observacao && (
+                    <p className="mt-2 whitespace-pre-wrap rounded-xl bg-white/80 px-3 py-2 leading-6 text-slate-700">
+                      {pedido.entregaManual.observacao}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">

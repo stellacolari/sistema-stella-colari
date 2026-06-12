@@ -81,6 +81,39 @@ type FreteOpcaoVenda = {
   erro?: string | null;
 };
 
+type ModalidadeEntregaManual =
+  | "MELHOR_ENVIO"
+  | "RETIRADA_COMBINADA"
+  | "ENTREGA_LOCAL"
+  | "CIDADE_PROXIMA";
+
+const MODALIDADES_ENTREGA_MANUAL: {
+  value: ModalidadeEntregaManual;
+  label: string;
+  descricao: string;
+}[] = [
+  {
+    value: "RETIRADA_COMBINADA",
+    label: "Retirada",
+    descricao: "Sem frete. O operador combina a retirada com o cliente.",
+  },
+  {
+    value: "ENTREGA_LOCAL",
+    label: "Entrega local",
+    descricao: "Entrega propria com calculo por km e valor editavel.",
+  },
+  {
+    value: "CIDADE_PROXIMA",
+    label: "Cidade proxima",
+    descricao: "Entrega propria regional, tambem calculada por km.",
+  },
+  {
+    value: "MELHOR_ENVIO",
+    label: "Melhor Envio",
+    descricao: "Cotacao e etiqueta pelo fluxo logistico atual.",
+  },
+];
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -337,6 +370,22 @@ function normalizarCep(value: string | null | undefined) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function numeroInput(value: string, fallback = 0) {
+  const parsed = Number(String(value || "").replace(",", "."));
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function numeroInputOuNull(value: string) {
+  if (!String(value || "").trim()) {
+    return null;
+  }
+
+  const parsed = Number(String(value).replace(",", "."));
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function linkCompacto(url: string) {
   try {
     const parsed = new URL(url);
@@ -408,6 +457,8 @@ export default function NovaVendaV2Client({
     assinatura: string;
   } | null>(null);
   const [enviarEntrega, setEnviarEntrega] = useState(false);
+  const [modalidadeEntrega, setModalidadeEntrega] =
+    useState<ModalidadeEntregaManual>("RETIRADA_COMBINADA");
   const [usarEnderecoCliente, setUsarEnderecoCliente] = useState(false);
   const [entrega, setEntrega] = useState({
     cep: "",
@@ -417,6 +468,16 @@ export default function NovaVendaV2Client({
     bairro: "",
     cidade: "",
     estado: "",
+  });
+  const [entregaManual, setEntregaManual] = useState({
+    kmEstimado: "",
+    consumoKmPorLitro: "16",
+    precoCombustivel: "6",
+    cobrarIdaVolta: true,
+    taxaFixa: "0",
+    valorMinimo: "0",
+    valorManual: "",
+    observacaoManual: "",
   });
   const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcaoVenda[]>([]);
   const [freteSelecionadoId, setFreteSelecionadoId] = useState("");
@@ -476,7 +537,9 @@ export default function NovaVendaV2Client({
       meioVenda,
       descontoNumero,
       enviarEntrega,
+      modalidadeEntrega,
       entrega,
+      entregaManual,
       freteSelecionadoId,
       itens: itensPedido.map((item) => ({
         id: item.id,
@@ -488,10 +551,12 @@ export default function NovaVendaV2Client({
     clienteSelecionadoId,
     descontoNumero,
     entrega,
+    entregaManual,
     enviarEntrega,
     freteSelecionadoId,
     itensPedido,
     meioVenda,
+    modalidadeEntrega,
   ]);
 
   const linkPagamentoDesatualizado =
@@ -678,7 +743,42 @@ export default function NovaVendaV2Client({
     );
   }, [freteSelecionadoId, opcoesFrete]);
 
-  const valorFrete = enviarEntrega ? Number(freteSelecionado?.valor || 0) : 0;
+  const entregaManualSugerida = useMemo(() => {
+    if (
+      modalidadeEntrega !== "ENTREGA_LOCAL" &&
+      modalidadeEntrega !== "CIDADE_PROXIMA"
+    ) {
+      return 0;
+    }
+
+    const kmEstimado = numeroInput(entregaManual.kmEstimado);
+    const consumoKmPorLitro = numeroInput(
+      entregaManual.consumoKmPorLitro,
+      16,
+    );
+    const precoCombustivel = numeroInput(entregaManual.precoCombustivel);
+    const taxaFixa = numeroInput(entregaManual.taxaFixa);
+    const valorMinimo = numeroInput(entregaManual.valorMinimo);
+    const distanciaCobrada =
+      kmEstimado * (entregaManual.cobrarIdaVolta ? 2 : 1);
+    const custoCombustivel =
+      consumoKmPorLitro > 0
+        ? (distanciaCobrada / consumoKmPorLitro) * precoCombustivel
+        : 0;
+
+    return Math.max(custoCombustivel + taxaFixa, valorMinimo);
+  }, [entregaManual, modalidadeEntrega]);
+
+  const valorEntregaManual =
+    numeroInputOuNull(entregaManual.valorManual) ?? entregaManualSugerida;
+
+  const valorFrete = !enviarEntrega
+    ? 0
+    : modalidadeEntrega === "MELHOR_ENVIO"
+      ? Number(freteSelecionado?.valor || 0)
+      : modalidadeEntrega === "RETIRADA_COMBINADA"
+        ? 0
+        : valorEntregaManual;
 
   const totalFinal = useMemo(() => {
     return subtotalComDesconto + valorFrete;
@@ -696,6 +796,24 @@ export default function NovaVendaV2Client({
     setFreteSelecionadoId("");
     setOpcoesFrete([]);
     setErroFrete("");
+  }
+
+  function atualizarCampoEntregaManual(
+    campo: keyof typeof entregaManual,
+    valor: string | boolean,
+  ) {
+    setEntregaManual((atual) => ({
+      ...atual,
+      [campo]: valor,
+    }));
+    setErroFrete("");
+  }
+
+  function alterarModalidadeEntrega(value: ModalidadeEntregaManual) {
+    setModalidadeEntrega(value);
+    setErroFrete("");
+    setFreteSelecionadoId("");
+    setOpcoesFrete([]);
   }
 
   function aplicarEnderecoDoCliente() {
@@ -735,6 +853,7 @@ export default function NovaVendaV2Client({
 
     return {
       habilitado: true,
+      modalidade: modalidadeEntrega,
       cep: entrega.cep,
       rua: entrega.rua,
       numero: entrega.numero,
@@ -742,7 +861,18 @@ export default function NovaVendaV2Client({
       bairro: entrega.bairro,
       cidade: entrega.cidade,
       estado: entrega.estado,
-      freteOpcaoId: freteSelecionadoId,
+      freteOpcaoId:
+        modalidadeEntrega === "MELHOR_ENVIO" ? freteSelecionadoId : null,
+      kmEstimado: entregaManual.kmEstimado,
+      consumoKmPorLitro: entregaManual.consumoKmPorLitro,
+      precoCombustivel: entregaManual.precoCombustivel,
+      cobrarIdaVolta: entregaManual.cobrarIdaVolta,
+      taxaFixa: entregaManual.taxaFixa,
+      valorMinimo: entregaManual.valorMinimo,
+      valorSugerido: entregaManualSugerida,
+      valorManual:
+        modalidadeEntrega === "RETIRADA_COMBINADA" ? 0 : valorEntregaManual,
+      observacaoManual: entregaManual.observacaoManual,
     };
   }
 
@@ -751,31 +881,48 @@ export default function NovaVendaV2Client({
       return true;
     }
 
-    if (normalizarCep(entrega.cep).length !== 8) {
-      setErroFrete("Informe um CEP válido para entrega.");
+    if (modalidadeEntrega === "RETIRADA_COMBINADA") {
+      return true;
+    }
+
+    const cepNormalizado = normalizarCep(entrega.cep);
+
+    if (modalidadeEntrega === "MELHOR_ENVIO" && cepNormalizado.length !== 8) {
+      setErroFrete("Informe um CEP valido para entrega.");
       return false;
     }
 
-    if (!freteSelecionado) {
-      setErroFrete("Calcule e selecione uma opção de frete.");
+    if (
+      modalidadeEntrega !== "MELHOR_ENVIO" &&
+      cepNormalizado.length > 0 &&
+      cepNormalizado.length !== 8
+    ) {
+      setErroFrete("Confira o CEP informado para a entrega manual.");
       return false;
     }
 
-    if (freteSelecionado.tipoEntrega !== "RETIRADA") {
-      const camposObrigatorios = [
-        entrega.rua,
-        entrega.numero,
-        entrega.bairro,
-        entrega.cidade,
-        entrega.estado,
-      ];
-
-      if (camposObrigatorios.some((campo) => !String(campo || "").trim())) {
-        setErroFrete(
-          "Preencha endereço, número, bairro, cidade e UF para entrega.",
-        );
+    if (modalidadeEntrega === "MELHOR_ENVIO") {
+      if (!freteSelecionado) {
+        setErroFrete("Calcule e selecione uma opcao de frete.");
         return false;
       }
+
+      if (freteSelecionado.tipoEntrega === "RETIRADA") {
+        return true;
+      }
+    }
+
+    const camposObrigatorios = [
+      entrega.rua,
+      entrega.numero,
+      entrega.bairro,
+      entrega.cidade,
+      entrega.estado,
+    ];
+
+    if (camposObrigatorios.some((campo) => !String(campo || "").trim())) {
+      setErroFrete("Preencha endereco, numero, bairro, cidade e UF para entrega.");
+      return false;
     }
 
     return true;
@@ -786,6 +933,11 @@ export default function NovaVendaV2Client({
       setErroFrete("");
       setOpcoesFrete([]);
       setFreteSelecionadoId("");
+
+      if (modalidadeEntrega !== "MELHOR_ENVIO") {
+        setErroFrete("Cotacao de frete e usada apenas no Melhor Envio.");
+        return;
+      }
 
       if (itensPedido.length === 0) {
         setErroFrete("Adicione ao menos um produto para calcular frete.");
@@ -1743,8 +1895,13 @@ export default function NovaVendaV2Client({
                   <Info label="Desconto" value={moeda(valorDesconto)} />
                   {enviarEntrega && (
                     <Info
-                      label="Frete"
-                      value={freteSelecionado ? moeda(valorFrete) : "Selecione"}
+                      label="Entrega"
+                      value={
+                        modalidadeEntrega === "MELHOR_ENVIO" &&
+                        !freteSelecionado
+                          ? "Selecione"
+                          : moeda(valorFrete)
+                      }
                     />
                   )}
                   <Info
@@ -1858,6 +2015,35 @@ export default function NovaVendaV2Client({
 
                     {enviarEntrega && (
                       <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                        <div className="grid gap-2">
+                          {MODALIDADES_ENTREGA_MANUAL.map((modalidade) => {
+                            const selecionada =
+                              modalidadeEntrega === modalidade.value;
+
+                            return (
+                              <button
+                                key={modalidade.value}
+                                type="button"
+                                onClick={() =>
+                                  alterarModalidadeEntrega(modalidade.value)
+                                }
+                                className={`rounded-2xl border p-3 text-left transition ${
+                                  selecionada
+                                    ? "border-slate-900 bg-white ring-1 ring-slate-900"
+                                    : "border-slate-200 bg-white hover:bg-slate-50"
+                                }`}
+                              >
+                                <span className="block text-sm font-semibold text-slate-950">
+                                  {modalidade.label}
+                                </span>
+                                <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                  {modalidade.descricao}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
                         {clienteSelecionado &&
                           (clienteSelecionado.cep ||
                             clienteSelecionado.rua ||
@@ -2012,14 +2198,163 @@ export default function NovaVendaV2Client({
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={cotarFrete}
-                          disabled={cotandoFrete || itensPedido.length === 0}
-                          className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {cotandoFrete ? "Calculando..." : "Calcular frete"}
-                        </button>
+                        {(modalidadeEntrega === "ENTREGA_LOCAL" ||
+                          modalidadeEntrega === "CIDADE_PROXIMA") && (
+                          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                            <p className="text-sm font-semibold text-slate-950">
+                              Calculo da entrega propria
+                            </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Km estimado
+                                </span>
+                                <input
+                                  value={entregaManual.kmEstimado}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "kmEstimado",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="0"
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Km por litro
+                                </span>
+                                <input
+                                  value={entregaManual.consumoKmPorLitro}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "consumoKmPorLitro",
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Combustivel/litro
+                                </span>
+                                <input
+                                  value={entregaManual.precoCombustivel}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "precoCombustivel",
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Taxa fixa
+                                </span>
+                                <input
+                                  value={entregaManual.taxaFixa}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "taxaFixa",
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Valor minimo
+                                </span>
+                                <input
+                                  value={entregaManual.valorMinimo}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "valorMinimo",
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+
+                              <label>
+                                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Valor final
+                                </span>
+                                <input
+                                  value={entregaManual.valorManual}
+                                  onChange={(event) =>
+                                    atualizarCampoEntregaManual(
+                                      "valorManual",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder={moeda(entregaManualSugerida)}
+                                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                />
+                              </label>
+                            </div>
+
+                            <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={entregaManual.cobrarIdaVolta}
+                                onChange={(event) =>
+                                  atualizarCampoEntregaManual(
+                                    "cobrarIdaVolta",
+                                    event.target.checked,
+                                  )
+                                }
+                                className="mt-1 h-4 w-4 rounded border-slate-300"
+                              />
+                              <span>Cobrar ida e volta no calculo</span>
+                            </label>
+
+                            <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
+                              Sugerido:{" "}
+                              <strong>{moeda(entregaManualSugerida)}</strong>{" "}
+                              | usado no pedido:{" "}
+                              <strong>{moeda(valorEntregaManual)}</strong>
+                            </div>
+
+                            <label className="mt-3 block">
+                              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Observacao para entrega
+                              </span>
+                              <textarea
+                                value={entregaManual.observacaoManual}
+                                onChange={(event) =>
+                                  atualizarCampoEntregaManual(
+                                    "observacaoManual",
+                                    event.target.value,
+                                  )
+                                }
+                                rows={2}
+                                className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500"
+                              />
+                            </label>
+                          </div>
+                        )}
+
+                        {modalidadeEntrega === "MELHOR_ENVIO" && (
+                          <button
+                            type="button"
+                            onClick={cotarFrete}
+                            disabled={cotandoFrete || itensPedido.length === 0}
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {cotandoFrete ? "Calculando..." : "Calcular frete"}
+                          </button>
+                        )}
 
                         {erroFrete ? (
                           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -2027,7 +2362,8 @@ export default function NovaVendaV2Client({
                           </div>
                         ) : null}
 
-                        {opcoesFrete.length > 0 && (
+                        {modalidadeEntrega === "MELHOR_ENVIO" &&
+                          opcoesFrete.length > 0 && (
                           <div className="space-y-2">
                             {opcoesFrete.map((opcao) => {
                               const selecionada =

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
 import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
+import type { PedidoEntregaManual } from "@/lib/pedidos/entrega-manual";
 
 export type PedidoOperacionalItem = {
   id: string;
@@ -69,6 +70,7 @@ export type PedidoOperacionalItem = {
   criadoEm: string;
   atualizadoEm: string;
   alertasOperacionais?: PedidoAlertaOperacional[];
+  entregaManual?: PedidoEntregaManual | null;
 
   quantidadeItens: number;
   totalItensUnicos: number;
@@ -177,11 +179,17 @@ function normalizarTexto(value: string | null | undefined) {
 
 function labelStatusPedido(status: string) {
   if (status === "PEDIDO_RECEBIDO") return "Recebido";
+  if (status === "EM_SEPARACAO") return "Em separacao";
+  if (status === "SEPARADO") return "Separado";
   if (status === "PEDIDO_SEPARADO") return "Separado";
+  if (status === "AGUARDANDO_RETIRADA") return "Aguardando retirada";
+  if (status === "SAIU_PARA_ENTREGA") return "Saiu para entrega";
   if (status === "PEDIDO_ENVIADO") return "Enviado";
+  if (status === "ENTREGUE") return "Entregue";
   if (status === "PEDIDO_ENTREGUE") return "Entregue";
   if (status === "CANCELADO") return "Cancelado";
   if (status === "PROBLEMA") return "Problema";
+  if (status === "PROBLEMA_OPERACIONAL") return "Problema operacional";
 
   return status.replaceAll("_", " ");
 }
@@ -191,15 +199,26 @@ function statusPedidoClass(status: string) {
     return "bg-blue-50 text-blue-700 ring-blue-200";
   }
 
-  if (status === "PEDIDO_SEPARADO" || status === "PEDIDO_ENVIADO") {
+  if (
+    status === "EM_SEPARACAO" ||
+    status === "SEPARADO" ||
+    status === "PEDIDO_SEPARADO" ||
+    status === "AGUARDANDO_RETIRADA" ||
+    status === "SAIU_PARA_ENTREGA" ||
+    status === "PEDIDO_ENVIADO"
+  ) {
     return "bg-indigo-50 text-indigo-700 ring-indigo-200";
   }
 
-  if (status === "PEDIDO_ENTREGUE") {
+  if (status === "PEDIDO_ENTREGUE" || status === "ENTREGUE") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   }
 
-  if (status === "CANCELADO" || status === "PROBLEMA") {
+  if (
+    status === "CANCELADO" ||
+    status === "PROBLEMA" ||
+    status === "PROBLEMA_OPERACIONAL"
+  ) {
     return "bg-red-50 text-red-700 ring-red-200";
   }
 
@@ -249,6 +268,8 @@ function labelStatusEnvio(status: string | null | undefined) {
   if (status === "COTADO") return "Cotado";
   if (status === "ETIQUETA_COMPRADA") return "Etiqueta comprada";
   if (status === "EM_PREPARACAO") return "Em preparação";
+  if (status === "AGUARDANDO_RETIRADA") return "Aguardando retirada";
+  if (status === "SAIU_PARA_ENTREGA") return "Saiu para entrega";
   if (status === "ETIQUETA_GERADA") return "Etiqueta gerada";
   if (status === "POSTADO") return "Postado";
   if (status === "ENTREGUE") return "Entregue";
@@ -266,7 +287,8 @@ function isPagamentoPendente(pedido: PedidoOperacionalItem) {
 
 function isPedidoPagoParaSeparar(pedido: PedidoOperacionalItem) {
   return (
-    pedido.statusPagamento === "PAGO" && pedido.status === "PEDIDO_RECEBIDO"
+    pedido.statusPagamento === "PAGO" &&
+    (pedido.status === "PEDIDO_RECEBIDO" || pedido.status === "EM_SEPARACAO")
   );
 }
 
@@ -287,7 +309,10 @@ function isPedidoPagoAguardandoPreparo(pedido: PedidoOperacionalItem) {
   return (
     isCanalLogisticoElegivel(pedido) &&
     isPedidoPago(pedido) &&
-    pedido.status === "PEDIDO_RECEBIDO" &&
+    (pedido.status === "PEDIDO_RECEBIDO" ||
+      pedido.status === "EM_SEPARACAO" ||
+      pedido.status === "SEPARADO" ||
+      pedido.status === "PEDIDO_SEPARADO") &&
     !(pedido.origemCanal === "ADMIN_MANUAL" && !pedido.envio)
   );
 }
@@ -398,19 +423,25 @@ function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   if (filtro === "TRANSPORTE") {
     return (
       pedido.envio?.statusEnvio === "POSTADO" ||
-      pedido.envio?.statusEnvio === "EM_PREPARACAO"
+      pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
+      pedido.envio?.statusEnvio === "SAIU_PARA_ENTREGA"
     );
   }
 
   if (filtro === "ENTREGUE") {
     return (
       pedido.status === "PEDIDO_ENTREGUE" ||
+      pedido.status === "ENTREGUE" ||
       pedido.envio?.statusEnvio === "ENTREGUE"
     );
   }
 
   if (filtro === "PROBLEMA") {
-    return isPedidoCanceladoOuExpirado(pedido) || pedido.status === "PROBLEMA";
+    return (
+      isPedidoCanceladoOuExpirado(pedido) ||
+      pedido.status === "PROBLEMA" ||
+      pedido.status === "PROBLEMA_OPERACIONAL"
+    );
   }
 
   if (filtro === "RETIRADA") {
@@ -503,7 +534,10 @@ function getMensagemAcao(pedido: PedidoOperacionalItem) {
 
   if (isPedidoPagoParaSeparar(pedido)) {
     return {
-      label: "Separar pedido",
+      label:
+        pedido.status === "EM_SEPARACAO"
+          ? "Separacao em andamento"
+          : "Separar pedido",
       className: "text-emerald-700",
       icon: Package,
     };
@@ -511,10 +545,17 @@ function getMensagemAcao(pedido: PedidoOperacionalItem) {
 
   if (
     pedido.envio?.statusEnvio === "PENDENTE" ||
-    pedido.envio?.statusEnvio === "EM_PREPARACAO"
+    pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
+    pedido.envio?.statusEnvio === "AGUARDANDO_RETIRADA" ||
+    pedido.envio?.statusEnvio === "SAIU_PARA_ENTREGA"
   ) {
     return {
-      label: "Preparar envio",
+      label:
+        pedido.envio?.statusEnvio === "AGUARDANDO_RETIRADA"
+          ? "Aguardando retirada"
+          : pedido.envio?.statusEnvio === "SAIU_PARA_ENTREGA"
+            ? "Em rota de entrega"
+            : "Preparar envio",
       className: "text-blue-700",
       icon: Truck,
     };
@@ -537,16 +578,49 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
     pedido.status === "PEDIDO_RECEBIDO"
   ) {
     return {
-      statusNovo: "PEDIDO_SEPARADO",
-      label: "Separado",
-      confirmacao: `Marcar o pedido ${pedido.codigo} como separado?`,
-      observacao: "Pedido marcado como separado pela lista operacional.",
+      statusNovo: "EM_SEPARACAO",
+      label: "Iniciar separacao",
+      confirmacao: `Iniciar separacao do pedido ${pedido.codigo}?`,
+      observacao: "Separacao iniciada pela lista operacional.",
       className:
         "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
     };
   }
 
-  if (pedido.status === "PEDIDO_SEPARADO") {
+  if (pedido.status === "EM_SEPARACAO") {
+    return {
+      statusNovo: "SEPARADO",
+      label: "Separado",
+      confirmacao: `Marcar o pedido ${pedido.codigo} como separado?`,
+      observacao: "Pedido separado pela lista operacional.",
+      className:
+        "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+    };
+  }
+
+  if (pedido.status === "SEPARADO" || pedido.status === "PEDIDO_SEPARADO") {
+    if (pedido.envio?.tipoEntrega === "RETIRADA") {
+      return {
+        statusNovo: "AGUARDANDO_RETIRADA",
+        label: "Aguardando retirada",
+        confirmacao: `Marcar o pedido ${pedido.codigo} como aguardando retirada?`,
+        observacao: "Pedido separado e aguardando retirada.",
+        className:
+          "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+      };
+    }
+
+    if (pedido.envio?.gatewayLogistico === "ENTREGA_MANUAL") {
+      return {
+        statusNovo: "SAIU_PARA_ENTREGA",
+        label: "Saiu para entrega",
+        confirmacao: `Marcar o pedido ${pedido.codigo} como saiu para entrega?`,
+        observacao: "Pedido saiu para entrega propria.",
+        className:
+          "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+      };
+    }
+
     return {
       statusNovo: "PEDIDO_ENVIADO",
       label: "Enviado",
@@ -556,7 +630,11 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
     };
   }
 
-  if (pedido.status === "PEDIDO_ENVIADO") {
+  if (
+    pedido.status === "PEDIDO_ENVIADO" ||
+    pedido.status === "SAIU_PARA_ENTREGA" ||
+    pedido.status === "AGUARDANDO_RETIRADA"
+  ) {
     return {
       statusNovo: "PEDIDO_ENTREGUE",
       label: "Entregue",
@@ -586,10 +664,18 @@ function getAcaoRapidaStatus(pedido: PedidoOperacionalItem) {
 }
 
 function isPedidoManualComLink(pedido: PedidoOperacionalItem) {
-  return pedido.origemCanal === "ADMIN_MANUAL";
+  return (
+    pedido.origemCanal === "ADMIN_MANUAL" &&
+    isPagamentoPendente(pedido) &&
+    pedido.gatewayPagamento === "STRIPE"
+  );
 }
 
 function origemPedidoLabel(pedido: PedidoOperacionalItem) {
+  if (pedido.entregaManual) {
+    return pedido.entregaManual.label;
+  }
+
   if (pedido.origemCanal === "ADMIN_MANUAL" && pedido.envio) {
     return "Manual entrega";
   }
@@ -1659,7 +1745,9 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                       </p>
 
                       <p className="mt-1 truncate">
-                        {pedido.envio.tipoEntrega === "RETIRADA"
+                        {pedido.entregaManual
+                          ? pedido.entregaManual.label
+                          : pedido.envio.tipoEntrega === "RETIRADA"
                           ? pedido.envio.servico || "Retirada local"
                           : [pedido.envio.transportadora, pedido.envio.servico]
                               .filter(Boolean)
@@ -1678,6 +1766,22 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                           {labelStatusEnvio(pedido.envio.statusEnvio)}
                         </span>
                       </div>
+
+                      {pedido.entregaManual && (
+                        <div className="mt-2 rounded-xl bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600 ring-1 ring-slate-200">
+                          <p className="font-semibold text-slate-800">
+                            {pedido.entregaManual.label}
+                            {pedido.entregaManual.kmEstimado !== null
+                              ? ` | ${pedido.entregaManual.kmEstimado} km`
+                              : ""}
+                          </p>
+                          {pedido.entregaManual.observacao && (
+                            <p className="mt-1 line-clamp-2">
+                              {pedido.entregaManual.observacao}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {pedido.envio.statusEnvio === "PREPARADO" &&
                         pedido.envio.gatewayEnvioId && (
@@ -1812,7 +1916,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </button>
                       )}
 
-                      {pedido.envio.tipoEntrega !== "RETIRADA" && (
+                      {pedido.envio.tipoEntrega !== "RETIRADA" &&
+                        pedido.envio.gatewayLogistico === "MELHOR_ENVIO" && (
                         <p className="mt-2 text-[11px] text-slate-400">
                           Rastreio manual pelo Melhor Envio.
                         </p>

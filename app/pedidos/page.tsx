@@ -5,6 +5,7 @@ import PedidosClient, {
 } from "@/components/pedidos/PedidosClient";
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
+import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
 
 export const metadata: Metadata = {
   title: "Pedidos | Sistema Stella",
@@ -208,6 +209,10 @@ export default async function PedidosPage() {
     const alertasOperacionais = extrairAlertasOperacionais(
       pedido.dadosOriginaisJson,
     );
+    const entregaManual = extrairEntregaManualPedido(
+      pedido.dadosOriginaisJson,
+      pedido.envio?.observacoes,
+    );
 
     const quantidadeItens = pedido.itens.reduce(
       (total, item) => total + item.quantidade,
@@ -261,6 +266,7 @@ export default async function PedidosPage() {
       criadoEm: pedido.criadoEm.toISOString(),
       atualizadoEm: pedido.atualizadoEm.toISOString(),
       alertasOperacionais,
+      entregaManual,
 
       quantidadeItens,
       totalItensUnicos: pedido.itens.length,
@@ -331,13 +337,17 @@ export default async function PedidosPage() {
 
   const pedidosPagosParaSeparar = pedidos.filter(
     (pedido) =>
-      pedido.statusPagamento === "PAGO" && pedido.status === "PEDIDO_RECEBIDO",
+      pedido.statusPagamento === "PAGO" &&
+      (pedido.status === "PEDIDO_RECEBIDO" ||
+        pedido.status === "EM_SEPARACAO"),
   ).length;
 
   const pedidosEmEnvio = pedidos.filter(
     (pedido) =>
       pedido.envio?.statusEnvio === "PENDENTE" ||
-      pedido.envio?.statusEnvio === "EM_PREPARACAO",
+      pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
+      pedido.envio?.statusEnvio === "AGUARDANDO_RETIRADA" ||
+      pedido.envio?.statusEnvio === "SAIU_PARA_ENTREGA",
   ).length;
 
   const pedidosComCupom = pedidos.filter(
@@ -349,7 +359,9 @@ export default async function PedidosPage() {
   ).length;
 
   const pedidosComProblema = pedidos.filter(
-    (pedido) => pedido.status === "PROBLEMA",
+    (pedido) =>
+      pedido.status === "PROBLEMA" ||
+      pedido.status === "PROBLEMA_OPERACIONAL",
   ).length;
 
   const pedidosCancelados = pedidos.filter(

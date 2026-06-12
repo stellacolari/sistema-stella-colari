@@ -9,6 +9,7 @@ import PedidoDetalheClient, {
 } from "@/components/pedidos/PedidoDetalheClient";
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
+import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
 
 export const metadata: Metadata = {
   title: "Detalhe do pedido | Sistema Stella",
@@ -144,6 +145,10 @@ export default async function PedidoDetalhePage({
   const alertasOperacionais = extrairAlertasOperacionais(
     pedidoRaw.dadosOriginaisJson,
   );
+  const entregaManual = extrairEntregaManualPedido(
+    pedidoRaw.dadosOriginaisJson,
+    pedidoRaw.envio?.observacoes,
+  );
 
   const pedido: PedidoDetalhe = {
     id: pedidoRaw.id,
@@ -188,6 +193,7 @@ export default async function PedidoDetalhePage({
     criadoEm: pedidoRaw.criadoEm.toISOString(),
     atualizadoEm: pedidoRaw.atualizadoEm.toISOString(),
     alertasOperacionais,
+    entregaManual,
 
     itens: pedidoRaw.itens.map((item) => ({
       id: item.id,

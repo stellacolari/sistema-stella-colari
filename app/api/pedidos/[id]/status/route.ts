@@ -4,11 +4,17 @@ import { cancelarPedidoOnlineNaoPago } from "@/lib/pedidos/cancelar-pedido-onlin
 
 const STATUS_VALIDOS = new Set([
   "PEDIDO_RECEBIDO",
+  "EM_SEPARACAO",
+  "SEPARADO",
   "PEDIDO_SEPARADO",
+  "AGUARDANDO_RETIRADA",
+  "SAIU_PARA_ENTREGA",
   "PEDIDO_ENVIADO",
+  "ENTREGUE",
   "PEDIDO_ENTREGUE",
   "CANCELADO",
   "PROBLEMA",
+  "PROBLEMA_OPERACIONAL",
 ]);
 
 function parseStringOrNull(value: unknown) {
@@ -17,16 +23,32 @@ function parseStringOrNull(value: unknown) {
   return parsed || null;
 }
 
-function getStatusEnvioSincronizado(statusPedido: string) {
-  if (statusPedido === "PEDIDO_ENVIADO") {
-    return "POSTADO";
+function getStatusEnvioSincronizado({
+  statusPedido,
+  gatewayLogistico,
+}: {
+  statusPedido: string;
+  gatewayLogistico?: string | null;
+}) {
+  if (statusPedido === "AGUARDANDO_RETIRADA") {
+    return "AGUARDANDO_RETIRADA";
   }
 
-  if (statusPedido === "PEDIDO_ENTREGUE") {
+  if (statusPedido === "SAIU_PARA_ENTREGA") {
+    return "SAIU_PARA_ENTREGA";
+  }
+
+  if (statusPedido === "PEDIDO_ENVIADO") {
+    return gatewayLogistico === "ENTREGA_MANUAL"
+      ? "SAIU_PARA_ENTREGA"
+      : "POSTADO";
+  }
+
+  if (statusPedido === "PEDIDO_ENTREGUE" || statusPedido === "ENTREGUE") {
     return "ENTREGUE";
   }
 
-  if (statusPedido === "PROBLEMA") {
+  if (statusPedido === "PROBLEMA" || statusPedido === "PROBLEMA_OPERACIONAL") {
     return "PROBLEMA";
   }
 
@@ -40,14 +62,14 @@ function getStatusEnvioSincronizado(statusPedido: string) {
 function getDatasEnvioSincronizadas(statusPedido: string) {
   const agora = new Date();
 
-  if (statusPedido === "PEDIDO_ENVIADO") {
+  if (statusPedido === "PEDIDO_ENVIADO" || statusPedido === "SAIU_PARA_ENTREGA") {
     return {
       postadoEm: agora,
       entregueEm: null,
     };
   }
 
-  if (statusPedido === "PEDIDO_ENTREGUE") {
+  if (statusPedido === "PEDIDO_ENTREGUE" || statusPedido === "ENTREGUE") {
     return {
       postadoEm: agora,
       entregueEm: agora,
@@ -88,6 +110,12 @@ const pedidoAtual = await prisma.pedidoOnline.findUnique({
     statusPagamento: true,
     origemCanal: true,
     cep: true,
+    envio: {
+      select: {
+        id: true,
+        gatewayLogistico: true,
+      },
+    },
   },
 });
 
@@ -112,7 +140,10 @@ if (statusNovo === "CANCELADO") {
   return NextResponse.json(resultado);
 }
 
-const statusEnvioSincronizado = getStatusEnvioSincronizado(statusNovo);
+const statusEnvioSincronizado = getStatusEnvioSincronizado({
+  statusPedido: statusNovo,
+  gatewayLogistico: pedidoAtual.envio?.gatewayLogistico,
+});
     const datasEnvioSincronizadas = getDatasEnvioSincronizadas(statusNovo);
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -140,24 +171,18 @@ const statusEnvioSincronizado = getStatusEnvioSincronizado(statusNovo);
         },
       });
 
-      await tx.pedidoEnvio.upsert({
-        where: {
-          pedidoOnlineId: id,
-        },
-        create: {
-          pedidoOnlineId: id,
-          tipoEntrega: "ENTREGA",
-          statusEnvio: statusEnvioSincronizado,
-          cepDestino: pedidoAtual.cep || null,
-          postadoEm: datasEnvioSincronizadas.postadoEm,
-          entregueEm: datasEnvioSincronizadas.entregueEm,
-        },
-        update: {
+      if (pedidoAtual.envio) {
+        await tx.pedidoEnvio.update({
+          where: {
+            pedidoOnlineId: id,
+          },
+          data: {
           statusEnvio: statusEnvioSincronizado,
           postadoEm: datasEnvioSincronizadas.postadoEm,
           entregueEm: datasEnvioSincronizadas.entregueEm,
-        },
-      });
+          },
+        });
+      }
 
       return {
         pedido,
