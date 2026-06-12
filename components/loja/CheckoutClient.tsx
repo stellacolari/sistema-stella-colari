@@ -1752,22 +1752,40 @@ function preencherDadosClienteLogado() {
                         )}
 
                         {item.embalagemPresenteModeloId && (
-                          <div className="mt-2 rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-3 py-2">
-                            <p className="text-xs font-medium text-slate-800">
-                              {item.embalagemPresenteNome ||
-                                "Embalagem para presente"}
-                            </p>
+                          <div className="mt-2 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-3 py-2">
+                            <div className="flex items-start gap-2">
+                              <div className="h-11 w-11 shrink-0 border border-white/70 [&>div]:h-full [&>div]:w-full [&>div]:rounded-none">
+                                <ImageBox
+                                  src={item.embalagemPresenteImagemUrl}
+                                  alt={
+                                    item.embalagemPresenteNome ||
+                                    "Embalagem para presente"
+                                  }
+                                />
+                              </div>
 
-                            <p className="mt-1 text-xs font-light text-slate-500">
-                              + {moeda(totalEmbalagemPresente)}
-                            </p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-medium uppercase tracking-[0.14em] brand-text">
+                                  Embalagem presente
+                                </p>
 
-                            {item.embalagemPresenteMensagem && (
-                              <p className="mt-1 text-xs font-light leading-5 text-slate-600">
-                                Mensagem: &quot;{item.embalagemPresenteMensagem}
-                                &quot;
-                              </p>
-                            )}
+                                <p className="mt-0.5 text-xs font-medium text-slate-800">
+                                  {item.embalagemPresenteNome ||
+                                    "Embalagem para presente"}
+                                </p>
+
+                                <p className="mt-1 text-xs font-light text-slate-500">
+                                  + {moeda(totalEmbalagemPresente)}
+                                </p>
+
+                                {item.embalagemPresenteMensagem && (
+                                  <p className="mt-1 text-xs font-light leading-5 text-slate-600">
+                                    Mensagem: &quot;
+                                    {item.embalagemPresenteMensagem}&quot;
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1820,6 +1838,13 @@ function preencherDadosClienteLogado() {
                       {moeda(subtotalEmbalagensPresente)}
                     </span>
                   </div>
+                )}
+
+                {possuiEmbalagensPresente && (
+                  <p className="text-xs font-light leading-5 text-slate-500">
+                    Total calculado com as embalagens presente selecionadas por
+                    item.
+                  </p>
                 )}
 
                 {cupomAplicado && (

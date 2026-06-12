@@ -578,9 +578,21 @@ export default function CarrinhoClient({
                           {possuiEmbalagemPresente && (
                             <div className="mt-4 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-4 py-3">
                               <div className="flex items-start gap-3">
-                                <Gift className="mt-0.5 h-4 w-4 brand-text" />
+                                <div className="h-14 w-14 shrink-0 border border-white/70 [&>div]:h-full [&>div]:w-full [&>div]:rounded-none">
+                                  <ImageBox
+                                    src={item.embalagemPresenteImagemUrl}
+                                    alt={
+                                      item.embalagemPresenteNome ||
+                                      "Embalagem para presente"
+                                    }
+                                  />
+                                </div>
 
                                 <div className="min-w-0 flex-1">
+                                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] brand-text">
+                                    Embalagem presente
+                                  </p>
+
                                   <p className="text-sm font-medium text-slate-950">
                                     {item.embalagemPresenteNome ||
                                       "Embalagem para presente"}
@@ -593,7 +605,7 @@ export default function CarrinhoClient({
 
                                   {item.embalagemPresenteMensagem && (
                                     <p className="mt-2 text-xs font-light leading-5 text-slate-600">
-                                      Mensagem: &quot;
+                                      Mensagem do presente: &quot;
                                       {item.embalagemPresenteMensagem}&quot;
                                     </p>
                                   )}
@@ -744,6 +756,12 @@ export default function CarrinhoClient({
                       {moeda(subtotalEmbalagensPresente)}
                     </span>
                   </div>
+                )}
+
+                {possuiEmbalagensPresente && (
+                  <p className="text-xs font-light leading-5 text-slate-500">
+                    O subtotal inclui as embalagens selecionadas por item.
+                  </p>
                 )}
 
                 <div className="flex items-center justify-between text-base">

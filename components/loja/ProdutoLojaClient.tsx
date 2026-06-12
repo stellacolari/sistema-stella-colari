@@ -21,6 +21,7 @@ import MenuPublicoLoja, {
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
+import ImageBox from "@/components/ui/ImageBox";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 const LOGO_URL = "/logo-stella.png";
@@ -1520,23 +1521,43 @@ export default function ProdutoLojaClient({
             {embalagensPresente.length > 0 && !semEstoque && (
               <div className="mt-5 border-t border-slate-200 pt-4">
                 <div className="mb-3">
-                  <p className="text-sm font-semibold text-slate-950">
-                    Embalagem para presente
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-950">
+                      Embalagem para presente
+                    </p>
+
+                    <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                      Opcional por item
+                    </span>
+                  </div>
 
                   <p className="mt-1 text-xs font-light text-slate-500">
-                    Adicione uma embalagem especial a este produto.
+                    Escolha uma embalagem especial para este item do carrinho.
                   </p>
                 </div>
 
                 {embalagensPresente.length === 1 ? (
                   <div
-                    className={`border px-3 py-3 transition ${
+                    className={`grid gap-3 border p-3 transition sm:grid-cols-[88px_1fr] ${
                       embalagemPresenteSelecionadaId === embalagensPresente[0].id
-                        ? "border-slate-950 bg-white"
-                        : "border-slate-200 bg-slate-50"
+                        ? "border-[var(--brand-blue)] bg-[var(--brand-blue-soft)]"
+                        : "border-slate-200 bg-white"
                     }`}
                   >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEmbalagemPresenteModalId(embalagensPresente[0].id)
+                      }
+                      className="aspect-square overflow-hidden border border-slate-200 bg-slate-50 [&>div]:h-full [&>div]:w-full [&>div]:rounded-none"
+                      aria-label={`Ver embalagem ${embalagensPresente[0].nome}`}
+                    >
+                      <ImageBox
+                        src={embalagensPresente[0].imagemUrl}
+                        alt={embalagensPresente[0].nome}
+                      />
+                    </button>
+
                     <label className="flex cursor-pointer items-start gap-3">
                       <input
                         type="checkbox"
@@ -1555,8 +1576,6 @@ export default function ProdutoLojaClient({
                         className="mt-1 h-4 w-4 border-slate-300"
                       />
 
-                      <Gift className="mt-0.5 h-4 w-4 shrink-0 brand-text" />
-
                       <span className="min-w-0 flex-1">
                         <span className="flex items-start justify-between gap-3">
                           <span className="text-sm font-medium text-slate-950">
@@ -1573,21 +1592,27 @@ export default function ProdutoLojaClient({
                             {embalagensPresente[0].descricao}
                           </span>
                         )}
+
+                        <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium brand-text">
+                          <Gift className="h-3.5 w-3.5" />
+                          Presente neste item
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setEmbalagemPresenteModalId(embalagensPresente[0].id);
+                          }}
+                          className="mt-3 block text-xs font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950"
+                        >
+                          Ver detalhes da embalagem
+                        </button>
                       </span>
                     </label>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEmbalagemPresenteModalId(embalagensPresente[0].id)
-                      }
-                      className="mt-3 text-xs font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950"
-                    >
-                      Ver embalagem
-                    </button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {embalagensPresente.map((embalagem) => {
                       const selecionada =
                         embalagemPresenteSelecionadaId === embalagem.id;
@@ -1597,8 +1622,8 @@ export default function ProdutoLojaClient({
                           key={embalagem.id}
                           className={`grid gap-3 border px-3 py-3 transition sm:grid-cols-[64px_1fr] ${
                             selecionada
-                              ? "border-slate-950 bg-white"
-                              : "border-slate-200 bg-slate-50"
+                              ? "border-[var(--brand-blue)] bg-[var(--brand-blue-soft)]"
+                              : "border-slate-200 bg-white"
                           }`}
                         >
                           <button
@@ -1683,9 +1708,13 @@ export default function ProdutoLojaClient({
                 )}
 
                 {embalagemPresenteSelecionada?.permiteMensagem && (
-                  <label className="mt-3 block">
-                    <span className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  <label className="mt-4 block border border-slate-200 bg-white p-3">
+                    <span className="mb-1 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
                       Mensagem para o presente
+                    </span>
+
+                    <span className="mb-2 block text-xs font-light text-slate-500">
+                      Opcional. A mensagem acompanha somente esta embalagem.
                     </span>
 
                     <textarea
@@ -1700,7 +1729,7 @@ export default function ProdutoLojaClient({
                         embalagemPresenteSelecionada.mensagemPlaceholder ||
                         "Escreva uma mensagem opcional"
                       }
-                      className="w-full border border-slate-200 px-3 py-3 text-sm outline-none transition focus:border-slate-950"
+                      className="w-full resize-none border border-slate-200 px-3 py-3 text-sm outline-none transition focus:border-[var(--brand-blue)]"
                     />
 
                     {embalagemPresenteSelecionada.mensagemLimiteCaracteres && (
