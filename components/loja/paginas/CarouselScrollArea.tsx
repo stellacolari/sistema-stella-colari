@@ -124,7 +124,7 @@ export default function CarouselScrollArea({
   }
 
   return (
-    <div className="relative">
+    <div className="stella-product-carousel relative">
       {arrowPosition === "TOPO_DIREITA" ? (
         <div className="mb-4">{arrows}</div>
       ) : null}

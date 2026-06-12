@@ -38,6 +38,143 @@ type ProdutoCardLojaProps = {
   revealDelayMs?: number;
 };
 
+type TouchPreviewSubscriber = (activeCardId: string | null) => void;
+
+const touchPreviewSubscribers = new Set<TouchPreviewSubscriber>();
+let touchTrackerInstalled = false;
+let activeTouchCardId: string | null = null;
+let pendingTouchCardId: string | null = null;
+let touchMoveFrameId: number | null = null;
+let clearTouchPreviewTimerId: number | null = null;
+
+function notifyTouchPreviewSubscribers(cardId: string | null) {
+  if (activeTouchCardId === cardId) {
+    return;
+  }
+
+  activeTouchCardId = cardId;
+  touchPreviewSubscribers.forEach((subscriber) => subscriber(cardId));
+}
+
+function scheduleTouchPreviewUpdate(cardId: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  pendingTouchCardId = cardId;
+
+  if (touchMoveFrameId !== null) {
+    return;
+  }
+
+  touchMoveFrameId = window.requestAnimationFrame(() => {
+    touchMoveFrameId = null;
+    notifyTouchPreviewSubscribers(pendingTouchCardId);
+    pendingTouchCardId = null;
+  });
+}
+
+function clearTouchPreviewAfterDelay() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (clearTouchPreviewTimerId !== null) {
+    window.clearTimeout(clearTouchPreviewTimerId);
+  }
+
+  clearTouchPreviewTimerId = window.setTimeout(() => {
+    clearTouchPreviewTimerId = null;
+    scheduleTouchPreviewUpdate(null);
+  }, 100);
+}
+
+function handleDocumentTouchMove(event: TouchEvent) {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    return;
+  }
+
+  const touch = event.touches[0];
+  if (!touch) {
+    return;
+  }
+
+  if (clearTouchPreviewTimerId !== null) {
+    window.clearTimeout(clearTouchPreviewTimerId);
+    clearTouchPreviewTimerId = null;
+  }
+
+  const element = document.elementFromPoint(touch.clientX, touch.clientY);
+  const cardElement = element?.closest("[data-stella-product-card-id]") as
+    | HTMLElement
+    | null;
+
+  scheduleTouchPreviewUpdate(
+    cardElement?.dataset.stellaProductCardId ?? null,
+  );
+}
+
+function installGlobalTouchPreviewTracker() {
+  if (
+    touchTrackerInstalled ||
+    typeof document === "undefined" ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
+
+  document.addEventListener("touchmove", handleDocumentTouchMove, {
+    passive: true,
+    capture: true,
+  });
+  document.addEventListener("touchend", clearTouchPreviewAfterDelay, {
+    passive: true,
+    capture: true,
+  });
+  document.addEventListener("touchcancel", clearTouchPreviewAfterDelay, {
+    passive: true,
+    capture: true,
+  });
+  touchTrackerInstalled = true;
+}
+
+function uninstallGlobalTouchPreviewTracker() {
+  if (!touchTrackerInstalled || touchPreviewSubscribers.size > 0) {
+    return;
+  }
+
+  document.removeEventListener("touchmove", handleDocumentTouchMove, true);
+  document.removeEventListener("touchend", clearTouchPreviewAfterDelay, true);
+  document.removeEventListener("touchcancel", clearTouchPreviewAfterDelay, true);
+
+  if (touchMoveFrameId !== null) {
+    window.cancelAnimationFrame(touchMoveFrameId);
+    touchMoveFrameId = null;
+  }
+
+  if (clearTouchPreviewTimerId !== null) {
+    window.clearTimeout(clearTouchPreviewTimerId);
+    clearTouchPreviewTimerId = null;
+  }
+
+  pendingTouchCardId = null;
+  activeTouchCardId = null;
+  touchTrackerInstalled = false;
+}
+
+function subscribeGlobalTouchPreview(
+  subscriber: TouchPreviewSubscriber,
+): () => void {
+  installGlobalTouchPreviewTracker();
+  touchPreviewSubscribers.add(subscriber);
+  subscriber(activeTouchCardId);
+
+  return () => {
+    touchPreviewSubscribers.delete(subscriber);
+    uninstallGlobalTouchPreviewTracker();
+  };
+}
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -101,6 +238,7 @@ export default function ProdutoCardLoja({
 }: ProdutoCardLojaProps) {
   const [favorito, setFavorito] = useState(false);
   const [touchPreview, setTouchPreview] = useState(false);
+  const [globalTouchPreview, setGlobalTouchPreview] = useState(false);
   const [revelado, setRevelado] = useState(modoPreview);
   const articleRef = useRef<HTMLElement | null>(null);
   const startPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -110,6 +248,12 @@ export default function ProdutoCardLoja({
 
   useEffect(() => {
     setFavorito(produtoEstaFavorito(produto.id));
+  }, [produto.id]);
+
+  useEffect(() => {
+    return subscribeGlobalTouchPreview((activeCardId) => {
+      setGlobalTouchPreview(activeCardId === produto.id);
+    });
   }, [produto.id]);
 
   useEffect(() => {
@@ -290,6 +434,7 @@ export default function ProdutoCardLoja({
   const desconto = percentualDesconto(produto);
   const produtoHref = href || `/loja/produto/${produto.id}`;
   const imagemOverlayUrl = produto.imagemHoverUrl || produto.imagemUrl;
+  const previewTouchAtivo = touchPreview || globalTouchPreview;
   const cardClass = [
     "group stella-product-card relative h-full overflow-hidden bg-white p-2",
     revelado ? "is-visible" : "",
@@ -401,7 +546,8 @@ export default function ProdutoCardLoja({
       <article
         ref={articleRef}
         className={cardClass}
-        data-touch-preview={touchPreview ? "true" : "false"}
+        data-stella-product-card-id={produto.id}
+        data-touch-preview={previewTouchAtivo ? "true" : "false"}
         style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
       >
         <div className="relative block h-full">
@@ -417,7 +563,8 @@ export default function ProdutoCardLoja({
     <article
       ref={articleRef}
       className={cardClass}
-      data-touch-preview={touchPreview ? "true" : "false"}
+      data-stella-product-card-id={produto.id}
+      data-touch-preview={previewTouchAtivo ? "true" : "false"}
       style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
     >
       <Link

@@ -147,6 +147,7 @@ select:focus {
 
 .stella-product-card {
   -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
   opacity: 0;
   transform: translateY(16px) scale(0.98);
   transition:
@@ -156,13 +157,19 @@ select:focus {
     background-color 200ms ease;
 }
 
-.stella-product-card img {
-  user-select: none;
-  -webkit-user-drag: none;
+.stella-product-card,
+.stella-product-card * {
+  -webkit-touch-callout: none;
 }
 
-.stella-product-card a {
-  -webkit-touch-callout: none;
+.stella-product-carousel .stella-product-card {
+  touch-action: pan-x pan-y;
+}
+
+.stella-product-card img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .stella-product-card.is-visible {
@@ -184,6 +191,7 @@ select:focus {
 
 .stella-product-hover-overlay {
   opacity: 0;
+  pointer-events: none;
   transform: scale(1.015);
 }
 
