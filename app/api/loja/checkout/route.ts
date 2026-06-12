@@ -14,6 +14,10 @@ import {
   FRETE_MANUAL_ID,
   FRETE_RETIRADA_LOCAL_ID,
 } from "@/lib/frete/configuracao";
+import {
+  persistirPlanoEmbalagemPedido,
+  type ItemPedidoPlanoEmbalagem,
+} from "@/lib/embalagens/persistir-plano-pedido";
 import { validarEmbalagemPresenteCarrinho } from "@/lib/embalagens/presente-loja";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
@@ -1480,6 +1484,7 @@ export async function POST(request: Request) {
         });
 
         const embalagensPresenteSnapshot: unknown[] = [];
+        const itensPlanoEmbalagem: ItemPedidoPlanoEmbalagem[] = [];
 
         for (const itemProcessado of itensProcessados) {
           const {
@@ -1569,6 +1574,20 @@ export async function POST(request: Request) {
                 : Math.max(cashbackBaseItemBruta, 0),
               total: totalProdutoItem,
             },
+          });
+
+          itensPlanoEmbalagem.push({
+            pedidoOnlineItemId: pedidoItem.id,
+            produtoId: produto.id,
+            nome: produto.nome,
+            quantidade,
+            embalagemClasseId: produto.embalagemClasseId,
+            embalagemUnidades: produto.embalagemUnidades,
+            embalagemCompartilhavel: produto.embalagemCompartilhavel,
+            embalagemIndividualObrigatoria:
+              produto.embalagemIndividualObrigatoria,
+            embalagemPresenteModeloId: embalagemPresente?.id || null,
+            pesoGramas: produto.pesoGramas,
           });
 
           const baixasAdicionais = await baixarAdicionaisDaCategoria({
@@ -1710,6 +1729,12 @@ export async function POST(request: Request) {
             }
           }
         }
+
+        await persistirPlanoEmbalagemPedido({
+          tx,
+          pedidoOnlineId: pedido.id,
+          itens: itensPlanoEmbalagem,
+        });
 
         if (embalagensPresenteSnapshot.length > 0) {
           await tx.pedidoOnline.update({

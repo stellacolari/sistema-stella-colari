@@ -68,6 +68,7 @@ export type CalcularPlanoEmbalagemInput = {
 export type PlanoEmbalagemItem = {
   tipo: TipoEmbalagemModelo;
   modeloId?: string;
+  itemAdicionalId?: string;
   nome: string;
   quantidade: number;
   custoUnitario: number;
@@ -251,6 +252,7 @@ function adicionarComponente(
 
     componentes.set(componente.itemAdicionalId, {
       tipo: "COMPONENTE",
+      itemAdicionalId: componente.itemAdicionalId,
       nome: componente.nome,
       quantidade: arredondar(quantidade),
       custoUnitario: numero(componente.custoBase),
