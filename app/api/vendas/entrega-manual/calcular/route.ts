@@ -16,6 +16,15 @@ type Coordenadas = {
   longitude: number;
 };
 
+type CalculoDistancia = {
+  distanciaIdaKm: number;
+  duracaoSegundos?: number | null;
+  provider: string;
+  origemFormatada?: string | null;
+  destinoFormatado?: string | null;
+  geometria?: unknown;
+};
+
 function texto(value: unknown) {
   return String(value || "").trim();
 }
@@ -106,6 +115,37 @@ function montarMapsUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
+function montarMapsEmbedUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+  const params = new URLSearchParams({
+    output: "embed",
+    saddr: enderecoParaBusca(origem),
+    daddr: enderecoParaBusca(destino),
+    dirflg: "d",
+  });
+
+  return `https://www.google.com/maps?${params.toString()}`;
+}
+
+function formatarDuracao(segundos?: number | null) {
+  if (!Number.isFinite(segundos || NaN) || !segundos) {
+    return null;
+  }
+
+  const minutos = Math.max(1, Math.round(segundos / 60));
+  const horas = Math.floor(minutos / 60);
+  const minutosRestantes = minutos % 60;
+
+  if (!horas) {
+    return `${minutos} min`;
+  }
+
+  if (!minutosRestantes) {
+    return `${horas} h`;
+  }
+
+  return `${horas} h ${minutosRestantes} min`;
+}
+
 function getProviderConfigurado() {
   const provider = texto(process.env.DISTANCIA_PROVIDER).toUpperCase();
 
@@ -120,7 +160,10 @@ function getProviderConfigurado() {
   return "";
 }
 
-async function calcularGoogle(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+async function calcularGoogle(
+  origem: EnderecoEntrega,
+  destino: EnderecoEntrega,
+): Promise<CalculoDistancia> {
   const key = texto(process.env.GOOGLE_MAPS_API_KEY);
 
   if (!key) {
@@ -141,6 +184,7 @@ async function calcularGoogle(origem: EnderecoEntrega, destino: EnderecoEntrega)
   const data = await response.json().catch(() => ({}));
   const element = data?.rows?.[0]?.elements?.[0];
   const metros = Number(element?.distance?.value);
+  const segundos = Number(element?.duration?.value);
 
   if (!response.ok || data?.status !== "OK" || element?.status !== "OK" || !Number.isFinite(metros)) {
     throw new Error("Não foi possível calcular a rota pelo Google Maps.");
@@ -148,7 +192,10 @@ async function calcularGoogle(origem: EnderecoEntrega, destino: EnderecoEntrega)
 
   return {
     distanciaIdaKm: metros / 1000,
+    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
     provider: "GOOGLE",
+    origemFormatada: texto(data?.origin_addresses?.[0]) || null,
+    destinoFormatado: texto(data?.destination_addresses?.[0]) || null,
   };
 }
 
@@ -173,7 +220,10 @@ async function geocodificarMapbox(endereco: EnderecoEntrega): Promise<Coordenada
   };
 }
 
-async function calcularMapbox(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+async function calcularMapbox(
+  origem: EnderecoEntrega,
+  destino: EnderecoEntrega,
+): Promise<CalculoDistancia> {
   const token = texto(process.env.MAPBOX_ACCESS_TOKEN);
 
   if (!token) {
@@ -186,13 +236,15 @@ async function calcularMapbox(origem: EnderecoEntrega, destino: EnderecoEntrega)
   ]);
   const coords = `${origemGeo.longitude},${origemGeo.latitude};${destinoGeo.longitude},${destinoGeo.latitude}`;
   const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?overview=false&access_token=${encodeURIComponent(
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?overview=full&geometries=geojson&access_token=${encodeURIComponent(
       token,
     )}`,
     { cache: "no-store" },
   );
   const data = await response.json().catch(() => ({}));
-  const metros = Number(data?.routes?.[0]?.distance);
+  const rota = data?.routes?.[0];
+  const metros = Number(rota?.distance);
+  const segundos = Number(rota?.duration);
 
   if (!response.ok || !Number.isFinite(metros)) {
     throw new Error("Não foi possível calcular a rota pelo Mapbox.");
@@ -200,7 +252,11 @@ async function calcularMapbox(origem: EnderecoEntrega, destino: EnderecoEntrega)
 
   return {
     distanciaIdaKm: metros / 1000,
+    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
     provider: "MAPBOX",
+    origemFormatada: resumoEndereco(origem),
+    destinoFormatado: resumoEndereco(destino),
+    geometria: rota?.geometry || null,
   };
 }
 
@@ -229,7 +285,10 @@ async function geocodificarOpenRoute(endereco: EnderecoEntrega): Promise<Coorden
   };
 }
 
-async function calcularOpenRoute(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+async function calcularOpenRoute(
+  origem: EnderecoEntrega,
+  destino: EnderecoEntrega,
+): Promise<CalculoDistancia> {
   const key = texto(process.env.OPENROUTE_API_KEY);
 
   if (!key) {
@@ -250,7 +309,9 @@ async function calcularOpenRoute(origem: EnderecoEntrega, destino: EnderecoEntre
     { cache: "no-store" },
   );
   const data = await response.json().catch(() => ({}));
-  const metros = Number(data?.features?.[0]?.properties?.summary?.distance);
+  const feature = data?.features?.[0];
+  const metros = Number(feature?.properties?.summary?.distance);
+  const segundos = Number(feature?.properties?.summary?.duration);
 
   if (!response.ok || !Number.isFinite(metros)) {
     throw new Error("Não foi possível calcular a rota pelo OpenRouteService.");
@@ -258,11 +319,18 @@ async function calcularOpenRoute(origem: EnderecoEntrega, destino: EnderecoEntre
 
   return {
     distanciaIdaKm: metros / 1000,
+    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
     provider: "OPENROUTE",
+    origemFormatada: resumoEndereco(origem),
+    destinoFormatado: resumoEndereco(destino),
+    geometria: feature?.geometry || null,
   };
 }
 
-async function calcularDistancia(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+async function calcularDistancia(
+  origem: EnderecoEntrega,
+  destino: EnderecoEntrega,
+): Promise<CalculoDistancia> {
   const provider = getProviderConfigurado();
 
   if (!provider) {
@@ -339,15 +407,29 @@ export async function POST(req: Request) {
 
     const resultado = await calcularDistancia(origemInfo.origem, destino);
     const distanciaIdaKm = Number(resultado.distanciaIdaKm.toFixed(2));
+    const duracaoMinutos = resultado.duracaoSegundos
+      ? Math.max(1, Math.round(resultado.duracaoSegundos / 60))
+      : null;
 
     return NextResponse.json({
       ...origemInfo,
       destino,
-      destinoResumo: resumoEndereco(destino),
+      origemResumo:
+        texto(resultado.origemFormatada) || resumoEndereco(origemInfo.origem),
+      origemFormatada:
+        texto(resultado.origemFormatada) || resumoEndereco(origemInfo.origem),
+      destinoResumo: texto(resultado.destinoFormatado) || resumoEndereco(destino),
+      destinoFormatado:
+        texto(resultado.destinoFormatado) || resumoEndereco(destino),
       distanciaIdaKm,
       distanciaTotalKm: Number((distanciaIdaKm * 2).toFixed(2)),
+      duracaoSegundos: resultado.duracaoSegundos || null,
+      duracaoMinutos,
+      duracaoTexto: formatarDuracao(resultado.duracaoSegundos),
       provider: resultado.provider,
       mapsUrl: montarMapsUrl(origemInfo.origem, destino),
+      mapsEmbedUrl: montarMapsEmbedUrl(origemInfo.origem, destino),
+      geometria: resultado.geometria || null,
     });
   } catch (error) {
     console.error("Erro ao calcular entrega manual:", error);
