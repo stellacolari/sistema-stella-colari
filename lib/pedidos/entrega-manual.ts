@@ -7,8 +7,13 @@ export type PedidoEntregaManual = {
   kmIdaVolta: number | null;
   litrosEstimados: number | null;
   custoCombustivel: number | null;
+  margemPercentual: number | null;
+  taxaFixa: number | null;
+  valorMinimo: number | null;
   valorSugerido: number | null;
   valorFinalCalculado: number | null;
+  providerDistancia: string | null;
+  origem: string | null;
   observacao: string | null;
   endereco: string | null;
 };
@@ -49,8 +54,13 @@ function numero(value: unknown) {
 
 export function labelModalidadeEntregaManual(modalidade: string) {
   if (modalidade === "RETIRADA_COMBINADA") return "Retirada combinada";
-  if (modalidade === "ENTREGA_LOCAL") return "Entrega local propria";
-  if (modalidade === "CIDADE_PROXIMA") return "Cidade proxima";
+  if (
+    modalidade === "ENTREGA_MANUAL" ||
+    modalidade === "ENTREGA_LOCAL" ||
+    modalidade === "CIDADE_PROXIMA"
+  ) {
+    return "Entrega manual";
+  }
 
   return modalidade.replaceAll("_", " ");
 }
@@ -95,13 +105,20 @@ function normalizarEntregaManual(
     modalidade,
     label: labelModalidadeEntregaManual(modalidade),
     valor: numero(record.valorFinal ?? record.valor ?? record.valorManual) || 0,
-    kmIda: numero(record.kmIda ?? record.kmEstimado),
-    kmEstimado: numero(record.kmEstimado ?? record.kmIda),
-    kmIdaVolta: numero(record.kmIdaVolta),
+    kmIda: numero(record.distanciaIdaKm ?? record.kmIda ?? record.kmEstimado),
+    kmEstimado: numero(record.kmEstimado ?? record.distanciaIdaKm ?? record.kmIda),
+    kmIdaVolta: numero(record.distanciaTotalKm ?? record.kmIdaVolta),
     litrosEstimados: numero(record.litrosEstimados),
     custoCombustivel: numero(record.custoCombustivel),
+    margemPercentual: numero(record.margemPercentual),
+    taxaFixa: numero(record.taxaFixa),
+    valorMinimo: numero(record.valorMinimo),
     valorSugerido: numero(record.valorSugerido),
     valorFinalCalculado: numero(record.valorFinalCalculado),
+    providerDistancia: texto(record.providerDistancia),
+    origem: isRecord(record.origemDespachoSnapshot)
+      ? montarEndereco(record.origemDespachoSnapshot)
+      : texto(record.origemResumo),
     observacao: texto(record.observacao ?? record.observacaoManual),
     endereco: montarEndereco(record),
   };

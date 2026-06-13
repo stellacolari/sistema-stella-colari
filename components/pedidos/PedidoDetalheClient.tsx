@@ -943,14 +943,44 @@ export default function PedidoDetalheClient({
                   </p>
                   {pedido.entregaManual.kmEstimado !== null && (
                     <p className="mt-1 text-blue-800">
-                      Km estimado: {pedido.entregaManual.kmEstimado}
+                      Distância ida: {pedido.entregaManual.kmIda} km
+                      {pedido.entregaManual.kmIdaVolta !== null
+                        ? ` | ida e volta: ${pedido.entregaManual.kmIdaVolta} km`
+                        : ""}
+                    </p>
+                  )}
+                  {pedido.entregaManual.origem && (
+                    <p className="mt-1 leading-6 text-blue-800">
+                      Origem: {pedido.entregaManual.origem}
                     </p>
                   )}
                   {pedido.entregaManual.endereco && (
                     <p className="mt-1 leading-6 text-blue-800">
-                      {pedido.entregaManual.endereco}
+                      Destino: {pedido.entregaManual.endereco}
                     </p>
                   )}
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {pedido.entregaManual.litrosEstimados !== null && (
+                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
+                        Litros: {pedido.entregaManual.litrosEstimados.toFixed(2)} L
+                      </p>
+                    )}
+                    {pedido.entregaManual.custoCombustivel !== null && (
+                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
+                        Combustível: {moeda(pedido.entregaManual.custoCombustivel)}
+                      </p>
+                    )}
+                    {pedido.entregaManual.margemPercentual !== null && (
+                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
+                        Margem: {pedido.entregaManual.margemPercentual}%
+                      </p>
+                    )}
+                    {pedido.entregaManual.valorSugerido !== null && (
+                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
+                        Sugerido: {moeda(pedido.entregaManual.valorSugerido)}
+                      </p>
+                    )}
+                  </div>
                   {pedido.entregaManual.observacao && (
                     <p className="mt-2 whitespace-pre-wrap rounded-xl bg-white/80 px-3 py-2 leading-6 text-slate-700">
                       {pedido.entregaManual.observacao}

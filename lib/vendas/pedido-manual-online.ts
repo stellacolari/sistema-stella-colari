@@ -29,18 +29,34 @@ export type EnvioPedidoManualOnlinePayload = {
   cidade?: string | null;
   estado?: string | null;
   freteOpcaoId?: string | null;
+  origemDespachoSnapshot?: {
+    cep?: string | null;
+    rua?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+  } | null;
   kmIda?: number | string | null;
   kmEstimado?: number | string | null;
+  distanciaIdaKm?: number | string | null;
+  distanciaTotalKm?: number | string | null;
   kmIdaVolta?: number | string | null;
   consumoKmPorLitro?: number | string | null;
   precoCombustivel?: number | string | null;
   cobrarIdaVolta?: boolean | null;
   litrosEstimados?: number | string | null;
   custoCombustivel?: number | string | null;
+  margemPercentual?: number | string | null;
   taxaFixa?: number | string | null;
   valorMinimo?: number | string | null;
   valorSugerido?: number | string | null;
   valorManual?: number | string | null;
+  valorFinal?: number | string | null;
+  providerDistancia?: string | null;
+  origemResumo?: string | null;
+  destinoResumo?: string | null;
   observacaoManual?: string | null;
 };
 
@@ -48,6 +64,7 @@ type ModalidadeEntregaManual =
   | "SEM_ENTREGA"
   | "MELHOR_ENVIO"
   | "RETIRADA_COMBINADA"
+  | "ENTREGA_MANUAL"
   | "ENTREGA_LOCAL"
   | "CIDADE_PROXIMA";
 
@@ -158,9 +175,14 @@ function normalizarModalidadeEntrega(
 
   if (
     modalidade === "RETIRADA_COMBINADA" ||
+    modalidade === "ENTREGA_MANUAL" ||
     modalidade === "ENTREGA_LOCAL" ||
     modalidade === "CIDADE_PROXIMA"
   ) {
+    if (modalidade === "ENTREGA_LOCAL" || modalidade === "CIDADE_PROXIMA") {
+      return "ENTREGA_MANUAL";
+    }
+
     return modalidade;
   }
 
@@ -288,62 +310,141 @@ function validarEnderecoEntregaManual(envio: EnvioPedidoManualOnlinePayload) {
   };
 }
 
+function montarOrigemDespachoSnapshot(
+  freteConfig: Awaited<ReturnType<typeof buscarConfiguracaoFrete>> | null,
+) {
+  if (!freteConfig) {
+    return null;
+  }
+
+  return {
+    cep: normalizarCep(freteConfig.cepOrigem) || null,
+    rua: texto(freteConfig.remetenteEndereco) || null,
+    numero: texto(freteConfig.remetenteNumero) || null,
+    complemento: texto(freteConfig.remetenteComplemento) || null,
+    bairro: texto(freteConfig.remetenteBairro) || null,
+    cidade: texto(freteConfig.remetenteCidade) || null,
+    estado: normalizarUf(freteConfig.remetenteUf) || null,
+  };
+}
+
+function origemDespachoCompleta(
+  origem: ReturnType<typeof montarOrigemDespachoSnapshot>,
+) {
+  return Boolean(
+    origem &&
+      normalizarCep(origem.cep).length === 8 &&
+      texto(origem.rua) &&
+      texto(origem.numero) &&
+      texto(origem.bairro) &&
+      texto(origem.cidade) &&
+      normalizarUf(origem.estado).length === 2,
+  );
+}
+
+function montarResumoEndereco(endereco: {
+  cep?: string | null;
+  rua?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+}) {
+  return [
+    texto(endereco.rua),
+    texto(endereco.numero),
+    texto(endereco.bairro),
+    texto(endereco.cidade),
+    normalizarUf(endereco.estado),
+    normalizarCep(endereco.cep),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 function montarEntregaManual(
   modalidade: ModalidadeEntregaManual,
   envio: EnvioPedidoManualOnlinePayload,
+  origemDespachoSnapshot: ReturnType<typeof montarOrigemDespachoSnapshot>,
 ) {
-  const kmIda = numeroNaoNegativo(envio.kmIda ?? envio.kmEstimado);
-  const kmIdaVolta = kmIda * 2;
+  const kmIda = numeroNaoNegativo(
+    envio.distanciaIdaKm ?? envio.kmIda ?? envio.kmEstimado,
+  );
+  const kmIdaVolta =
+    numeroNaoNegativo(envio.distanciaTotalKm ?? envio.kmIdaVolta) ||
+    kmIda * 2;
   const consumoKmPorLitro = numeroNaoNegativo(envio.consumoKmPorLitro, 16);
   const precoCombustivel = numeroNaoNegativo(envio.precoCombustivel);
+  const margemPercentual = numeroNaoNegativo(envio.margemPercentual, 15);
   const taxaFixa = numeroNaoNegativo(envio.taxaFixa);
   const valorMinimo = numeroNaoNegativo(envio.valorMinimo);
   const litrosEstimados =
     consumoKmPorLitro > 0 ? kmIdaVolta / consumoKmPorLitro : 0;
   const custoCombustivel = litrosEstimados * precoCombustivel;
-  const valorCalculado = custoCombustivel + taxaFixa;
+  const valorComMargem = custoCombustivel * (1 + margemPercentual / 100);
+  const valorCalculado = valorComMargem + taxaFixa;
   const valorSugerido = Math.max(
     numeroNaoNegativo(envio.valorSugerido, valorCalculado),
     valorMinimo,
   );
   const valorManualRaw =
-    envio.valorManual === null || typeof envio.valorManual === "undefined"
+    (envio.valorFinal ?? envio.valorManual) === null ||
+    typeof (envio.valorFinal ?? envio.valorManual) === "undefined"
       ? null
-      : numeroNaoNegativo(envio.valorManual);
+      : numeroNaoNegativo(envio.valorFinal ?? envio.valorManual);
   const valorFinal = valorManualRaw === null ? valorSugerido : valorManualRaw;
+  const endereco = {
+    cep: normalizarCep(envio.cep) || null,
+    rua: texto(envio.rua) || null,
+    numero: texto(envio.numero) || null,
+    complemento: texto(envio.complemento) || null,
+    bairro: texto(envio.bairro) || null,
+    cidade: texto(envio.cidade) || null,
+    estado: normalizarUf(envio.estado) || null,
+  };
 
   return {
     modalidade,
     kmIda,
     kmEstimado: kmIda,
+    distanciaIdaKm: kmIda,
+    distanciaTotalKm: kmIdaVolta,
     kmIdaVolta,
     consumoKmPorLitro,
     precoCombustivel,
     cobrarIdaVolta: true,
     litrosEstimados,
     custoCombustivel,
+    margemPercentual,
+    valorComMargem,
     taxaFixa,
     valorMinimo,
     valorSugerido,
     valorFinalCalculado: valorSugerido,
     valorFinal,
+    providerDistancia: texto(envio.providerDistancia) || null,
+    origemDespachoSnapshot,
+    origemResumo:
+      texto(envio.origemResumo) ||
+      (origemDespachoSnapshot
+        ? montarResumoEndereco(origemDespachoSnapshot)
+        : null),
+    destinoResumo: texto(envio.destinoResumo) || montarResumoEndereco(endereco),
     observacaoManual: texto(envio.observacaoManual) || null,
-    endereco: {
-      cep: normalizarCep(envio.cep) || null,
-      rua: texto(envio.rua) || null,
-      numero: texto(envio.numero) || null,
-      complemento: texto(envio.complemento) || null,
-      bairro: texto(envio.bairro) || null,
-      cidade: texto(envio.cidade) || null,
-      estado: normalizarUf(envio.estado) || null,
-    },
+    endereco,
   };
 }
 
 function labelModalidadeEntrega(modalidade: ModalidadeEntregaManual) {
   if (modalidade === "RETIRADA_COMBINADA") return "Retirada combinada";
-  if (modalidade === "ENTREGA_LOCAL") return "Entrega local propria";
-  if (modalidade === "CIDADE_PROXIMA") return "Cidade proxima";
+  if (
+    modalidade === "ENTREGA_MANUAL" ||
+    modalidade === "ENTREGA_LOCAL" ||
+    modalidade === "CIDADE_PROXIMA"
+  ) {
+    return "Entrega manual";
+  }
 
   return "Melhor Envio";
 }
@@ -366,7 +467,14 @@ export async function criarPedidoManualOnline({
   const modalidadeEntrega = normalizarModalidadeEntrega(envio);
   const usarEnvio = modalidadeEntrega !== "SEM_ENTREGA";
   const usaFretePublico = modalidadeEntrega === "MELHOR_ENVIO";
-  const freteConfig = usaFretePublico ? await buscarConfiguracaoFrete() : null;
+  const usaEntregaManual = modalidadeEntrega === "ENTREGA_MANUAL";
+  const freteConfig =
+    usaFretePublico || usaEntregaManual
+      ? await buscarConfiguracaoFrete()
+      : null;
+  const origemDespachoSnapshot = usaEntregaManual
+    ? montarOrigemDespachoSnapshot(freteConfig)
+    : null;
 
   return prisma.$transaction(async (tx) => {
     const cliente = await tx.cliente.findUnique({
@@ -539,7 +647,11 @@ export async function criarPedidoManualOnline({
       | null = null;
 
     if (usarEnvio && envio && modalidadeEntrega === "RETIRADA_COMBINADA") {
-      entregaManualData = montarEntregaManual(modalidadeEntrega, envio);
+      entregaManualData = montarEntregaManual(
+        modalidadeEntrega,
+        envio,
+        origemDespachoSnapshot,
+      );
       valorFrete = 0;
       enderecoPedido = {
         cep: normalizarCep(envio.cep) || null,
@@ -572,11 +684,20 @@ export async function criarPedidoManualOnline({
     if (
       usarEnvio &&
       envio &&
-      (modalidadeEntrega === "ENTREGA_LOCAL" ||
-        modalidadeEntrega === "CIDADE_PROXIMA")
+      modalidadeEntrega === "ENTREGA_MANUAL"
     ) {
+      if (!origemDespachoCompleta(origemDespachoSnapshot)) {
+        throw new Error(
+          "Complete o endereço de despacho nas configurações de frete para calcular a entrega manual.",
+        );
+      }
+
       enderecoPedido = validarEnderecoEntregaManual(envio);
-      entregaManualData = montarEntregaManual(modalidadeEntrega, envio);
+      entregaManualData = montarEntregaManual(
+        modalidadeEntrega,
+        envio,
+        origemDespachoSnapshot,
+      );
       valorFrete = entregaManualData.valorFinal;
 
       envioData = {
@@ -584,7 +705,7 @@ export async function criarPedidoManualOnline({
         transportadora: "Stella Colari",
         servico: labelModalidadeEntrega(modalidadeEntrega),
         statusEnvio: "PENDENTE",
-        cepOrigem: null,
+        cepOrigem: origemDespachoSnapshot?.cep || null,
         cepDestino: enderecoPedido.cep || null,
         valorFrete,
         prazoDias: null,
