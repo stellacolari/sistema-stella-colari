@@ -95,6 +95,17 @@ function enderecoParaBusca(endereco: EnderecoEntrega) {
     .join(", ");
 }
 
+function montarMapsUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+  const params = new URLSearchParams({
+    api: "1",
+    origin: enderecoParaBusca(origem),
+    destination: enderecoParaBusca(destino),
+    travelmode: "driving",
+  });
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 function getProviderConfigurado() {
   const provider = texto(process.env.DISTANCIA_PROVIDER).toUpperCase();
 
@@ -336,6 +347,7 @@ export async function POST(req: Request) {
       distanciaIdaKm,
       distanciaTotalKm: Number((distanciaIdaKm * 2).toFixed(2)),
       provider: resultado.provider,
+      mapsUrl: montarMapsUrl(origemInfo.origem, destino),
     });
   } catch (error) {
     console.error("Erro ao calcular entrega manual:", error);

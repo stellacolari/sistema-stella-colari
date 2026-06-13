@@ -55,6 +55,8 @@ export type EnvioPedidoManualOnlinePayload = {
   valorManual?: number | string | null;
   valorFinal?: number | string | null;
   providerDistancia?: string | null;
+  mapsUrl?: string | null;
+  calculoAutomatico?: boolean | null;
   origemResumo?: string | null;
   destinoResumo?: string | null;
   observacaoManual?: string | null;
@@ -424,6 +426,8 @@ function montarEntregaManual(
     valorFinalCalculado: valorSugerido,
     valorFinal,
     providerDistancia: texto(envio.providerDistancia) || null,
+    mapsUrl: texto(envio.mapsUrl) || null,
+    calculoAutomatico: Boolean(envio.calculoAutomatico),
     origemDespachoSnapshot,
     origemResumo:
       texto(envio.origemResumo) ||

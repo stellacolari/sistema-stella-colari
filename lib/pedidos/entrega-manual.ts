@@ -13,6 +13,8 @@ export type PedidoEntregaManual = {
   valorSugerido: number | null;
   valorFinalCalculado: number | null;
   providerDistancia: string | null;
+  mapsUrl: string | null;
+  calculoAutomatico: boolean;
   origem: string | null;
   observacao: string | null;
   endereco: string | null;
@@ -116,6 +118,8 @@ function normalizarEntregaManual(
     valorSugerido: numero(record.valorSugerido),
     valorFinalCalculado: numero(record.valorFinalCalculado),
     providerDistancia: texto(record.providerDistancia),
+    mapsUrl: texto(record.mapsUrl),
+    calculoAutomatico: Boolean(record.calculoAutomatico),
     origem: isRecord(record.origemDespachoSnapshot)
       ? montarEndereco(record.origemDespachoSnapshot)
       : texto(record.origemResumo),

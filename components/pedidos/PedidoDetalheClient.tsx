@@ -959,28 +959,16 @@ export default function PedidoDetalheClient({
                       Destino: {pedido.entregaManual.endereco}
                     </p>
                   )}
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {pedido.entregaManual.litrosEstimados !== null && (
-                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
-                        Litros: {pedido.entregaManual.litrosEstimados.toFixed(2)} L
-                      </p>
-                    )}
-                    {pedido.entregaManual.custoCombustivel !== null && (
-                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
-                        Combustível: {moeda(pedido.entregaManual.custoCombustivel)}
-                      </p>
-                    )}
-                    {pedido.entregaManual.margemPercentual !== null && (
-                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
-                        Margem: {pedido.entregaManual.margemPercentual}%
-                      </p>
-                    )}
-                    {pedido.entregaManual.valorSugerido !== null && (
-                      <p className="rounded-xl bg-white/80 px-3 py-2 text-blue-900">
-                        Sugerido: {moeda(pedido.entregaManual.valorSugerido)}
-                      </p>
-                    )}
-                  </div>
+                  {pedido.entregaManual.mapsUrl && (
+                    <a
+                      href={pedido.entregaManual.mapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-white px-3 py-2 text-xs font-semibold text-blue-800 ring-1 ring-blue-200 transition hover:bg-blue-100"
+                    >
+                      Ver rota no Maps
+                    </a>
+                  )}
                   {pedido.entregaManual.observacao && (
                     <p className="mt-2 whitespace-pre-wrap rounded-xl bg-white/80 px-3 py-2 leading-6 text-slate-700">
                       {pedido.entregaManual.observacao}
