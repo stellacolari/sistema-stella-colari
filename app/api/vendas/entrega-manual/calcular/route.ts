@@ -11,20 +11,6 @@ type EnderecoEntrega = {
   estado?: string | null;
 };
 
-type Coordenadas = {
-  latitude: number;
-  longitude: number;
-};
-
-type CalculoDistancia = {
-  distanciaIdaKm: number;
-  duracaoSegundos?: number | null;
-  provider: string;
-  origemFormatada?: string | null;
-  destinoFormatado?: string | null;
-  geometria?: unknown;
-};
-
 function texto(value: unknown) {
   return String(value || "").trim();
 }
@@ -37,7 +23,9 @@ function normalizarUf(value: unknown) {
   return texto(value).toUpperCase().slice(0, 2);
 }
 
-function montarEnderecoOrigem(config: Awaited<ReturnType<typeof buscarConfiguracaoFrete>>): EnderecoEntrega {
+function montarEnderecoOrigem(
+  config: Awaited<ReturnType<typeof buscarConfiguracaoFrete>>,
+): EnderecoEntrega {
   return {
     cep: config.cepOrigem,
     rua: config.remetenteEndereco,
@@ -81,6 +69,7 @@ function resumoEndereco(endereco: EnderecoEntrega) {
   return [
     texto(endereco.rua),
     texto(endereco.numero),
+    texto(endereco.complemento),
     texto(endereco.bairro),
     texto(endereco.cidade),
     normalizarUf(endereco.estado),
@@ -115,243 +104,6 @@ function montarMapsUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-function montarMapsEmbedUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
-  const params = new URLSearchParams({
-    output: "embed",
-    saddr: enderecoParaBusca(origem),
-    daddr: enderecoParaBusca(destino),
-    dirflg: "d",
-  });
-
-  return `https://www.google.com/maps?${params.toString()}`;
-}
-
-function formatarDuracao(segundos?: number | null) {
-  if (!Number.isFinite(segundos || NaN) || !segundos) {
-    return null;
-  }
-
-  const minutos = Math.max(1, Math.round(segundos / 60));
-  const horas = Math.floor(minutos / 60);
-  const minutosRestantes = minutos % 60;
-
-  if (!horas) {
-    return `${minutos} min`;
-  }
-
-  if (!minutosRestantes) {
-    return `${horas} h`;
-  }
-
-  return `${horas} h ${minutosRestantes} min`;
-}
-
-function getProviderConfigurado() {
-  const provider = texto(process.env.DISTANCIA_PROVIDER).toUpperCase();
-
-  if (provider) {
-    return provider;
-  }
-
-  if (texto(process.env.GOOGLE_MAPS_API_KEY)) return "GOOGLE";
-  if (texto(process.env.MAPBOX_ACCESS_TOKEN)) return "MAPBOX";
-  if (texto(process.env.OPENROUTE_API_KEY)) return "OPENROUTE";
-
-  return "";
-}
-
-async function calcularGoogle(
-  origem: EnderecoEntrega,
-  destino: EnderecoEntrega,
-): Promise<CalculoDistancia> {
-  const key = texto(process.env.GOOGLE_MAPS_API_KEY);
-
-  if (!key) {
-    throw new Error("Configure GOOGLE_MAPS_API_KEY para usar Google Maps.");
-  }
-
-  const params = new URLSearchParams({
-    origins: enderecoParaBusca(origem),
-    destinations: enderecoParaBusca(destino),
-    mode: "driving",
-    units: "metric",
-    key,
-  });
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const element = data?.rows?.[0]?.elements?.[0];
-  const metros = Number(element?.distance?.value);
-  const segundos = Number(element?.duration?.value);
-
-  if (!response.ok || data?.status !== "OK" || element?.status !== "OK" || !Number.isFinite(metros)) {
-    throw new Error("Não foi possível calcular a rota pelo Google Maps.");
-  }
-
-  return {
-    distanciaIdaKm: metros / 1000,
-    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
-    provider: "GOOGLE",
-    origemFormatada: texto(data?.origin_addresses?.[0]) || null,
-    destinoFormatado: texto(data?.destination_addresses?.[0]) || null,
-  };
-}
-
-async function geocodificarMapbox(endereco: EnderecoEntrega): Promise<Coordenadas> {
-  const token = texto(process.env.MAPBOX_ACCESS_TOKEN);
-  const response = await fetch(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      enderecoParaBusca(endereco),
-    )}.json?limit=1&country=br&access_token=${encodeURIComponent(token)}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const center = data?.features?.[0]?.center;
-
-  if (!response.ok || !Array.isArray(center) || center.length < 2) {
-    throw new Error("Não foi possível localizar o endereço pelo Mapbox.");
-  }
-
-  return {
-    longitude: Number(center[0]),
-    latitude: Number(center[1]),
-  };
-}
-
-async function calcularMapbox(
-  origem: EnderecoEntrega,
-  destino: EnderecoEntrega,
-): Promise<CalculoDistancia> {
-  const token = texto(process.env.MAPBOX_ACCESS_TOKEN);
-
-  if (!token) {
-    throw new Error("Configure MAPBOX_ACCESS_TOKEN para usar Mapbox.");
-  }
-
-  const [origemGeo, destinoGeo] = await Promise.all([
-    geocodificarMapbox(origem),
-    geocodificarMapbox(destino),
-  ]);
-  const coords = `${origemGeo.longitude},${origemGeo.latitude};${destinoGeo.longitude},${destinoGeo.latitude}`;
-  const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?overview=full&geometries=geojson&access_token=${encodeURIComponent(
-      token,
-    )}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const rota = data?.routes?.[0];
-  const metros = Number(rota?.distance);
-  const segundos = Number(rota?.duration);
-
-  if (!response.ok || !Number.isFinite(metros)) {
-    throw new Error("Não foi possível calcular a rota pelo Mapbox.");
-  }
-
-  return {
-    distanciaIdaKm: metros / 1000,
-    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
-    provider: "MAPBOX",
-    origemFormatada: resumoEndereco(origem),
-    destinoFormatado: resumoEndereco(destino),
-    geometria: rota?.geometry || null,
-  };
-}
-
-async function geocodificarOpenRoute(endereco: EnderecoEntrega): Promise<Coordenadas> {
-  const key = texto(process.env.OPENROUTE_API_KEY);
-  const params = new URLSearchParams({
-    api_key: key,
-    text: enderecoParaBusca(endereco),
-    "boundary.country": "BR",
-    size: "1",
-  });
-  const response = await fetch(
-    `https://api.openrouteservice.org/geocode/search?${params}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const coordinates = data?.features?.[0]?.geometry?.coordinates;
-
-  if (!response.ok || !Array.isArray(coordinates) || coordinates.length < 2) {
-    throw new Error("Não foi possível localizar o endereço pelo OpenRouteService.");
-  }
-
-  return {
-    longitude: Number(coordinates[0]),
-    latitude: Number(coordinates[1]),
-  };
-}
-
-async function calcularOpenRoute(
-  origem: EnderecoEntrega,
-  destino: EnderecoEntrega,
-): Promise<CalculoDistancia> {
-  const key = texto(process.env.OPENROUTE_API_KEY);
-
-  if (!key) {
-    throw new Error("Configure OPENROUTE_API_KEY para usar OpenRouteService.");
-  }
-
-  const [origemGeo, destinoGeo] = await Promise.all([
-    geocodificarOpenRoute(origem),
-    geocodificarOpenRoute(destino),
-  ]);
-  const params = new URLSearchParams({
-    api_key: key,
-    start: `${origemGeo.longitude},${origemGeo.latitude}`,
-    end: `${destinoGeo.longitude},${destinoGeo.latitude}`,
-  });
-  const response = await fetch(
-    `https://api.openrouteservice.org/v2/directions/driving-car?${params}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const feature = data?.features?.[0];
-  const metros = Number(feature?.properties?.summary?.distance);
-  const segundos = Number(feature?.properties?.summary?.duration);
-
-  if (!response.ok || !Number.isFinite(metros)) {
-    throw new Error("Não foi possível calcular a rota pelo OpenRouteService.");
-  }
-
-  return {
-    distanciaIdaKm: metros / 1000,
-    duracaoSegundos: Number.isFinite(segundos) ? segundos : null,
-    provider: "OPENROUTE",
-    origemFormatada: resumoEndereco(origem),
-    destinoFormatado: resumoEndereco(destino),
-    geometria: feature?.geometry || null,
-  };
-}
-
-async function calcularDistancia(
-  origem: EnderecoEntrega,
-  destino: EnderecoEntrega,
-): Promise<CalculoDistancia> {
-  const provider = getProviderConfigurado();
-
-  if (!provider) {
-    throw new Error("Configure um provedor de distância para cálculo automático.");
-  }
-
-  if (provider === "GOOGLE" || provider === "GOOGLE_MAPS") {
-    return calcularGoogle(origem, destino);
-  }
-
-  if (provider === "MAPBOX") {
-    return calcularMapbox(origem, destino);
-  }
-
-  if (provider === "OPENROUTE" || provider === "OPENROUTESERVICE") {
-    return calcularOpenRoute(origem, destino);
-  }
-
-  throw new Error("Provedor de distância não suportado.");
-}
-
 async function getOrigemResponse() {
   const config = await buscarConfiguracaoFrete();
   const origem = montarEnderecoOrigem(config);
@@ -361,7 +113,6 @@ async function getOrigemResponse() {
     origem,
     origemResumo: resumoEndereco(origem),
     origemCompleta,
-    providerConfigurado: getProviderConfigurado() || null,
   };
 }
 
@@ -389,7 +140,7 @@ export async function POST(req: Request) {
         {
           ...origemInfo,
           error:
-            "Complete o endereço de despacho nas configurações de frete para calcular a entrega manual.",
+            "Complete o endereço de despacho nas configurações de frete para gerar a rota no Maps.",
         },
         { status: 400 },
       );
@@ -405,40 +156,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const resultado = await calcularDistancia(origemInfo.origem, destino);
-    const distanciaIdaKm = Number(resultado.distanciaIdaKm.toFixed(2));
-    const duracaoMinutos = resultado.duracaoSegundos
-      ? Math.max(1, Math.round(resultado.duracaoSegundos / 60))
-      : null;
-
     return NextResponse.json({
       ...origemInfo,
       destino,
-      origemResumo:
-        texto(resultado.origemFormatada) || resumoEndereco(origemInfo.origem),
-      origemFormatada:
-        texto(resultado.origemFormatada) || resumoEndereco(origemInfo.origem),
-      destinoResumo: texto(resultado.destinoFormatado) || resumoEndereco(destino),
-      destinoFormatado:
-        texto(resultado.destinoFormatado) || resumoEndereco(destino),
-      distanciaIdaKm,
-      distanciaTotalKm: Number((distanciaIdaKm * 2).toFixed(2)),
-      duracaoSegundos: resultado.duracaoSegundos || null,
-      duracaoMinutos,
-      duracaoTexto: formatarDuracao(resultado.duracaoSegundos),
-      provider: resultado.provider,
+      destinoResumo: resumoEndereco(destino),
       mapsUrl: montarMapsUrl(origemInfo.origem, destino),
-      mapsEmbedUrl: montarMapsEmbedUrl(origemInfo.origem, destino),
-      geometria: resultado.geometria || null,
     });
   } catch (error) {
-    console.error("Erro ao calcular entrega manual:", error);
+    console.error("Erro ao gerar rota da entrega manual:", error);
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao calcular entrega manual.";
-
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json(
+      { error: "Erro ao gerar rota da entrega manual." },
+      { status: 400 },
+    );
   }
 }

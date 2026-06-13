@@ -52,6 +52,10 @@ function texto(value: unknown) {
 }
 
 function numero(value: unknown) {
+  if (value === null || typeof value === "undefined" || value === "") {
+    return null;
+  }
+
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : null;

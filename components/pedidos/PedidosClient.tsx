@@ -1774,11 +1774,29 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             {pedido.entregaManual.kmEstimado !== null
                               ? ` | ${pedido.entregaManual.kmEstimado} km`
                               : ""}
+                            {" | "}
+                            {moeda(pedido.entregaManual.valor)}
                           </p>
+                          {pedido.entregaManual.endereco && (
+                            <p className="mt-1 line-clamp-2">
+                              {pedido.entregaManual.endereco}
+                            </p>
+                          )}
                           {pedido.entregaManual.observacao && (
                             <p className="mt-1 line-clamp-2">
                               {pedido.entregaManual.observacao}
                             </p>
+                          )}
+                          {pedido.entregaManual.mapsUrl && (
+                            <a
+                              href={pedido.entregaManual.mapsUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                            >
+                              Ver rota no Maps
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
                           )}
                         </div>
                       )}

@@ -169,6 +169,17 @@ function numeroNaoNegativo(value: unknown, fallback = 0) {
   return Number.isFinite(numero) && numero >= 0 ? numero : fallback;
 }
 
+function numeroNaoNegativoOuNull(value: unknown) {
+  if (value === null || typeof value === "undefined" || value === "") {
+    return null;
+  }
+
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  return Number.isFinite(numero) && numero >= 0 ? numero : null;
+}
+
 function normalizarModalidadeEntrega(
   envio: EnvioPedidoManualOnlinePayload | null | undefined,
 ): ModalidadeEntregaManual {
@@ -373,32 +384,30 @@ function montarEntregaManual(
   envio: EnvioPedidoManualOnlinePayload,
   origemDespachoSnapshot: ReturnType<typeof montarOrigemDespachoSnapshot>,
 ) {
-  const kmIda = numeroNaoNegativo(
+  const kmIda = numeroNaoNegativoOuNull(
     envio.distanciaIdaKm ?? envio.kmIda ?? envio.kmEstimado,
   );
-  const kmIdaVolta =
-    numeroNaoNegativo(envio.distanciaTotalKm ?? envio.kmIdaVolta) ||
-    kmIda * 2;
-  const consumoKmPorLitro = numeroNaoNegativo(envio.consumoKmPorLitro, 16);
-  const precoCombustivel = numeroNaoNegativo(envio.precoCombustivel);
-  const margemPercentual = numeroNaoNegativo(envio.margemPercentual, 15);
-  const taxaFixa = numeroNaoNegativo(envio.taxaFixa);
-  const valorMinimo = numeroNaoNegativo(envio.valorMinimo);
-  const litrosEstimados =
-    consumoKmPorLitro > 0 ? kmIdaVolta / consumoKmPorLitro : 0;
-  const custoCombustivel = litrosEstimados * precoCombustivel;
-  const valorComMargem = custoCombustivel * (1 + margemPercentual / 100);
-  const valorCalculado = valorComMargem + taxaFixa;
-  const valorSugerido = Math.max(
-    numeroNaoNegativo(envio.valorSugerido, valorCalculado),
-    valorMinimo,
+  const kmIdaVolta = numeroNaoNegativoOuNull(
+    envio.distanciaTotalKm ?? envio.kmIdaVolta,
   );
+  const consumoKmPorLitro = numeroNaoNegativoOuNull(envio.consumoKmPorLitro);
+  const precoCombustivel = numeroNaoNegativoOuNull(envio.precoCombustivel);
+  const margemPercentual = numeroNaoNegativoOuNull(envio.margemPercentual);
+  const taxaFixa = numeroNaoNegativoOuNull(envio.taxaFixa);
+  const valorMinimo = numeroNaoNegativoOuNull(envio.valorMinimo);
+  const litrosEstimados = numeroNaoNegativoOuNull(envio.litrosEstimados);
+  const custoCombustivel = numeroNaoNegativoOuNull(envio.custoCombustivel);
+  const valorComMargem =
+    custoCombustivel !== null && margemPercentual !== null
+      ? custoCombustivel * (1 + margemPercentual / 100)
+      : null;
+  const valorSugerido = numeroNaoNegativoOuNull(envio.valorSugerido);
   const valorManualRaw =
     (envio.valorFinal ?? envio.valorManual) === null ||
     typeof (envio.valorFinal ?? envio.valorManual) === "undefined"
       ? null
       : numeroNaoNegativo(envio.valorFinal ?? envio.valorManual);
-  const valorFinal = valorManualRaw === null ? valorSugerido : valorManualRaw;
+  const valorFinal = valorManualRaw ?? valorSugerido ?? 0;
   const endereco = {
     cep: normalizarCep(envio.cep) || null,
     rua: texto(envio.rua) || null,
@@ -418,7 +427,7 @@ function montarEntregaManual(
     kmIdaVolta,
     consumoKmPorLitro,
     precoCombustivel,
-    cobrarIdaVolta: true,
+    cobrarIdaVolta: Boolean(kmIdaVolta),
     litrosEstimados,
     custoCombustivel,
     margemPercentual,
