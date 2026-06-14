@@ -1080,6 +1080,26 @@ model LojaFreteConfiguracao {
   atualizadoEm            DateTime @updatedAt
 }
 
+model LojaEntregaManualOrigem {
+  id          String   @id @default(cuid())
+  nome        String
+  cep         String
+  rua         String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  uf          String
+  observacao  String?
+  padrao      Boolean  @default(false)
+  ativo       Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([padrao])
+  @@index([ativo])
+}
+
 model UsuarioAdmin {
   id            String    @id @default(cuid())
   nome          String

@@ -949,6 +949,11 @@ export default function PedidoDetalheClient({
                         : ""}
                     </p>
                   )}
+                  {pedido.entregaManual.duracaoTexto && (
+                    <p className="mt-1 text-blue-800">
+                      Duração estimada de ida: {pedido.entregaManual.duracaoTexto}
+                    </p>
+                  )}
                   {pedido.entregaManual.origem && (
                     <p className="mt-1 leading-6 text-blue-800">
                       Origem: {pedido.entregaManual.origem}

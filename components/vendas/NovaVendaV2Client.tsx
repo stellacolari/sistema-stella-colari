@@ -100,9 +100,22 @@ type EnderecoEntrega = {
 };
 
 type OrigemEntregaManualInfo = {
-  origem: Partial<EnderecoEntrega>;
-  origemResumo: string;
-  origemCompleta: boolean;
+  id: string;
+  nome: string;
+  cep: string;
+  rua: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  estado?: string;
+  uf: string;
+  observacao: string | null;
+  padrao: boolean;
+  ativo: boolean;
+  resumo: string;
+  completo: boolean;
+  origemSistema?: boolean;
 };
 
 const MODALIDADES_ENTREGA_MANUAL: {
@@ -476,6 +489,31 @@ function montarGoogleMapsUrl(
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
+function origemParaEndereco(
+  origem?: OrigemEntregaManualInfo | null,
+): Partial<EnderecoEntrega> | null {
+  if (!origem) {
+    return null;
+  }
+
+  return {
+    cep: origem.cep,
+    rua: origem.rua,
+    numero: origem.numero,
+    complemento: origem.complemento || "",
+    bairro: origem.bairro,
+    cidade: origem.cidade,
+    estado: origem.uf || origem.estado || "",
+  };
+}
+
+function numeroParaCampo(value: unknown) {
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  return Number.isFinite(numero) ? numero.toFixed(2).replace(".", ",") : "";
+}
+
 function Info({
   label,
   value,
@@ -555,13 +593,56 @@ export default function NovaVendaV2Client({
   const [ultimoCepEntregaBuscado, setUltimoCepEntregaBuscado] = useState("");
   const [origemEntregaManual, setOrigemEntregaManual] =
     useState<OrigemEntregaManualInfo | null>(null);
+  const [origensEntregaManual, setOrigensEntregaManual] = useState<
+    OrigemEntregaManualInfo[]
+  >([]);
+  const [origemSelecionadaId, setOrigemSelecionadaId] = useState("");
+  const [seletorOrigemAberto, setSeletorOrigemAberto] = useState(false);
+  const [gerenciarOrigensAberto, setGerenciarOrigensAberto] = useState(false);
+  const [salvandoOrigemManual, setSalvandoOrigemManual] = useState(false);
+  const [origemEditandoId, setOrigemEditandoId] = useState<string | null>(null);
+  const [buscandoCepOrigem, setBuscandoCepOrigem] = useState(false);
+  const [origemForm, setOrigemForm] = useState({
+    nome: "",
+    cep: "",
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+    observacao: "",
+    padrao: false,
+  });
   const [carregandoOrigemEntrega, setCarregandoOrigemEntrega] =
     useState(false);
+  const [calculandoEntregaManual, setCalculandoEntregaManual] =
+    useState(false);
+  const [statusCalculoEntrega, setStatusCalculoEntrega] = useState(
+    "Preencha CEP e número.",
+  );
+  const [configCalculoAberta, setConfigCalculoAberta] = useState(false);
+  const [valorManualEditado, setValorManualEditado] = useState(false);
   const [entregaManual, setEntregaManual] = useState({
     valorManual: "",
     origemResumo: "",
     destinoResumo: "",
     mapsUrl: "",
+    distanciaIdaKm: "",
+    distanciaTotalKm: "",
+    duracaoTexto: "",
+    duracaoMinutos: "",
+    consumoKmPorLitro: "16",
+    precoCombustivel: "6",
+    litrosEstimados: "",
+    custoCombustivel: "",
+    margemPercentual: "15",
+    valorComMargem: "",
+    taxaFixa: "0",
+    valorMinimo: "0",
+    valorSugerido: "",
+    providerDistancia: "",
+    calculoAutomatico: false,
     observacaoManual: "",
   });
   const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcaoVenda[]>([]);
@@ -835,13 +916,14 @@ export default function NovaVendaV2Client({
       : modalidadeEntrega;
 
   const valorEntregaManual = numeroInputOuNull(entregaManual.valorManual) ?? 0;
+  const origemEntregaEndereco = origemParaEndereco(origemEntregaManual);
 
   const origemEntregaResumo =
-    origemEntregaManual?.origemResumo ||
+    origemEntregaManual?.resumo ||
     entregaManual.origemResumo ||
     "Endereço de despacho configurado";
   const origemEntregaResumoCurto =
-    resumoCurtoEndereco(origemEntregaManual?.origem) || origemEntregaResumo;
+    resumoCurtoEndereco(origemEntregaEndereco) || origemEntregaResumo;
 
   const valorFrete = !enviarEntrega
     ? 0
@@ -880,9 +962,15 @@ export default function NovaVendaV2Client({
   const mapsUrlEntregaManual = useMemo(
     () =>
       modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
-        ? montarGoogleMapsUrl(origemEntregaManual?.origem, entrega)
+        ? entregaManual.mapsUrl ||
+          montarGoogleMapsUrl(origemParaEndereco(origemEntregaManual), entrega)
         : "",
-    [entrega, modalidadeEntregaNormalizada, origemEntregaManual?.origem],
+    [
+      entrega,
+      entregaManual.mapsUrl,
+      modalidadeEntregaNormalizada,
+      origemEntregaManual,
+    ],
   );
   const mostrarEnderecoEntrega =
     modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ||
@@ -908,7 +996,18 @@ export default function NovaVendaV2Client({
         ...atual,
         destinoResumo: "",
         mapsUrl: "",
+        distanciaIdaKm: "",
+        distanciaTotalKm: "",
+        duracaoTexto: "",
+        duracaoMinutos: "",
+        litrosEstimados: "",
+        custoCombustivel: "",
+        valorComMargem: "",
+        valorSugerido: "",
+        providerDistancia: "",
+        calculoAutomatico: false,
       }));
+      setStatusCalculoEntrega("Preencha CEP e número.");
     }
   }
 
@@ -924,7 +1023,191 @@ export default function NovaVendaV2Client({
   }
 
   function atualizarValorCobrado(value: string) {
+    setValorManualEditado(true);
     atualizarCampoEntregaManual("valorManual", value);
+  }
+
+  function selecionarOrigemEntrega(origem: OrigemEntregaManualInfo) {
+    setOrigemEntregaManual(origem);
+    setOrigemSelecionadaId(origem.id);
+    setSeletorOrigemAberto(false);
+    setEntregaManual((atual) => ({
+      ...atual,
+      origemResumo: origem.resumo,
+      mapsUrl: "",
+      distanciaIdaKm: "",
+      distanciaTotalKm: "",
+      duracaoTexto: "",
+      duracaoMinutos: "",
+      litrosEstimados: "",
+      custoCombustivel: "",
+      valorComMargem: "",
+      valorSugerido: "",
+      providerDistancia: "",
+      calculoAutomatico: false,
+    }));
+    setStatusCalculoEntrega("Preencha CEP e número.");
+    setErroFrete("");
+  }
+
+  function resetarOrigemForm() {
+    setOrigemEditandoId(null);
+    setOrigemForm({
+      nome: "",
+      cep: "",
+      rua: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      uf: "",
+      observacao: "",
+      padrao: origensEntregaManual.every((origem) => origem.origemSistema),
+    });
+  }
+
+  function editarOrigemForm(origem: OrigemEntregaManualInfo) {
+    if (origem.origemSistema) {
+      return;
+    }
+
+    setOrigemEditandoId(origem.id);
+    setOrigemForm({
+      nome: origem.nome || "",
+      cep: origem.cep || "",
+      rua: origem.rua || "",
+      numero: origem.numero || "",
+      complemento: origem.complemento || "",
+      bairro: origem.bairro || "",
+      cidade: origem.cidade || "",
+      uf: origem.uf || origem.estado || "",
+      observacao: origem.observacao || "",
+      padrao: Boolean(origem.padrao),
+    });
+    setGerenciarOrigensAberto(true);
+  }
+
+  async function buscarCepOrigemManual(cepInformado?: string) {
+    const cep = normalizarCep(cepInformado || origemForm.cep);
+
+    if (cep.length !== 8) {
+      return;
+    }
+
+    setBuscandoCepOrigem(true);
+    setErroFrete("");
+
+    try {
+      const response = await fetch(`/api/loja/cep?cep=${cep}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.endereco) {
+        setErroFrete(data.error || "CEP da origem nao encontrado.");
+        return;
+      }
+
+      setOrigemForm((atual) => ({
+        ...atual,
+        cep: data.endereco.cep || cep,
+        rua: data.endereco.rua || atual.rua,
+        bairro: data.endereco.bairro || atual.bairro,
+        cidade: data.endereco.cidade || atual.cidade,
+        uf: data.endereco.estado || atual.uf,
+      }));
+    } catch {
+      setErroFrete("Nao foi possivel buscar o CEP da origem.");
+    } finally {
+      setBuscandoCepOrigem(false);
+    }
+  }
+
+  async function recarregarOrigensEntrega(selecionarId?: string) {
+    const response = await fetch("/api/vendas/entrega-manual/origens", {
+      method: "GET",
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || "Erro ao carregar origens.");
+    }
+
+    const origens = Array.isArray(data.origens)
+      ? (data.origens as OrigemEntregaManualInfo[])
+      : [];
+    const selecionada =
+      origens.find((origem) => origem.id === selecionarId) ||
+      (data.selecionada as OrigemEntregaManualInfo | undefined) ||
+      origens[0] ||
+      null;
+
+    setOrigensEntregaManual(origens);
+    if (selecionada) {
+      selecionarOrigemEntrega(selecionada);
+    }
+  }
+
+  async function salvarOrigemManual() {
+    setSalvandoOrigemManual(true);
+    setErroFrete("");
+
+    try {
+      const url = origemEditandoId
+        ? `/api/vendas/entrega-manual/origens/${origemEditandoId}`
+        : "/api/vendas/entrega-manual/origens";
+      const response = await fetch(url, {
+        method: origemEditandoId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(origemForm),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroFrete(data.error || "Erro ao salvar origem.");
+        return;
+      }
+
+      await recarregarOrigensEntrega(data.origem?.id);
+      resetarOrigemForm();
+    } catch {
+      setErroFrete("Erro ao salvar origem.");
+    } finally {
+      setSalvandoOrigemManual(false);
+    }
+  }
+
+  async function removerOrigemManual(origem: OrigemEntregaManualInfo) {
+    if (origem.origemSistema) {
+      return;
+    }
+
+    const confirmado = window.confirm(`Remover a origem ${origem.nome}?`);
+    if (!confirmado) {
+      return;
+    }
+
+    setErroFrete("");
+
+    try {
+      const response = await fetch(
+        `/api/vendas/entrega-manual/origens/${origem.id}`,
+        { method: "DELETE" },
+      );
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroFrete(data.error || "Erro ao remover origem.");
+        return;
+      }
+
+      await recarregarOrigensEntrega();
+      resetarOrigemForm();
+    } catch {
+      setErroFrete("Erro ao remover origem.");
+    }
   }
 
   function alterarModalidadeEntrega(value: ModalidadeEntregaManual) {
@@ -1045,7 +1328,7 @@ export default function NovaVendaV2Client({
       setErroFrete("");
 
       try {
-        const response = await fetch("/api/vendas/entrega-manual/calcular", {
+        const response = await fetch("/api/vendas/entrega-manual/origens", {
           method: "GET",
           cache: "no-store",
         });
@@ -1056,10 +1339,20 @@ export default function NovaVendaV2Client({
           return;
         }
 
-        setOrigemEntregaManual(data as OrigemEntregaManualInfo);
+        const origens = Array.isArray(data.origens)
+          ? (data.origens as OrigemEntregaManualInfo[])
+          : [];
+        const selecionada =
+          (data.selecionada as OrigemEntregaManualInfo | undefined) ||
+          origens[0] ||
+          null;
+
+        setOrigensEntregaManual(origens);
+        setOrigemEntregaManual(selecionada);
+        setOrigemSelecionadaId(selecionada?.id || "");
         setEntregaManual((atual) => ({
           ...atual,
-          origemResumo: String(data.origemResumo || ""),
+          origemResumo: String(selecionada?.resumo || ""),
         }));
       } catch {
         setErroFrete("Erro ao carregar origem da entrega.");
@@ -1076,6 +1369,137 @@ export default function NovaVendaV2Client({
     origemEntregaManual,
   ]);
 
+  const calcularEntregaManual = useCallback(async () => {
+    if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
+      return;
+    }
+
+    const origem = origemParaEndereco(origemEntregaManual);
+
+    if (!enderecoCompletoParaMaps(origem)) {
+      setStatusCalculoEntrega("Selecione uma origem completa.");
+      return;
+    }
+
+    if (!enderecoCompletoParaMaps(entrega)) {
+      setStatusCalculoEntrega("Preencha CEP e número.");
+      return;
+    }
+
+    setCalculandoEntregaManual(true);
+    setStatusCalculoEntrega("Calculando entrega...");
+    setErroFrete("");
+
+    try {
+      const response = await fetch("/api/vendas/entrega-manual/calcular", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origem: {
+            ...origem,
+            id: origemEntregaManual?.id,
+            nome: origemEntregaManual?.nome,
+            uf: origem?.estado,
+            observacao: origemEntregaManual?.observacao,
+          },
+          destino: entrega,
+          parametros: {
+            consumoKmPorLitro: entregaManual.consumoKmPorLitro,
+            precoCombustivel: entregaManual.precoCombustivel,
+            margemPercentual: entregaManual.margemPercentual,
+            taxaFixa: entregaManual.taxaFixa,
+            valorMinimo: entregaManual.valorMinimo,
+          },
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setEntregaManual((atual) => ({
+          ...atual,
+          mapsUrl: String(data.mapsUrl || mapsUrlEntregaManual || ""),
+          origemResumo: String(data.origemResumo || origemEntregaResumo),
+          destinoResumo: String(data.destinoResumo || enderecoEntregaResumo),
+          calculoAutomatico: false,
+        }));
+        setStatusCalculoEntrega(
+          data.error || "Não foi possível calcular automaticamente.",
+        );
+        return;
+      }
+
+      setEntregaManual((atual) => ({
+        ...atual,
+        valorManual: valorManualEditado
+          ? atual.valorManual
+          : numeroParaCampo(data.valorFinal),
+        origemResumo: String(data.origemResumo || origemEntregaResumo),
+        destinoResumo: String(data.destinoResumo || enderecoEntregaResumo),
+        mapsUrl: String(data.mapsUrl || mapsUrlEntregaManual || ""),
+        distanciaIdaKm: numeroParaCampo(data.distanciaIdaKm),
+        distanciaTotalKm: numeroParaCampo(data.distanciaTotalKm),
+        duracaoTexto: String(data.duracaoTexto || ""),
+        duracaoMinutos: String(data.duracaoMinutos || ""),
+        consumoKmPorLitro: numeroParaCampo(data.consumoKmPorLitro),
+        precoCombustivel: numeroParaCampo(data.precoCombustivel),
+        litrosEstimados: numeroParaCampo(data.litrosEstimados),
+        custoCombustivel: numeroParaCampo(data.custoCombustivel),
+        margemPercentual: numeroParaCampo(data.margemPercentual),
+        valorComMargem: numeroParaCampo(data.valorComMargem),
+        taxaFixa: numeroParaCampo(data.taxaFixa),
+        valorMinimo: numeroParaCampo(data.valorMinimo),
+        valorSugerido: numeroParaCampo(data.valorSugerido),
+        providerDistancia: String(data.providerDistancia || "openroute"),
+        calculoAutomatico: true,
+      }));
+      setStatusCalculoEntrega("Entrega calculada.");
+    } catch {
+      setStatusCalculoEntrega("Não foi possível calcular automaticamente.");
+    } finally {
+      setCalculandoEntregaManual(false);
+    }
+  }, [
+    enderecoEntregaResumo,
+    entrega,
+    entregaManual.consumoKmPorLitro,
+    entregaManual.margemPercentual,
+    entregaManual.precoCombustivel,
+    entregaManual.taxaFixa,
+    entregaManual.valorMinimo,
+    mapsUrlEntregaManual,
+    modalidadeEntregaNormalizada,
+    origemEntregaManual,
+    origemEntregaResumo,
+    valorManualEditado,
+  ]);
+
+  useEffect(() => {
+    if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
+      return;
+    }
+
+    if (!enderecoCompletoParaMaps(origemParaEndereco(origemEntregaManual))) {
+      setStatusCalculoEntrega("Selecione uma origem completa.");
+      return;
+    }
+
+    if (!enderecoCompletoParaMaps(entrega)) {
+      setStatusCalculoEntrega("Preencha CEP e número.");
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void calcularEntregaManual();
+    }, 650);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    calcularEntregaManual,
+    entrega,
+    modalidadeEntregaNormalizada,
+    origemEntregaManual,
+  ]);
+
   function getPayloadEnvio() {
     if (!enviarEntrega || modalidadeEntregaNormalizada === "SEM_ENTREGA") {
       return null;
@@ -1086,7 +1510,18 @@ export default function NovaVendaV2Client({
       modalidade: modalidadeEntregaNormalizada,
       origemDespachoSnapshot:
         modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
-          ? origemEntregaManual?.origem || null
+          ? {
+              id: origemEntregaManual?.id || null,
+              nome: origemEntregaManual?.nome || null,
+              cep: origemEntregaManual?.cep || null,
+              rua: origemEntregaManual?.rua || null,
+              numero: origemEntregaManual?.numero || null,
+              complemento: origemEntregaManual?.complemento || null,
+              bairro: origemEntregaManual?.bairro || null,
+              cidade: origemEntregaManual?.cidade || null,
+              estado: origemEntregaManual?.uf || origemEntregaManual?.estado || null,
+              observacao: origemEntregaManual?.observacao || null,
+            }
           : null,
       cep: entrega.cep,
       rua: entrega.rua,
@@ -1099,20 +1534,22 @@ export default function NovaVendaV2Client({
         modalidadeEntregaNormalizada === "MELHOR_ENVIO"
           ? freteSelecionadoId
           : null,
-      kmIda: null,
-      kmEstimado: null,
-      distanciaIdaKm: null,
-      distanciaTotalKm: null,
-      kmIdaVolta: null,
-      consumoKmPorLitro: null,
-      precoCombustivel: null,
-      litrosEstimados: null,
-      custoCombustivel: null,
-      cobrarIdaVolta: false,
-      margemPercentual: null,
-      taxaFixa: null,
-      valorMinimo: null,
-      valorSugerido: null,
+      kmIda: entregaManual.distanciaIdaKm || null,
+      kmEstimado: entregaManual.distanciaIdaKm || null,
+      distanciaIdaKm: entregaManual.distanciaIdaKm || null,
+      distanciaTotalKm: entregaManual.distanciaTotalKm || null,
+      kmIdaVolta: entregaManual.distanciaTotalKm || null,
+      duracaoTexto: entregaManual.duracaoTexto || null,
+      duracaoMinutos: entregaManual.duracaoMinutos || null,
+      consumoKmPorLitro: entregaManual.consumoKmPorLitro || null,
+      precoCombustivel: entregaManual.precoCombustivel || null,
+      litrosEstimados: entregaManual.litrosEstimados || null,
+      custoCombustivel: entregaManual.custoCombustivel || null,
+      cobrarIdaVolta: Boolean(entregaManual.distanciaTotalKm),
+      margemPercentual: entregaManual.margemPercentual || null,
+      taxaFixa: entregaManual.taxaFixa || null,
+      valorMinimo: entregaManual.valorMinimo || null,
+      valorSugerido: entregaManual.valorSugerido || null,
       valorManual:
         modalidadeEntregaNormalizada === "RETIRADA_COMBINADA"
           ? 0
@@ -1121,12 +1558,12 @@ export default function NovaVendaV2Client({
         modalidadeEntregaNormalizada === "RETIRADA_COMBINADA"
           ? 0
           : valorEntregaManual,
-      providerDistancia: null,
+      providerDistancia: entregaManual.providerDistancia || null,
       mapsUrl:
         modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
           ? mapsUrlEntregaManual || null
           : null,
-      calculoAutomatico: false,
+      calculoAutomatico: Boolean(entregaManual.calculoAutomatico),
       origemResumo: origemEntregaResumo,
       destinoResumo: destinoEntregaResumo,
       observacaoManual: entregaManual.observacaoManual,
@@ -1175,7 +1612,7 @@ export default function NovaVendaV2Client({
     if (
       modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
       origemEntregaManual &&
-      !origemEntregaManual.origemCompleta
+      !origemEntregaManual.completo
     ) {
       setErroFrete(
         "Complete o endereço de despacho nas configurações de frete para gerar a rota no Maps.",
@@ -2431,16 +2868,301 @@ export default function NovaVendaV2Client({
 
                         {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ? (
                           <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                            <p className="text-sm font-semibold text-slate-950">
-                              Origem: endereço de despacho configurado
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {carregandoOrigemEntrega
-                                ? "Carregando origem..."
-                                : origemEntregaResumoCurto}
-                            </p>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-950">
+                                  Saindo de: {origemEntregaManual?.nome || "endereço de despacho"}
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                  {carregandoOrigemEntrega
+                                    ? "Carregando origem..."
+                                    : origemEntregaResumoCurto}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSeletorOrigemAberto((atual) => !atual)
+                                  }
+                                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  Alterar origem
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setGerenciarOrigensAberto((atual) => !atual)
+                                  }
+                                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  Gerenciar origens
+                                </button>
+                              </div>
+                            </div>
+
+                            {seletorOrigemAberto ? (
+                              <div className="mt-3 grid gap-2">
+                                {origensEntregaManual.map((origem) => (
+                                  <button
+                                    key={origem.id}
+                                    type="button"
+                                    onClick={() => selecionarOrigemEntrega(origem)}
+                                    className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
+                                      origemSelecionadaId === origem.id
+                                        ? "border-slate-900 bg-slate-50 text-slate-950"
+                                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    <span className="block font-semibold">
+                                      {origem.nome}
+                                      {origem.padrao ? " · padrão" : ""}
+                                      {origem.origemSistema ? " · frete" : ""}
+                                    </span>
+                                    <span className="mt-1 block leading-5">
+                                      {origem.resumo}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+
+                            {gerenciarOrigensAberto ? (
+                              <div className="mt-3 space-y-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+                                <div className="grid gap-2">
+                                  {origensEntregaManual.map((origem) => (
+                                    <div
+                                      key={origem.id}
+                                      className="rounded-xl bg-white px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="font-semibold text-slate-900">
+                                            {origem.nome}
+                                            {origem.padrao ? " · padrão" : ""}
+                                          </p>
+                                          <p className="mt-1 leading-5">
+                                            {origem.resumo}
+                                          </p>
+                                        </div>
+                                        {!origem.origemSistema ? (
+                                          <div className="flex shrink-0 gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() => editarOrigemForm(origem)}
+                                              className="rounded-lg border border-slate-200 px-2 py-1 font-semibold text-slate-700"
+                                            >
+                                              Editar
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => removerOrigemManual(origem)}
+                                              className="rounded-lg border border-rose-200 px-2 py-1 font-semibold text-rose-700"
+                                            >
+                                              Remover
+                                            </button>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="grid gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-sm font-semibold text-slate-950">
+                                      {origemEditandoId ? "Editar origem" : "Nova origem"}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={resetarOrigemForm}
+                                      className="text-xs font-semibold text-slate-500 underline"
+                                    >
+                                      Limpar
+                                    </button>
+                                  </div>
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Nome
+                                      </span>
+                                      <input
+                                        value={origemForm.nome}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            nome: event.target.value,
+                                          }))
+                                        }
+                                        placeholder="Loja, atelier, estoque..."
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        CEP
+                                      </span>
+                                      <input
+                                        value={origemForm.cep}
+                                        onChange={(event) => {
+                                          const cep = event.target.value;
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            cep,
+                                          }));
+                                          if (normalizarCep(cep).length === 8) {
+                                            void buscarCepOrigemManual(cep);
+                                          }
+                                        }}
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                      {buscandoCepOrigem ? (
+                                        <span className="mt-1 block text-xs text-slate-500">
+                                          Buscando CEP...
+                                        </span>
+                                      ) : null}
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Rua
+                                      </span>
+                                      <input
+                                        value={origemForm.rua}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            rua: event.target.value,
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Número
+                                      </span>
+                                      <input
+                                        value={origemForm.numero}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            numero: event.target.value,
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Complemento
+                                      </span>
+                                      <input
+                                        value={origemForm.complemento}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            complemento: event.target.value,
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Bairro
+                                      </span>
+                                      <input
+                                        value={origemForm.bairro}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            bairro: event.target.value,
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Cidade
+                                      </span>
+                                      <input
+                                        value={origemForm.cidade}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            cidade: event.target.value,
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                    <label>
+                                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        UF
+                                      </span>
+                                      <input
+                                        value={origemForm.uf}
+                                        onChange={(event) =>
+                                          setOrigemForm((atual) => ({
+                                            ...atual,
+                                            uf: event.target.value
+                                              .toUpperCase()
+                                              .slice(0, 2),
+                                          }))
+                                        }
+                                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm uppercase outline-none transition focus:border-slate-500"
+                                      />
+                                    </label>
+                                  </div>
+                                  <label>
+                                    <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      Observação
+                                    </span>
+                                    <textarea
+                                      value={origemForm.observacao}
+                                      onChange={(event) =>
+                                        setOrigemForm((atual) => ({
+                                          ...atual,
+                                          observacao: event.target.value,
+                                        }))
+                                      }
+                                      rows={2}
+                                      className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500"
+                                    />
+                                  </label>
+                                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={origemForm.padrao}
+                                      onChange={(event) =>
+                                        setOrigemForm((atual) => ({
+                                          ...atual,
+                                          padrao: event.target.checked,
+                                        }))
+                                      }
+                                      className="h-4 w-4 rounded border-slate-300"
+                                    />
+                                    Definir como origem padrão
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={salvarOrigemManual}
+                                    disabled={salvandoOrigemManual}
+                                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {salvandoOrigemManual
+                                      ? "Salvando..."
+                                      : origemEditandoId
+                                        ? "Salvar origem"
+                                        : "Adicionar origem"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+
                             {origemEntregaManual &&
-                            !origemEntregaManual.origemCompleta ? (
+                            !origemEntregaManual.completo ? (
                               <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
                                 <p>
                                   Complete o endereço de despacho nas configurações de frete para gerar a rota no Maps.
@@ -2623,7 +3345,9 @@ export default function NovaVendaV2Client({
                               Entrega manual
                             </p>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
-                              Confira origem e destino, abra a rota no Maps e informe o valor combinado da entrega.
+                              {calculandoEntregaManual
+                                ? "Calculando entrega..."
+                                : statusCalculoEntrega}
                             </p>
 
                             <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-200">
@@ -2660,9 +3384,56 @@ export default function NovaVendaV2Client({
                               )}
                             </div>
 
+                            {entregaManual.distanciaIdaKm ? (
+                              <div className="mt-3 grid gap-2 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-950 ring-1 ring-emerald-200 sm:grid-cols-3">
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Ida
+                                  </span>
+                                  <strong>{entregaManual.distanciaIdaKm} km</strong>
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Ida e volta
+                                  </span>
+                                  <strong>{entregaManual.distanciaTotalKm} km</strong>
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Duração ida
+                                  </span>
+                                  <strong>
+                                    {entregaManual.duracaoTexto || "Não informado"}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Litros
+                                  </span>
+                                  <strong>{entregaManual.litrosEstimados} L</strong>
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Combustível
+                                  </span>
+                                  <strong>
+                                    {moeda(numeroInputOuNull(entregaManual.custoCombustivel) ?? 0)}
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span className="block text-xs text-emerald-700">
+                                    Sugerido
+                                  </span>
+                                  <strong>
+                                    {moeda(numeroInputOuNull(entregaManual.valorSugerido) ?? 0)}
+                                  </strong>
+                                </div>
+                              </div>
+                            ) : null}
+
                             <label className="mt-3 block">
                               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Valor da entrega
+                                Valor final da entrega
                               </span>
                               <input
                                 value={entregaManual.valorManual}
@@ -2673,6 +3444,96 @@ export default function NovaVendaV2Client({
                                 className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
                               />
                             </label>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setConfigCalculoAberta((atual) => !atual)
+                              }
+                              className="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Configurações do cálculo
+                            </button>
+
+                            {configCalculoAberta ? (
+                              <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200 sm:grid-cols-2">
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Consumo km/l
+                                  </span>
+                                  <input
+                                    value={entregaManual.consumoKmPorLitro}
+                                    onChange={(event) =>
+                                      atualizarCampoEntregaManual(
+                                        "consumoKmPorLitro",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Preço combustível
+                                  </span>
+                                  <input
+                                    value={entregaManual.precoCombustivel}
+                                    onChange={(event) =>
+                                      atualizarCampoEntregaManual(
+                                        "precoCombustivel",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Margem %
+                                  </span>
+                                  <input
+                                    value={entregaManual.margemPercentual}
+                                    onChange={(event) =>
+                                      atualizarCampoEntregaManual(
+                                        "margemPercentual",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Taxa fixa
+                                  </span>
+                                  <input
+                                    value={entregaManual.taxaFixa}
+                                    onChange={(event) =>
+                                      atualizarCampoEntregaManual(
+                                        "taxaFixa",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Valor mínimo
+                                  </span>
+                                  <input
+                                    value={entregaManual.valorMinimo}
+                                    onChange={(event) =>
+                                      atualizarCampoEntregaManual(
+                                        "valorMinimo",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                              </div>
+                            ) : null}
 
                             <label className="mt-3 block">
                               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">

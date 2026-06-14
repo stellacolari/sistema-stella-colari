@@ -30,6 +30,8 @@ export type EnvioPedidoManualOnlinePayload = {
   estado?: string | null;
   freteOpcaoId?: string | null;
   origemDespachoSnapshot?: {
+    id?: string | null;
+    nome?: string | null;
     cep?: string | null;
     rua?: string | null;
     numero?: string | null;
@@ -37,6 +39,7 @@ export type EnvioPedidoManualOnlinePayload = {
     bairro?: string | null;
     cidade?: string | null;
     estado?: string | null;
+    observacao?: string | null;
   } | null;
   kmIda?: number | string | null;
   kmEstimado?: number | string | null;
@@ -344,6 +347,29 @@ function montarOrigemDespachoSnapshot(
   };
 }
 
+function montarOrigemDespachoSnapshotEnvio(
+  envio: EnvioPedidoManualOnlinePayload | null | undefined,
+) {
+  const origem = envio?.origemDespachoSnapshot;
+
+  if (!origem) {
+    return null;
+  }
+
+  return {
+    id: texto(origem.id) || null,
+    nome: texto(origem.nome) || null,
+    cep: normalizarCep(origem.cep) || null,
+    rua: texto(origem.rua) || null,
+    numero: texto(origem.numero) || null,
+    complemento: texto(origem.complemento) || null,
+    bairro: texto(origem.bairro) || null,
+    cidade: texto(origem.cidade) || null,
+    estado: normalizarUf(origem.estado) || null,
+    observacao: texto(origem.observacao) || null,
+  };
+}
+
 function origemDespachoCompleta(
   origem: ReturnType<typeof montarOrigemDespachoSnapshot>,
 ) {
@@ -496,7 +522,8 @@ export async function criarPedidoManualOnline({
       ? await buscarConfiguracaoFrete()
       : null;
   const origemDespachoSnapshot = usaEntregaManual
-    ? montarOrigemDespachoSnapshot(freteConfig)
+    ? montarOrigemDespachoSnapshotEnvio(envio) ||
+      montarOrigemDespachoSnapshot(freteConfig)
     : null;
 
   return prisma.$transaction(async (tx) => {
@@ -711,7 +738,7 @@ export async function criarPedidoManualOnline({
     ) {
       if (!origemDespachoCompleta(origemDespachoSnapshot)) {
         throw new Error(
-          "Complete o endereço de despacho nas configurações de frete para calcular a entrega manual.",
+          "Complete a origem de despacho para calcular a entrega manual.",
         );
       }
 
