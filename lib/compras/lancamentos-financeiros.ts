@@ -112,27 +112,27 @@ export function montarPayloadLancamentoFinanceiro(body: Record<string, unknown>)
   const recorrente = Boolean(body.recorrente);
 
   if (!titulo) {
-    return { error: "Titulo e obrigatorio." };
+    return { error: "Título é obrigatório." };
   }
 
   if (!tipo || !valorEmLista(tipo, TIPOS_LANCAMENTO_FINANCEIRO)) {
-    return { error: "Tipo de lancamento invalido ou nao informado." };
+    return { error: "Tipo de lançamento inválido ou não informado." };
   }
 
   if (!categoria) {
-    return { error: "Categoria e obrigatoria." };
+    return { error: "Categoria é obrigatória." };
   }
 
   if (valorReal === null || valorReal < 0) {
-    return { error: "Valor real e obrigatorio e deve ser maior ou igual a zero." };
+    return { error: "Valor real é obrigatório e deve ser maior ou igual a zero." };
   }
 
   if (!valorEmLista(statusPagamento, STATUS_PAGAMENTO_LANCAMENTO)) {
-    return { error: "Status de pagamento invalido." };
+    return { error: "Status de pagamento inválido." };
   }
 
   if (!valorEmLista(statusOperacional, STATUS_OPERACIONAL_LANCAMENTO)) {
-    return { error: "Status operacional invalido." };
+    return { error: "Status operacional inválido." };
   }
 
   const payload: LancamentoFinanceiroPayload = {

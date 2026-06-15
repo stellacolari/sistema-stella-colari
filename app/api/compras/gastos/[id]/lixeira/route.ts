@@ -14,7 +14,7 @@ export async function PATCH(
 
     if (!["MOVER", "RESTAURAR"].includes(acao)) {
       return NextResponse.json(
-        { error: "Acao invalida para lixeira." },
+        { error: "Ação inválida para lixeira." },
         { status: 400 }
       );
     }
@@ -30,7 +30,7 @@ export async function PATCH(
 
     if (!lancamento) {
       return NextResponse.json(
-        { error: "Lancamento nao encontrado." },
+        { error: "Lançamento não encontrado." },
         { status: 404 }
       );
     }
@@ -38,7 +38,7 @@ export async function PATCH(
     if (acao === "MOVER") {
       if (lancamento.status === "NA_LIXEIRA") {
         return NextResponse.json(
-          { error: "Este lancamento ja esta na lixeira." },
+          { error: "Este lançamento já está na lixeira." },
           { status: 400 }
         );
       }
@@ -56,7 +56,7 @@ export async function PATCH(
 
     if (lancamento.status !== "NA_LIXEIRA") {
       return NextResponse.json(
-        { error: "Este lancamento nao esta na lixeira." },
+        { error: "Este lançamento não está na lixeira." },
         { status: 400 }
       );
     }
@@ -75,7 +75,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true, status: statusRestaurado });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao atualizar lixeira.";
+      error instanceof Error ? error.message : "Não foi possível atualizar a lixeira.";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

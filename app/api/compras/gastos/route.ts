@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, lancamentos });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao listar gastos.";
+      error instanceof Error ? error.message : "Não foi possível listar os gastos.";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, lancamento });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao criar gasto.";
+      error instanceof Error ? error.message : "Não foi possível criar o gasto.";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

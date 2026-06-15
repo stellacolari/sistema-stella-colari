@@ -99,7 +99,7 @@ const ABAS: { value: AbaCompras; label: string }[] = [
   { value: "COMPRAS_ESTOQUE", label: "Compras de estoque" },
   { value: "GASTOS_GERAIS", label: "Gastos gerais" },
   { value: "ASSINATURAS", label: "Assinaturas" },
-  { value: "COMPRAS_UNICAS", label: "Compras unicas" },
+  { value: "COMPRAS_UNICAS", label: "Compras únicas" },
   { value: "MARKETING", label: "Marketing" },
   { value: "PERMUTAS", label: "Permutas" },
   { value: "A_PAGAR", label: "A pagar" },
@@ -107,19 +107,33 @@ const ABAS: { value: AbaCompras; label: string }[] = [
 ];
 
 const TIPOS = [
-  { value: "COMPRA_EMBALAGEM_INSUMO", label: "Compra embalagem/insumo" },
+  { value: "COMPRA_EMBALAGEM_INSUMO", label: "Embalagem / insumo" },
   { value: "ASSINATURA", label: "Assinatura" },
-  { value: "COMPRA_UNICA", label: "Compra unica" },
-  { value: "INVESTIMENTO_ESTRUTURA", label: "Investimento estrutura" },
+  { value: "COMPRA_UNICA", label: "Compra única" },
+  { value: "INVESTIMENTO_ESTRUTURA", label: "Investimento / estrutura" },
   { value: "MARKETING", label: "Marketing" },
-  { value: "TRAFEGO_PAGO", label: "Trafego pago" },
+  { value: "TRAFEGO_PAGO", label: "Tráfego pago" },
   { value: "INFLUENCIADOR", label: "Influenciador" },
-  { value: "PERMUTA_PATROCINIO", label: "Permuta/patrocinio" },
+  { value: "PERMUTA_PATROCINIO", label: "Permuta / patrocínio" },
   { value: "OUTRO", label: "Outro" },
 ];
 
-const STATUS_PAGAMENTO = ["PENDENTE", "PAGO", "VENCIDO", "CANCELADO"];
-const STATUS_OPERACIONAL = ["ATIVO", "PAUSADO", "CANCELADO"];
+const STATUS_PAGAMENTO = [
+  { value: "PENDENTE", label: "Pendente" },
+  { value: "PAGO", label: "Pago" },
+  { value: "VENCIDO", label: "Vencido" },
+  { value: "CANCELADO", label: "Cancelado" },
+];
+const STATUS_OPERACIONAL = [
+  { value: "ATIVO", label: "Ativo" },
+  { value: "PAUSADO", label: "Pausado" },
+  { value: "CANCELADO", label: "Cancelado" },
+];
+const FILTRO_RECORRENTE = [
+  { value: "TODOS", label: "Todos" },
+  { value: "RECORRENTE", label: "Recorrentes" },
+  { value: "UNICO", label: "Não recorrentes" },
+];
 const VISUALIZACOES: {
   value: VisualizacaoGastos;
   label: string;
@@ -132,7 +146,7 @@ const VISUALIZACOES: {
 
 const FORM_INICIAL: FormState = {
   titulo: "",
-  tipo: "ASSINATURA",
+  tipo: "",
   categoria: "",
   fornecedorParceiro: "",
   valorPrevisto: "",
@@ -143,8 +157,8 @@ const FORM_INICIAL: FormState = {
   statusPagamento: "PENDENTE",
   statusOperacional: "ATIVO",
   meioPagamento: "",
-  recorrente: true,
-  recorrencia: "MENSAL",
+  recorrente: false,
+  recorrencia: "",
   quantidadeParcelas: "",
   parcelaAtual: "",
   observacoes: "",
@@ -187,6 +201,17 @@ function labelTipo(tipo: string) {
   return TIPOS.find((item) => item.value === tipo)?.label ?? tipo;
 }
 
+function labelStatusPagamento(status: string) {
+  return (
+    STATUS_PAGAMENTO.find((item) => item.value === status)?.label ??
+    status.replaceAll("_", " ")
+  );
+}
+
+function hojeInput() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function statusPagamentoClass(status: string) {
   if (status === "PAGO") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "VENCIDO") return "border-red-200 bg-red-50 text-red-700";
@@ -214,6 +239,16 @@ function mesmoMesAtual(dataIso: string | null) {
     data.getFullYear() === agora.getFullYear() &&
     data.getMonth() === agora.getMonth()
   );
+}
+
+function mesmoMesFiltro(dataIso: string | null, filtroMes: string) {
+  if (!filtroMes) return true;
+  if (!dataIso) return false;
+
+  const data = new Date(dataIso);
+  if (Number.isNaN(data.getTime())) return false;
+
+  return data.toISOString().slice(0, 7) === filtroMes;
 }
 
 function lancamentoParaForm(lancamento: LancamentoFinanceiroListItem): FormState {
@@ -270,11 +305,16 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<AbaCompras>("TODOS");
   const [busca, setBusca] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroStatusPagamento, setFiltroStatusPagamento] = useState("");
+  const [filtroMes, setFiltroMes] = useState("");
+  const [filtroRecorrente, setFiltroRecorrente] = useState("TODOS");
   const [visualizacao, setVisualizacao] =
     useState<VisualizacaoGastos>("lista");
   const [modalAberto, setModalAberto] = useState(false);
   const [form, setForm] = useState<FormState>(FORM_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
+  const [mensagem, setMensagem] = useState<string | null>(null);
 
   useEffect(() => {
     const preferencia = window.localStorage.getItem(PREFERENCIA_GASTOS_KEY);
@@ -338,6 +378,29 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         return false;
       }
 
+      if (filtroTipo && lancamento.tipo !== filtroTipo) {
+        return false;
+      }
+
+      if (
+        filtroStatusPagamento &&
+        lancamento.statusPagamento !== filtroStatusPagamento
+      ) {
+        return false;
+      }
+
+      if (!mesmoMesFiltro(dataBaseMes(lancamento), filtroMes)) {
+        return false;
+      }
+
+      if (filtroRecorrente === "RECORRENTE" && !lancamento.recorrente) {
+        return false;
+      }
+
+      if (filtroRecorrente === "UNICO" && lancamento.recorrente) {
+        return false;
+      }
+
       if (!buscaNormalizada) {
         return true;
       }
@@ -357,7 +420,15 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
 
       return texto.includes(buscaNormalizada);
     });
-  }, [abaAtiva, busca, lancamentosAtivos]);
+  }, [
+    abaAtiva,
+    busca,
+    filtroMes,
+    filtroRecorrente,
+    filtroStatusPagamento,
+    filtroTipo,
+    lancamentosAtivos,
+  ]);
 
   const resumo = useMemo(() => {
     return lancamentosAtivos.reduce(
@@ -423,35 +494,81 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
   function abrirNovoLancamento() {
     setForm(FORM_INICIAL);
     setErro(null);
+    setMensagem(null);
     setModalAberto(true);
   }
 
   function abrirEdicao(lancamento: LancamentoFinanceiroListItem) {
     setForm(lancamentoParaForm(lancamento));
     setErro(null);
+    setMensagem(null);
     setModalAberto(true);
+  }
+
+  function limparFiltrosGastos() {
+    setBusca("");
+    setFiltroTipo("");
+    setFiltroStatusPagamento("");
+    setFiltroMes("");
+    setFiltroRecorrente("TODOS");
   }
 
   async function salvarLancamento() {
     setErro(null);
+    setMensagem(null);
+
+    const valorReal = Number(form.valorReal);
+
+    if (!form.tipo) {
+      setErro("Selecione o tipo do gasto financeiro.");
+      return;
+    }
+
+    if (!form.titulo.trim()) {
+      setErro("Informe o título do lançamento.");
+      return;
+    }
+
+    if (!form.categoria.trim()) {
+      setErro("Informe a categoria do lançamento.");
+      return;
+    }
+
+    if (!Number.isFinite(valorReal) || valorReal < 0) {
+      setErro("Informe um valor real maior ou igual a zero.");
+      return;
+    }
+
+    const payload = {
+      ...formParaPayload(form),
+      dataPagamento:
+        form.statusPagamento === "PAGO" && !form.dataPagamento
+          ? hojeInput()
+          : form.dataPagamento,
+    };
 
     const response = await fetch(
       form.id ? `/api/compras/gastos/${form.id}` : "/api/compras/gastos",
       {
         method: form.id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formParaPayload(form)),
+        body: JSON.stringify(payload),
       }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
-      setErro(data.error || "Erro ao salvar lancamento.");
+      setErro(data.error || "Não foi possível salvar o lançamento.");
       return;
     }
 
     setModalAberto(false);
+    setMensagem(
+      form.id
+        ? "Lançamento atualizado com sucesso."
+        : "Lançamento criado com sucesso."
+    );
 
     startTransition(() => {
       router.refresh();
@@ -474,9 +591,11 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     const data = await response.json();
 
     if (!response.ok) {
-      setErro(data.error || "Erro ao marcar como pago.");
+      setErro(data.error || "Não foi possível marcar como pago.");
       return;
     }
+
+    setMensagem(`${lancamento.codigo} marcado como pago.`);
 
     startTransition(() => {
       router.refresh();
@@ -485,7 +604,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
 
   async function moverLancamentoParaLixeira(lancamento: LancamentoFinanceiroListItem) {
     const confirmado = window.confirm(
-      `Mover ${lancamento.codigo} para a lixeira? Isso nao altera estoque.`
+      `Mover ${lancamento.codigo} para a lixeira? Isso não altera estoque.`
     );
 
     if (!confirmado) return;
@@ -502,9 +621,11 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     const data = await response.json();
 
     if (!response.ok) {
-      setErro(data.error || "Erro ao mover lancamento para lixeira.");
+      setErro(data.error || "Não foi possível mover o lançamento para a lixeira.");
       return;
     }
+
+    setMensagem(`${lancamento.codigo} foi movido para a lixeira.`);
 
     startTransition(() => {
       router.refresh();
@@ -518,7 +639,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
           lancamento.statusPagamento
         )}`}
       >
-        {lancamento.statusPagamento.replaceAll("_", " ")}
+        {labelStatusPagamento(lancamento.statusPagamento)}
       </span>
     );
   }
@@ -534,7 +655,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCircle2 className="h-4 w-4" />
-            Pago
+            Marcar como pago
           </button>
         )}
 
@@ -564,7 +685,8 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     if (lancamentosFiltrados.length === 0) {
       return (
         <div className="rounded-3xl bg-white px-6 py-10 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
-          Nenhum lancamento encontrado.
+          Nenhum gasto financeiro encontrado para esta seleção. Ajuste os
+          filtros ou registre um novo lançamento.
         </div>
       );
     }
@@ -625,14 +747,14 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
           <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="px-5 py-4 font-semibold">Codigo</th>
-                <th className="px-5 py-4 font-semibold">Titulo</th>
+                <th className="px-5 py-4 font-semibold">Código</th>
+                <th className="px-5 py-4 font-semibold">Título</th>
                 <th className="px-5 py-4 font-semibold">Tipo</th>
                 <th className="px-5 py-4 font-semibold">Categoria</th>
                 <th className="px-5 py-4 font-semibold">Vencimento</th>
                 <th className="px-5 py-4 font-semibold">Pagamento</th>
                 <th className="px-5 py-4 text-right font-semibold">Valor</th>
-                <th className="px-5 py-4 text-right font-semibold">Acoes</th>
+                <th className="px-5 py-4 text-right font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -669,7 +791,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
           >
             <div>
               <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
-                Codigo
+                Código
               </span>
               <span className="font-semibold text-slate-950">
                 {lancamento.codigo}
@@ -677,7 +799,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
             </div>
             <div className="min-w-0">
               <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
-                Lancamento
+                Lançamento
               </span>
               <span className="block truncate font-medium text-slate-950">
                 {lancamento.titulo}
@@ -725,8 +847,8 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
               Compras e Gastos
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Separe compras de estoque dos gastos financeiros sem alterar
-              entrada, saida ou estorno de estoque.
+              Compra de estoque movimenta itens. Gasto financeiro registra
+              assinaturas, marketing, permutas e despesas sem alterar estoque.
             </p>
           </div>
 
@@ -737,7 +859,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
             >
               <Plus className="h-4 w-4" />
-              Novo lancamento
+              Novo lançamento
             </button>
             <Link
               href="/compras/nova-v2"
@@ -750,14 +872,31 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <ResumoCard titulo="A pagar este mes" valor={moeda(resumo.aPagarMes)} />
-        <ResumoCard titulo="Pago este mes" valor={moeda(resumo.pagoMes)} />
+        <ResumoCard
+          titulo="A pagar este mês"
+          valor={moeda(resumo.aPagarMes)}
+          tom="amber"
+        />
+        <ResumoCard
+          titulo="Pago este mês"
+          valor={moeda(resumo.pagoMes)}
+          tom="emerald"
+        />
         <ResumoCard
           titulo="Assinaturas ativas"
           valor={resumo.assinaturasAtivas}
+          tom="sky"
         />
-        <ResumoCard titulo="Marketing do mes" valor={moeda(resumo.marketingMes)} />
-        <ResumoCard titulo="Permutas em aberto" valor={resumo.permutasAbertas} />
+        <ResumoCard
+          titulo="Marketing do mês"
+          valor={moeda(resumo.marketingMes)}
+          tom="violet"
+        />
+        <ResumoCard
+          titulo="Permutas em aberto"
+          valor={resumo.permutasAbertas}
+          tom="rose"
+        />
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
@@ -783,7 +922,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         <section className="space-y-4">
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.2fr)_repeat(4,minmax(150px,0.8fr))_auto]">
                 <label className="flex min-w-0 flex-col gap-2">
                   <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
                     <Search className="h-4 w-4 text-slate-400" />
@@ -793,25 +932,53 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                     type="text"
                     value={busca}
                     onChange={(event) => setBusca(event.target.value)}
-                    placeholder="Codigo, titulo, parceiro, categoria..."
+                    placeholder="Código, título, parceiro, categoria..."
                     className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-base outline-none transition placeholder:text-slate-400 focus:border-slate-400 sm:text-sm"
                   />
                 </label>
 
+                <CampoSelect
+                  label="Tipo"
+                  value={filtroTipo}
+                  onChange={setFiltroTipo}
+                  options={[{ value: "", label: "Todos" }, ...TIPOS]}
+                />
+
+                <CampoSelect
+                  label="Pagamento"
+                  value={filtroStatusPagamento}
+                  onChange={setFiltroStatusPagamento}
+                  options={[{ value: "", label: "Todos" }, ...STATUS_PAGAMENTO]}
+                />
+
+                <CampoData
+                  label="Mês"
+                  value={filtroMes}
+                  onChange={setFiltroMes}
+                  type="month"
+                />
+
+                <CampoSelect
+                  label="Recorrência"
+                  value={filtroRecorrente}
+                  onChange={setFiltroRecorrente}
+                  options={FILTRO_RECORRENTE}
+                />
+
                 <button
                   type="button"
-                  onClick={() => setBusca("")}
+                  onClick={limparFiltrosGastos}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   <RefreshCcw className="h-4 w-4" />
-                  Limpar
+                  Limpar filtros
                 </button>
               </div>
 
               <div>
                 <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <Filter className="h-4 w-4" />
-                  Visualizacao
+                  Visualização
                 </p>
                 <div className="inline-flex w-full rounded-2xl border border-slate-200 bg-slate-50 p-1 sm:w-auto">
                   {VISUALIZACOES.map((item) => {
@@ -843,6 +1010,12 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                 {erro}
               </div>
             )}
+
+            {mensagem && (
+              <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">
+                {mensagem}
+              </div>
+            )}
           </div>
 
           {renderListaGastos()}
@@ -870,10 +1043,10 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  {form.id ? "Editar lancamento" : "Novo lancamento"}
+                  {form.id ? "Editar lançamento" : "Novo lançamento"}
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                  Gastos gerais
+                  Gasto financeiro
                 </h2>
               </div>
 
@@ -901,12 +1074,13 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                     }
                   }}
                   options={TIPOS}
+                  placeholder="Selecione o tipo"
                 />
                 <CampoTexto
-                  label="Titulo"
+                  label="Título"
                   value={form.titulo}
                   onChange={(value) => atualizarForm("titulo", value)}
-                  placeholder="Ex: Canva Pro, camera, campanha Meta"
+                  placeholder="Ex: Canva Pro, câmera, campanha Meta"
                 />
                 <CampoTexto
                   label="Categoria"
@@ -933,26 +1107,28 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                   onChange={(value) => atualizarForm("valorReal", value)}
                 />
                 <CampoData
-                  label="Data competencia"
+                  label="Competência"
                   value={form.dataCompetencia}
                   onChange={(value) => atualizarForm("dataCompetencia", value)}
                 />
                 <CampoData
-                  label="Data vencimento"
+                  label="Vencimento"
                   value={form.dataVencimento}
                   onChange={(value) => atualizarForm("dataVencimento", value)}
                 />
                 <CampoSelect
-                  label="Status pagamento"
+                  label="Status de pagamento"
                   value={form.statusPagamento}
-                  onChange={(value) => atualizarForm("statusPagamento", value)}
-                  options={STATUS_PAGAMENTO.map((status) => ({
-                    value: status,
-                    label: status,
-                  }))}
+                  onChange={(value) => {
+                    atualizarForm("statusPagamento", value);
+                    if (value === "PAGO" && !form.dataPagamento) {
+                      atualizarForm("dataPagamento", hojeInput());
+                    }
+                  }}
+                  options={STATUS_PAGAMENTO}
                 />
                 <CampoData
-                  label="Data pagamento"
+                  label="Data de pagamento"
                   value={form.dataPagamento}
                   onChange={(value) => atualizarForm("dataPagamento", value)}
                 />
@@ -960,16 +1136,13 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                   label="Status operacional"
                   value={form.statusOperacional}
                   onChange={(value) => atualizarForm("statusOperacional", value)}
-                  options={STATUS_OPERACIONAL.map((status) => ({
-                    value: status,
-                    label: status,
-                  }))}
+                  options={STATUS_OPERACIONAL}
                 />
                 <CampoTexto
                   label="Forma de pagamento"
                   value={form.meioPagamento}
                   onChange={(value) => atualizarForm("meioPagamento", value)}
-                  placeholder="Pix, boleto, cartao..."
+                  placeholder="Pix, boleto, cartão..."
                 />
               </div>
 
@@ -983,16 +1156,16 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                     }
                     className="h-4 w-4 rounded border-slate-300"
                   />
-                  Lancamento recorrente
+                  Lançamento recorrente
                 </label>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <CampoSelect
-                    label="Recorrencia"
+                    label="Recorrência"
                     value={form.recorrencia}
                     onChange={(value) => atualizarForm("recorrencia", value)}
                     options={[
-                      { value: "", label: "Sem recorrencia" },
+                      { value: "", label: "Sem recorrência" },
                       { value: "MENSAL", label: "Mensal" },
                       { value: "TRIMESTRAL", label: "Trimestral" },
                       { value: "ANUAL", label: "Anual" },
@@ -1015,22 +1188,22 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
 
               <div className="grid gap-4">
                 <CampoTexto
-                  label="Descricao"
+                  label="Descrição"
                   value={form.descricao}
                   onChange={(value) => atualizarForm("descricao", value)}
                   placeholder="Resumo curto do gasto ou investimento"
                 />
 
                 <CampoTexto
-                  label="Link referencia"
+                  label="Link de referência"
                   value={form.linkReferencia}
                   onChange={(value) => atualizarForm("linkReferencia", value)}
-                  placeholder="Perfil, post, contrato, nota ou referencia"
+                  placeholder="Perfil, post, contrato, nota ou referência"
                 />
 
                 <label className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-slate-700">
-                    Observacoes
+                    Observações
                   </span>
                   <textarea
                     value={form.observacoes}
@@ -1058,6 +1231,21 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                 >
                   Cancelar
                 </button>
+                {form.id && form.statusPagamento !== "PAGO" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      atualizarForm("statusPagamento", "PAGO");
+                      if (!form.dataPagamento) {
+                        atualizarForm("dataPagamento", hojeInput());
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Marcar como pago
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={salvarLancamento}
@@ -1065,7 +1253,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <CreditCard className="h-4 w-4" />
-                  Salvar lancamento
+                  Salvar lançamento
                 </button>
               </div>
             </div>
@@ -1079,14 +1267,25 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
 function ResumoCard({
   titulo,
   valor,
+  tom = "slate",
 }: {
   titulo: string;
   valor: string | number;
+  tom?: "amber" | "emerald" | "rose" | "sky" | "slate" | "violet";
 }) {
+  const classes = {
+    amber: "border-amber-200 bg-amber-50 text-amber-900",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    rose: "border-rose-200 bg-rose-50 text-rose-900",
+    sky: "border-sky-200 bg-sky-50 text-sky-900",
+    slate: "border-slate-200 bg-white text-slate-950",
+    violet: "border-violet-200 bg-violet-50 text-violet-900",
+  }[tom];
+
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-      <p className="text-sm font-medium text-slate-500">{titulo}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-950">{valor}</p>
+    <div className={`rounded-3xl border p-5 shadow-sm ${classes}`}>
+      <p className="text-sm font-medium opacity-75">{titulo}</p>
+      <p className="mt-2 text-2xl font-bold">{valor}</p>
     </div>
   );
 }
@@ -1144,16 +1343,18 @@ function CampoData({
   label,
   value,
   onChange,
+  type = "date",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  type?: "date" | "month";
 }) {
   return (
     <label className="flex flex-col gap-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input
-        type="date"
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-base outline-none transition focus:border-slate-400 sm:text-sm"
@@ -1167,11 +1368,13 @@ function CampoSelect({
   value,
   onChange,
   options,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
+  placeholder?: string;
 }) {
   return (
     <label className="flex flex-col gap-2">
@@ -1181,6 +1384,7 @@ function CampoSelect({
         onChange={(event) => onChange(event.target.value)}
         className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-base outline-none transition focus:border-slate-400 sm:text-sm"
       >
+        {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

@@ -22,7 +22,7 @@ export async function PATCH(
 
     if (!lancamentoExistente) {
       return NextResponse.json(
-        { error: "Lancamento nao encontrado." },
+        { error: "Lançamento não encontrado." },
         { status: 404 }
       );
     }
@@ -35,7 +35,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true, lancamento });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Erro ao atualizar gasto.";
+      error instanceof Error ? error.message : "Não foi possível atualizar o gasto.";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
