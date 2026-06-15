@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { criarSessaoAdmin, verificarSenha } from "@/lib/auth/admin";
+import { verificarSenha } from "@/lib/auth/admin";
+import {
+  ADMIN_SESSION_COOKIE,
+  assinarSessaoAdmin,
+  getOpcoesCookieSessaoAdmin,
+} from "@/lib/auth/session";
 
 function normalizarNext(value: unknown) {
   const next = String(value || "/pedidos").trim();
@@ -52,8 +57,8 @@ export async function POST(request: Request) {
       );
     }
 
-    await criarSessaoAdmin({
-      id: usuario.id,
+    const token = await assinarSessaoAdmin({
+      sub: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
       perfil: usuario.perfil,
@@ -68,10 +73,18 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       redirectTo,
     });
+
+    response.cookies.set(
+      ADMIN_SESSION_COOKIE,
+      token,
+      getOpcoesCookieSessaoAdmin()
+    );
+
+    return response;
   } catch (error) {
     console.error("Erro ao fazer login administrativo:", error);
 

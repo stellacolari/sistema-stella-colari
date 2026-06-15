@@ -79,6 +79,16 @@ export function getSessaoAdminMaxAge() {
   return SESSAO_DURACAO_SEGUNDOS;
 }
 
+export function getOpcoesCookieSessaoAdmin() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: getSessaoAdminMaxAge(),
+  };
+}
+
 export async function assinarSessaoAdmin(
   payload: Omit<SessaoAdminPayload, "exp">
 ) {

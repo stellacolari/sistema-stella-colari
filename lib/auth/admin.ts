@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import {
   ADMIN_SESSION_COOKIE,
   assinarSessaoAdmin,
-  getSessaoAdminMaxAge,
+  getOpcoesCookieSessaoAdmin,
   lerSessaoAdminDeCookies,
 } from "@/lib/auth/session";
 
@@ -58,13 +58,7 @@ export async function criarSessaoAdmin(usuario: {
     perfil: usuario.perfil,
   });
 
-  cookieStore.set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: getSessaoAdminMaxAge(),
-  });
+  cookieStore.set(ADMIN_SESSION_COOKIE, token, getOpcoesCookieSessaoAdmin());
 }
 
 export async function lerSessaoAdmin() {
@@ -102,10 +96,7 @@ export async function limparSessaoAdmin() {
   const cookieStore = await cookies();
 
   cookieStore.set(ADMIN_SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...getOpcoesCookieSessaoAdmin(),
     maxAge: 0,
   });
 }

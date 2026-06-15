@@ -1,19 +1,18 @@
 "use client";
 
-import { FormEvent, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 import { LockKeyhole } from "lucide-react";
 
 export default function LoginClient({ next }: { next: string }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro("");
+    setCarregando(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -30,16 +29,15 @@ export default function LoginClient({ next }: { next: string }) {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setErro(data.error || "Não foi possível entrar.");
+        setErro(data.error || "Nao foi possivel entrar.");
+        setCarregando(false);
         return;
       }
 
-      startTransition(() => {
-        router.replace(data.redirectTo || "/pedidos");
-        router.refresh();
-      });
+      window.location.assign(data.redirectTo || next || "/pedidos");
     } catch {
-      setErro("Não foi possível entrar.");
+      setErro("Nao foi possivel entrar.");
+      setCarregando(false);
     }
   }
 
@@ -77,11 +75,11 @@ export default function LoginClient({ next }: { next: string }) {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={carregando}
         className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <LockKeyhole className="h-4 w-4" />
-        {isPending ? "Entrando..." : "Entrar no painel"}
+        {carregando ? "Entrando..." : "Entrar no painel"}
       </button>
     </form>
   );
