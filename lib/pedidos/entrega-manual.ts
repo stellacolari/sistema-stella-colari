@@ -23,6 +23,7 @@ export type PedidoEntregaManual = {
   destinoEnderecoFormatado: string | null;
   precisaoOrigem: string | null;
   precisaoDestino: string | null;
+  avisoDestinoAproximado: boolean;
   origemEncontrada: string | null;
   destinoEncontrado: string | null;
   origemCoordenadaFixa: boolean;
@@ -199,6 +200,7 @@ function normalizarEntregaManual(
     destinoEnderecoFormatado: texto(record.destinoEnderecoFormatado),
     precisaoOrigem: texto(record.precisaoOrigem),
     precisaoDestino: texto(record.precisaoDestino),
+    avisoDestinoAproximado: Boolean(record.avisoDestinoAproximado),
     origemEncontrada: texto(record.origemEncontrada),
     destinoEncontrado: texto(record.destinoEncontrado),
     origemCoordenadaFixa,

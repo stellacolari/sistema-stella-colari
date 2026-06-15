@@ -66,6 +66,7 @@ export type EnvioPedidoManualOnlinePayload = {
   destinoCoordenadas?: { latitude?: number; longitude?: number } | null;
   precisaoOrigem?: string | null;
   precisaoDestino?: string | null;
+  avisoDestinoAproximado?: boolean | null;
   origemEncontrada?: string | null;
   destinoEncontrado?: string | null;
   origemCoordenadaFixa?: boolean | null;
@@ -501,6 +502,7 @@ function montarEntregaManual(
     destinoCoordenadas: envio.destinoCoordenadas || null,
     precisaoOrigem: texto(envio.precisaoOrigem) || null,
     precisaoDestino: texto(envio.precisaoDestino) || null,
+    avisoDestinoAproximado: Boolean(envio.avisoDestinoAproximado),
     origemEncontrada: texto(envio.origemEncontrada) || null,
     destinoEncontrado: texto(envio.destinoEncontrado) || null,
     origemCoordenadaFixa: Boolean(envio.origemCoordenadaFixa),

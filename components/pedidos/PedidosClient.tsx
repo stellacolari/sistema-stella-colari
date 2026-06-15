@@ -1806,10 +1806,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             </p>
                           ) : null}
                           {pedido.entregaManual.calculoAutomatico &&
-                          (pedido.entregaManual.precisaoOrigem === "APROXIMADA" ||
-                            pedido.entregaManual.precisaoDestino === "APROXIMADA") ? (
+                          (pedido.entregaManual.avisoDestinoAproximado ||
+                            String(pedido.entregaManual.precisaoOrigem || "").startsWith("APROXIMADA") ||
+                            String(pedido.entregaManual.precisaoDestino || "").startsWith("APROXIMADA")) ? (
                             <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">
-                              Endereco localizado de forma aproximada.
+                              Destino aproximado. Confira no Maps.
                             </p>
                           ) : null}
                           {pedido.entregaManual.origemCoordenadaFixa ? (

@@ -1108,10 +1108,11 @@ export default function PedidoDetalheClient({
                     </p>
                   ) : null}
                   {pedido.entregaManual.calculoAutomatico &&
-                  (pedido.entregaManual.precisaoOrigem === "APROXIMADA" ||
-                    pedido.entregaManual.precisaoDestino === "APROXIMADA") ? (
+                  (pedido.entregaManual.avisoDestinoAproximado ||
+                    String(pedido.entregaManual.precisaoOrigem || "").startsWith("APROXIMADA") ||
+                    String(pedido.entregaManual.precisaoDestino || "").startsWith("APROXIMADA")) ? (
                     <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-amber-800 ring-1 ring-amber-200">
-                      Endereco localizado de forma aproximada. Confira a rota no Maps antes de usar esse valor.
+                      Destino aproximado. Confira a rota no Maps antes de usar esse valor.
                     </p>
                   ) : null}
                   {pedido.entregaManual.origemCoordenadaFixa ? (

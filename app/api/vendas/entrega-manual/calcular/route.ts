@@ -28,7 +28,13 @@ type EnderecoGeocodificado = {
   enderecoFormatado: string;
   coordenadas: Coordenadas;
   encontrado: string;
-  precisao: "EXATA" | "APROXIMADA" | "COORDENADA_FIXA";
+  precisao:
+    | "EXATA"
+    | "APROXIMADA_RUA"
+    | "APROXIMADA_CEP"
+    | "APROXIMADA_BAIRRO"
+    | "APROXIMADA_CIDADE"
+    | "COORDENADA_FIXA";
   tentativa: string;
   coordenadaFixa?: boolean;
 };
@@ -36,6 +42,12 @@ type EnderecoGeocodificado = {
 type TentativaGeocodificacao = {
   label: string;
   text: string;
+  precisao:
+    | "EXATA"
+    | "APROXIMADA_RUA"
+    | "APROXIMADA_CEP"
+    | "APROXIMADA_BAIRRO"
+    | "APROXIMADA_CIDADE";
 };
 
 function texto(value: unknown) {
@@ -210,22 +222,37 @@ function montarTentativasGeocodificacao(
     {
       label: "completo",
       text: montarPartesEndereco([rua, numero, bairro, cidade, uf, cep, "Brasil"]),
+      precisao: "EXATA" as const,
     },
     {
       label: "sem_bairro",
       text: montarPartesEndereco([rua, numero, cidade, uf, cep, "Brasil"]),
+      precisao: "APROXIMADA_RUA" as const,
     },
     {
       label: "rua_bairro",
       text: montarPartesEndereco([rua, bairro, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_RUA" as const,
     },
     {
       label: "rua_cidade",
       text: montarPartesEndereco([rua, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_RUA" as const,
     },
     {
       label: "cep",
       text: montarPartesEndereco([cep, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_CEP" as const,
+    },
+    {
+      label: "bairro",
+      text: montarPartesEndereco([bairro, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_BAIRRO" as const,
+    },
+    {
+      label: "cidade",
+      text: montarPartesEndereco([cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_CIDADE" as const,
     },
   ].filter((tentativa) => tentativa.text);
 }
@@ -409,7 +436,11 @@ function featureCoordinates(value: unknown): unknown[] | null {
   return null;
 }
 
-function pontuarFeature(feature: unknown, endereco: EnderecoEntrega) {
+function pontuarFeature(
+  feature: unknown,
+  endereco: EnderecoEntrega,
+  tentativa: TentativaGeocodificacao,
+) {
   const props = featureProps(feature);
   const pais = texto(props.country_a || props.country);
   const uf = texto(props.region_a || props.region);
@@ -440,7 +471,7 @@ function pontuarFeature(feature: unknown, endereco: EnderecoEntrega) {
   if (!paisOk || !ufOk || !cidadeOk) {
     return {
       score: -100,
-      precisao: "APROXIMADA" as const,
+      precisao: tentativa.precisao,
       encontrado: texto(props.label || props.name || rua),
       props,
     };
@@ -464,9 +495,9 @@ function pontuarFeature(feature: unknown, endereco: EnderecoEntrega) {
   return {
     score,
     precisao:
-      numeroOk && cepOk && bairroOk && ruaOk
+      tentativa.precisao === "EXATA" && numeroOk && cepOk && bairroOk && ruaOk
         ? ("EXATA" as const)
-        : ("APROXIMADA" as const),
+        : tentativa.precisao,
     encontrado: texto(props.label || props.name || rua),
     props,
   };
@@ -482,7 +513,7 @@ async function geocodificarOpenRoute(
         feature: unknown;
         tentativa: TentativaGeocodificacao;
         score: number;
-        precisao: "EXATA" | "APROXIMADA";
+        precisao: EnderecoGeocodificado["precisao"];
         encontrado: string;
       }
     | null = null;
@@ -502,10 +533,12 @@ async function geocodificarOpenRoute(
     const features = Array.isArray(data?.features) ? data.features : [];
 
     for (const feature of features) {
-      const resultado = pontuarFeature(feature, endereco);
+      const resultado = pontuarFeature(feature, endereco, tentativa);
       const coordinates = featureCoordinates(feature);
 
-      if (!coordinates || resultado.score < 9) {
+      const scoreMinimo = tentativa.precisao === "EXATA" ? 9 : 7;
+
+      if (!coordinates || resultado.score < scoreMinimo) {
         continue;
       }
 
@@ -646,6 +679,40 @@ function erroDistanciaAbsurda() {
   return "A rota calculada parece incorreta. Revise o endereco ou use o botao Ver no Maps.";
 }
 
+function precisaoAproximada(precisao: string | null | undefined) {
+  return String(precisao || "").startsWith("APROXIMADA");
+}
+
+function erroDistanciaIncoerente({
+  origem,
+  destino,
+  distanciaIdaKm,
+  precisaoDestino,
+}: {
+  origem: EnderecoEntrega;
+  destino: EnderecoEntrega;
+  distanciaIdaKm: number;
+  precisaoDestino: string;
+}) {
+  if (!Number.isFinite(distanciaIdaKm) || distanciaIdaKm <= 0) {
+    return erroDistanciaAbsurda();
+  }
+
+  if (mesmaCidadeUf(origem, destino) && distanciaIdaKm > 100) {
+    return erroDistanciaAbsurda();
+  }
+
+  if (precisaoAproximada(precisaoDestino) && distanciaIdaKm > 150) {
+    return erroDistanciaAbsurda();
+  }
+
+  if (distanciaIdaKm > 500) {
+    return erroDistanciaAbsurda();
+  }
+
+  return "";
+}
+
 export async function GET() {
   try {
     return NextResponse.json(await listarOrigens());
@@ -734,10 +801,17 @@ export async function POST(req: Request) {
     const valorMinimo = numeroNaoNegativo(parametros.valorMinimo, 0);
     const rota = await calcularRotaOpenRoute(origem, destino, key);
     const distanciaIdaKm = Number(rota.distanciaIdaKm.toFixed(2));
+    const avisoDestinoAproximado = precisaoAproximada(
+      rota.destinoGeo.precisao,
+    );
+    const erroDistancia = erroDistanciaIncoerente({
+      origem,
+      destino,
+      distanciaIdaKm,
+      precisaoDestino: rota.destinoGeo.precisao,
+    });
 
-    if (mesmaCidadeUf(origem, destino) && distanciaIdaKm > 100) {
-      const error = erroDistanciaAbsurda();
-
+    if (erroDistancia) {
       return NextResponse.json(
         {
           origem,
@@ -754,11 +828,12 @@ export async function POST(req: Request) {
           destinoEncontrado: rota.destinoGeo.encontrado,
           origemPrecisao: rota.origemGeo.precisao,
           origemCoordenadaFixa: Boolean(rota.origemGeo.coordenadaFixa),
+          avisoDestinoAproximado,
           providerDistancia: "openroute",
           mapsUrl: montarMapsUrl(origem, destino),
           calculoAutomatico: false,
-          erroCalculo: error,
-          error,
+          erroCalculo: erroDistancia,
+          error: erroDistancia,
         },
         { status: 400 },
       );
@@ -818,6 +893,7 @@ export async function POST(req: Request) {
       destinoCoordenadas: rota.destinoGeo.coordenadas,
       precisaoOrigem: rota.origemGeo.precisao,
       precisaoDestino: rota.destinoGeo.precisao,
+      avisoDestinoAproximado,
       origemEncontrada: rota.origemGeo.encontrado,
       destinoEncontrado: rota.destinoGeo.encontrado,
       origemPrecisao: rota.origemGeo.precisao,

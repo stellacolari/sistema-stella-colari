@@ -89,6 +89,14 @@ type ModalidadeEntregaManual =
   | "ENTREGA_LOCAL"
   | "CIDADE_PROXIMA";
 
+type EntregaModalEtapa =
+  | "MODALIDADE"
+  | "ORIGEM"
+  | "DESTINO"
+  | "CALCULO"
+  | "FRETE"
+  | "CONFIRMACAO";
+
 type EnderecoEntrega = {
   cep: string;
   rua: string;
@@ -617,6 +625,8 @@ export default function NovaVendaV2Client({
   } | null>(null);
   const [enviarEntrega, setEnviarEntrega] = useState(false);
   const [modalEntregaAberto, setModalEntregaAberto] = useState(false);
+  const [etapaEntregaModal, setEtapaEntregaModal] =
+    useState<EntregaModalEtapa>("MODALIDADE");
   const [modalidadeEntrega, setModalidadeEntrega] =
     useState<ModalidadeEntregaManual>("SEM_ENTREGA");
   const [usarEnderecoCliente, setUsarEnderecoCliente] = useState(false);
@@ -639,6 +649,7 @@ export default function NovaVendaV2Client({
   const [origemSelecionadaId, setOrigemSelecionadaId] = useState("");
   const [seletorOrigemAberto, setSeletorOrigemAberto] = useState(false);
   const [gerenciarOrigensAberto, setGerenciarOrigensAberto] = useState(false);
+  const [formOrigemAberto, setFormOrigemAberto] = useState(false);
   const [salvandoOrigemManual, setSalvandoOrigemManual] = useState(false);
   const [origemEditandoId, setOrigemEditandoId] = useState<string | null>(null);
   const [buscandoCepOrigem, setBuscandoCepOrigem] = useState(false);
@@ -697,6 +708,7 @@ export default function NovaVendaV2Client({
     destinoCoordenadas: null as { latitude: number; longitude: number } | null,
     precisaoOrigem: "",
     precisaoDestino: "",
+    avisoDestinoAproximado: false,
     origemEncontrada: "",
     destinoEncontrado: "",
     origemCoordenadaFixa: false,
@@ -1036,6 +1048,97 @@ export default function NovaVendaV2Client({
     modalidadeEntregaNormalizada === "MELHOR_ENVIO";
   const entregaConfigurada =
     enviarEntrega && modalidadeEntregaNormalizada !== "SEM_ENTREGA";
+  const etapasEntregaModal = useMemo<EntregaModalEtapa[]>(() => {
+    if (modalidadeEntregaNormalizada === "ENTREGA_MANUAL") {
+      return ["MODALIDADE", "ORIGEM", "DESTINO", "CALCULO", "CONFIRMACAO"];
+    }
+
+    if (modalidadeEntregaNormalizada === "MELHOR_ENVIO") {
+      return ["MODALIDADE", "DESTINO", "FRETE", "CONFIRMACAO"];
+    }
+
+    return ["MODALIDADE", "CONFIRMACAO"];
+  }, [modalidadeEntregaNormalizada]);
+  const etapaEntregaAtualIndice = Math.max(
+    0,
+    etapasEntregaModal.indexOf(etapaEntregaModal),
+  );
+  const etapaEntregaUltima =
+    etapaEntregaAtualIndice === etapasEntregaModal.length - 1;
+  const etapaEntregaLabels: Record<EntregaModalEtapa, string> = {
+    MODALIDADE: "Modalidade",
+    ORIGEM: "Origem",
+    DESTINO: "Destino",
+    CALCULO: "Entrega",
+    FRETE: "Frete",
+    CONFIRMACAO: "Conferir",
+  };
+
+  function abrirModalEntrega() {
+    setEtapaEntregaModal("MODALIDADE");
+    setModalEntregaAberto(true);
+  }
+
+  function validarEtapaEntregaModal(etapa: EntregaModalEtapa) {
+    setErroFrete("");
+
+    if (etapa === "ORIGEM" && !origemEntregaManual) {
+      setErroFrete("Escolha a origem da entrega.");
+      return false;
+    }
+
+    if (etapa === "DESTINO" && mostrarEnderecoEntrega) {
+      if (!String(entrega.numero || "").trim()) {
+        setErroFrete("Informe o numero do destino.");
+        return false;
+      }
+
+      if (!enderecoCompletoParaMaps(entrega)) {
+        setErroFrete("Informe o destino do cliente.");
+        return false;
+      }
+    }
+
+    if (etapa === "CALCULO" && modalidadeEntregaNormalizada === "ENTREGA_MANUAL") {
+      if ((numeroInputOuNull(entregaManual.valorManual) ?? 0) <= 0) {
+        setErroFrete(
+          "Nao conseguimos calcular com seguranca. Informe o valor manualmente ou confira no Maps.",
+        );
+        return false;
+      }
+    }
+
+    if (etapa === "FRETE" && modalidadeEntregaNormalizada === "MELHOR_ENVIO") {
+      if (!freteSelecionadoId) {
+        setErroFrete("Selecione uma opcao de frete.");
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function avancarEtapaEntrega() {
+    if (!validarEtapaEntregaModal(etapaEntregaModal)) {
+      return;
+    }
+
+    if (etapaEntregaUltima) {
+      setModalEntregaAberto(false);
+      return;
+    }
+
+    setEtapaEntregaModal(etapasEntregaModal[etapaEntregaAtualIndice + 1]);
+  }
+
+  function voltarEtapaEntrega() {
+    if (etapaEntregaAtualIndice <= 0) {
+      return;
+    }
+
+    setErroFrete("");
+    setEtapaEntregaModal(etapasEntregaModal[etapaEntregaAtualIndice - 1]);
+  }
 
   function atualizarCampoEntrega(campo: keyof typeof entrega, valor: string) {
     setEntrega((atual) => ({
@@ -1071,6 +1174,7 @@ export default function NovaVendaV2Client({
         destinoCoordenadas: null,
         precisaoOrigem: "",
         precisaoDestino: "",
+        avisoDestinoAproximado: false,
         origemEncontrada: "",
         destinoEncontrado: "",
         origemCoordenadaFixa: false,
@@ -1121,6 +1225,7 @@ export default function NovaVendaV2Client({
       destinoCoordenadas: null,
       precisaoOrigem: "",
       precisaoDestino: "",
+      avisoDestinoAproximado: false,
       origemEncontrada: "",
       destinoEncontrado: "",
       origemCoordenadaFixa: false,
@@ -1134,6 +1239,7 @@ export default function NovaVendaV2Client({
 
   function resetarOrigemForm() {
     setOrigemEditandoId(null);
+    setFormOrigemAberto(false);
     setOrigemForm({
       nome: "",
       cep: "",
@@ -1156,6 +1262,7 @@ export default function NovaVendaV2Client({
     }
 
     setOrigemEditandoId(origem.id);
+    setFormOrigemAberto(true);
     setOrigemForm({
       nome: origem.nome || "",
       cep: origem.cep || "",
@@ -1191,6 +1298,7 @@ export default function NovaVendaV2Client({
     }
 
     setOrigemEditandoId(null);
+    setFormOrigemAberto(true);
     setOrigemForm({
       nome: origemEntregaManual.nome || "Origem",
       cep: origemEntregaManual.cep || "",
@@ -1532,6 +1640,12 @@ export default function NovaVendaV2Client({
   ]);
 
   useEffect(() => {
+    if (!etapasEntregaModal.includes(etapaEntregaModal)) {
+      setEtapaEntregaModal("MODALIDADE");
+    }
+  }, [etapaEntregaModal, etapasEntregaModal]);
+
+  useEffect(() => {
     if (
       !modalEntregaAberto ||
       modalidadeEntregaNormalizada !== "ENTREGA_MANUAL" ||
@@ -1644,6 +1758,7 @@ export default function NovaVendaV2Client({
           destinoCoordenadas: data.destinoCoordenadas || null,
           precisaoOrigem: String(data.precisaoOrigem || ""),
           precisaoDestino: String(data.precisaoDestino || ""),
+          avisoDestinoAproximado: Boolean(data.avisoDestinoAproximado),
           origemEncontrada: String(data.origemEncontrada || ""),
           destinoEncontrado: String(data.destinoEncontrado || ""),
           origemCoordenadaFixa: Boolean(
@@ -1687,6 +1802,7 @@ export default function NovaVendaV2Client({
         destinoCoordenadas: data.destinoCoordenadas || null,
         precisaoOrigem: String(data.precisaoOrigem || ""),
         precisaoDestino: String(data.precisaoDestino || ""),
+        avisoDestinoAproximado: Boolean(data.avisoDestinoAproximado),
         origemEncontrada: String(data.origemEncontrada || ""),
         destinoEncontrado: String(data.destinoEncontrado || ""),
         origemCoordenadaFixa: Boolean(data.origemCoordenadaFixa),
@@ -1694,7 +1810,11 @@ export default function NovaVendaV2Client({
         erroCalculo: "",
         calculoAutomatico: true,
       }));
-      setStatusCalculoEntrega("Entrega calculada.");
+      setStatusCalculoEntrega(
+        data.avisoDestinoAproximado
+          ? "Destino aproximado. Confira no Maps."
+          : "Entrega calculada.",
+      );
     } catch {
       setStatusCalculoEntrega("Não foi possível calcular automaticamente.");
     } finally {
@@ -1719,6 +1839,10 @@ export default function NovaVendaV2Client({
 
   useEffect(() => {
     if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
+      return;
+    }
+
+    if (!modalEntregaAberto || etapaEntregaModal !== "CALCULO") {
       return;
     }
 
@@ -1755,7 +1879,9 @@ export default function NovaVendaV2Client({
     calcularEntregaManual,
     carregandoOrigensEntrega,
     entrega,
+    etapaEntregaModal,
     modalidadeEntregaNormalizada,
+    modalEntregaAberto,
     origemEntregaManual,
     salvandoOrigemManual,
   ]);
@@ -1827,6 +1953,7 @@ export default function NovaVendaV2Client({
       destinoCoordenadas: entregaManual.destinoCoordenadas,
       precisaoOrigem: entregaManual.precisaoOrigem || null,
       precisaoDestino: entregaManual.precisaoDestino || null,
+      avisoDestinoAproximado: entregaManual.avisoDestinoAproximado || false,
       origemEncontrada: entregaManual.origemEncontrada || null,
       destinoEncontrado: entregaManual.destinoEncontrado || null,
       origemCoordenadaFixa: entregaManual.origemCoordenadaFixa,
@@ -2287,7 +2414,7 @@ export default function NovaVendaV2Client({
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <section className="min-w-0 space-y-6">
             <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
               <h2 className="text-lg font-semibold text-slate-900">
@@ -2911,7 +3038,7 @@ export default function NovaVendaV2Client({
                 </p>
 
                 <div className="mt-5 space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-3">
                     <button
                       type="button"
                       onClick={() => setTipoFinalizacao("PAGO_AGORA")}
@@ -2997,10 +3124,10 @@ export default function NovaVendaV2Client({
 
                       <button
                         type="button"
-                        onClick={() => setModalEntregaAberto(true)}
+                        onClick={abrirModalEntrega}
                         className="shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
-                        Configurar
+                        Configurar entrega
                       </button>
                     </div>
 
@@ -3029,22 +3156,20 @@ export default function NovaVendaV2Client({
                       {entregaConfigurada && enderecoEntregaResumo ? (
                         <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
                           <span className="font-semibold text-slate-700">
-                            Endereço:
+                            Destino:
                           </span>{" "}
                           <span>{enderecoEntregaResumo}</span>
                         </div>
                       ) : null}
 
                       {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
-                      mapsUrlEntregaManual ? (
-                        <a
-                          href={mapsUrlEntregaManual}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl bg-white px-3 py-2 font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
-                        >
-                          Ver rota no Maps
-                        </a>
+                      origemEntregaResumoCurto ? (
+                        <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
+                          <span className="font-semibold text-slate-700">
+                            Origem:
+                          </span>{" "}
+                          <span>{origemEntregaResumoCurto}</span>
+                        </div>
                       ) : null}
 
                       {modalidadeEntregaNormalizada === "MELHOR_ENVIO" &&
@@ -3058,7 +3183,7 @@ export default function NovaVendaV2Client({
 
                   {modalEntregaAberto ? (
                     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/50 px-2 py-2 sm:items-center sm:px-4 sm:py-6">
-                      <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
+                      <div className="max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl [&_input]:text-base [&_select]:text-base [&_textarea]:text-base md:[&_input]:text-sm md:[&_select]:text-sm md:[&_textarea]:text-sm">
                         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
                           <div>
                             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -3084,6 +3209,31 @@ export default function NovaVendaV2Client({
                         </div>
 
                         <div className="space-y-4 px-4 py-5 sm:px-6">
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                            {etapasEntregaModal.map((etapa, index) => {
+                              const atual = etapaEntregaModal === etapa;
+                              const concluida = index < etapaEntregaAtualIndice;
+
+                              return (
+                                <div
+                                  key={etapa}
+                                  className={`rounded-2xl border px-3 py-2 text-xs ${
+                                    atual
+                                      ? "border-slate-900 bg-slate-900 text-white"
+                                      : concluida
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                        : "border-slate-200 bg-slate-50 text-slate-500"
+                                  }`}
+                                >
+                                  <span className="block font-semibold">
+                                    {concluida ? "OK" : index + 1}{" "}
+                                    {etapaEntregaLabels[etapa]}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                             <div className="flex items-start gap-3">
                               <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
@@ -3102,6 +3252,8 @@ export default function NovaVendaV2Client({
                             </div>
 
                             <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
+                        {etapaEntregaModal === "MODALIDADE" && (
+                        <>
                         <div className="grid gap-2">
                           {MODALIDADES_ENTREGA_MANUAL.map((modalidade) => {
                             const selecionada =
@@ -3137,8 +3289,11 @@ export default function NovaVendaV2Client({
                             Cliente ja levou ou este pedido nao precisa de entrega.
                           </div>
                         ) : null}
+                        </>
+                        )}
 
-                        {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ? (
+                        {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
+                        etapaEntregaModal === "ORIGEM" ? (
                           <div className="rounded-2xl border border-slate-200 bg-white p-3">
                             <div className="flex items-start justify-between gap-3">
                               <div>
@@ -3161,6 +3316,9 @@ export default function NovaVendaV2Client({
                                     ? "Localizacao exata configurada"
                                     : "Usando endereco textual"}
                                 </span>
+                                <span className="ml-2 mt-2 inline-flex rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white">
+                                  Selecionada
+                                </span>
                               </div>
                               <div className="flex shrink-0 flex-wrap justify-end gap-2">
                                 <button
@@ -3170,13 +3328,14 @@ export default function NovaVendaV2Client({
                                   }
                                   className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                                 >
-                                  Alterar origem
+                                  Trocar origem
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setGerenciarOrigensAberto((atual) => !atual)
-                                  }
+                                  onClick={() => {
+                                    setGerenciarOrigensAberto((atual) => !atual);
+                                    setFormOrigemAberto(false);
+                                  }}
                                   className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                                 >
                                   Gerenciar origens
@@ -3306,7 +3465,20 @@ export default function NovaVendaV2Client({
                                   ))}
                                 </div>
 
-                                <div className="grid gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    resetarOrigemForm();
+                                    setFormOrigemAberto(true);
+                                  }}
+                                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  Nova origem
+                                </button>
+
+                                <div
+                                  className={`${formOrigemAberto ? "grid" : "hidden"} gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200`}
+                                >
                                   <div className="flex items-center justify-between gap-3">
                                     <p className="text-sm font-semibold text-slate-950">
                                       {origemEditandoId ? "Editar origem" : "Nova origem"}
@@ -3576,7 +3748,9 @@ export default function NovaVendaV2Client({
                           </div>
                         ) : null}
 
-                        {mostrarEnderecoEntrega && clienteTemEndereco ? (
+                        {etapaEntregaModal === "DESTINO" &&
+                        mostrarEnderecoEntrega &&
+                        clienteTemEndereco ? (
                             <div className="flex items-start justify-between gap-3 rounded-2xl bg-white p-3 text-sm text-slate-700 ring-1 ring-slate-200">
                               <span>
                                 <span className="block font-semibold text-slate-900">
@@ -3609,7 +3783,7 @@ export default function NovaVendaV2Client({
                             </div>
                         ) : null}
 
-                        {mostrarEnderecoEntrega ? (
+                        {etapaEntregaModal === "DESTINO" && mostrarEnderecoEntrega ? (
                           <div className="grid gap-3 sm:grid-cols-2">
                             <label>
                               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -3737,7 +3911,8 @@ export default function NovaVendaV2Client({
                           </div>
                         ) : null}
 
-                        {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ? (
+                        {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
+                        etapaEntregaModal === "CALCULO" ? (
                           <div className="rounded-2xl border border-slate-200 bg-white p-3">
                             <p className="text-sm font-semibold text-slate-950">
                               Entrega manual
@@ -3836,10 +4011,11 @@ export default function NovaVendaV2Client({
                             ) : null}
 
                             {entregaManual.calculoAutomatico &&
-                            (entregaManual.precisaoOrigem === "APROXIMADA" ||
-                              entregaManual.precisaoDestino === "APROXIMADA") ? (
+                            (entregaManual.avisoDestinoAproximado ||
+                              entregaManual.precisaoOrigem.startsWith("APROXIMADA") ||
+                              entregaManual.precisaoDestino.startsWith("APROXIMADA")) ? (
                               <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                                Endereco localizado de forma aproximada. Confira a rota no Maps antes de confirmar.
+                                Destino localizado de forma aproximada. Confira a rota no Maps antes de confirmar.
                               </p>
                             ) : null}
 
@@ -3976,7 +4152,8 @@ export default function NovaVendaV2Client({
                           </div>
                         ) : null}
 
-                        {modalidadeEntregaNormalizada === "RETIRADA_COMBINADA" ? (
+                        {modalidadeEntregaNormalizada === "RETIRADA_COMBINADA" &&
+                        etapaEntregaModal === "CONFIRMACAO" ? (
                           <label className="block rounded-2xl border border-slate-200 bg-white p-3">
                             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                               Observação para retirada
@@ -3996,7 +4173,61 @@ export default function NovaVendaV2Client({
                           </label>
                         ) : null}
 
-                        {modalidadeEntregaNormalizada === "MELHOR_ENVIO" && (
+                        {etapaEntregaModal === "CONFIRMACAO" ? (
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <p className="text-sm font-semibold text-slate-950">
+                              Conferir entrega
+                            </p>
+                            <div className="mt-3 grid gap-2 text-sm text-slate-600">
+                              <div className="flex justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                                <span>Modalidade</span>
+                                <strong className="text-right text-slate-900">
+                                  {labelModalidadeEntrega(
+                                    modalidadeEntregaNormalizada,
+                                  )}
+                                </strong>
+                              </div>
+                              {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ? (
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <span className="font-semibold text-slate-700">
+                                    Origem:
+                                  </span>{" "}
+                                  {origemEntregaResumo}
+                                </div>
+                              ) : null}
+                              {mostrarEnderecoEntrega && enderecoEntregaResumo ? (
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <span className="font-semibold text-slate-700">
+                                    Destino:
+                                  </span>{" "}
+                                  {enderecoEntregaResumo}
+                                </div>
+                              ) : null}
+                              {entregaConfigurada ? (
+                                <div className="flex justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                                  <span>Valor</span>
+                                  <strong className="text-slate-900">
+                                    {modalidadeEntregaNormalizada === "MELHOR_ENVIO" &&
+                                    !freteSelecionado
+                                      ? "Selecione"
+                                      : moeda(valorFrete)}
+                                  </strong>
+                                </div>
+                              ) : null}
+                              {entregaManual.observacaoManual ? (
+                                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                                  <span className="font-semibold text-slate-700">
+                                    Observacao:
+                                  </span>{" "}
+                                  {entregaManual.observacaoManual}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {modalidadeEntregaNormalizada === "MELHOR_ENVIO" &&
+                        etapaEntregaModal === "FRETE" && (
                           <button
                             type="button"
                             onClick={cotarFrete}
@@ -4014,6 +4245,7 @@ export default function NovaVendaV2Client({
                         ) : null}
 
                         {modalidadeEntregaNormalizada === "MELHOR_ENVIO" &&
+                          etapaEntregaModal === "FRETE" &&
                           opcoesFrete.length > 0 && (
                           <div className="space-y-2">
                             {opcoesFrete.map((opcao) => {
@@ -4082,12 +4314,21 @@ export default function NovaVendaV2Client({
                             >
                               Cancelar
                             </button>
+                            {etapaEntregaAtualIndice > 0 ? (
+                              <button
+                                type="button"
+                                onClick={voltarEtapaEntrega}
+                                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                              >
+                                Voltar
+                              </button>
+                            ) : null}
                             <button
                               type="button"
-                              onClick={() => setModalEntregaAberto(false)}
+                              onClick={avancarEtapaEntrega}
                               className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
                             >
-                              Concluir
+                              {etapaEntregaUltima ? "Concluir" : "Proximo passo"}
                             </button>
                           </div>
                         </div>
