@@ -656,8 +656,11 @@ export default function NovaVendaV2Client({
     observacao: "",
     padrao: false,
   });
-  const [carregandoOrigemEntrega, setCarregandoOrigemEntrega] =
+  const [carregandoOrigensEntrega, setCarregandoOrigensEntrega] =
     useState(false);
+  const [origensEntregaCarregadas, setOrigensEntregaCarregadas] =
+    useState(false);
+  const [erroOrigensEntrega, setErroOrigensEntrega] = useState("");
   const [calculandoEntregaManual, setCalculandoEntregaManual] =
     useState(false);
   const [statusCalculoEntrega, setStatusCalculoEntrega] = useState(
@@ -1091,7 +1094,7 @@ export default function NovaVendaV2Client({
     atualizarCampoEntregaManual("valorManual", value);
   }
 
-  function selecionarOrigemEntrega(origem: OrigemEntregaManualInfo) {
+  const selecionarOrigemEntrega = useCallback((origem: OrigemEntregaManualInfo) => {
     setOrigemEntregaManual(origem);
     setOrigemSelecionadaId(origem.id);
     setSeletorOrigemAberto(false);
@@ -1123,7 +1126,8 @@ export default function NovaVendaV2Client({
     }));
     setStatusCalculoEntrega("Preencha CEP e número.");
     setErroFrete("");
-  }
+    setErroOrigensEntrega("");
+  }, []);
 
   function resetarOrigemForm() {
     setOrigemEditandoId(null);
@@ -1238,31 +1242,72 @@ export default function NovaVendaV2Client({
     }
   }
 
-  async function recarregarOrigensEntrega(selecionarId?: string) {
-    const response = await fetch("/api/vendas/entrega-manual/origens", {
-      method: "GET",
-      cache: "no-store",
-    });
-    const data = await response.json().catch(() => ({}));
+  const recarregarOrigensEntrega = useCallback(
+    async (selecionarId?: string) => {
+      setCarregandoOrigensEntrega(true);
+      setErroOrigensEntrega("");
 
-    if (!response.ok) {
-      throw new Error(data.error || "Erro ao carregar origens.");
-    }
+      try {
+        const response = await fetch("/api/vendas/entrega-manual/origens", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
 
-    const origens = Array.isArray(data.origens)
-      ? (data.origens as OrigemEntregaManualInfo[])
-      : [];
-    const selecionada =
-      origens.find((origem) => origem.id === selecionarId) ||
-      (data.selecionada as OrigemEntregaManualInfo | undefined) ||
-      origens[0] ||
-      null;
+        if (!response.ok) {
+          const mensagem = String(data.error || "Erro ao carregar origens.");
+          setErroOrigensEntrega(mensagem);
+          setStatusCalculoEntrega(
+            "Nao foi possivel carregar as origens de entrega.",
+          );
+          setOrigensEntregaCarregadas(true);
+          return null;
+        }
 
-    setOrigensEntregaManual(origens);
-    if (selecionada) {
-      selecionarOrigemEntrega(selecionada);
-    }
-  }
+        const origens = Array.isArray(data.origens)
+          ? (data.origens as OrigemEntregaManualInfo[])
+          : [];
+        const fallback = data.fallback as OrigemEntregaManualInfo | undefined;
+        const selecionadaApi = data.selecionada as
+          | OrigemEntregaManualInfo
+          | undefined;
+        const preferidaId = selecionarId || origemSelecionadaId;
+        const selecionada =
+          origens.find((origem) => origem.id === preferidaId) ||
+          origens.find((origem) => origem.id === selecionadaApi?.id) ||
+          origens.find((origem) => origem.padrao) ||
+          origens[0] ||
+          fallback ||
+          null;
+
+        setOrigensEntregaManual(
+          origens.length > 0 ? origens : fallback ? [fallback] : [],
+        );
+
+        if (selecionada) {
+          selecionarOrigemEntrega(selecionada);
+        } else {
+          setOrigemEntregaManual(null);
+          setOrigemSelecionadaId("");
+        }
+
+        setOrigensEntregaCarregadas(true);
+        return selecionada;
+      } catch {
+        setErroOrigensEntrega(
+          "Nao foi possivel carregar as origens de entrega.",
+        );
+        setStatusCalculoEntrega(
+          "Nao foi possivel carregar as origens de entrega.",
+        );
+        setOrigensEntregaCarregadas(true);
+        return null;
+      } finally {
+        setCarregandoOrigensEntrega(false);
+      }
+    },
+    [origemSelecionadaId, selecionarOrigemEntrega],
+  );
 
   async function salvarOrigemManual() {
     setSalvandoOrigemManual(true);
@@ -1301,7 +1346,31 @@ export default function NovaVendaV2Client({
         return;
       }
 
-      await recarregarOrigensEntrega(data.origem?.id);
+      const origemSalva = data.origem as OrigemEntregaManualInfo | undefined;
+
+      if (origemSalva?.id) {
+        setOrigensEntregaManual((atuais) => {
+          const atuaisSemSistema = atuais.filter(
+            (origem) => !origem.origemSistema && origem.id !== origemSalva.id,
+          );
+          const ajustadas = origemSalva.padrao
+            ? atuaisSemSistema.map((origem) => ({ ...origem, padrao: false }))
+            : atuaisSemSistema;
+
+          return [origemSalva, ...ajustadas].sort((a, b) => {
+            if (a.padrao !== b.padrao) {
+              return a.padrao ? -1 : 1;
+            }
+
+            return a.nome.localeCompare(b.nome);
+          });
+        });
+        selecionarOrigemEntrega(origemSalva);
+        setOrigensEntregaCarregadas(true);
+      } else {
+        await recarregarOrigensEntrega();
+      }
+
       resetarOrigemForm();
     } catch {
       setErroFrete("Erro ao salvar origem.");
@@ -1334,7 +1403,9 @@ export default function NovaVendaV2Client({
         return;
       }
 
-      await recarregarOrigensEntrega();
+      await recarregarOrigensEntrega(
+        origemSelecionadaId === origem.id ? undefined : origemSelecionadaId,
+      );
       resetarOrigemForm();
     } catch {
       setErroFrete("Erro ao remover origem.");
@@ -1448,60 +1519,38 @@ export default function NovaVendaV2Client({
     if (
       !modalEntregaAberto ||
       modalidadeEntregaNormalizada !== "ENTREGA_MANUAL" ||
-      origemEntregaManual ||
-      carregandoOrigemEntrega
+      origensEntregaCarregadas ||
+      carregandoOrigensEntrega
     ) {
       return;
     }
 
-    async function carregarOrigem() {
-      setCarregandoOrigemEntrega(true);
-      setErroFrete("");
-
-      try {
-        const response = await fetch("/api/vendas/entrega-manual/origens", {
-          method: "GET",
-          cache: "no-store",
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          setErroFrete(data.error || "Erro ao carregar origem da entrega.");
-          return;
-        }
-
-        const origens = Array.isArray(data.origens)
-          ? (data.origens as OrigemEntregaManualInfo[])
-          : [];
-        const selecionada =
-          (data.selecionada as OrigemEntregaManualInfo | undefined) ||
-          origens[0] ||
-          null;
-
-        setOrigensEntregaManual(origens);
-        setOrigemEntregaManual(selecionada);
-        setOrigemSelecionadaId(selecionada?.id || "");
-        setEntregaManual((atual) => ({
-          ...atual,
-          origemResumo: String(selecionada?.resumo || ""),
-        }));
-      } catch {
-        setErroFrete("Erro ao carregar origem da entrega.");
-      } finally {
-        setCarregandoOrigemEntrega(false);
-      }
-    }
-
-    void carregarOrigem();
+    void recarregarOrigensEntrega();
   }, [
-    carregandoOrigemEntrega,
+    carregandoOrigensEntrega,
     modalidadeEntregaNormalizada,
     modalEntregaAberto,
-    origemEntregaManual,
+    origensEntregaCarregadas,
+    recarregarOrigensEntrega,
   ]);
 
   const calcularEntregaManual = useCallback(async () => {
     if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
+      return;
+    }
+
+    if (carregandoOrigensEntrega) {
+      setStatusCalculoEntrega("Carregando origens de entrega...");
+      return;
+    }
+
+    if (salvandoOrigemManual) {
+      setStatusCalculoEntrega("Salvando origem de entrega...");
+      return;
+    }
+
+    if (!origemEntregaManual) {
+      setStatusCalculoEntrega("Selecione uma origem de entrega.");
       return;
     }
 
@@ -1643,15 +1692,26 @@ export default function NovaVendaV2Client({
     entregaManual.precoCombustivel,
     entregaManual.taxaFixa,
     entregaManual.valorMinimo,
+    carregandoOrigensEntrega,
     mapsUrlEntregaManual,
     modalidadeEntregaNormalizada,
     origemEntregaManual,
     origemEntregaResumo,
+    salvandoOrigemManual,
     valorManualEditado,
   ]);
 
   useEffect(() => {
     if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
+      return;
+    }
+
+    if (carregandoOrigensEntrega || salvandoOrigemManual) {
+      return;
+    }
+
+    if (!origemEntregaManual) {
+      setStatusCalculoEntrega("Selecione uma origem de entrega.");
       return;
     }
 
@@ -1677,9 +1737,11 @@ export default function NovaVendaV2Client({
     return () => window.clearTimeout(timeout);
   }, [
     calcularEntregaManual,
+    carregandoOrigensEntrega,
     entrega,
     modalidadeEntregaNormalizada,
     origemEntregaManual,
+    salvandoOrigemManual,
   ]);
 
   function getPayloadEnvio() {
@@ -3068,8 +3130,8 @@ export default function NovaVendaV2Client({
                                   Saindo de: {origemEntregaManual?.nome || "endereço de despacho"}
                                 </p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                                  {carregandoOrigemEntrega
-                                    ? "Carregando origem..."
+                                  {carregandoOrigensEntrega
+                                    ? "Carregando origens de entrega..."
                                     : origemEntregaResumoCurto}
                                 </p>
                                 <span
@@ -3106,8 +3168,30 @@ export default function NovaVendaV2Client({
                               </div>
                             </div>
 
+                            {erroOrigensEntrega ? (
+                              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                                <span>{erroOrigensEntrega}</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void recarregarOrigensEntrega(
+                                      origemSelecionadaId,
+                                    )
+                                  }
+                                  className="rounded-lg bg-white px-2 py-1 font-semibold ring-1 ring-rose-200 transition hover:bg-rose-100"
+                                >
+                                  Tentar novamente
+                                </button>
+                              </div>
+                            ) : null}
+
                             {seletorOrigemAberto ? (
                               <div className="mt-3 grid gap-2">
+                                {carregandoOrigensEntrega ? (
+                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                                    Carregando origens de entrega...
+                                  </div>
+                                ) : null}
                                 {origensEntregaManual.map((origem) => (
                                   <button
                                     key={origem.id}
