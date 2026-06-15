@@ -26,22 +26,32 @@ export default function NovoItemAdicionalPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Itens adicionais
+              Insumos e Embalagens
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Novo Item Adicional
+              Novo item adicional
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Cadastre embalagens, certificados, cartelas e outros itens auxiliares.
+              Cadastre um insumo físico controlado em estoque, como tag,
+              cartela, caixa, laço, papel, saco ou garantia.
             </p>
           </div>
 
-          <Link
-            href="/itens-adicionais"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-          >
-            Voltar para lista
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/insumos-embalagens"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Central de insumos
+            </Link>
+
+            <Link
+              href="/itens-adicionais"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              Voltar para lista
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -67,10 +77,10 @@ export default function NovoItemAdicionalPage() {
                 />
               </Field>
 
-              <Field label="Nome do item adicional" className="md:col-span-2">
+              <Field label="Nome do insumo físico" className="md:col-span-2">
                 <input
                   name="nome"
-                  placeholder="Embalagem Papel"
+                  placeholder="Tag, cartela, caixa, laço, papel, saco..."
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
                 />
               </Field>
@@ -122,7 +132,7 @@ export default function NovoItemAdicionalPage() {
                 <textarea
                   name="observacoes"
                   rows={4}
-                  placeholder="Anotações internas sobre este item adicional"
+                  placeholder="Anotações internas sobre este insumo físico"
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
                 />
               </Field>

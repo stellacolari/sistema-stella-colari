@@ -87,7 +87,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Insumos e embalagens",
       title: "Embalagens",
-      description: "Modelos, classes e componentes de embalagem.",
+      description: "Consumo por pedido, pacote e embalagem presente.",
       showLojaButton: false,
     };
   }
@@ -119,11 +119,21 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/insumos-embalagens")) {
+    return {
+      eyebrow: "Insumos e embalagens",
+      title: "Insumos e Embalagens",
+      description:
+        "Central de insumos físicos, consumo por produto e embalagens por pedido.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/itens-adicionais")) {
     return {
-      eyebrow: "Catalogo",
+      eyebrow: "Insumos e embalagens",
       title: "Itens adicionais",
-      description: "Itens consumidos por regras de categoria.",
+      description: "Insumos físicos controlados em estoque.",
       showLojaButton: false,
     };
   }
@@ -249,9 +259,9 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/regras-categoria")) {
     return {
-      eyebrow: "Loja online",
+      eyebrow: "Insumos e embalagens",
       title: "Regras por categoria",
-      description: "Consumo automatico de adicionais por tipo de produto.",
+      description: "Consumo automatico de insumos por produto ou unidade.",
       showLojaButton: false,
     };
   }

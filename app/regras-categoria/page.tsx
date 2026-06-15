@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import {
   criarRegraCategoria,
   excluirRegraCategoria,
@@ -157,27 +158,36 @@ export default async function RegrasCategoriaPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Regras por categoria
+              Insumos e Embalagens
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Regras de Consumo de Adicionais
+              Regras por categoria
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Defina quais itens adicionais entram automaticamente no custo dos
-              produtos de cada categoria. Essas regras alimentam o cálculo de
-              preço final do produto.
+              Defina consumo por produto ou unidade vendida. Exemplo: tag por
+              produto, garantia por produto ou saquinho individual. O motor de
+              embalagem por pedido fica separado em Embalagens.
             </p>
           </div>
 
-          <form action={recalcularTodosProdutosPelasRegras}>
-            <ConfirmSubmitButton
-              label="Recalcular preços dos produtos"
-              confirmMessage="Recalcular o preço de venda de todos os produtos com base nas regras atuais de adicionais?"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-            />
-          </form>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/insumos-embalagens"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Voltar para central
+            </Link>
+
+            <form action={recalcularTodosProdutosPelasRegras}>
+              <ConfirmSubmitButton
+                label="Recalcular preços dos produtos"
+                confirmMessage="Recalcular o preço de venda de todos os produtos com base nas regras atuais de adicionais?"
+                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+              />
+            </form>
+          </div>
         </div>
       </div>
 
@@ -187,7 +197,7 @@ export default async function RegrasCategoriaPage() {
 
           <p className="mt-1 text-sm leading-6 text-slate-500">
             Selecione uma ou mais categorias cadastradas no sistema e vincule um
-            item adicional consumido por produto.
+            insumo físico consumido por produto ou unidade.
           </p>
 
           <RegrasCategoriaForm

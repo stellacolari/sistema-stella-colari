@@ -285,25 +285,35 @@ export default function ItensAdicionaisCatalogClient({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Itens adicionais
+              Insumos e Embalagens
             </p>
 
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-              Catálogo de Itens Adicionais
+              Itens adicionais
             </h1>
 
             <p className="mt-1 text-sm text-slate-600">
-              Visualize embalagens, cartelas e outros itens. Envie para a
-              lixeira sem apagar estoque, regras ou movimentações.
+              Cadastre insumos físicos controlados em estoque, como tags,
+              cartelas, caixas, laços, papéis, sacos e garantias. Regras por
+              categoria consomem esses itens por produto ou unidade.
             </p>
           </div>
 
-          <Link
-            href="/itens-adicionais/novo"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Novo item adicional
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/insumos-embalagens"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Voltar para central
+            </Link>
+
+            <Link
+              href="/itens-adicionais/novo"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+            >
+              Novo item adicional
+            </Link>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_auto]">
