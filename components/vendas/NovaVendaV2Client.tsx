@@ -661,6 +661,9 @@ export default function NovaVendaV2Client({
   const [origensEntregaCarregadas, setOrigensEntregaCarregadas] =
     useState(false);
   const [erroOrigensEntrega, setErroOrigensEntrega] = useState("");
+  const [avisoOrigensEntrega, setAvisoOrigensEntrega] = useState("");
+  const [origensRequeremMigracao, setOrigensRequeremMigracao] =
+    useState(false);
   const [calculandoEntregaManual, setCalculandoEntregaManual] =
     useState(false);
   const [statusCalculoEntrega, setStatusCalculoEntrega] = useState(
@@ -1246,6 +1249,8 @@ export default function NovaVendaV2Client({
     async (selecionarId?: string) => {
       setCarregandoOrigensEntrega(true);
       setErroOrigensEntrega("");
+      setAvisoOrigensEntrega("");
+      setOrigensRequeremMigracao(false);
 
       try {
         const response = await fetch("/api/vendas/entrega-manual/origens", {
@@ -1257,6 +1262,7 @@ export default function NovaVendaV2Client({
         if (!response.ok) {
           const mensagem = String(data.error || "Erro ao carregar origens.");
           setErroOrigensEntrega(mensagem);
+          setOrigensRequeremMigracao(Boolean(data.requiresMigrationCheck));
           setStatusCalculoEntrega(
             "Nao foi possivel carregar as origens de entrega.",
           );
@@ -1271,6 +1277,8 @@ export default function NovaVendaV2Client({
         const selecionadaApi = data.selecionada as
           | OrigemEntregaManualInfo
           | undefined;
+        const warning = String(data.warning || "");
+        const requiresMigrationCheck = Boolean(data.requiresMigrationCheck);
         const preferidaId = selecionarId || origemSelecionadaId;
         const selecionada =
           origens.find((origem) => origem.id === preferidaId) ||
@@ -1283,6 +1291,13 @@ export default function NovaVendaV2Client({
         setOrigensEntregaManual(
           origens.length > 0 ? origens : fallback ? [fallback] : [],
         );
+
+        if (warning && (origens.length > 0 || fallback)) {
+          setAvisoOrigensEntrega(
+            "Usando endereco de despacho. Origens salvas nao puderam ser carregadas.",
+          );
+          setOrigensRequeremMigracao(requiresMigrationCheck);
+        }
 
         if (selecionada) {
           selecionarOrigemEntrega(selecionada);
@@ -1297,6 +1312,7 @@ export default function NovaVendaV2Client({
         setErroOrigensEntrega(
           "Nao foi possivel carregar as origens de entrega.",
         );
+        setOrigensRequeremMigracao(false);
         setStatusCalculoEntrega(
           "Nao foi possivel carregar as origens de entrega.",
         );
@@ -3182,6 +3198,17 @@ export default function NovaVendaV2Client({
                                 >
                                   Tentar novamente
                                 </button>
+                              </div>
+                            ) : null}
+
+                            {!erroOrigensEntrega && avisoOrigensEntrega ? (
+                              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                <p>{avisoOrigensEntrega}</p>
+                                {origensRequeremMigracao ? (
+                                  <p className="mt-1">
+                                    Se isso persistir, aplique as migrations no banco de producao.
+                                  </p>
+                                ) : null}
                               </div>
                             ) : null}
 

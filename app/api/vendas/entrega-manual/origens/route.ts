@@ -86,17 +86,27 @@ function resumoOrigem(origem: {
 }
 
 async function montarOrigemFallback() {
-  const config = await buscarConfiguracaoFrete();
+  let config: Awaited<ReturnType<typeof buscarConfiguracaoFrete>>;
+
+  try {
+    config = await buscarConfiguracaoFrete();
+  } catch (error) {
+    console.error(
+      "Erro ao carregar endereco de despacho para entrega manual:",
+      error,
+    );
+    return null;
+  }
   const origem = {
     id: "frete-config",
     nome: "Endereço de despacho",
-    cep: config.cepOrigem,
-    rua: config.remetenteEndereco,
-    numero: config.remetenteNumero,
-    complemento: config.remetenteComplemento,
-    bairro: config.remetenteBairro,
-    cidade: config.remetenteCidade,
-    uf: config.remetenteUf,
+    cep: config.cepOrigem || "",
+    rua: config.remetenteEndereco || "",
+    numero: config.remetenteNumero || "",
+    complemento: config.remetenteComplemento || "",
+    bairro: config.remetenteBairro || "",
+    cidade: config.remetenteCidade || "",
+    uf: config.remetenteUf || "",
     latitude: null,
     longitude: null,
     observacao: "",
@@ -153,32 +163,70 @@ function serializarOrigem(origem: {
   };
 }
 
+function erroDeEstruturaDoBanco(error: unknown) {
+  const erro = error as { code?: unknown; message?: unknown };
+  const code = String(erro?.code || "");
+  const message = String(erro?.message || error || "").toLowerCase();
+
+  return (
+    code === "P2021" ||
+    code === "P2022" ||
+    message.includes("does not exist") ||
+    message.includes("column") ||
+    message.includes("relation")
+  );
+}
+
+function mensagemErroPersistencia(error: unknown, acao: string) {
+  if (erroDeEstruturaDoBanco(error)) {
+    return `Nao foi possivel ${acao} a origem. Verifique se as migrations foram aplicadas no banco de producao.`;
+  }
+
+  return `Erro ao ${acao} origem de entrega manual.`;
+}
+
 export async function GET() {
+  const fallback = await montarOrigemFallback();
+
   try {
-    const [origensSalvas, fallback] = await Promise.all([
-      prisma.lojaEntregaManualOrigem.findMany({
-        where: { ativo: true },
-        orderBy: [{ padrao: "desc" }, { criadoEm: "asc" }],
-      }),
-      montarOrigemFallback(),
-    ]);
+    const origensSalvas = await prisma.lojaEntregaManualOrigem.findMany({
+      where: { ativo: true },
+      orderBy: [{ padrao: "desc" }, { criadoEm: "asc" }],
+    });
 
     const origens = origensSalvas.map(serializarOrigem);
     const selecionada =
       origens.find((origem) => origem.padrao) ||
       origens[0] ||
-      fallback;
+      fallback ||
+      null;
 
     return NextResponse.json({
-      origens: origens.length > 0 ? origens : [fallback],
+      origens: origens.length > 0 ? origens : fallback ? [fallback] : [],
       fallback,
       selecionada,
     });
   } catch (error) {
     console.error("Erro ao listar origens de entrega manual:", error);
 
+    if (fallback) {
+      return NextResponse.json({
+        origens: [fallback],
+        fallback,
+        selecionada: fallback,
+        warning:
+          "Nao foi possivel carregar origens salvas. Usando endereco de despacho.",
+        erroOrigens:
+          "Nao foi possivel carregar origens salvas. Verifique se as migrations foram aplicadas.",
+        requiresMigrationCheck: erroDeEstruturaDoBanco(error),
+      });
+    }
+
     return NextResponse.json(
-      { error: "Erro ao carregar origens de entrega manual." },
+      {
+        error: "Nao foi possivel carregar origens nem endereco de despacho.",
+        requiresMigrationCheck: erroDeEstruturaDoBanco(error),
+      },
       { status: 500 },
     );
   }
@@ -233,7 +281,10 @@ export async function POST(request: Request) {
     console.error("Erro ao criar origem de entrega manual:", error);
 
     return NextResponse.json(
-      { error: "Erro ao salvar origem de entrega manual." },
+      {
+        error: mensagemErroPersistencia(error, "salvar"),
+        requiresMigrationCheck: erroDeEstruturaDoBanco(error),
+      },
       { status: 500 },
     );
   }

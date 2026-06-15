@@ -125,6 +125,28 @@ function serializarOrigem(origem: {
   };
 }
 
+function erroDeEstruturaDoBanco(error: unknown) {
+  const erro = error as { code?: unknown; message?: unknown };
+  const code = String(erro?.code || "");
+  const message = String(erro?.message || error || "").toLowerCase();
+
+  return (
+    code === "P2021" ||
+    code === "P2022" ||
+    message.includes("does not exist") ||
+    message.includes("column") ||
+    message.includes("relation")
+  );
+}
+
+function mensagemErroPersistencia(error: unknown, acao: string) {
+  if (erroDeEstruturaDoBanco(error)) {
+    return `Nao foi possivel ${acao} a origem. Verifique se as migrations foram aplicadas no banco de producao.`;
+  }
+
+  return `Erro ao ${acao} origem de entrega manual.`;
+}
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -170,7 +192,10 @@ export async function PUT(
     console.error("Erro ao atualizar origem de entrega manual:", error);
 
     return NextResponse.json(
-      { error: "Erro ao atualizar origem de entrega manual." },
+      {
+        error: mensagemErroPersistencia(error, "atualizar"),
+        requiresMigrationCheck: erroDeEstruturaDoBanco(error),
+      },
       { status: 500 },
     );
   }
@@ -212,7 +237,10 @@ export async function DELETE(
     console.error("Erro ao remover origem de entrega manual:", error);
 
     return NextResponse.json(
-      { error: "Erro ao remover origem de entrega manual." },
+      {
+        error: mensagemErroPersistencia(error, "remover"),
+        requiresMigrationCheck: erroDeEstruturaDoBanco(error),
+      },
       { status: 500 },
     );
   }
