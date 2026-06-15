@@ -32,14 +32,14 @@ const tabs = [
     exact: true,
   },
   {
-    href: "/configuracoes/loja/banners-menu",
-    label: "Banners e menu",
-    icon: SlidersHorizontal,
+    href: "/configuracoes/loja/home",
+    label: "Aparência",
+    icon: Home,
   },
   {
-    href: "/configuracoes/loja/home",
-    label: "Home",
-    icon: Home,
+    href: "/configuracoes/loja/banners-menu",
+    label: "Banners/Menu",
+    icon: SlidersHorizontal,
   },
   {
     href: "/configuracoes/loja/paginas",

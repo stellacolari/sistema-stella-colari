@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ConfiguracoesLojaClient from "@/components/configuracoes/loja/ConfiguracoesLojaClient";
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
@@ -144,8 +145,16 @@ export default async function BannersMenuLojaPage() {
   return (
     <main className="space-y-6">
       <LojaConfigHeader
-        title="Banners e menu público"
-        description="Configure banners desktop/mobile, links, páginas especiais e itens do menu público da loja."
+        title="Banners e menu da loja"
+        description="Configure banners desktop/mobile e a navegação principal da loja pública. Esta subárea não edita páginas; páginas públicas ficam em Páginas da loja."
+        actions={
+          <Link
+            href="/configuracoes/loja"
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Voltar para Loja Online
+          </Link>
+        }
       />
 
       <ConfiguracoesLojaClient

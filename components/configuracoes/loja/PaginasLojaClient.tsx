@@ -70,8 +70,8 @@ const TIPOS_PAGINA = [
   },
   {
     value: "HOME",
-    label: "Home da loja",
-    description: "Página inicial pública da loja.",
+    label: "Home visual",
+    description: "Página inicial pública criada no editor visual.",
     icon: Globe2,
   },
   {
@@ -845,7 +845,7 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         <Pencil className="h-4 w-4" />
-                        Dados da página
+                        Dados/SEO
                       </button>
                       {status !== "ARQUIVADA" && !paginaPublica && (
                         <Link

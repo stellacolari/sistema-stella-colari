@@ -23,8 +23,17 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/home")) {
     return {
       eyebrow: "Loja online",
-      title: "Home da loja",
-      description: "Categorias, secoes personalizadas e bloco promocional.",
+      title: "Aparencia da home",
+      description: "Home padrao, fallback visual e secoes da vitrine.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/banners-menu")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Banners e menu",
+      description: "Banners globais e navegacao principal da loja publica.",
       showLojaButton: true,
     };
   }
@@ -59,8 +68,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/paginas")) {
     return {
       eyebrow: "Loja online",
-      title: "Paginas",
-      description: "Builder e paginas publicas da loja online.",
+      title: "Paginas da loja",
+      description: "Paginas publicas e editor visual da loja online.",
       showLojaButton: true,
     };
   }

@@ -126,8 +126,8 @@ export default async function PaginasLojaPage() {
 return (
   <main className="space-y-6">
     <LojaConfigHeader
-      title="Construtor de páginas"
-      description="Crie páginas gerais, páginas de categoria, landing pages, campanhas e templates reutilizáveis com blocos configuráveis."
+      title="Páginas da loja"
+      description="Crie e edite páginas públicas, landing pages, campanhas e templates pelo editor visual."
       actions={<CriarTemplateCategoriaButton />}
     />
 

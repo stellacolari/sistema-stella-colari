@@ -10,7 +10,7 @@ import HomeLojaClient, {
 } from "@/components/configuracoes/loja/HomeLojaClient";
 
 export const metadata: Metadata = {
-  title: "Home da loja | Plataforma Stella Colari",
+  title: "Aparência da home | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";
@@ -151,10 +151,16 @@ export default async function ConfiguracoesHomeLojaPage() {
 return (
   <main className="space-y-6">
     <LojaConfigHeader
-      title="Home da loja"
-      description="Configure categorias em destaque, seções de produtos, bloco promocional e textos institucionais da loja pública."
+      title="Aparência da home"
+      description="Configure a Home padrão/fallback da loja pública: categorias em destaque, seções de produtos, bloco promocional e textos institucionais."
       actions={
         <>
+          <Link
+            href="/configuracoes/loja"
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Voltar para Loja Online
+          </Link>
           <Link
             href={`/configuracoes/loja/paginas/${homeVisual.id}/editor`}
             className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -173,10 +179,10 @@ return (
     />
 
     <section className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
-      Você pode continuar usando a configuração atual ou montar a Home pelo
-      editor visual. A loja pública usa a Home visual somente quando ela está
-      ativa, publicada e possui blocos ativos; caso contrário, esta Home atual
-      continua aparecendo como fallback.
+      Esta tela controla a Home padrão/fallback da loja. A Home visual do
+      editor aparece na loja pública somente quando estiver ativa, publicada e
+      com blocos ativos; caso contrário, estas configurações continuam como
+      vitrine principal.
     </section>
 
     <HomeLojaClient

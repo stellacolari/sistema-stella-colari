@@ -330,23 +330,23 @@ export default async function LojaOnlineCentralPage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <InfoCard
-          title="Home"
-          description="Organiza a página inicial, seções de produtos e fallback da vitrine."
+          title="Aparência da loja"
+          description="Use esta área para a Home padrão/fallback, chamadas visuais e acesso a banners/menu."
+        />
+        <InfoCard
+          title="Páginas da loja"
+          description="Use páginas para criar conteúdos públicos no editor visual, como landing pages e templates."
         />
         <InfoCard
           title="Banners e menu"
-          description="Controla banners desktop/mobile, links do menu público e destaques de navegação."
-        />
-        <InfoCard
-          title="Páginas do builder"
-          description="Cria páginas públicas, landing pages, campanhas e templates com blocos visuais."
+          description="Use banners/menu para navegação principal e destaques globais da loja pública."
         />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <CentralCard
-          title="Aparência e Home"
-          description="Organize banners, chamadas e seções da página inicial."
+          title="Aparência da loja"
+          description="Configure home, banners, chamadas visuais e navegação principal."
           icon={Home}
           metric={`${bannersAtivos} / ${menusAtivos}`}
           metricLabel="banners ativos / links ativos"
@@ -354,19 +354,19 @@ export default async function LojaOnlineCentralPage() {
           actions={[
             {
               href: "/configuracoes/loja/home",
-              label: "Abrir Home",
+              label: "Editar aparência",
               primary: true,
             },
             {
               href: "/configuracoes/loja/banners-menu",
-              label: "Banners e menu",
+              label: "Gerenciar banners/menu",
             },
           ]}
         />
 
         <CentralCard
-          title="Páginas do builder"
-          description="Crie e edite páginas públicas com blocos visuais."
+          title="Páginas da loja"
+          description="Crie e edite páginas públicas pelo editor visual."
           icon={LayoutTemplate}
           metric={`${paginasPublicadas}`}
           metricLabel="páginas publicadas"
