@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
+import CashbackConfiguracaoClient from "@/components/configuracoes/loja/CashbackConfiguracaoClient";
 
 export const metadata: Metadata = {
   title: "Cashback | Plataforma Stella Colari",
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 const CHAVE_CONFIG = "PADRAO";
 
 export default async function CashbackConfiguracaoPage() {
-  await prisma.lojaCashbackConfiguracao.upsert({
+  const config = await prisma.lojaCashbackConfiguracao.upsert({
     where: {
       chave: CHAVE_CONFIG,
     },
@@ -25,16 +26,26 @@ export default async function CashbackConfiguracaoPage() {
       permitirProdutoComDesconto: true,
     },
     update: {},
+    select: {
+      id: true,
+      ativo: true,
+      percentualPrimeiraCompra: true,
+      percentualCompraRecorrente: true,
+      somenteClienteCadastrado: true,
+      permitirComCupom: true,
+      permitirProdutoComDesconto: true,
+      diasValidade: true,
+    },
   });
 
-return (
-  <main className="space-y-6">
-    <LojaConfigHeader
-      title="Cashback"
-      description="Defina percentuais, regras de uso, bloqueios com cupons e condições para clientes cadastrados."
-    />
+  return (
+    <main className="space-y-6">
+      <LojaConfigHeader
+        title="Cashback"
+        description="Configure regras de cashback da loja online."
+      />
 
-    {/* mantenha aqui o componente atual da página */}
-  </main>
-);
+      <CashbackConfiguracaoClient config={config} />
+    </main>
+  );
 }

@@ -29,11 +29,74 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes/loja/cupons")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Cupons",
+      description: "Gerencie cupons de desconto da loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/cashback")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Cashback",
+      description: "Configure regras de cashback da loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/formularios")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Formularios",
+      description: "Acompanhe respostas e contatos recebidos pela loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/paginas")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Paginas",
+      description: "Builder e paginas publicas da loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/categorias")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Categorias",
+      description: "Categorias e subcategorias da loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/frete")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Frete",
+      description: "Entrega, retirada e calculo de frete da loja online.",
+      showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/loja/embalagens")) {
+    return {
+      eyebrow: "Insumos e embalagens",
+      title: "Embalagens",
+      description: "Modelos, classes e componentes de embalagem.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes/loja")) {
     return {
       eyebrow: "Loja online",
-      title: "Configuracoes da loja",
-      description: "Vitrine, banners, navegacao, frete e campanhas.",
+      title: "Loja Online",
+      description: "Central da loja, vitrine, paginas, frete e campanhas.",
       showLojaButton: true,
     };
   }
@@ -83,11 +146,49 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/compras/estoque")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Compras de estoque",
+      description:
+        "Compras que movimentam produtos, embalagens e insumos controlados.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/gastos")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Gastos financeiros",
+      description:
+        "Assinaturas, estrutura, marketing, permutas e despesas sem estoque.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/reposicao")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Reposição",
+      description: "Itens sugeridos para recompra por compra de estoque.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/nova-v2")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Nova compra de estoque",
+      description: "Entrada controlada de produtos, embalagens e insumos.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/compras")) {
     return {
-      eyebrow: "Catalogo / Estoque",
-      title: "Compras",
-      description: "Entrada de produtos, adicionais e controle de fornecedores.",
+      eyebrow: "Compras e Financeiro",
+      title: "Compras e Financeiro",
+      description: "Central de compras de estoque, gastos financeiros e reposição.",
       showLojaButton: false,
     };
   }

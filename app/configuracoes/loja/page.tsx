@@ -250,7 +250,7 @@ export default async function LojaOnlineCentralPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Configurações da loja
+              Loja Online
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
@@ -416,7 +416,7 @@ export default async function LojaOnlineCentralPage() {
 
         <CentralCard
           href="/configuracoes/loja/formularios"
-          title="Leads / Formulários"
+          title="Formulários"
           description="Acompanhe respostas recebidas em páginas, campanhas, CTAs e formulários do builder."
           icon={ClipboardList}
           metric={`${formulariosNovos}`}

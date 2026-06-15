@@ -142,14 +142,15 @@ export default function ReposicaoComprasClient({ itens }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Compras de estoque
+              Compras e Financeiro
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Reposição / Comprar agora
+              Reposição
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Itens com estoque baixo para reposição operacional. Esta visão
-              leva para compra de estoque e não cria gasto financeiro.
+              sugere produtos, embalagens e insumos a recomprar e leva para
+              compra de estoque, sem criar gasto financeiro.
             </p>
           </div>
 
@@ -314,7 +315,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
                         >
                           <PackagePlus className="h-4 w-4" />
-                          Adicionar à compra
+                          Criar compra de estoque
                         </Link>
                       </div>
                     </td>

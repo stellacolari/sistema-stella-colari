@@ -11,7 +11,6 @@ import {
   ClipboardList,
   CreditCard,
   FolderKanban,
-  Home,
   LayoutDashboard,
   LayoutTemplate,
   Package,
@@ -39,6 +38,7 @@ type MenuSingleLink = {
   description?: string;
   highlight?: boolean;
   tone?: MenuTone;
+  exact?: boolean;
 };
 
 type MenuGroup = {
@@ -57,6 +57,7 @@ type MenuGroup = {
     label: string;
     icon?: ElementType;
     tone?: MenuTone;
+    exact?: boolean;
   }[];
 };
 
@@ -70,6 +71,8 @@ type MenuSection = {
 
 const menuSections: MenuSection[] = [
   {
+    title: "Operação",
+    description: "Rotina do dia a dia",
     items: [
       {
         type: "link",
@@ -78,12 +81,6 @@ const menuSections: MenuSection[] = [
         icon: LayoutDashboard,
         description: "Visão geral do sistema",
       },
-    ],
-  },
-  {
-    title: "Operação",
-    description: "Rotina do dia a dia",
-    items: [
       {
         type: "link",
         href: "/pedidos",
@@ -93,121 +90,139 @@ const menuSections: MenuSection[] = [
         highlight: true,
       },
       {
-        type: "group",
+        type: "link",
         href: "/vendas",
         label: "Vendas",
         icon: ShoppingBag,
-        description: "Venda manual e histórico",
-        defaultOpen: false,
-        quickAddHref: "/vendas/nova-v2",
-        quickAddLabel: "Nova venda",
-        links: [
-          {
-            href: "/vendas",
-            label: "Lista de vendas",
-            icon: ShoppingBag,
-          },
-          {
-            href: "/vendas/nova-v2",
-            label: "Nova venda",
-            icon: Plus,
-          },
-          {
-            href: "/resumos/vendas",
-            label: "Resumo de vendas",
-            icon: BarChart3,
-          },
-        ],
+        description: "Histórico de vendas",
+        exact: true,
       },
       {
-        type: "group",
-        href: "/compras",
-        label: "Compras",
-        icon: ShoppingCart,
-        description: "Estoque e financeiro",
-        defaultOpen: false,
-        quickAddHref: "/compras/nova-v2",
-        quickAddLabel: "Nova compra de estoque",
-        links: [
-          {
-            href: "/compras",
-            label: "Compras",
-            icon: ShoppingCart,
-          },
-          {
-            href: "/compras/estoque",
-            label: "Compras de estoque",
-            icon: Warehouse,
-          },
-          {
-            href: "/compras/gastos",
-            label: "Gastos financeiros",
-            icon: CreditCard,
-          },
-          {
-            href: "/compras/reposicao",
-            label: "Reposição",
-            icon: RefreshCcw,
-          },
-          {
-            href: "/compras/nova-v2",
-            label: "Nova compra de estoque",
-            icon: Plus,
-          },
-        ],
+        type: "link",
+        href: "/vendas/nova-v2",
+        label: "Nova venda",
+        icon: Plus,
+        description: "Registrar venda manual",
       },
       {
-        type: "group",
-        href: "/estoque",
-        label: "Estoque",
-        icon: Warehouse,
-        description: "Saldos, custos e alertas",
-        defaultOpen: false,
-        links: [
-          {
-            href: "/estoque",
-            label: "Estoque atual",
-            icon: Warehouse,
-          },
-          {
-            href: "/resumos/estoque",
-            label: "Resumo de estoque",
-            icon: BarChart3,
-          },
-          {
-            href: "/movimentacoes",
-            label: "Movimentações",
-            icon: BarChart3,
-          },
-        ],
+        type: "link",
+        href: "/clientes",
+        label: "Clientes",
+        icon: Users,
+        description: "Cadastro e histórico",
       },
     ],
   },
   {
-    title: "Catálogo",
-    description: "Produtos, famílias e insumos",
+    title: "Catálogo e Estoque",
+    description: "Produtos, saldos e reposição",
     items: [
       {
-        type: "group",
+        type: "link",
         href: "/produtos",
         label: "Produtos",
         icon: Package,
         description: "Cadastro, variações e famílias",
-        defaultOpen: false,
-        quickAddHref: "/produtos/novo",
-        quickAddLabel: "Novo produto",
-        links: [
-          {
-            href: "/produtos",
-            label: "Catálogo de produtos",
-            icon: Package,
-          },
-          {
-            href: "/produtos/novo",
-            label: "Novo produto",
-            icon: Plus,
-          },
-        ],
+      },
+      {
+        type: "link",
+        href: "/estoque",
+        label: "Estoque",
+        icon: Warehouse,
+        description: "Saldos e ajustes",
+      },
+      {
+        type: "link",
+        href: "/compras/reposicao",
+        label: "Reposição",
+        icon: RefreshCcw,
+        description: "Itens para recomprar",
+      },
+    ],
+  },
+  {
+    title: "Insumos e Embalagens",
+    description: "Itens consumidos na operação",
+    items: [
+      {
+        type: "link",
+        href: "/itens-adicionais",
+        label: "Itens adicionais",
+        icon: Boxes,
+        description: "Insumos, extras e componentes",
+      },
+      {
+        type: "link",
+        href: "/configuracoes/loja/embalagens",
+        label: "Embalagens",
+        icon: Boxes,
+        description: "Modelos, classes e componentes",
+        tone: "site",
+      },
+      {
+        type: "link",
+        href: "/regras-categoria",
+        label: "Regras por categoria",
+        icon: SlidersHorizontal,
+        description: "Consumo automático de itens",
+      },
+    ],
+  },
+  {
+    title: "Compras e Financeiro",
+    description: "Estoque, gastos e reposição",
+    items: [
+      {
+        type: "link",
+        href: "/compras",
+        label: "Compras",
+        icon: ShoppingCart,
+        description: "Central de compras e financeiro",
+        exact: true,
+      },
+      {
+        type: "link",
+        href: "/compras/estoque",
+        label: "Compras de estoque",
+        icon: Warehouse,
+        description: "Entradas que movimentam estoque",
+      },
+      {
+        type: "link",
+        href: "/compras/gastos",
+        label: "Gastos financeiros",
+        icon: CreditCard,
+        description: "Despesas sem movimentar estoque",
+      },
+      {
+        type: "link",
+        href: "/compras/nova-v2",
+        label: "Nova compra de estoque",
+        icon: Plus,
+        description: "Registrar entrada controlada",
+      },
+    ],
+  },
+  {
+    title: "Loja Online",
+    description: "Site público e vendas online",
+    items: [
+      {
+        type: "link",
+        href: "/configuracoes/loja",
+        label: "Central da loja",
+        icon: Store,
+        description: "Vitrine, campanhas e canais",
+        tone: "site",
+        exact: true,
+      },
+      {
+        type: "link",
+        href: "/configuracoes/loja/paginas",
+        label: "Páginas",
+        icon: LayoutTemplate,
+        description: "Builder e páginas públicas",
+        tone: "site",
       },
       {
         type: "link",
@@ -215,157 +230,39 @@ const menuSections: MenuSection[] = [
         label: "Categorias",
         icon: FolderKanban,
         description: "Categorias e subcategorias",
+        tone: "site",
       },
       {
-        type: "group",
-        href: "/itens-adicionais",
-        label: "Itens adicionais",
-        icon: Boxes,
-        description: "Embalagens, insumos e extras",
-        defaultOpen: false,
-        quickAddHref: "/itens-adicionais/novo",
-        quickAddLabel: "Novo item adicional",
-        links: [
-          {
-            href: "/itens-adicionais",
-            label: "Lista de adicionais",
-            icon: Boxes,
-          },
-          {
-            href: "/itens-adicionais/novo",
-            label: "Novo adicional",
-            icon: Plus,
-          },
-          {
-            href: "/regras-categoria",
-            label: "Regras por categoria",
-            icon: SlidersHorizontal,
-          },
-        ],
+        type: "link",
+        href: "/configuracoes/loja/frete",
+        label: "Frete",
+        icon: Warehouse,
+        description: "Entrega, retirada e cálculo",
+        tone: "site",
       },
-    ],
-  },
-  {
-    title: "Clientes",
-    description: "Base e relacionamento",
-    items: [
       {
-        type: "group",
-        href: "/clientes",
-        label: "Clientes",
-        icon: Users,
-        description: "Cadastro e histórico",
-        defaultOpen: false,
-        quickAddHref: "/clientes/novo",
-        quickAddLabel: "Novo cliente",
-        links: [
-          {
-            href: "/clientes",
-            label: "Lista de clientes",
-            icon: Users,
-          },
-          {
-            href: "/clientes/novo",
-            label: "Novo cliente",
-            icon: Plus,
-          },
-          {
-            href: "/resumos/clientes",
-            label: "Resumo de clientes",
-            icon: BarChart3,
-          },
-        ],
+        type: "link",
+        href: "/configuracoes/loja/cupons",
+        label: "Cupons",
+        icon: Tag,
+        description: "Descontos da loja online",
+        tone: "site",
+      },
+      {
+        type: "link",
+        href: "/configuracoes/loja/cashback",
+        label: "Cashback",
+        icon: BarChart3,
+        description: "Regras de benefício",
+        tone: "site",
       },
       {
         type: "link",
         href: "/configuracoes/loja/formularios",
-        label: "Leads / Formulários",
+        label: "Formulários",
         icon: ClipboardList,
-        description: "Respostas recebidas",
-      },
-    ],
-  },
-  {
-    title: "Loja online",
-    description: "Site público e vendas online",
-    items: [
-      {
-        type: "group",
-        href: "/configuracoes/loja",
-        label: "Configurações da loja",
-        icon: Store,
-        description: "Banners, menu e vitrine",
-        defaultOpen: true,
-        highlight: true,
+        description: "Leads e respostas recebidas",
         tone: "site",
-        links: [
-          {
-            href: "/configuracoes/loja",
-            label: "Central da loja",
-            icon: Store,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/banners-menu",
-            label: "Banners e menu",
-            icon: SlidersHorizontal,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/home",
-            label: "Home da loja",
-            icon: Home,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/paginas",
-            label: "Páginas / Builder",
-            icon: LayoutTemplate,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/cupons",
-            label: "Cupons",
-            icon: Tag,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/cashback",
-            label: "Cashback",
-            icon: BarChart3,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/embalagens",
-            label: "Embalagens",
-            icon: Boxes,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/frete",
-            label: "Frete",
-            icon: Warehouse,
-            tone: "site",
-          },
-          {
-            href: "/configuracoes/loja/formularios",
-            label: "Formulários",
-            icon: ClipboardList,
-            tone: "site",
-          },
-          {
-            href: "/site",
-            label: "Área do site",
-            icon: Store,
-            tone: "site",
-          },
-          {
-            href: "/loja",
-            label: "Ver loja pública",
-            icon: Store,
-            tone: "site",
-          },
-        ],
       },
     ],
   },
@@ -397,51 +294,17 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    title: "Integrações",
-    description: "Canais e importações",
-    items: [
-      {
-        type: "group",
-        href: "/configuracoes/integracoes",
-        label: "Integrações",
-        icon: PlugZap,
-        description: "Marketplaces, canais e gateways",
-        defaultOpen: false,
-        tone: "system",
-        links: [
-          {
-            href: "/configuracoes/integracoes",
-            label: "Visão geral",
-            icon: PlugZap,
-            tone: "system",
-          },
-          {
-            href: "/configuracoes/integracoes/produtos-canais",
-            label: "Produtos por canal",
-            icon: Package,
-            tone: "system",
-          },
-          {
-            href: "/configuracoes/integracoes/importar-pedido",
-            label: "Importar pedido",
-            icon: ClipboardList,
-            tone: "system",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Sistema",
-    description: "Ajustes gerais",
+    title: "Configurações",
+    description: "Sistema e integrações",
     items: [
       {
         type: "link",
-        href: "/configuracoes/loja",
-        label: "Configurações gerais",
-        icon: Store,
-        description: "Preferências do sistema",
+        href: "/configuracoes/integracoes",
+        label: "Integrações",
+        icon: PlugZap,
+        description: "Canais e serviços conectados",
         tone: "system",
+        exact: true,
       },
       {
         type: "link",
@@ -449,6 +312,28 @@ const menuSections: MenuSection[] = [
         label: "Lixeira",
         icon: Trash2,
         description: "Itens arquivados",
+        tone: "system",
+      },
+    ],
+  },
+  {
+    title: "Avançado",
+    description: "Rotas técnicas de integração",
+    items: [
+      {
+        type: "link",
+        href: "/configuracoes/integracoes/produtos-canais",
+        label: "Produtos por canal",
+        icon: Package,
+        description: "Vínculos por marketplace",
+        tone: "system",
+      },
+      {
+        type: "link",
+        href: "/configuracoes/integracoes/importar-pedido",
+        label: "Importar pedido",
+        icon: ClipboardList,
+        description: "Ferramenta técnica de entrada",
         tone: "system",
       },
     ],
@@ -469,91 +354,51 @@ const vendedorMenuSections: MenuSection[] = [
         highlight: true,
       },
       {
-        type: "group",
+        type: "link",
         href: "/vendas",
         label: "Vendas",
         icon: ShoppingBag,
-        description: "Venda manual e histórico",
-        defaultOpen: true,
-        quickAddHref: "/vendas/nova-v2",
-        quickAddLabel: "Nova venda",
-        links: [
-          {
-            href: "/vendas",
-            label: "Lista de vendas",
-            icon: ShoppingBag,
-          },
-          {
-            href: "/vendas/nova-v2",
-            label: "Nova venda",
-            icon: Plus,
-          },
-        ],
+        description: "Histórico de vendas",
+        exact: true,
+      },
+      {
+        type: "link",
+        href: "/vendas/nova-v2",
+        label: "Nova venda",
+        icon: Plus,
+        description: "Registrar venda manual",
+      },
+      {
+        type: "link",
+        href: "/clientes",
+        label: "Clientes",
+        icon: Users,
+        description: "Cadastro e histórico",
       },
     ],
   },
   {
     title: "Catálogo",
-    description: "Produtos e clientes",
+    description: "Consulta de produtos",
     items: [
       {
-        type: "group",
+        type: "link",
         href: "/produtos",
         label: "Produtos",
         icon: Package,
         description: "Catálogo de produtos",
-        defaultOpen: false,
-        links: [
-          {
-            href: "/produtos",
-            label: "Catálogo de produtos",
-            icon: Package,
-          },
-        ],
-      },
-      {
-        type: "group",
-        href: "/clientes",
-        label: "Clientes",
-        icon: Users,
-        description: "Cadastro e histórico",
-        defaultOpen: false,
-        quickAddHref: "/clientes/novo",
-        quickAddLabel: "Novo cliente",
-        links: [
-          {
-            href: "/clientes",
-            label: "Lista de clientes",
-            icon: Users,
-          },
-          {
-            href: "/clientes/novo",
-            label: "Novo cliente",
-            icon: Plus,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Loja online",
-    description: "Site público",
-    items: [
-      {
-        type: "link",
-        href: "/loja",
-        label: "Ver loja pública",
-        icon: Store,
-        description: "Abrir vitrine",
-        tone: "site",
       },
     ],
   },
 ];
 
-function isPathActive(pathname: string, href: string) {
+function isPathActive(pathname: string, href: string, exact = false) {
   if (href === "/") {
     return pathname === "/";
+  }
+
+  if (exact) {
+    return pathname === href;
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -727,7 +572,9 @@ export default function SidebarMenu({
       groups.forEach((group) => {
         const groupIsActive =
           isPathActive(pathname, group.href) ||
-          group.links.some((link) => isPathActive(pathname, link.href));
+          group.links.some((link) =>
+            isPathActive(pathname, link.href, link.exact)
+          );
 
         if (typeof next[group.href] === "undefined") {
           next[group.href] = group.defaultOpen || groupIsActive;
@@ -823,7 +670,7 @@ export default function SidebarMenu({
               <div className={itemSpacing}>
                 {section.items.map((item) => {
                   if (item.type === "link") {
-                    const active = isPathActive(pathname, item.href);
+                    const active = isPathActive(pathname, item.href, item.exact);
                     const Icon = item.icon;
                     const tone = getItemTone(item);
 
@@ -871,7 +718,9 @@ export default function SidebarMenu({
                   const tone = getItemTone(item);
                   const groupIsActive =
                     isPathActive(pathname, item.href) ||
-                    item.links.some((link) => isPathActive(pathname, link.href));
+                    item.links.some((link) =>
+                      isPathActive(pathname, link.href, link.exact)
+                    );
                   const isOpen = openGroups[item.href] ?? false;
 
                   return (
@@ -947,7 +796,11 @@ export default function SidebarMenu({
                         <div className={subItemsWrap}>
                           {item.links.length > 0 ? (
                             item.links.map((link) => {
-                              const subActive = isPathActive(pathname, link.href);
+                              const subActive = isPathActive(
+                                pathname,
+                                link.href,
+                                link.exact
+                              );
                               const SubIcon = link.icon;
                               const subTone = getItemTone(link);
 
