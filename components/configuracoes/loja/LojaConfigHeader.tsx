@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Boxes,
   ClipboardList,
   Eye,
   FolderKanban,
@@ -66,8 +67,13 @@ const tabs = [
     icon: PackageCheck,
   },
   {
+    href: "/configuracoes/loja/embalagens",
+    label: "Embalagens",
+    icon: Boxes,
+  },
+  {
     href: "/configuracoes/loja/formularios",
-    label: "Leads",
+    label: "Formulários",
     icon: ClipboardList,
   },
   {

@@ -2,17 +2,15 @@ import type { ElementType } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  ArrowRight,
   Boxes,
   ClipboardList,
   Eye,
   FolderKanban,
   Home,
   LayoutTemplate,
-  Megaphone,
   PackageCheck,
-  SlidersHorizontal,
   Sparkles,
-  Tag,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
@@ -23,31 +21,43 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-type CentralCardProps = {
+type CentralAction = {
   href: string;
+  label: string;
+  primary?: boolean;
+};
+
+type CentralCardProps = {
   title: string;
   description: string;
   icon: ElementType;
+  actions: CentralAction[];
   metric?: string;
   metricLabel?: string;
   tone?: "default" | "site" | "warning" | "success";
-  external?: boolean;
+};
+
+type MetricCardProps = {
+  label: string;
+  value: string | number;
+  helper: string;
+  tone?: "default" | "site" | "warning" | "success";
 };
 
 function cardToneClass(tone: CentralCardProps["tone"]) {
   if (tone === "site") {
-    return "border-indigo-100 bg-indigo-50/40 hover:border-indigo-200";
+    return "border-indigo-100 bg-indigo-50/40";
   }
 
   if (tone === "warning") {
-    return "border-amber-100 bg-amber-50/50 hover:border-amber-200";
+    return "border-amber-100 bg-amber-50/50";
   }
 
   if (tone === "success") {
-    return "border-emerald-100 bg-emerald-50/50 hover:border-emerald-200";
+    return "border-emerald-100 bg-emerald-50/50";
   }
 
-  return "border-slate-200 bg-white hover:border-slate-300";
+  return "border-slate-200 bg-white";
 }
 
 function iconToneClass(tone: CentralCardProps["tone"]) {
@@ -66,21 +76,32 @@ function iconToneClass(tone: CentralCardProps["tone"]) {
   return "bg-slate-100 text-slate-700";
 }
 
+function MetricCard({ label, value, helper, tone = "default" }: MetricCardProps) {
+  return (
+    <div className={`rounded-3xl border p-5 shadow-sm ${cardToneClass(tone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
+
+      <p className="mt-1 text-xs text-slate-500">{helper}</p>
+    </div>
+  );
+}
+
 function CentralCard({
-  href,
   title,
   description,
   icon: Icon,
+  actions,
   metric,
   metricLabel,
   tone = "default",
-  external = false,
 }: CentralCardProps) {
   return (
-    <Link
-      href={href}
-      target={external ? "_blank" : undefined}
-      className={`group flex h-full flex-col justify-between rounded-3xl border p-5 shadow-sm transition ${cardToneClass(
+    <article
+      className={`flex h-full flex-col justify-between rounded-3xl border p-5 shadow-sm ${cardToneClass(
         tone
       )}`}
     >
@@ -96,28 +117,56 @@ function CentralCard({
         <h2 className="mt-4 text-base font-bold text-slate-950">{title}</h2>
 
         <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+
+        {(metric || metricLabel) && (
+          <div className="mt-5 rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-slate-200">
+            {metric && (
+              <p className="text-2xl font-bold tracking-tight text-slate-950">
+                {metric}
+              </p>
+            )}
+
+            {metricLabel && (
+              <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                {metricLabel}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {(metric || metricLabel) && (
-        <div className="mt-5 rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-slate-200">
-          {metric && (
-            <p className="text-2xl font-bold tracking-tight text-slate-950">
-              {metric}
-            </p>
-          )}
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {actions.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+              action.primary
+                ? "bg-slate-950 text-white hover:bg-slate-800"
+                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {action.label}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        ))}
+      </div>
+    </article>
+  );
+}
 
-          {metricLabel && (
-            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-              {metricLabel}
-            </p>
-          )}
-        </div>
-      )}
-
-      <p className="mt-5 text-sm font-semibold text-slate-700 transition group-hover:text-slate-950">
-        Abrir módulo →
-      </p>
-    </Link>
+function InfoCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-sm font-semibold text-slate-950">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
   );
 }
 
@@ -133,8 +182,6 @@ export default async function LojaOnlineCentralPage() {
     cuponsAtivos,
     cashbackConfig,
     freteConfig,
-    produtosAtivos,
-    produtosSemEstoque,
     modelosEmbalagem,
   ] = await Promise.all([
     prisma.bannerLoja.count({
@@ -200,31 +247,6 @@ export default async function LojaOnlineCentralPage() {
 
     buscarConfiguracaoFrete(),
 
-    prisma.produto.count({
-      where: {
-        ativo: true,
-        status: {
-          not: "NA_LIXEIRA",
-        },
-      },
-    }),
-
-    prisma.produto.count({
-      where: {
-        ativo: true,
-        status: {
-          not: "NA_LIXEIRA",
-        },
-        estoque: {
-          every: {
-            quantidadeAtual: {
-              lte: 0,
-            },
-          },
-        },
-      },
-    }),
-
     prisma.embalagemModelo.count({
       where: {
         ativo: true,
@@ -254,12 +276,12 @@ export default async function LojaOnlineCentralPage() {
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Central da Loja Online
+              Loja Online
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Gerencie a vitrine, navegação, páginas, categorias, campanhas,
-              cupons, cashback e leads da loja pública em um só lugar.
+              Configure aparência, páginas, categorias, promoções, frete,
+              formulários e recursos da loja pública.
             </p>
           </div>
 
@@ -267,8 +289,9 @@ export default async function LojaOnlineCentralPage() {
             <Link
               href="/loja"
               target="_blank"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
+              <Eye className="h-4 w-4" />
               Ver loja pública
             </Link>
           </div>
@@ -276,172 +299,169 @@ export default async function LojaOnlineCentralPage() {
       </section>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Produtos ativos
-          </p>
+        <MetricCard
+          label="Páginas"
+          value={paginasPublicadas}
+          helper={`${paginasNaoPublicadas} rascunho/inativas`}
+          tone="site"
+        />
 
-          <p className="mt-2 text-3xl font-bold text-slate-950">
-            {produtosAtivos}
-          </p>
+        <MetricCard
+          label="Categorias"
+          value={categoriasTotal}
+          helper={`${categoriasSemImagem} sem imagem`}
+          tone={categoriasSemImagem > 0 ? "warning" : "default"}
+        />
 
-          <p className="mt-1 text-xs text-slate-500">
-            {produtosSemEstoque} sem estoque
-          </p>
-        </div>
+        <MetricCard
+          label="Promoções"
+          value={cuponsAtivos}
+          helper={`cupons ativos, cashback ${cashbackTexto.toLowerCase()}`}
+          tone="success"
+        />
 
-        <div className="rounded-3xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-            Páginas
-          </p>
+        <MetricCard
+          label="Leads novos"
+          value={formulariosNovos}
+          helper="respostas de formulários"
+          tone={formulariosNovos > 0 ? "warning" : "default"}
+        />
+      </section>
 
-          <p className="mt-2 text-3xl font-bold text-indigo-950">
-            {paginasPublicadas}
-          </p>
-
-          <p className="mt-1 text-xs text-indigo-700">
-            {paginasNaoPublicadas} rascunho/inativas
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-            Categorias
-          </p>
-
-          <p className="mt-2 text-3xl font-bold text-amber-950">
-            {categoriasTotal}
-          </p>
-
-          <p className="mt-1 text-xs text-amber-700">
-            {categoriasSemImagem} sem imagem
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Leads novos
-          </p>
-
-          <p className="mt-2 text-3xl font-bold text-emerald-950">
-            {formulariosNovos}
-          </p>
-
-          <p className="mt-1 text-xs text-emerald-700">
-            respostas de formulários
-          </p>
-        </div>
+      <section className="grid gap-4 lg:grid-cols-3">
+        <InfoCard
+          title="Home"
+          description="Organiza a página inicial, seções de produtos e fallback da vitrine."
+        />
+        <InfoCard
+          title="Banners e menu"
+          description="Controla banners desktop/mobile, links do menu público e destaques de navegação."
+        />
+        <InfoCard
+          title="Páginas do builder"
+          description="Cria páginas públicas, landing pages, campanhas e templates com blocos visuais."
+        />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <CentralCard
-          href="/configuracoes/loja/banners-menu"
-          title="Banners e menu"
-          description="Configure banners desktop/mobile, links do menu público, destaques e navegação da loja."
-          icon={SlidersHorizontal}
+          title="Aparência e Home"
+          description="Organize banners, chamadas e seções da página inicial."
+          icon={Home}
           metric={`${bannersAtivos} / ${menusAtivos}`}
           metricLabel="banners ativos / links ativos"
           tone="site"
+          actions={[
+            {
+              href: "/configuracoes/loja/home",
+              label: "Abrir Home",
+              primary: true,
+            },
+            {
+              href: "/configuracoes/loja/banners-menu",
+              label: "Banners e menu",
+            },
+          ]}
         />
 
         <CentralCard
-          href="/configuracoes/loja/home"
-          title="Home da loja"
-          description="Organize categorias em destaque, seções de produtos, blocos promocionais e textos institucionais."
-          icon={Home}
-          metric="Vitrine"
-          metricLabel="estrutura da home"
-          tone="site"
-        />
-
-        <CentralCard
-          href="/configuracoes/loja/paginas"
-          title="Páginas / Builder"
-          description="Crie páginas gerais, páginas de categoria, landing pages, campanhas e templates."
+          title="Páginas do builder"
+          description="Crie e edite páginas públicas com blocos visuais."
           icon={LayoutTemplate}
           metric={`${paginasPublicadas}`}
           metricLabel="páginas publicadas"
           tone="site"
+          actions={[
+            {
+              href: "/configuracoes/loja/paginas",
+              label: "Ver páginas",
+              primary: true,
+            },
+          ]}
         />
 
         <CentralCard
-          href="/configuracoes/loja/categorias"
           title="Categorias"
-          description="Gerencie categorias, subcategorias, imagens, descrições, ordem e exibição no menu."
+          description="Gerencie categorias visíveis na loja."
           icon={FolderKanban}
           metric={`${categoriasTotal}`}
           metricLabel="categorias ativas"
           tone={categoriasSemImagem > 0 ? "warning" : "default"}
+          actions={[
+            {
+              href: "/configuracoes/loja/categorias",
+              label: "Gerenciar categorias",
+              primary: true,
+            },
+          ]}
         />
 
         <CentralCard
-          href="/configuracoes/loja/cupons"
-          title="Cupons"
-          description="Configure campanhas comerciais, códigos promocionais, limites e validade."
-          icon={Tag}
-          metric={`${cuponsAtivos}`}
-          metricLabel="cupons ativos"
-          tone="success"
-        />
-
-        <CentralCard
-          href="/configuracoes/loja/cashback"
-          title="Cashback"
-          description="Defina percentuais, regras de uso e bloqueios relacionados a cupons e promoções."
+          title="Promoções"
+          description="Configure cupons e cashback."
           icon={Sparkles}
-          metric={cashbackTexto}
-          metricLabel="primeira / recorrente"
+          metric={`${cuponsAtivos} / ${cashbackTexto}`}
+          metricLabel="cupons ativos / cashback"
           tone="success"
+          actions={[
+            {
+              href: "/configuracoes/loja/cupons",
+              label: "Cupons",
+              primary: true,
+            },
+            {
+              href: "/configuracoes/loja/cashback",
+              label: "Cashback",
+            },
+          ]}
         />
 
         <CentralCard
-          href="/configuracoes/loja/frete"
-          title="Frete e entrega"
-          description="Configure Melhor Envio, origem, dimensões fallback, ajustes de prazo/valor e retirada local."
+          title="Frete"
+          description="Configure origem, remetente, retirada e integrações de frete."
           icon={PackageCheck}
           metric={freteTexto}
           metricLabel="provedor ativo"
           tone={freteConfig.provedor === "DESATIVADO" ? "warning" : "site"}
+          actions={[
+            {
+              href: "/configuracoes/loja/frete",
+              label: "Configurar frete",
+              primary: true,
+            },
+          ]}
         />
 
         <CentralCard
-          href="/configuracoes/loja/embalagens"
-          title="Embalagens da loja"
-          description="Modele classes, caixas, embalagem de presente, componentes consumidos e compatibilidades."
-          icon={Boxes}
-          metric={`${modelosEmbalagem}`}
-          metricLabel="modelos ativos"
-          tone="site"
-        />
-
-        <CentralCard
-          href="/configuracoes/loja/formularios"
           title="Formulários"
-          description="Acompanhe respostas recebidas em páginas, campanhas, CTAs e formulários do builder."
+          description="Acompanhe respostas e contatos recebidos pela loja."
           icon={ClipboardList}
           metric={`${formulariosNovos}`}
           metricLabel="novos leads"
           tone={formulariosNovos > 0 ? "warning" : "default"}
+          actions={[
+            {
+              href: "/configuracoes/loja/formularios",
+              label: "Ver formulários",
+              primary: true,
+            },
+          ]}
         />
 
         <CentralCard
-          href="/produtos"
-          title="Produtos da loja"
-          description="Revise produtos ativos, imagens, estoque, famílias, variações e disponibilidade na loja."
-          icon={Megaphone}
-          metric={`${produtosAtivos}`}
-          metricLabel="produtos publicados"
-        />
-
-        <CentralCard
-          href="/loja"
-          title="Ver loja pública"
-          description="Abra a loja como cliente para revisar visual, navegação, banners, produtos e páginas."
-          icon={Eye}
-          metric="Preview"
-          metricLabel="abrir em nova aba"
+          title="Embalagens"
+          description="Configure embalagens padrão, presente e componentes."
+          icon={Boxes}
+          metric={`${modelosEmbalagem}`}
+          metricLabel="modelos ativos"
           tone="site"
-          external
+          actions={[
+            {
+              href: "/configuracoes/loja/embalagens",
+              label: "Configurar embalagens",
+              primary: true,
+            },
+          ]}
         />
       </section>
     </main>

@@ -559,11 +559,15 @@ export default function CuponsLojaClient({
               <TicketPercent className="mx-auto h-8 w-8 text-slate-300" />
 
               <p className="mt-3 text-sm font-semibold text-slate-700">
-                Nenhum cupom encontrado
+                {cupons.length === 0
+                  ? "Nenhum cupom cadastrado ainda"
+                  : "Nenhum cupom encontrado"}
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
-                Cadastre um cupom para usar no checkout.
+                {cupons.length === 0
+                  ? "Crie cupons para campanhas e descontos da loja online."
+                  : "Ajuste a busca para encontrar outros cupons."}
               </p>
             </div>
           ) : (

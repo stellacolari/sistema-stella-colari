@@ -41,7 +41,7 @@ export default function CriarTemplateCategoriaButton() {
       router.refresh();
 
       if (paginaId) {
-        router.push(`/configuracoes/loja/paginas/${paginaId}`);
+        router.push(`/configuracoes/loja/paginas/${paginaId}/editor`);
       }
     } catch {
       setErro("Erro ao criar template.");

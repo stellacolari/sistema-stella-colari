@@ -395,11 +395,15 @@ export default function FormulariosRespostasClient({
               <MessageSquare className="mx-auto h-8 w-8 text-slate-300" />
 
               <p className="mt-3 text-sm font-semibold text-slate-700">
-                Nenhuma resposta encontrada
+                {respostas.length === 0
+                  ? "Nenhuma resposta recebida até agora."
+                  : "Nenhuma resposta encontrada"}
               </p>
 
               <p className="mt-1 text-sm text-slate-500">
-                Ajuste os filtros ou aguarde novos envios dos formulários.
+                {respostas.length === 0
+                  ? "As respostas enviadas pela loja online aparecerão aqui."
+                  : "Ajuste os filtros para encontrar outras respostas."}
               </p>
             </div>
           ) : (

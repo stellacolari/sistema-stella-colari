@@ -162,6 +162,15 @@ export default async function PaginaBlocosPage({ params }: PageProps) {
               </span>
             </div>
           </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/configuracoes/loja/paginas/${pagina.id}/editor`}
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Abrir editor visual
+            </Link>
+          </div>
         </div>
       </section>
 
