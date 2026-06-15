@@ -9,20 +9,13 @@ import {
   Boxes,
   ChevronDown,
   ClipboardList,
-  CreditCard,
-  FolderKanban,
   LayoutDashboard,
-  LayoutTemplate,
   Package,
   Plus,
-  PlugZap,
-  RefreshCcw,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
   Store,
-  Tag,
-  Trash2,
   Users,
   Warehouse,
 } from "lucide-react";
@@ -39,6 +32,7 @@ type MenuSingleLink = {
   highlight?: boolean;
   tone?: MenuTone;
   exact?: boolean;
+  activePrefixes?: string[];
 };
 
 type MenuGroup = {
@@ -52,12 +46,14 @@ type MenuGroup = {
   quickAddHref?: string;
   quickAddLabel?: string;
   tone?: MenuTone;
+  activePrefixes?: string[];
   links: {
     href: string;
     label: string;
     icon?: ElementType;
     tone?: MenuTone;
     exact?: boolean;
+    activePrefixes?: string[];
   }[];
 };
 
@@ -67,6 +63,13 @@ type MenuSection = {
   title?: string;
   description?: string;
   items: MenuItem[];
+};
+
+type QuickAction = {
+  href: string;
+  label: string;
+  icon: ElementType;
+  tone?: MenuTone;
 };
 
 const menuSections: MenuSection[] = [
@@ -95,14 +98,6 @@ const menuSections: MenuSection[] = [
         label: "Vendas",
         icon: ShoppingBag,
         description: "Histórico de vendas",
-        exact: true,
-      },
-      {
-        type: "link",
-        href: "/vendas/nova-v2",
-        label: "Nova venda",
-        icon: Plus,
-        description: "Registrar venda manual",
       },
       {
         type: "link",
@@ -114,8 +109,8 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    title: "Catálogo e Estoque",
-    description: "Produtos, saldos e reposição",
+    title: "Catálogo",
+    description: "Produtos, estoque e insumos",
     items: [
       {
         type: "link",
@@ -133,218 +128,85 @@ const menuSections: MenuSection[] = [
       },
       {
         type: "link",
-        href: "/compras/reposicao",
-        label: "Reposição",
-        icon: RefreshCcw,
-        description: "Itens para recomprar",
-      },
-    ],
-  },
-  {
-    title: "Insumos e Embalagens",
-    description: "Itens consumidos na operação",
-    items: [
-      {
-        type: "group",
         href: "/insumos-embalagens",
         label: "Insumos e Embalagens",
         icon: Boxes,
         description: "Insumos, regras e embalagens",
-        defaultOpen: false,
-        links: [
-          {
-            href: "/insumos-embalagens",
-            label: "Central de insumos",
-            icon: Boxes,
-            exact: true,
-          },
-          {
-            href: "/itens-adicionais",
-            label: "Itens adicionais",
-            icon: Boxes,
-          },
-          {
-            href: "/configuracoes/loja/embalagens",
-            label: "Embalagens",
-            icon: Boxes,
-            tone: "site",
-          },
-          {
-            href: "/regras-categoria",
-            label: "Regras por categoria",
-            icon: SlidersHorizontal,
-          },
+        exact: true,
+        activePrefixes: [
+          "/itens-adicionais",
+          "/regras-categoria",
+          "/configuracoes/loja/embalagens",
         ],
       },
     ],
   },
   {
-    title: "Compras e Financeiro",
-    description: "Estoque, gastos e reposição",
+    title: "Financeiro",
+    description: "Compras, gastos e reposição",
     items: [
       {
         type: "link",
         href: "/compras",
-        label: "Compras",
+        label: "Compras e Financeiro",
         icon: ShoppingCart,
         description: "Central de compras e financeiro",
-        exact: true,
-      },
-      {
-        type: "link",
-        href: "/compras/estoque",
-        label: "Compras de estoque",
-        icon: Warehouse,
-        description: "Entradas que movimentam estoque",
-      },
-      {
-        type: "link",
-        href: "/compras/gastos",
-        label: "Gastos financeiros",
-        icon: CreditCard,
-        description: "Despesas sem movimentar estoque",
-      },
-      {
-        type: "link",
-        href: "/compras/nova-v2",
-        label: "Nova compra de estoque",
-        icon: Plus,
-        description: "Registrar entrada controlada",
       },
     ],
   },
   {
-    title: "Loja Online",
-    description: "Site público e vendas online",
+    title: "Loja",
+    description: "Site público e loja online",
     items: [
       {
         type: "link",
         href: "/configuracoes/loja",
-        label: "Central da loja",
+        label: "Loja Online",
         icon: Store,
         description: "Vitrine, campanhas e canais",
         tone: "site",
         exact: true,
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/paginas",
-        label: "Páginas",
-        icon: LayoutTemplate,
-        description: "Builder e páginas públicas",
-        tone: "site",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/categorias",
-        label: "Categorias",
-        icon: FolderKanban,
-        description: "Categorias e subcategorias",
-        tone: "site",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/frete",
-        label: "Frete",
-        icon: Warehouse,
-        description: "Entrega, retirada e cálculo",
-        tone: "site",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/cupons",
-        label: "Cupons",
-        icon: Tag,
-        description: "Descontos da loja online",
-        tone: "site",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/cashback",
-        label: "Cashback",
-        icon: BarChart3,
-        description: "Regras de benefício",
-        tone: "site",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/loja/formularios",
-        label: "Formulários",
-        icon: ClipboardList,
-        description: "Leads e respostas recebidas",
-        tone: "site",
+        activePrefixes: [
+          "/configuracoes/loja/banners-menu",
+          "/configuracoes/loja/cashback",
+          "/configuracoes/loja/categorias",
+          "/configuracoes/loja/cupons",
+          "/configuracoes/loja/formularios",
+          "/configuracoes/loja/frete",
+          "/configuracoes/loja/home",
+          "/configuracoes/loja/paginas",
+        ],
       },
     ],
   },
   {
-    title: "Relatórios",
-    description: "Análises rápidas",
+    title: "Gestão",
+    description: "Indicadores da operação",
     items: [
       {
         type: "link",
-        href: "/resumos/vendas",
-        label: "Resumo de vendas",
+        href: "/relatorios",
+        label: "Relatórios",
         icon: BarChart3,
-        description: "Faturamento e histórico",
-      },
-      {
-        type: "link",
-        href: "/resumos/estoque",
-        label: "Resumo de estoque",
-        icon: Warehouse,
-        description: "Saldos e valores",
-      },
-      {
-        type: "link",
-        href: "/resumos/clientes",
-        label: "Resumo de clientes",
-        icon: Users,
-        description: "Base e relacionamento",
+        description: "Resumos de vendas, estoque e clientes",
+        exact: true,
+        activePrefixes: ["/resumos"],
       },
     ],
   },
   {
-    title: "Configurações",
-    description: "Sistema e integrações",
+    title: "Sistema",
+    description: "Ajustes administrativos",
     items: [
       {
         type: "link",
-        href: "/configuracoes/integracoes",
-        label: "Integrações",
-        icon: PlugZap,
-        description: "Canais e serviços conectados",
+        href: "/configuracoes",
+        label: "Configurações",
+        icon: SlidersHorizontal,
+        description: "Loja, integrações e lixeira",
         tone: "system",
         exact: true,
-      },
-      {
-        type: "link",
-        href: "/lixeira",
-        label: "Lixeira",
-        icon: Trash2,
-        description: "Itens arquivados",
-        tone: "system",
-      },
-    ],
-  },
-  {
-    title: "Avançado",
-    description: "Rotas técnicas de integração",
-    items: [
-      {
-        type: "link",
-        href: "/configuracoes/integracoes/produtos-canais",
-        label: "Produtos por canal",
-        icon: Package,
-        description: "Vínculos por marketplace",
-        tone: "system",
-      },
-      {
-        type: "link",
-        href: "/configuracoes/integracoes/importar-pedido",
-        label: "Importar pedido",
-        icon: ClipboardList,
-        description: "Ferramenta técnica de entrada",
-        tone: "system",
+        activePrefixes: ["/configuracoes/integracoes", "/lixeira"],
       },
     ],
   },
@@ -369,14 +231,6 @@ const vendedorMenuSections: MenuSection[] = [
         label: "Vendas",
         icon: ShoppingBag,
         description: "Histórico de vendas",
-        exact: true,
-      },
-      {
-        type: "link",
-        href: "/vendas/nova-v2",
-        label: "Nova venda",
-        icon: Plus,
-        description: "Registrar venda manual",
       },
       {
         type: "link",
@@ -402,7 +256,46 @@ const vendedorMenuSections: MenuSection[] = [
   },
 ];
 
-function isPathActive(pathname: string, href: string, exact = false) {
+const quickActions: QuickAction[] = [
+  {
+    href: "/vendas/nova-v2",
+    label: "Nova venda",
+    icon: ShoppingBag,
+  },
+  {
+    href: "/compras/nova-v2",
+    label: "Nova compra de estoque",
+    icon: ShoppingCart,
+  },
+  {
+    href: "/produtos/novo",
+    label: "Novo produto",
+    icon: Package,
+  },
+];
+
+const vendedorQuickActions: QuickAction[] = [
+  {
+    href: "/vendas/nova-v2",
+    label: "Nova venda",
+    icon: ShoppingBag,
+  },
+];
+
+function isPathActive(
+  pathname: string,
+  href: string,
+  exact = false,
+  activePrefixes: string[] = []
+) {
+  if (
+    activePrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  ) {
+    return true;
+  }
+
   if (href === "/") {
     return pathname === "/";
   }
@@ -544,6 +437,10 @@ function getMenuSections(perfil: PerfilAdmin) {
   return perfil === "VENDEDOR" ? vendedorMenuSections : menuSections;
 }
 
+function getQuickActions(perfil: PerfilAdmin) {
+  return perfil === "VENDEDOR" ? vendedorQuickActions : quickActions;
+}
+
 function getSectionGroups(sections: MenuSection[]) {
   return sections.flatMap((section) =>
     section.items
@@ -551,6 +448,7 @@ function getSectionGroups(sections: MenuSection[]) {
       .map((group) => ({
         href: group.href,
         defaultOpen: group.defaultOpen ?? false,
+        activePrefixes: group.activePrefixes ?? [],
         links: group.links,
       }))
   );
@@ -571,6 +469,7 @@ export default function SidebarMenu({
 }) {
   const pathname = usePathname();
   const sections = useMemo(() => getMenuSections(perfil), [perfil]);
+  const actions = useMemo(() => getQuickActions(perfil), [perfil]);
 
   const groups = useMemo(() => getSectionGroups(sections), [sections]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -581,9 +480,14 @@ export default function SidebarMenu({
 
       groups.forEach((group) => {
         const groupIsActive =
-          isPathActive(pathname, group.href) ||
+          isPathActive(pathname, group.href, false, group.activePrefixes) ||
           group.links.some((link) =>
-            isPathActive(pathname, link.href, link.exact)
+            isPathActive(
+              pathname,
+              link.href,
+              link.exact,
+              link.activePrefixes
+            )
           );
 
         if (typeof next[group.href] === "undefined") {
@@ -621,6 +525,7 @@ export default function SidebarMenu({
   const panelPadding = compacto ? "px-2 py-3" : "px-3 py-4";
   const groupPad = compacto ? "p-1" : "p-1.5";
   const subItemsWrap = compacto ? "mt-1 space-y-0.5 pl-2" : "mt-2 space-y-1 pl-3";
+  const quickActionSpacing = compacto ? "space-y-1" : "space-y-1.5";
 
   return (
     <aside className="flex h-full w-full flex-col rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur">
@@ -658,6 +563,59 @@ export default function SidebarMenu({
       )}
 
       <div className={`min-h-0 flex-1 overflow-y-auto ${panelPadding}`}>
+        {actions.length > 0 ? (
+          <div className={compacto ? "mb-3" : "mb-5"}>
+            {!compacto ? (
+              <div className="mb-2 px-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  Ações rápidas
+                </p>
+              </div>
+            ) : null}
+
+            <div className={quickActionSpacing}>
+              {actions.map((action) => {
+                const active = isPathActive(pathname, action.href);
+                const Icon = action.icon;
+                const tone = getItemTone(action);
+
+                return (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    title={action.label}
+                    onClick={onNavigate}
+                    className={`group flex items-center ${itemGap} rounded-2xl border transition ${
+                      compacto ? "justify-center px-2 py-2" : "px-3 py-2.5"
+                    } ${getItemButtonClass({
+                      active,
+                      highlight: true,
+                      tone,
+                    })}`}
+                  >
+                    <div
+                      className={`flex shrink-0 items-center justify-center ring-1 ring-inset ${iconBoxSize} ${getIconBoxClass(
+                        {
+                          active,
+                          tone,
+                        }
+                      )}`}
+                    >
+                      <Icon className="h-[17px] w-[17px]" />
+                    </div>
+
+                    <div className={compacto ? "sr-only" : "min-w-0 flex-1"}>
+                      <p className="truncate text-sm font-semibold">
+                        {action.label}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         <nav className={sectionSpacing}>
           {sections.map((section, sectionIndex) => (
             <div key={`${section.title || "sem-titulo"}-${sectionIndex}`}>
@@ -680,7 +638,12 @@ export default function SidebarMenu({
               <div className={itemSpacing}>
                 {section.items.map((item) => {
                   if (item.type === "link") {
-                    const active = isPathActive(pathname, item.href, item.exact);
+                    const active = isPathActive(
+                      pathname,
+                      item.href,
+                      item.exact,
+                      item.activePrefixes
+                    );
                     const Icon = item.icon;
                     const tone = getItemTone(item);
 
@@ -727,9 +690,19 @@ export default function SidebarMenu({
                   const Icon = item.icon;
                   const tone = getItemTone(item);
                   const groupIsActive =
-                    isPathActive(pathname, item.href) ||
+                    isPathActive(
+                      pathname,
+                      item.href,
+                      false,
+                      item.activePrefixes
+                    ) ||
                     item.links.some((link) =>
-                      isPathActive(pathname, link.href, link.exact)
+                      isPathActive(
+                        pathname,
+                        link.href,
+                        link.exact,
+                        link.activePrefixes
+                      )
                     );
                   const isOpen = openGroups[item.href] ?? false;
 
@@ -809,7 +782,8 @@ export default function SidebarMenu({
                               const subActive = isPathActive(
                                 pathname,
                                 link.href,
-                                link.exact
+                                link.exact,
+                                link.activePrefixes
                               );
                               const SubIcon = link.icon;
                               const subTone = getItemTone(link);
@@ -845,7 +819,12 @@ export default function SidebarMenu({
                                 onClick={onNavigate}
                                 className={`flex items-center gap-3 rounded-2xl text-sm transition ${subItemPadding} ${getSubItemClass(
                                   {
-                                    active: isPathActive(pathname, item.href),
+                                    active: isPathActive(
+                                      pathname,
+                                      item.href,
+                                      false,
+                                      item.activePrefixes
+                                    ),
                                     tone,
                                   }
                                 )}`}

@@ -110,6 +110,15 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes")) {
+    return {
+      eyebrow: "Sistema",
+      title: "Configuracoes",
+      description: "Loja online, integracoes e manutencao do sistema.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/produtos")) {
     return {
       eyebrow: "Catalogo",
@@ -226,6 +235,15 @@ function getPageInfo(pathname: string) {
       eyebrow: "Sistema",
       title: "Lixeira",
       description: "Itens removidos e opcoes de restauracao.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/relatorios")) {
+    return {
+      eyebrow: "Gestao",
+      title: "Relatorios",
+      description: "Indicadores e resumos da operacao.",
       showLojaButton: false,
     };
   }
