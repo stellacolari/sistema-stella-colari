@@ -76,6 +76,7 @@ export type PedidoOperacionalItem = {
   cupomDescontoValor: number;
 
   status: string;
+  observacoes: string | null;
   criadoEm: string;
   atualizadoEm: string;
   alertasOperacionais?: PedidoAlertaOperacional[];
@@ -88,6 +89,7 @@ export type PedidoOperacionalItem = {
     codigoInterno: string;
     nomeProduto: string;
     categoria: string;
+    imagemUrl: string | null;
     tamanhoAnel: string | null;
     quantidade: number;
     precoUnitario: number;
@@ -159,6 +161,7 @@ const FILTROS_OPERACIONAIS = [
   { value: "MELHOR_ENVIO", label: "Melhor Envio" },
   { value: "ENTREGUE", label: "Entregue" },
   { value: "PROBLEMA", label: "Problema" },
+  { value: "CANCELADO", label: "Cancelado" },
 ];
 
 void FILTROS_RAPIDOS;
@@ -440,7 +443,7 @@ function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   }
 
   if (filtro === "PROBLEMA") {
-    return etapa === "PROBLEMA_OPERACIONAL" || etapa === "CANCELADO";
+    return etapa === "PROBLEMA_OPERACIONAL";
   }
 
   return etapa === filtro;
@@ -769,6 +772,145 @@ function getDestaquePedidoClass(pedido: PedidoOperacionalItem) {
   return "";
 }
 
+function podeSepararEmLote(pedido: PedidoOperacionalItem) {
+  const etapa = etapaOperacionalPedido(pedido);
+
+  return (
+    pedido.statusPagamento === "PAGO" &&
+    (etapa === "PAGO" || etapa === "EM_SEPARACAO") &&
+    pedido.itens.length > 0
+  );
+}
+
+function podeIniciarSeparacaoEmLote(pedido: PedidoOperacionalItem) {
+  return (
+    pedido.statusPagamento === "PAGO" &&
+    etapaOperacionalPedido(pedido) === "PAGO"
+  );
+}
+
+function podeEntrarEmRotaManualFutura(pedido: PedidoOperacionalItem) {
+  const etapa = etapaOperacionalPedido(pedido);
+
+  return (
+    modalidadeOperacional(pedido) === "ENTREGA_MANUAL" &&
+    ["SEPARADO", "SAIU_PARA_ENTREGA"].includes(etapa)
+  );
+}
+
+function agruparItensSeparacao(pedidosSelecionados: PedidoOperacionalItem[]) {
+  const grupos = new Map<
+    string,
+    {
+      chave: string;
+      codigoInterno: string;
+      nomeProduto: string;
+      categoria: string;
+      tamanhoAnel: string | null;
+      imagemUrl: string | null;
+      quantidade: number;
+      pedidoCodigos: Set<string>;
+      adicionais: Set<string>;
+      embalagens: number;
+    }
+  >();
+
+  pedidosSelecionados.forEach((pedido) => {
+    pedido.itens.forEach((item) => {
+      const chave = [
+        item.codigoInterno || item.nomeProduto,
+        item.nomeProduto,
+        item.tamanhoAnel || "",
+      ].join("|");
+      const grupoAtual =
+        grupos.get(chave) ||
+        {
+          chave,
+          codigoInterno: item.codigoInterno,
+          nomeProduto: item.nomeProduto,
+          categoria: item.categoria,
+          tamanhoAnel: item.tamanhoAnel,
+          imagemUrl: item.imagemUrl,
+          quantidade: 0,
+          pedidoCodigos: new Set<string>(),
+          adicionais: new Set<string>(),
+          embalagens: 0,
+        };
+
+      grupoAtual.quantidade += item.quantidade;
+      grupoAtual.pedidoCodigos.add(pedido.codigo);
+
+      if (item.embalagemPresente) {
+        grupoAtual.embalagens += item.quantidade;
+      }
+
+      item.adicionais.forEach((adicional) => {
+        grupoAtual.adicionais.add(adicional.nome);
+      });
+
+      grupos.set(chave, grupoAtual);
+    });
+  });
+
+  return Array.from(grupos.values()).sort((a, b) =>
+    a.nomeProduto.localeCompare(b.nomeProduto, "pt-BR"),
+  );
+}
+
+function montarTextoSeparacaoLote(
+  pedidosSelecionados: PedidoOperacionalItem[],
+) {
+  const grupos = agruparItensSeparacao(pedidosSelecionados);
+  const linhas = [
+    "Separacao em lote - Stella Colari",
+    `Pedidos: ${pedidosSelecionados.length}`,
+    "",
+    "Produtos agrupados:",
+    ...grupos.flatMap((grupo) => {
+      const detalhes = [
+        grupo.codigoInterno ? `SKU ${grupo.codigoInterno}` : null,
+        grupo.tamanhoAnel ? `Opcao ${grupo.tamanhoAnel}` : null,
+        grupo.embalagens > 0 ? `${grupo.embalagens} presente` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      return [
+        `- ${grupo.quantidade}x ${grupo.nomeProduto}`,
+        detalhes ? `  ${detalhes}` : "",
+        `  Pedidos: ${Array.from(grupo.pedidoCodigos).join(", ")}`,
+        grupo.adicionais.size > 0
+          ? `  Adicionais: ${Array.from(grupo.adicionais).join(", ")}`
+          : "",
+      ].filter(Boolean);
+    }),
+    "",
+    "Pedidos selecionados:",
+    ...pedidosSelecionados.flatMap((pedido) => [
+      `- ${pedido.codigo} | ${pedido.clienteNome || pedido.nomeCliente} | ${labelModalidadeOperacional(
+        modalidadeOperacional(pedido),
+      )}`,
+      pedido.observacoes ? `  Obs: ${pedido.observacoes}` : "",
+      pedido.alertasOperacionais?.length
+        ? `  Alertas: ${pedido.alertasOperacionais
+            .map((alerta) => alerta.mensagem)
+            .join(" / ")}`
+        : "",
+    ]).filter(Boolean),
+  ];
+
+  return linhas.join("\n");
+}
+
+function escaparHtml(texto: string) {
+  return texto
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export default function PedidosClient({ pedidos }: PedidosClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -804,6 +946,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     [],
   );
   const [preparandoImpressaoLote, setPreparandoImpressaoLote] = useState(false);
+  const [separacaoLoteAberta, setSeparacaoLoteAberta] = useState(false);
+  const [pedidoIdsSeparacaoLote, setPedidoIdsSeparacaoLote] = useState<
+    string[]
+  >([]);
+  const [listaSeparacaoCopiada, setListaSeparacaoCopiada] = useState(false);
+  const [marcandoSeparacaoLote, setMarcandoSeparacaoLote] = useState(false);
+  const [rotasEntregaAberto, setRotasEntregaAberto] = useState(false);
 
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((pedido) => {
@@ -827,6 +976,52 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
       pedidoIdsImprimiveisVisiveis.has(id),
     );
   }, [pedidoIdsImprimiveisVisiveis, pedidoIdsSelecionados]);
+
+  const pedidosDisponiveisSeparacaoLote = useMemo(() => {
+    return pedidos.filter(podeSepararEmLote);
+  }, [pedidos]);
+
+  const pedidoIdsDisponiveisSeparacaoLote = useMemo(() => {
+    return new Set(pedidosDisponiveisSeparacaoLote.map((pedido) => pedido.id));
+  }, [pedidosDisponiveisSeparacaoLote]);
+
+  const pedidoIdsSeparacaoLoteValidos = useMemo(() => {
+    return pedidoIdsSeparacaoLote.filter((id) =>
+      pedidoIdsDisponiveisSeparacaoLote.has(id),
+    );
+  }, [pedidoIdsDisponiveisSeparacaoLote, pedidoIdsSeparacaoLote]);
+
+  const pedidosSeparacaoLoteSelecionados = useMemo(() => {
+    const idsSelecionados = new Set(pedidoIdsSeparacaoLoteValidos);
+
+    return pedidosDisponiveisSeparacaoLote.filter((pedido) =>
+      idsSelecionados.has(pedido.id),
+    );
+  }, [pedidoIdsSeparacaoLoteValidos, pedidosDisponiveisSeparacaoLote]);
+
+  const todosSeparacaoLoteSelecionados =
+    pedidosDisponiveisSeparacaoLote.length > 0 &&
+    pedidosDisponiveisSeparacaoLote.every((pedido) =>
+      pedidoIdsSeparacaoLoteValidos.includes(pedido.id),
+    );
+
+  const produtosSeparacaoLote = useMemo(() => {
+    return agruparItensSeparacao(pedidosSeparacaoLoteSelecionados);
+  }, [pedidosSeparacaoLoteSelecionados]);
+
+  const textoSeparacaoLote = useMemo(() => {
+    return montarTextoSeparacaoLote(pedidosSeparacaoLoteSelecionados);
+  }, [pedidosSeparacaoLoteSelecionados]);
+
+  const pedidosParaIniciarSeparacaoLote = useMemo(() => {
+    return pedidosSeparacaoLoteSelecionados.filter(
+      podeIniciarSeparacaoEmLote,
+    );
+  }, [pedidosSeparacaoLoteSelecionados]);
+
+  const pedidosElegiveisRotasManuais = useMemo(() => {
+    return pedidos.filter(podeEntrarEmRotaManualFutura);
+  }, [pedidos]);
 
   const todosImprimiveisVisiveisSelecionados =
     pedidosImprimiveisVisiveis.length > 0 &&
@@ -1196,7 +1391,159 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
     }
   }
 
+  function abrirSeparacaoLote() {
+    setPedidoIdsSeparacaoLote((idsAtuais) => {
+      if (idsAtuais.length > 0) {
+        return idsAtuais;
+      }
+
+      return pedidosDisponiveisSeparacaoLote
+        .slice(0, 12)
+        .map((pedido) => pedido.id);
+    });
+    setSeparacaoLoteAberta(true);
+  }
+
+  function alternarPedidoSeparacaoLote(pedido: PedidoOperacionalItem) {
+    if (!podeSepararEmLote(pedido)) {
+      return;
+    }
+
+    setPedidoIdsSeparacaoLote((idsAtuais) =>
+      idsAtuais.includes(pedido.id)
+        ? idsAtuais.filter((id) => id !== pedido.id)
+        : [...idsAtuais, pedido.id],
+    );
+  }
+
+  function alternarTodosSeparacaoLote() {
+    if (todosSeparacaoLoteSelecionados) {
+      setPedidoIdsSeparacaoLote([]);
+      return;
+    }
+
+    setPedidoIdsSeparacaoLote(
+      pedidosDisponiveisSeparacaoLote.map((pedido) => pedido.id),
+    );
+  }
+
+  function selecionarPrimeirosSeparacaoLote(quantidade: number) {
+    setPedidoIdsSeparacaoLote(
+      pedidosDisponiveisSeparacaoLote
+        .slice(0, quantidade)
+        .map((pedido) => pedido.id),
+    );
+  }
+
+  async function copiarListaSeparacaoLote() {
+    if (pedidosSeparacaoLoteSelecionados.length === 0) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(textoSeparacaoLote);
+      setListaSeparacaoCopiada(true);
+      window.setTimeout(() => setListaSeparacaoCopiada(false), 2200);
+    } catch {
+      setErroOperacao("Nao foi possivel copiar a lista de separacao.");
+    }
+  }
+
+  function imprimirListaSeparacaoLote() {
+    if (pedidosSeparacaoLoteSelecionados.length === 0) {
+      return;
+    }
+
+    const janela = window.open("", "_blank", "noopener,noreferrer");
+
+    if (!janela) {
+      setErroOperacao("Nao foi possivel abrir a impressao da separacao.");
+      return;
+    }
+
+    janela.document.write(`<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Separacao em lote</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #0f172a; padding: 24px; }
+    pre { white-space: pre-wrap; font-size: 13px; line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <pre>${escaparHtml(textoSeparacaoLote)}</pre>
+</body>
+</html>`);
+    janela.document.close();
+    janela.focus();
+    janela.print();
+  }
+
+  async function marcarSeparacaoLote() {
+    if (pedidosParaIniciarSeparacaoLote.length === 0) {
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Iniciar separacao de ${pedidosParaIniciarSeparacaoLote.length} pedido${
+        pedidosParaIniciarSeparacaoLote.length === 1 ? "" : "s"
+      } selecionado${
+        pedidosParaIniciarSeparacaoLote.length === 1 ? "" : "s"
+      }?`,
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroOperacao("");
+    setMarcandoSeparacaoLote(true);
+
+    try {
+      for (const pedido of pedidosParaIniciarSeparacaoLote) {
+        const response = await fetch(`/api/pedidos/${pedido.id}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            statusNovo: "EM_SEPARACAO",
+            origem: "SEPARACAO_LOTE",
+            usuarioNome: "Sistema",
+            observacao: "Separacao iniciada por lote pela central operacional.",
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(
+            `${pedido.codigo}: ${
+              data.error || "erro ao iniciar separacao do pedido"
+            }`,
+          );
+        }
+      }
+
+      setSeparacaoLoteAberta(false);
+      setPedidoIdsSeparacaoLote([]);
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      setErroOperacao(
+        error instanceof Error
+          ? error.message
+          : "Erro ao iniciar separacao em lote.",
+      );
+    } finally {
+      setMarcandoSeparacaoLote(false);
+    }
+  }
+
   return (
+    <>
     <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:rounded-3xl">
       <div className="border-b border-slate-200 px-3 py-2.5 sm:px-5 sm:py-4">
         <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
@@ -1291,6 +1638,47 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             );
           })}
         </div>
+
+        <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
+          <button
+            type="button"
+            onClick={abrirSeparacaoLote}
+            disabled={pedidosDisponiveisSeparacaoLote.length === 0}
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Package className="h-4 w-4 shrink-0" />
+            <span className="truncate">
+              Separacao em lote ({pedidosDisponiveisSeparacaoLote.length})
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRotasEntregaAberto((valorAtual) => !valorAtual)}
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            <Truck className="h-4 w-4 shrink-0" />
+            <span className="truncate">
+              Rotas de entrega ({pedidosElegiveisRotasManuais.length})
+            </span>
+          </button>
+        </div>
+
+        {rotasEntregaAberto && (
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600 md:px-4">
+            <p className="font-semibold text-slate-900">
+              Rotas manuais ainda sem roteirizacao automatica.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {pedidosElegiveisRotasManuais.length} pedido
+              {pedidosElegiveisRotasManuais.length === 1 ? "" : "s"} de
+              entrega manual esta
+              {pedidosElegiveisRotasManuais.length === 1 ? "" : "o"} pronto
+              {pedidosElegiveisRotasManuais.length === 1 ? "" : "s"} para
+              entrar em uma futura montagem de rota.
+            </p>
+          </div>
+        )}
 
         <div
           className={`mt-3 ${
@@ -2077,5 +2465,260 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         </div>
       )}
     </section>
+
+    {separacaoLoteAberta && (
+      <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-950/45 p-0 md:p-6">
+        <button
+          type="button"
+          aria-label="Fechar separacao em lote"
+          className="absolute inset-0 cursor-default"
+          onClick={() => setSeparacaoLoteAberta(false)}
+        />
+
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="separacao-lote-titulo"
+          className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl md:h-[calc(100vh-3rem)] md:rounded-2xl"
+        >
+          <div className="flex min-w-0 flex-col gap-3 border-b border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                Separacao em lote
+              </p>
+
+              <h3
+                id="separacao-lote-titulo"
+                className="mt-1 truncate text-lg font-bold text-slate-950"
+              >
+                Produtos agrupados para conferencia
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-500">
+                {pedidosSeparacaoLoteSelecionados.length} pedido
+                {pedidosSeparacaoLoteSelecionados.length === 1 ? "" : "s"} -{" "}
+                {produtosSeparacaoLote.length} produto
+                {produtosSeparacaoLote.length === 1 ? "" : "s"} agrupado
+                {produtosSeparacaoLote.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <button
+                type="button"
+                onClick={() => selecionarPrimeirosSeparacaoLote(12)}
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <span className="truncate">Primeiros 12</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSeparacaoLoteAberta(false)}
+                className="inline-flex h-9 min-w-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <span className="truncate">Fechar</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-h-0 overflow-y-auto px-4 py-4 md:px-5">
+              <div className="mb-3 flex min-w-0 flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={todosSeparacaoLoteSelecionados}
+                    disabled={pedidosDisponiveisSeparacaoLote.length === 0}
+                    onChange={alternarTodosSeparacaoLote}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-700"
+                  />
+                  <span className="truncate">Selecionar todos disponiveis</span>
+                </label>
+
+                <span className="text-xs text-slate-500">
+                  {pedidosParaIniciarSeparacaoLote.length} ainda
+                  {pedidosParaIniciarSeparacaoLote.length === 1 ? "" : "m"} sem
+                  separacao iniciada
+                </span>
+              </div>
+
+              {produtosSeparacaoLote.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                  Selecione pedidos pagos para montar a lista de separacao.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {produtosSeparacaoLote.map((grupo) => (
+                    <div
+                      key={grupo.chave}
+                      className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)_72px] gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                    >
+                      <div className="h-12 w-12 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
+                        {grupo.imagemUrl ? (
+                          <img
+                            src={grupo.imagemUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Package className="h-5 w-5 text-slate-300" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-semibold text-slate-950">
+                          {grupo.nomeProduto}
+                        </p>
+
+                        <div className="mt-1 flex max-w-full flex-wrap gap-1.5 overflow-hidden text-[11px] text-slate-500">
+                          {grupo.codigoInterno && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 ring-1 ring-slate-200">
+                              SKU {grupo.codigoInterno}
+                            </span>
+                          )}
+                          {grupo.tamanhoAnel && (
+                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700 ring-1 ring-blue-200">
+                              Opcao {grupo.tamanhoAnel}
+                            </span>
+                          )}
+                          {grupo.embalagens > 0 && (
+                            <span className="rounded-full bg-violet-50 px-2 py-0.5 text-violet-700 ring-1 ring-violet-200">
+                              {grupo.embalagens} presente
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 truncate text-[11px] text-slate-400">
+                          Pedidos: {Array.from(grupo.pedidoCodigos).join(", ")}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-slate-950">
+                          {grupo.quantidade}
+                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          un.
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <aside className="min-h-0 overflow-y-auto border-t border-slate-200 bg-slate-50 px-4 py-4 lg:border-l lg:border-t-0">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                <button
+                  type="button"
+                  onClick={copiarListaSeparacaoLote}
+                  disabled={pedidosSeparacaoLoteSelecionados.length === 0}
+                  className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Copy className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {listaSeparacaoCopiada ? "Lista copiada" : "Copiar lista"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={imprimirListaSeparacaoLote}
+                  disabled={pedidosSeparacaoLoteSelecionados.length === 0}
+                  className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Imprimir lista</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={marcarSeparacaoLote}
+                  disabled={
+                    pedidosParaIniciarSeparacaoLote.length === 0 ||
+                    marcandoSeparacaoLote
+                  }
+                  className="inline-flex h-10 min-w-0 items-center justify-center rounded-xl border border-blue-600 bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="truncate">
+                    {marcandoSeparacaoLote
+                      ? "Atualizando..."
+                      : "Marcar em separacao"}
+                  </span>
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {pedidosDisponiveisSeparacaoLote.map((pedido) => {
+                  const selecionado = pedidoIdsSeparacaoLoteValidos.includes(
+                    pedido.id,
+                  );
+                  const etapa = etapaOperacionalPedido(pedido);
+
+                  return (
+                    <label
+                      key={pedido.id}
+                      className={`block rounded-2xl border px-3 py-3 text-sm transition ${
+                        selecionado
+                          ? "border-blue-200 bg-white ring-1 ring-blue-100"
+                          : "border-slate-200 bg-white/70"
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selecionado}
+                          onChange={() => alternarPedidoSeparacaoLote(pedido)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-700"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center justify-between gap-2">
+                            <span className="truncate font-bold text-slate-950">
+                              {pedido.codigo}
+                            </span>
+                            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                              {pedido.quantidadeItens} un.
+                            </span>
+                          </div>
+
+                          <p className="mt-1 truncate text-xs text-slate-600">
+                            {pedido.clienteNome || pedido.nomeCliente}
+                          </p>
+
+                          <p className="mt-1 truncate text-[11px] text-slate-400">
+                            {labelEtapaOperacional(etapa)} -{" "}
+                            {labelModalidadeOperacional(
+                              modalidadeOperacional(pedido),
+                            )}
+                          </p>
+
+                          {pedido.observacoes && (
+                            <p className="mt-1 line-clamp-2 rounded-lg bg-amber-50 px-2 py-1 text-[11px] text-amber-800 ring-1 ring-amber-200">
+                              {pedido.observacoes}
+                            </p>
+                          )}
+
+                          {pedido.alertasOperacionais &&
+                            pedido.alertasOperacionais.length > 0 && (
+                              <p className="mt-1 line-clamp-2 rounded-lg bg-red-50 px-2 py-1 text-[11px] text-red-700 ring-1 ring-red-200">
+                                {pedido.alertasOperacionais[0].mensagem}
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
