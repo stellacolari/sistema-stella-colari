@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageIcon, Plus, Trash2 } from "lucide-react";
 
 type ProdutoVariacaoOpcaoCompra = {
@@ -165,6 +165,7 @@ export default function NovaCompraV2Client({
   const [fornecedor, setFornecedor] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const prefillAplicadoRef = useRef(false);
 
   const itensFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -235,7 +236,11 @@ const subtotalProdutos = useMemo(() => {
     );
   }, [subtotalProdutos, valorDescontoProdutos, subtotalAdicionais, freteNumero]);
 
-  function adicionarItem(item: ItemBusca) {
+  const adicionarItem = useCallback(function adicionarItem(
+    item: ItemBusca,
+    quantidadeInicial = 1,
+    tamanhoInicial = ""
+  ) {
     setErro("");
 
     const fornecedorItem = item.fornecedorPadrao.trim();
@@ -259,6 +264,7 @@ const subtotalProdutos = useMemo(() => {
     }
 
     const temVariacao = produtoTemVariacao(item);
+    const quantidade = Math.max(Math.floor(quantidadeInicial), 1);
 
     if (temVariacao) {
       setItensPedido((atual) => [
@@ -266,8 +272,8 @@ const subtotalProdutos = useMemo(() => {
         {
           ...item,
           itemKey: gerarItemKey(item),
-          quantidade: 1,
-          tamanhoAnel: "",
+          quantidade,
+          tamanhoAnel: tamanhoInicial,
         },
       ]);
 
@@ -285,7 +291,10 @@ const subtotalProdutos = useMemo(() => {
       if (existente) {
         return atual.map((pedidoItem) =>
           pedidoItem.itemKey === existente.itemKey
-            ? { ...pedidoItem, quantidade: pedidoItem.quantidade + 1 }
+            ? {
+                ...pedidoItem,
+                quantidade: pedidoItem.quantidade + quantidade,
+              }
             : pedidoItem
         );
       }
@@ -295,12 +304,35 @@ const subtotalProdutos = useMemo(() => {
         {
           ...item,
           itemKey: gerarItemKey(item),
-          quantidade: 1,
-          tamanhoAnel: "",
+          quantidade,
+          tamanhoAnel: tamanhoInicial,
         },
       ];
     });
-  }
+  }, [fornecedor]);
+
+  useEffect(() => {
+    if (prefillAplicadoRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const itemTipo = params.get("itemTipo");
+    const itemId = params.get("itemId");
+
+    if (!itemTipo || !itemId) return;
+
+    const item = itensBusca.find(
+      (opcao) => opcao.tipo === itemTipo && opcao.id === itemId
+    );
+
+    if (!item) return;
+
+    prefillAplicadoRef.current = true;
+    const quantidade = Number(params.get("quantidade") || 1);
+    const tamanho = params.get("tamanho") || "";
+
+    adicionarItem(item, quantidade, tamanho);
+    setBusca(item.nome);
+  }, [adicionarItem, itensBusca]);
 
   function alterarQuantidade(itemKey: string, quantidade: number) {
     if (quantidade <= 0) return;
