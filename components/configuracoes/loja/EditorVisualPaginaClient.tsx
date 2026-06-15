@@ -7622,9 +7622,8 @@ function EditorConteudoBlocoModal({
             </div>
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-              Esta é a primeira camada de edição visual. Nas próximas etapas,
-              vamos adicionar imagem desktop/mobile, crop e editor rico de
-              texto.
+              Use este painel para ajustar o conteúdo essencial do bloco dentro
+              do editor visual.
             </div>
           </div>
         )}
@@ -8897,8 +8896,8 @@ export default function EditorVisualPaginaClient({
               </p>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Primeira versão visual. A renderização ainda é simulada e será
-                aproximada da loja pública nas próximas etapas.
+                Veja a estrutura da página por dispositivo enquanto ajusta
+                blocos, textos, mídias e aparência.
               </p>
             </div>
 

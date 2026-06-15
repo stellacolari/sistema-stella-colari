@@ -132,25 +132,6 @@ function getUrlPublicaPagina(pagina: LojaPaginaBuilderItem) {
 function getUrlPreviewPagina(pagina: LojaPaginaBuilderItem) {
   return `/loja/preview/pagina/${pagina.id}`;
 }
-function confirmarEdicaoBlocosAoVivo(
-  event: React.MouseEvent<HTMLAnchorElement>,
-  pagina: LojaPaginaBuilderItem,
-  paginaPublica: boolean
-) {
-  if (!paginaPublica) {
-    return;
-  }
-
-  const confirmado = window.confirm(
-    `A página "${pagina.titulo}" está publicada.\n\n` +
-      "Como ainda não temos versionamento separado, qualquer alteração nos blocos será refletida no site público imediatamente.\n\n" +
-      "Deseja continuar?"
-  );
-
-  if (!confirmado) {
-    event.preventDefault();
-  }
-}
 
 function slugify(value: string) {
   return value
@@ -847,25 +828,6 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
                       >
                         Editar no editor visual
                       </Link>
-                    <Link
-                      href={`/configuracoes/loja/paginas/${pagina.id}/blocos`}
-                      onClick={(event) =>
-                        confirmarEdicaoBlocosAoVivo(event, pagina, paginaPublica)
-                      }
-                      className={
-                        paginaPublica
-                          ? "inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
-                          : "inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      }
-                      title={
-                        paginaPublica
-                          ? "Esta página está publicada. Alterações nos blocos aparecem no site imediatamente."
-                          : "Editar blocos da página"
-                      }
-                    >
-                      <LayoutTemplate className="h-4 w-4" />
-                      Builder antigo
-                    </Link>
 
                         {urlPublica && paginaPublica && (
                           <Link
@@ -883,7 +845,7 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
                         <Pencil className="h-4 w-4" />
-                        Editar
+                        Dados da página
                       </button>
                       {status !== "ARQUIVADA" && !paginaPublica && (
                         <Link

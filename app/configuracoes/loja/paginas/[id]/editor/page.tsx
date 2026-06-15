@@ -191,8 +191,8 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Nova experiência visual do builder. Edite blocos com preview por
-              dispositivo sem substituir o construtor antigo.
+              Edite blocos, conteúdo, mídia e aparência com preview por
+              dispositivo em uma única experiência de edição.
             </p>
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -221,13 +221,6 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/configuracoes/loja/paginas/${pagina.id}/blocos`}
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Builder antigo
-            </Link>
-
             <Link
               href={pagina.urlPublica}
               target="_blank"
