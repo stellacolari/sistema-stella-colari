@@ -19,6 +19,15 @@ import {
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
 import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
 import type { PedidoEntregaManual } from "@/lib/pedidos/entrega-manual";
+import {
+  etapaOperacionalPedido,
+  estiloEtapaOperacional,
+  labelEtapaOperacional,
+  labelModalidadeOperacional,
+  modalidadeOperacional,
+  proximaAcaoMelhorEnvio,
+  proximoPassoOperacional,
+} from "@/lib/pedidos/etapas-operacionais";
 
 export type PedidoOperacionalItem = {
   id: string;
@@ -139,6 +148,21 @@ const FILTROS_RAPIDOS = [
   { value: "MANUAL_LINK", label: "Manual com link" },
 ];
 
+const FILTROS_OPERACIONAIS = [
+  { value: "TODOS", label: "Todos" },
+  { value: "AGUARDANDO_PAGAMENTO", label: "Aguardando pagamento" },
+  { value: "PAGO", label: "Pago" },
+  { value: "EM_SEPARACAO", label: "Em separacao" },
+  { value: "SEPARADO", label: "Separado" },
+  { value: "RETIRADA", label: "Retirada" },
+  { value: "ENTREGA_MANUAL", label: "Entrega manual" },
+  { value: "MELHOR_ENVIO", label: "Melhor Envio" },
+  { value: "ENTREGUE", label: "Entregue" },
+  { value: "PROBLEMA", label: "Problema" },
+];
+
+void FILTROS_RAPIDOS;
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -224,6 +248,8 @@ function statusPedidoClass(status: string) {
 
   return "bg-slate-100 text-slate-600 ring-slate-200";
 }
+
+void statusPedidoClass;
 
 function labelStatusPagamento(status: string) {
   if (status === "AGUARDANDO_PAGAMENTO") return "Aguardando";
@@ -317,6 +343,8 @@ function isPedidoPagoAguardandoPreparo(pedido: PedidoOperacionalItem) {
   );
 }
 
+void isPedidoPagoAguardandoPreparo;
+
 function podePrepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
   return (
     isCanalLogisticoElegivel(pedido) &&
@@ -396,63 +424,26 @@ function isPedidoCanceladoOuExpirado(pedido: PedidoOperacionalItem) {
 function passaFiltroRapido(pedido: PedidoOperacionalItem, filtro: string) {
   if (filtro === "TODOS") return true;
 
-  if (filtro === "PAGAMENTO") {
-    return isPagamentoPendente(pedido);
+  const etapa = etapaOperacionalPedido(pedido);
+  const modalidade = modalidadeOperacional(pedido);
+
+  if (filtro === "RETIRADA") {
+    return modalidade === "RETIRADA";
   }
 
-  if (filtro === "PAGO_PREPARO") {
-    return isPedidoPagoAguardandoPreparo(pedido);
+  if (filtro === "ENTREGA_MANUAL") {
+    return modalidade === "ENTREGA_MANUAL";
   }
 
-  if (filtro === "PREPARAR_ENVIO") {
-    return podePrepararEnvioMelhorEnvio(pedido);
-  }
-
-  if (filtro === "COMPRAR_ETIQUETA") {
-    return podeComprarEtiquetaMelhorEnvio(pedido);
-  }
-
-  if (filtro === "GERAR_ETIQUETA") {
-    return podeGerarEtiquetaMelhorEnvio(pedido);
-  }
-
-  if (filtro === "PRONTO_IMPRESSAO") {
-    return podeImprimirEtiquetaEmLote(pedido);
-  }
-
-  if (filtro === "TRANSPORTE") {
-    return (
-      pedido.envio?.statusEnvio === "POSTADO" ||
-      pedido.envio?.statusEnvio === "EM_PREPARACAO" ||
-      pedido.envio?.statusEnvio === "SAIU_PARA_ENTREGA"
-    );
-  }
-
-  if (filtro === "ENTREGUE") {
-    return (
-      pedido.status === "PEDIDO_ENTREGUE" ||
-      pedido.status === "ENTREGUE" ||
-      pedido.envio?.statusEnvio === "ENTREGUE"
-    );
+  if (filtro === "MELHOR_ENVIO") {
+    return modalidade === "MELHOR_ENVIO";
   }
 
   if (filtro === "PROBLEMA") {
-    return (
-      isPedidoCanceladoOuExpirado(pedido) ||
-      pedido.status === "PROBLEMA" ||
-      pedido.status === "PROBLEMA_OPERACIONAL"
-    );
+    return etapa === "PROBLEMA_OPERACIONAL" || etapa === "CANCELADO";
   }
 
-  if (filtro === "RETIRADA") {
-    return pedido.envio?.tipoEntrega === "RETIRADA";
-  }
-
-  if (filtro === "MANUAL_LINK") {
-    return isPedidoManualComLink(pedido);
-  }
-
-  return true;
+  return etapa === filtro;
 }
 
 function pedidoCombinaBusca(pedido: PedidoOperacionalItem, busca: string) {
@@ -671,6 +662,27 @@ function isPedidoManualComLink(pedido: PedidoOperacionalItem) {
   );
 }
 
+void getAcaoRapidaStatus;
+
+function getAcaoPrincipalOperacional(pedido: PedidoOperacionalItem) {
+  const proximoPasso = proximoPassoOperacional(pedido);
+
+  if (!proximoPasso) {
+    return null;
+  }
+
+  const estilo = estiloEtapaOperacional(etapaOperacionalPedido(pedido));
+
+  return {
+    statusNovo: proximoPasso.statusNovo,
+    label: proximoPasso.label,
+    confirmacao: `${proximoPasso.label} do pedido ${pedido.codigo}?`,
+    observacao: proximoPasso.observacao,
+    descricao: proximoPasso.descricao,
+    className: estilo.buttonClass,
+  };
+}
+
 function origemPedidoLabel(pedido: PedidoOperacionalItem) {
   if (pedido.entregaManual) {
     return pedido.entregaManual.label;
@@ -824,7 +836,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   const contadoresFiltro = useMemo(() => {
     return new Map(
-      FILTROS_RAPIDOS.map((filtro) => [
+      FILTROS_OPERACIONAIS.map((filtro) => [
         filtro.value,
         pedidos.filter((pedido) => passaFiltroRapido(pedido, filtro.value))
           .length,
@@ -853,7 +865,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }, [pedidosFiltrados]);
 
   async function atualizarStatusRapido(pedido: PedidoOperacionalItem) {
-    const acaoRapida = getAcaoRapidaStatus(pedido);
+    const acaoRapida = getAcaoPrincipalOperacional(pedido);
 
     if (!acaoRapida) {
       return;
@@ -1216,7 +1228,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                 onChange={(event) => setFiltroRapido(event.target.value)}
                 className="h-10 w-full min-w-0 max-w-full truncate rounded-2xl border border-slate-300 bg-white px-3 text-base font-semibold text-slate-800 outline-none transition focus:border-slate-500"
               >
-                {FILTROS_RAPIDOS.map((filtro) => (
+                {FILTROS_OPERACIONAIS.map((filtro) => (
                   <option key={filtro.value} value={filtro.value}>
                     {filtro.label} ({contadoresFiltro.get(filtro.value) || 0})
                   </option>
@@ -1251,7 +1263,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         </div>
 
         <div className="mt-4 hidden flex-wrap gap-2 md:flex">
-          {FILTROS_RAPIDOS.map((filtro) => {
+          {FILTROS_OPERACIONAIS.map((filtro) => {
             const ativo = filtroRapido === filtro.value;
 
             return (
@@ -1413,6 +1425,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           {pedidosFiltrados.map((pedido) => {
             const acao = getMensagemAcao(pedido);
             const IconeAcao = acao.icon;
+            const etapa = etapaOperacionalPedido(pedido);
+            const estiloEtapa = estiloEtapaOperacional(etapa);
+            const modalidade = modalidadeOperacional(pedido);
+            const proximaAcaoMe = proximaAcaoMelhorEnvio(pedido);
 
             const possuiCupom =
               Boolean(pedido.cupomCodigo) && pedido.cupomDescontoValor > 0;
@@ -1421,7 +1437,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
             const possuiCashbackPrevisto = pedido.cashbackPrevistoValor > 0;
 
-            const acaoRapida = getAcaoRapidaStatus(pedido);
+            const acaoRapida = getAcaoPrincipalOperacional(pedido);
             const estaProcessando =
               processandoPedidoId === pedido.id || isPending;
             const pedidoManualComLink = isPedidoManualComLink(pedido);
@@ -1438,7 +1454,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             return (
               <article
                 key={pedido.id}
-                className={`relative flex w-full max-w-full min-w-0 flex-col gap-3 overflow-hidden px-3 py-3 transition hover:bg-slate-50 sm:px-5 xl:grid xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] xl:gap-4 ${
+                className={`relative flex w-full max-w-full min-w-0 flex-col gap-3 overflow-hidden border-l-4 px-3 py-3 transition hover:bg-slate-50 sm:px-5 xl:grid xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] xl:gap-4 ${estiloEtapa.cardClass} ${
                   destaquePedidoClass
                 }`}
               >
@@ -1463,12 +1479,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     </Link>
 
                     <span
-                      className={`inline-flex max-w-full min-w-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${statusPedidoClass(
-                        pedido.status,
-                      )}`}
+                      className={`inline-flex max-w-full min-w-0 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${estiloEtapa.badgeClass}`}
                     >
                       <span className="truncate">
-                        {labelStatusPedido(pedido.status)}
+                        {labelEtapaOperacional(etapa)}
                       </span>
                     </span>
 
@@ -1478,7 +1492,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                       )}`}
                     >
                       <span className="truncate">
-                        {origemPedidoLabel(pedido)}
+                        {labelModalidadeOperacional(modalidade)}
                       </span>
                     </span>
 
@@ -1504,7 +1518,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     className={`mt-1.5 inline-flex max-w-full items-center gap-1 text-xs font-semibold ${acao.className}`}
                   >
                     <IconeAcao className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{acao.label}</span>
+                    <span className="truncate">
+                      {proximaAcaoMe
+                        ? `Proxima acao ME: ${proximaAcaoMe}`
+                        : acaoRapida
+                          ? `Proximo passo: ${acaoRapida.label}`
+                          : acao.label}
+                    </span>
                   </p>
 
                   {pedido.alertasOperacionais &&
@@ -1534,7 +1554,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     item
                     {pedido.totalItensUnicos === 1 ? "" : "s"}
                   </p>
-                  {pedido.itens.length > 0 && (
+                  {pedido.itens.length > 0 && !pagamentoPendente && (
                     <div className="mt-2 max-w-full space-y-1 overflow-hidden">
                       {pedido.itens.slice(0, 3).map((item) => {
                         const textoOpcao = getTextoOpcaoProduto(
@@ -1736,7 +1756,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     </div>
                   )}
 
-                  {pedido.envio && (
+                  {pedido.envio && !pagamentoPendente && (
                     <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
                       <p className="font-semibold text-slate-900">
                         {pedido.envio.tipoEntrega === "RETIRADA"
@@ -2021,12 +2041,12 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         type="button"
                         onClick={() => atualizarStatusRapido(pedido)}
                         disabled={estaProcessando}
-                        className={`inline-flex h-8 min-w-0 items-center justify-center rounded-xl border px-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 ${acaoRapida.className}`}
+                        className={`inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${acaoRapida.className}`}
                       >
                         <span className="truncate">
                           {estaProcessando
                             ? "Atualizando..."
-                            : acaoRapida.label}
+                            : `Proximo passo: ${acaoRapida.label}`}
                         </span>
                       </button>
                     )}

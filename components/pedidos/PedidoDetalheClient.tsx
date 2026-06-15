@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CalendarClock,
@@ -15,6 +17,15 @@ import {
 import type { PedidoItemEmbalagemPresente } from "@/lib/pedidos/embalagens-presente";
 import type { PedidoAlertaOperacional } from "@/lib/pedidos/alertas-operacionais";
 import type { PedidoEntregaManual } from "@/lib/pedidos/entrega-manual";
+import {
+  etapaOperacionalPedido,
+  estiloEtapaOperacional,
+  labelEtapaOperacional,
+  labelModalidadeOperacional,
+  modalidadeOperacional,
+  proximaAcaoMelhorEnvio,
+  proximoPassoOperacional,
+} from "@/lib/pedidos/etapas-operacionais";
 import ImageBox from "@/components/ui/ImageBox";
 
 export type PedidoDetalhe = {
@@ -22,6 +33,11 @@ export type PedidoDetalhe = {
   codigo: string;
   status: string;
   origemCanal: string;
+  statusPagamento: string;
+  metodoPagamento: string | null;
+  gatewayPagamento: string | null;
+  pagoEm: string | null;
+  valorPago: number;
   codigoPedidoExterno?: string | null;
   statusExterno?: string | null;
   substatusExterno?: string | null;
@@ -176,6 +192,18 @@ function labelStatusPedido(status: string) {
   return status.replaceAll("_", " ");
 }
 
+function labelStatusPagamento(status: string) {
+  if (status === "AGUARDANDO_PAGAMENTO") return "Aguardando pagamento";
+  if (status === "PENDENTE") return "Pendente";
+  if (status === "PAGO") return "Pago";
+  if (status === "RECUSADO") return "Recusado";
+  if (status === "ESTORNADO") return "Estornado";
+  if (status === "CANCELADO") return "Cancelado";
+  if (status === "EXPIRADO") return "Expirado";
+
+  return status.replaceAll("_", " ");
+}
+
 function statusPedidoClass(status: string) {
   if (status === "PEDIDO_RECEBIDO") {
     return "border-blue-200 bg-blue-50 text-blue-700";
@@ -250,6 +278,15 @@ export default function PedidoDetalheClient({
 }: {
   pedido: PedidoDetalhe;
 }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [atualizandoStatus, setAtualizandoStatus] = useState(false);
+  const [erroOperacao, setErroOperacao] = useState("");
+  const etapa = etapaOperacionalPedido(pedido);
+  const estiloEtapa = estiloEtapaOperacional(etapa);
+  const modalidade = modalidadeOperacional(pedido);
+  const proximoPasso = proximoPassoOperacional(pedido);
+  const proximaAcaoMe = proximaAcaoMelhorEnvio(pedido);
   const subtotalProdutos = pedido.itens.reduce(
     (total, item) => total + valorSeguro(item.total),
     0
@@ -304,8 +341,130 @@ export default function PedidoDetalheClient({
   const possuiCashbackUsado = cashbackUsado > 0;
   const alertasOperacionais = pedido.alertasOperacionais || [];
 
+  async function executarProximoPasso() {
+    if (!proximoPasso) {
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `${proximoPasso.label} do pedido ${pedido.codigo}?`,
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErroOperacao("");
+    setAtualizandoStatus(true);
+
+    try {
+      const response = await fetch(`/api/pedidos/${pedido.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          statusNovo: proximoPasso.statusNovo,
+          origem: "DETALHE_PEDIDO",
+          usuarioNome: "Sistema",
+          observacao: proximoPasso.observacao,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroOperacao(data.error || "Erro ao atualizar status do pedido.");
+        return;
+      }
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setErroOperacao("Erro ao atualizar status do pedido.");
+    } finally {
+      setAtualizandoStatus(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <section className={`overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100`}>
+        <div className={`border-l-8 ${estiloEtapa.cardClass} p-5`}>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${estiloEtapa.badgeClass}`}
+                >
+                  {labelEtapaOperacional(etapa)}
+                </span>
+                <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                  {labelStatusPagamento(pedido.statusPagamento)}
+                </span>
+                <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                  {labelModalidadeOperacional(modalidade)}
+                </span>
+              </div>
+
+              <h2 className="mt-4 text-2xl font-bold text-slate-950">
+                {pedido.codigo} · {pedido.nomeCliente}
+              </h2>
+
+              <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
+                <p>
+                  <span className="font-semibold text-slate-900">Total:</span>{" "}
+                  {moeda(pedido.total)}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Pago:</span>{" "}
+                  {moeda(pedido.valorPago)}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Telefone:</span>{" "}
+                  {pedido.telefoneCliente || "Nao informado"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Criado:</span>{" "}
+                  {dataCompleta(pedido.criadoEm)}
+                </p>
+              </div>
+
+              {erroOperacao ? (
+                <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700 ring-1 ring-red-200">
+                  {erroOperacao}
+                </p>
+              ) : null}
+            </div>
+
+            <div className={`rounded-2xl px-4 py-4 ring-1 ${estiloEtapa.softClass}`}>
+              <p className="text-xs font-bold uppercase tracking-wide">
+                Proxima acao
+              </p>
+              <p className="mt-2 text-sm leading-6">
+                {proximoPasso?.descricao ||
+                  (proximaAcaoMe
+                    ? `Fluxo Melhor Envio: ${proximaAcaoMe}.`
+                    : "Nenhuma acao operacional pendente para esta etapa.")}
+              </p>
+
+              {proximoPasso ? (
+                <button
+                  type="button"
+                  onClick={executarProximoPasso}
+                  disabled={atualizandoStatus || isPending}
+                  className={`mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border px-4 py-2 text-sm font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${estiloEtapa.buttonClass}`}
+                >
+                  {atualizandoStatus || isPending
+                    ? "Atualizando..."
+                    : proximoPasso.label}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
