@@ -1792,6 +1792,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                               Endereco localizado de forma aproximada.
                             </p>
                           ) : null}
+                          {pedido.entregaManual.origemCoordenadaFixa ? (
+                            <p className="mt-1 inline-flex rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200">
+                              Origem por localizacao exata
+                            </p>
+                          ) : null}
                           {pedido.entregaManual.endereco && (
                             <p className="mt-1 line-clamp-2">
                               {pedido.entregaManual.endereco}

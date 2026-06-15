@@ -13,6 +13,8 @@ type EnderecoEntrega = {
   cidade?: string | null;
   estado?: string | null;
   uf?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   observacao?: string | null;
 };
 
@@ -26,8 +28,9 @@ type EnderecoGeocodificado = {
   enderecoFormatado: string;
   coordenadas: Coordenadas;
   encontrado: string;
-  precisao: "EXATA" | "APROXIMADA";
+  precisao: "EXATA" | "APROXIMADA" | "COORDENADA_FIXA";
   tentativa: string;
+  coordenadaFixa?: boolean;
 };
 
 type TentativaGeocodificacao = {
@@ -51,6 +54,23 @@ function numeroPositivo(value: unknown, fallback: number) {
     typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
 
   return Number.isFinite(numero) && numero > 0 ? numero : fallback;
+}
+
+function coordenada(value: unknown, min: number, max: number) {
+  if (
+    value === null ||
+    typeof value === "undefined" ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
+
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  return Number.isFinite(numero) && numero >= min && numero <= max
+    ? numero
+    : null;
 }
 
 function normalizarCep(value: unknown) {
@@ -119,6 +139,8 @@ function normalizarEndereco(value: unknown): EnderecoEntrega {
     cidade: texto(record.cidade),
     estado: normalizarUf(record.estado ?? record.uf),
     uf: normalizarUf(record.uf ?? record.estado),
+    latitude: coordenada(record.latitude, -90, 90),
+    longitude: coordenada(record.longitude, -180, 180),
     observacao: texto(record.observacao),
   };
 }
@@ -148,6 +170,21 @@ function enderecoFormatado(endereco: EnderecoEntrega) {
     .join(", ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function temCoordenadas(endereco: EnderecoEntrega) {
+  return (
+    typeof endereco.latitude === "number" &&
+    Number.isFinite(endereco.latitude) &&
+    typeof endereco.longitude === "number" &&
+    Number.isFinite(endereco.longitude)
+  );
+}
+
+function coordenadasParaMaps(endereco: EnderecoEntrega) {
+  return temCoordenadas(endereco)
+    ? `${endereco.latitude},${endereco.longitude}`
+    : enderecoFormatado(endereco);
 }
 
 function montarPartesEndereco(partes: unknown[]) {
@@ -212,8 +249,8 @@ function resumoEndereco(endereco: EnderecoEntrega) {
 function montarMapsUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
   const params = new URLSearchParams({
     api: "1",
-    origin: enderecoFormatado(origem),
-    destination: enderecoFormatado(destino),
+    origin: coordenadasParaMaps(origem),
+    destination: coordenadasParaMaps(destino),
     travelmode: "driving",
   });
 
@@ -250,6 +287,8 @@ function montarEnderecoOrigemFrete(
     cidade: config.remetenteCidade,
     estado: config.remetenteUf,
     uf: config.remetenteUf,
+    latitude: null,
+    longitude: null,
   };
 }
 
@@ -263,6 +302,8 @@ function serializarOrigem(origem: {
   bairro: string;
   cidade: string;
   uf: string;
+  latitude: number | null;
+  longitude: number | null;
   observacao: string | null;
   padrao: boolean;
   ativo: boolean;
@@ -278,6 +319,8 @@ function serializarOrigem(origem: {
     cidade: origem.cidade,
     estado: origem.uf,
     uf: origem.uf,
+    latitude: origem.latitude,
+    longitude: origem.longitude,
     observacao: origem.observacao,
   };
 
@@ -514,15 +557,55 @@ async function geocodificarOpenRoute(
   };
 }
 
+function geocodificarCoordenadaFixa(
+  endereco: EnderecoEntrega,
+): EnderecoGeocodificado {
+  if (!temCoordenadas(endereco)) {
+    throw new Error("Origem sem coordenadas fixas validas.");
+  }
+
+  return {
+    endereco,
+    enderecoFormatado: enderecoFormatado(endereco),
+    encontrado: resumoEndereco(endereco),
+    precisao: "COORDENADA_FIXA",
+    tentativa: "coordenada_fixa",
+    coordenadaFixa: true,
+    coordenadas: {
+      latitude: endereco.latitude as number,
+      longitude: endereco.longitude as number,
+    },
+  };
+}
+
 async function calcularRotaOpenRoute(
   origem: EnderecoEntrega,
   destino: EnderecoEntrega,
   key: string,
 ) {
-  const [origemGeo, destinoGeo] = await Promise.all([
-    geocodificarOpenRoute(origem, key),
-    geocodificarOpenRoute(destino, key),
-  ]);
+  let origemGeo: EnderecoGeocodificado;
+  let destinoGeo: EnderecoGeocodificado;
+
+  try {
+    origemGeo = temCoordenadas(origem)
+      ? geocodificarCoordenadaFixa(origem)
+      : await geocodificarOpenRoute(origem, key);
+  } catch {
+    throw new Error(
+      "Nao foi possivel localizar a origem. Cadastre latitude e longitude na origem de despacho.",
+    );
+  }
+
+  try {
+    destinoGeo = temCoordenadas(destino)
+      ? geocodificarCoordenadaFixa(destino)
+      : await geocodificarOpenRoute(destino, key);
+  } catch {
+    throw new Error(
+      "Nao encontramos o destino com seguranca. Confira CEP, rua e numero ou preencha valor da entrega manualmente.",
+    );
+  }
+
   const params = new URLSearchParams({
     api_key: key,
     start: `${origemGeo.coordenadas.longitude},${origemGeo.coordenadas.latitude}`,
@@ -618,6 +701,12 @@ export async function POST(req: Request) {
           destinoResumo: resumoEndereco(destino),
           origemEnderecoFormatado: enderecoFormatado(origem),
           destinoEnderecoFormatado: enderecoFormatado(destino),
+          origemCoordenadas: temCoordenadas(origem)
+            ? { latitude: origem.latitude, longitude: origem.longitude }
+            : null,
+          precisaoOrigem: temCoordenadas(origem) ? "COORDENADA_FIXA" : "",
+          origemPrecisao: temCoordenadas(origem) ? "COORDENADA_FIXA" : "",
+          origemCoordenadaFixa: temCoordenadas(origem),
           mapsUrl: montarMapsUrl(origem, destino),
           error:
             "Configure OPENROUTE_API_KEY para calcular distancia automaticamente.",
@@ -663,6 +752,8 @@ export async function POST(req: Request) {
           precisaoDestino: rota.destinoGeo.precisao,
           origemEncontrada: rota.origemGeo.encontrado,
           destinoEncontrado: rota.destinoGeo.encontrado,
+          origemPrecisao: rota.origemGeo.precisao,
+          origemCoordenadaFixa: Boolean(rota.origemGeo.coordenadaFixa),
           providerDistancia: "openroute",
           mapsUrl: montarMapsUrl(origem, destino),
           calculoAutomatico: false,
@@ -729,6 +820,8 @@ export async function POST(req: Request) {
       precisaoDestino: rota.destinoGeo.precisao,
       origemEncontrada: rota.origemGeo.encontrado,
       destinoEncontrado: rota.destinoGeo.encontrado,
+      origemPrecisao: rota.origemGeo.precisao,
+      origemCoordenadaFixa: Boolean(rota.origemGeo.coordenadaFixa),
       calculoAutomatico: true,
     });
   } catch (error) {
@@ -737,6 +830,12 @@ export async function POST(req: Request) {
     const message =
       error instanceof Error ? error.message : "Erro ao calcular entrega manual.";
 
-    return NextResponse.json({ error: message }, { status: 400 });
+    const errorTipo = message.includes("localizar a origem")
+      ? "ORIGEM_GEOCODIFICACAO"
+      : message.includes("destino")
+        ? "DESTINO_GEOCODIFICACAO"
+        : "CALCULO_ENTREGA_MANUAL";
+
+    return NextResponse.json({ error: message, errorTipo }, { status: 400 });
   }
 }

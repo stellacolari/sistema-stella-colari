@@ -1090,6 +1090,8 @@ model LojaEntregaManualOrigem {
   bairro      String
   cidade      String
   uf          String
+  latitude    Float?
+  longitude   Float?
   observacao  String?
   padrao      Boolean  @default(false)
   ativo       Boolean  @default(true)

@@ -39,6 +39,8 @@ export type EnvioPedidoManualOnlinePayload = {
     bairro?: string | null;
     cidade?: string | null;
     estado?: string | null;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
     observacao?: string | null;
   } | null;
   kmIda?: number | string | null;
@@ -66,6 +68,7 @@ export type EnvioPedidoManualOnlinePayload = {
   precisaoDestino?: string | null;
   origemEncontrada?: string | null;
   destinoEncontrado?: string | null;
+  origemCoordenadaFixa?: boolean | null;
   erroCalculo?: string | null;
   mapsUrl?: string | null;
   mapsEmbedUrl?: string | null;
@@ -190,6 +193,23 @@ function numeroNaoNegativoOuNull(value: unknown) {
     typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
 
   return Number.isFinite(numero) && numero >= 0 ? numero : null;
+}
+
+function coordenadaOuNull(value: unknown, min: number, max: number) {
+  if (
+    value === null ||
+    typeof value === "undefined" ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
+
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  return Number.isFinite(numero) && numero >= min && numero <= max
+    ? numero
+    : null;
 }
 
 function normalizarModalidadeEntrega(
@@ -375,6 +395,8 @@ function montarOrigemDespachoSnapshotEnvio(
     bairro: texto(origem.bairro) || null,
     cidade: texto(origem.cidade) || null,
     estado: normalizarUf(origem.estado) || null,
+    latitude: coordenadaOuNull(origem.latitude, -90, 90),
+    longitude: coordenadaOuNull(origem.longitude, -180, 180),
     observacao: texto(origem.observacao) || null,
   };
 }
@@ -481,6 +503,7 @@ function montarEntregaManual(
     precisaoDestino: texto(envio.precisaoDestino) || null,
     origemEncontrada: texto(envio.origemEncontrada) || null,
     destinoEncontrado: texto(envio.destinoEncontrado) || null,
+    origemCoordenadaFixa: Boolean(envio.origemCoordenadaFixa),
     erroCalculo: texto(envio.erroCalculo) || null,
     mapsUrl: texto(envio.mapsUrl) || null,
     mapsEmbedUrl: texto(envio.mapsEmbedUrl) || null,

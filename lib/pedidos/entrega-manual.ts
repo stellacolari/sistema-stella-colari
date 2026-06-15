@@ -25,6 +25,9 @@ export type PedidoEntregaManual = {
   precisaoDestino: string | null;
   origemEncontrada: string | null;
   destinoEncontrado: string | null;
+  origemCoordenadaFixa: boolean;
+  origemLatitude: number | null;
+  origemLongitude: number | null;
   erroCalculo: string | null;
   origem: string | null;
   observacao: string | null;
@@ -67,6 +70,12 @@ function numero(value: unknown) {
   const parsed = Number(value);
 
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function coordenada(value: unknown, min: number, max: number) {
+  const parsed = numero(value);
+
+  return parsed !== null && parsed >= min && parsed <= max ? parsed : null;
 }
 
 function normalizarTexto(value: unknown) {
@@ -145,6 +154,25 @@ function normalizarEntregaManual(
   const kmIda = numero(record.distanciaIdaKm ?? record.kmIda ?? record.kmEstimado);
   const distanciaPossivelmenteIncorreta =
     Boolean(kmIda && kmIda > 100) && mesmaCidadeUf(record);
+  const origemCoordenadas = isRecord(record.origemCoordenadas)
+    ? record.origemCoordenadas
+    : null;
+  const origemSnapshot = isRecord(record.origemDespachoSnapshot)
+    ? record.origemDespachoSnapshot
+    : null;
+  const origemLatitude = coordenada(
+    origemCoordenadas?.latitude ?? origemSnapshot?.latitude,
+    -90,
+    90,
+  );
+  const origemLongitude = coordenada(
+    origemCoordenadas?.longitude ?? origemSnapshot?.longitude,
+    -180,
+    180,
+  );
+  const origemCoordenadaFixa =
+    Boolean(record.origemCoordenadaFixa) ||
+    texto(record.precisaoOrigem) === "COORDENADA_FIXA";
 
   return {
     modalidade,
@@ -173,9 +201,12 @@ function normalizarEntregaManual(
     precisaoDestino: texto(record.precisaoDestino),
     origemEncontrada: texto(record.origemEncontrada),
     destinoEncontrado: texto(record.destinoEncontrado),
+    origemCoordenadaFixa,
+    origemLatitude,
+    origemLongitude,
     erroCalculo: texto(record.erroCalculo),
-    origem: isRecord(record.origemDespachoSnapshot)
-      ? montarEndereco(record.origemDespachoSnapshot)
+    origem: origemSnapshot
+      ? montarEndereco(origemSnapshot)
       : texto(record.origemResumo),
     observacao: texto(record.observacao ?? record.observacaoManual),
     endereco: montarEndereco(record),

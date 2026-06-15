@@ -97,6 +97,8 @@ type EnderecoEntrega = {
   bairro: string;
   cidade: string;
   estado: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 };
 
 type OrigemEntregaManualInfo = {
@@ -110,6 +112,8 @@ type OrigemEntregaManualInfo = {
   cidade: string;
   estado?: string;
   uf: string;
+  latitude: number | null;
+  longitude: number | null;
   observacao: string | null;
   padrao: boolean;
   ativo: boolean;
@@ -425,6 +429,34 @@ function numeroInputOuNull(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function coordenadaInputOuNull(value: string, min: number, max: number) {
+  if (!String(value || "").trim()) {
+    return null;
+  }
+
+  const parsed = Number(String(value).replace(",", "."));
+
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max
+    ? parsed
+    : null;
+}
+
+function temCoordenadas(
+  endereco?: { latitude?: unknown; longitude?: unknown } | null,
+) {
+  const latitude = Number(endereco?.latitude);
+  const longitude = Number(endereco?.longitude);
+
+  return (
+    Number.isFinite(latitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    Number.isFinite(longitude) &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
 function linkCompacto(url: string) {
   try {
     const parsed = new URL(url);
@@ -471,6 +503,12 @@ function enderecoParaMaps(endereco: Partial<EnderecoEntrega>) {
     .join(", ");
 }
 
+function origemParaMaps(endereco: Partial<EnderecoEntrega>) {
+  return temCoordenadas(endereco)
+    ? `${Number(endereco.latitude)},${Number(endereco.longitude)}`
+    : enderecoParaMaps(endereco);
+}
+
 function montarGoogleMapsUrl(
   origem?: Partial<EnderecoEntrega> | null,
   destino?: Partial<EnderecoEntrega> | null,
@@ -481,7 +519,7 @@ function montarGoogleMapsUrl(
 
   const params = new URLSearchParams({
     api: "1",
-    origin: enderecoParaMaps(origem!),
+    origin: origemParaMaps(origem!),
     destination: enderecoParaMaps(destino!),
     travelmode: "driving",
   });
@@ -504,6 +542,8 @@ function origemParaEndereco(
     bairro: origem.bairro,
     cidade: origem.cidade,
     estado: origem.uf || origem.estado || "",
+    latitude: origem.latitude,
+    longitude: origem.longitude,
   };
 }
 
@@ -611,6 +651,8 @@ export default function NovaVendaV2Client({
     bairro: "",
     cidade: "",
     uf: "",
+    latitude: "",
+    longitude: "",
     observacao: "",
     padrao: false,
   });
@@ -651,6 +693,8 @@ export default function NovaVendaV2Client({
     precisaoDestino: "",
     origemEncontrada: "",
     destinoEncontrado: "",
+    origemCoordenadaFixa: false,
+    erroOrigemLocalizacao: false,
     erroCalculo: "",
     observacaoManual: "",
   });
@@ -1023,6 +1067,8 @@ export default function NovaVendaV2Client({
         precisaoDestino: "",
         origemEncontrada: "",
         destinoEncontrado: "",
+        origemCoordenadaFixa: false,
+        erroOrigemLocalizacao: false,
         erroCalculo: "",
       }));
       setStatusCalculoEntrega("Preencha CEP e número.");
@@ -1071,6 +1117,8 @@ export default function NovaVendaV2Client({
       precisaoDestino: "",
       origemEncontrada: "",
       destinoEncontrado: "",
+      origemCoordenadaFixa: false,
+      erroOrigemLocalizacao: false,
       erroCalculo: "",
     }));
     setStatusCalculoEntrega("Preencha CEP e número.");
@@ -1088,6 +1136,8 @@ export default function NovaVendaV2Client({
       bairro: "",
       cidade: "",
       uf: "",
+      latitude: "",
+      longitude: "",
       observacao: "",
       padrao: origensEntregaManual.every((origem) => origem.origemSistema),
     });
@@ -1108,8 +1158,45 @@ export default function NovaVendaV2Client({
       bairro: origem.bairro || "",
       cidade: origem.cidade || "",
       uf: origem.uf || origem.estado || "",
+      latitude:
+        origem.latitude === null || typeof origem.latitude === "undefined"
+          ? ""
+          : String(origem.latitude),
+      longitude:
+        origem.longitude === null || typeof origem.longitude === "undefined"
+          ? ""
+          : String(origem.longitude),
       observacao: origem.observacao || "",
       padrao: Boolean(origem.padrao),
+    });
+    setGerenciarOrigensAberto(true);
+  }
+
+  function abrirOrigemSelecionadaParaCoordenadas() {
+    if (!origemEntregaManual) {
+      setGerenciarOrigensAberto(true);
+      return;
+    }
+
+    if (!origemEntregaManual.origemSistema) {
+      editarOrigemForm(origemEntregaManual);
+      return;
+    }
+
+    setOrigemEditandoId(null);
+    setOrigemForm({
+      nome: origemEntregaManual.nome || "Origem",
+      cep: origemEntregaManual.cep || "",
+      rua: origemEntregaManual.rua || "",
+      numero: origemEntregaManual.numero || "",
+      complemento: origemEntregaManual.complemento || "",
+      bairro: origemEntregaManual.bairro || "",
+      cidade: origemEntregaManual.cidade || "",
+      uf: origemEntregaManual.uf || origemEntregaManual.estado || "",
+      latitude: "",
+      longitude: "",
+      observacao: origemEntregaManual.observacao || "",
+      padrao: true,
     });
     setGerenciarOrigensAberto(true);
   }
@@ -1182,13 +1269,30 @@ export default function NovaVendaV2Client({
     setErroFrete("");
 
     try {
+      const latitudePreenchida = String(origemForm.latitude || "").trim();
+      const longitudePreenchida = String(origemForm.longitude || "").trim();
+      const latitude = coordenadaInputOuNull(origemForm.latitude, -90, 90);
+      const longitude = coordenadaInputOuNull(origemForm.longitude, -180, 180);
+
+      if (
+        (latitudePreenchida || longitudePreenchida) &&
+        (latitude === null || longitude === null)
+      ) {
+        setErroFrete("Informe latitude entre -90 e 90 e longitude entre -180 e 180.");
+        return;
+      }
+
       const url = origemEditandoId
         ? `/api/vendas/entrega-manual/origens/${origemEditandoId}`
         : "/api/vendas/entrega-manual/origens";
       const response = await fetch(url, {
         method: origemEditandoId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(origemForm),
+        body: JSON.stringify({
+          ...origemForm,
+          latitude,
+          longitude,
+        }),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -1432,6 +1536,8 @@ export default function NovaVendaV2Client({
             id: origemEntregaManual?.id,
             nome: origemEntregaManual?.nome,
             uf: origem?.estado,
+            latitude: origemEntregaManual?.latitude,
+            longitude: origemEntregaManual?.longitude,
             observacao: origemEntregaManual?.observacao,
           },
           destino: entrega,
@@ -1475,6 +1581,10 @@ export default function NovaVendaV2Client({
           precisaoDestino: String(data.precisaoDestino || ""),
           origemEncontrada: String(data.origemEncontrada || ""),
           destinoEncontrado: String(data.destinoEncontrado || ""),
+          origemCoordenadaFixa: Boolean(
+            data.origemCoordenadaFixa || temCoordenadas(origemEntregaManual),
+          ),
+          erroOrigemLocalizacao: data.errorTipo === "ORIGEM_GEOCODIFICACAO",
           erroCalculo,
           calculoAutomatico: false,
         }));
@@ -1514,6 +1624,8 @@ export default function NovaVendaV2Client({
         precisaoDestino: String(data.precisaoDestino || ""),
         origemEncontrada: String(data.origemEncontrada || ""),
         destinoEncontrado: String(data.destinoEncontrado || ""),
+        origemCoordenadaFixa: Boolean(data.origemCoordenadaFixa),
+        erroOrigemLocalizacao: false,
         erroCalculo: "",
         calculoAutomatico: true,
       }));
@@ -1590,6 +1702,8 @@ export default function NovaVendaV2Client({
               bairro: origemEntregaManual?.bairro || null,
               cidade: origemEntregaManual?.cidade || null,
               estado: origemEntregaManual?.uf || origemEntregaManual?.estado || null,
+              latitude: origemEntregaManual?.latitude ?? null,
+              longitude: origemEntregaManual?.longitude ?? null,
               observacao: origemEntregaManual?.observacao || null,
             }
           : null,
@@ -1637,6 +1751,7 @@ export default function NovaVendaV2Client({
       precisaoDestino: entregaManual.precisaoDestino || null,
       origemEncontrada: entregaManual.origemEncontrada || null,
       destinoEncontrado: entregaManual.destinoEncontrado || null,
+      origemCoordenadaFixa: entregaManual.origemCoordenadaFixa,
       erroCalculo: entregaManual.erroCalculo || null,
       mapsUrl:
         modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
@@ -2957,6 +3072,17 @@ export default function NovaVendaV2Client({
                                     ? "Carregando origem..."
                                     : origemEntregaResumoCurto}
                                 </p>
+                                <span
+                                  className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                    temCoordenadas(origemEntregaManual)
+                                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                      : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+                                  }`}
+                                >
+                                  {temCoordenadas(origemEntregaManual)
+                                    ? "Localizacao exata configurada"
+                                    : "Usando endereco textual"}
+                                </span>
                               </div>
                               <div className="flex shrink-0 flex-wrap justify-end gap-2">
                                 <button
@@ -3001,6 +3127,17 @@ export default function NovaVendaV2Client({
                                     <span className="mt-1 block leading-5">
                                       {origem.resumo}
                                     </span>
+                                    <span
+                                      className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                        temCoordenadas(origem)
+                                          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                          : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+                                      }`}
+                                    >
+                                      {temCoordenadas(origem)
+                                        ? "Localizacao exata configurada"
+                                        : "Usando endereco textual"}
+                                    </span>
                                   </button>
                                 ))}
                               </div>
@@ -3023,6 +3160,17 @@ export default function NovaVendaV2Client({
                                           <p className="mt-1 leading-5">
                                             {origem.resumo}
                                           </p>
+                                          <span
+                                            className={`mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${
+                                              temCoordenadas(origem)
+                                                ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                                : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+                                            }`}
+                                          >
+                                            {temCoordenadas(origem)
+                                              ? "Localizacao exata configurada"
+                                              : "Usando endereco textual"}
+                                          </span>
                                         </div>
                                         {!origem.origemSistema ? (
                                           <div className="flex shrink-0 gap-2">
@@ -3193,6 +3341,66 @@ export default function NovaVendaV2Client({
                                         className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm uppercase outline-none transition focus:border-slate-500"
                                       />
                                     </label>
+                                  </div>
+                                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div>
+                                        <p className="text-sm font-semibold text-slate-950">
+                                          Localizacao exata para calculo
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                                          Use coordenadas quando o endereco nao for encontrado com seguranca pelo Maps/OpenRoute.
+                                        </p>
+                                      </div>
+                                      <a
+                                        href="https://support.google.com/maps/answer/18539"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-xs font-semibold text-slate-700 underline"
+                                      >
+                                        Como pegar coordenadas no Google Maps
+                                      </a>
+                                    </div>
+                                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                      <label>
+                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                          Latitude
+                                        </span>
+                                        <input
+                                          value={origemForm.latitude}
+                                          onChange={(event) =>
+                                            setOrigemForm((atual) => ({
+                                              ...atual,
+                                              latitude: event.target.value,
+                                            }))
+                                          }
+                                          placeholder="-22.435000"
+                                          className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                        />
+                                      </label>
+                                      <label>
+                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                          Longitude
+                                        </span>
+                                        <input
+                                          value={origemForm.longitude}
+                                          onChange={(event) =>
+                                            setOrigemForm((atual) => ({
+                                              ...atual,
+                                              longitude: event.target.value,
+                                            }))
+                                          }
+                                          placeholder="-46.820000"
+                                          className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                        />
+                                      </label>
+                                    </div>
+                                    <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs leading-5 text-slate-600 ring-1 ring-slate-200">
+                                      <p>Abra o local no Google Maps.</p>
+                                      <p>Clique com o botao direito no ponto exato.</p>
+                                      <p>Copie os numeros de latitude e longitude.</p>
+                                      <p>Cole aqui.</p>
+                                    </div>
                                   </div>
                                   <label>
                                     <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -3510,12 +3718,28 @@ export default function NovaVendaV2Client({
                               </div>
                             ) : null}
 
+                            {entregaManual.origemCoordenadaFixa ? (
+                              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+                                Origem calculada por localizacao exata configurada.
+                              </p>
+                            ) : null}
+
                             {entregaManual.calculoAutomatico &&
                             (entregaManual.precisaoOrigem === "APROXIMADA" ||
                               entregaManual.precisaoDestino === "APROXIMADA") ? (
                               <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
                                 Endereco localizado de forma aproximada. Confira a rota no Maps antes de confirmar.
                               </p>
+                            ) : null}
+
+                            {entregaManual.erroOrigemLocalizacao ? (
+                              <button
+                                type="button"
+                                onClick={abrirOrigemSelecionadaParaCoordenadas}
+                                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+                              >
+                                Adicionar localizacao exata na origem
+                              </button>
                             ) : null}
 
                             <label className="mt-3 block">

@@ -13,6 +13,34 @@ function normalizarUf(value: unknown) {
   return texto(value).toUpperCase().slice(0, 2);
 }
 
+function normalizarCoordenada(value: unknown, min: number, max: number) {
+  if (
+    value === null ||
+    typeof value === "undefined" ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
+
+  const numero =
+    typeof value === "string" ? Number(value.replace(",", ".")) : Number(value);
+
+  if (!Number.isFinite(numero) || numero < min || numero > max) {
+    return Number.NaN;
+  }
+
+  return numero;
+}
+
+function coordenadasInvalidas(data: { latitude: number | null; longitude: number | null }) {
+  return (
+    Number.isNaN(data.latitude) ||
+    Number.isNaN(data.longitude) ||
+    (data.latitude === null && data.longitude !== null) ||
+    (data.latitude !== null && data.longitude === null)
+  );
+}
+
 function enderecoCompleto(origem: {
   cep?: string | null;
   rua?: string | null;
@@ -66,6 +94,8 @@ function normalizarBody(body: Record<string, unknown>) {
     bairro: texto(body.bairro),
     cidade: texto(body.cidade),
     uf: normalizarUf(body.uf ?? body.estado),
+    latitude: normalizarCoordenada(body.latitude, -90, 90),
+    longitude: normalizarCoordenada(body.longitude, -180, 180),
     observacao: texto(body.observacao) || null,
     padrao: Boolean(body.padrao),
   };
@@ -81,6 +111,8 @@ function serializarOrigem(origem: {
   bairro: string;
   cidade: string;
   uf: string;
+  latitude: number | null;
+  longitude: number | null;
   observacao: string | null;
   padrao: boolean;
   ativo: boolean;
@@ -108,6 +140,13 @@ export async function PUT(
     if (!enderecoCompleto(data)) {
       return NextResponse.json(
         { error: "Preencha nome, CEP, rua, número, bairro, cidade e UF." },
+        { status: 400 },
+      );
+    }
+
+    if (coordenadasInvalidas(data)) {
+      return NextResponse.json(
+        { error: "Informe latitude entre -90 e 90 e longitude entre -180 e 180." },
         { status: 400 },
       );
     }
