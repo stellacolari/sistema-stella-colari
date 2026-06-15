@@ -452,11 +452,11 @@ export default function ResumoClientesClient({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Resumo
+              Relatório
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Resumo de Clientes
+              Relatório de Clientes
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
@@ -465,12 +465,21 @@ export default function ResumoClientesClient({
             </p>
           </div>
 
-          <Link
-            href="/clientes/novo"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Novo cliente
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/relatorios"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Voltar para Relatórios
+            </Link>
+
+            <Link
+              href="/clientes/novo"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Novo cliente
+            </Link>
+          </div>
         </div>
       </section>
 

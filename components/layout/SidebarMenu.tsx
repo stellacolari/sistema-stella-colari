@@ -188,7 +188,7 @@ const menuSections: MenuSection[] = [
         href: "/relatorios",
         label: "Relatórios",
         icon: BarChart3,
-        description: "Resumos de vendas, estoque e clientes",
+        description: "Vendas, estoque, clientes e financeiro",
         exact: true,
         activePrefixes: ["/resumos"],
       },

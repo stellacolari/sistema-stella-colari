@@ -6,7 +6,7 @@ import ResumoVendasClient, {
 } from "@/components/resumos/vendas/ResumoVendasClient";
 
 export const metadata: Metadata = {
-  title: "Resumo de Vendas | Plataforma Stella Colari",
+  title: "Relatório de Vendas | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";

@@ -252,7 +252,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Gestao",
       title: "Relatorios",
-      description: "Indicadores e resumos da operacao.",
+      description: "Vendas, estoque, clientes e gestao financeira.",
       showLojaButton: false,
     };
   }
@@ -260,7 +260,7 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/resumos/vendas")) {
     return {
       eyebrow: "Relatorios",
-      title: "Resumo de vendas",
+      title: "Relatorio de vendas",
       description: "Indicadores, filtros e rankings de venda.",
       showLojaButton: false,
     };
@@ -269,7 +269,7 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/resumos/clientes")) {
     return {
       eyebrow: "Relatorios",
-      title: "Resumo de clientes",
+      title: "Relatorio de clientes",
       description: "Perfil, recorrencia e desempenho de clientes.",
       showLojaButton: false,
     };
@@ -278,7 +278,7 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/resumos/estoque")) {
     return {
       eyebrow: "Relatorios",
-      title: "Resumo de estoque",
+      title: "Relatorio de estoque",
       description: "Valor acumulado, itens criticos e rankings.",
       showLojaButton: false,
     };

@@ -339,7 +339,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
           value={moeda(data.cards.totalVendido)}
           description={`${numero(data.cards.vendasAtivas)} venda(s)/pedido(s) pago(s). Online: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
           icon={<ShoppingBag className="h-5 w-5" />}
-          href="/resumos/vendas"
+          href="/relatorios"
           tone="emerald"
         />
 
@@ -348,7 +348,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
           value={moeda(data.cards.lucroTotal)}
           description={`Gasto de vendas e pedidos online efetivados: ${moeda(data.cards.gastoTotalVendas)}.`}
           icon={<TrendingUp className="h-5 w-5" />}
-          href="/resumos/vendas"
+          href="/relatorios"
           tone="blue"
         />
 

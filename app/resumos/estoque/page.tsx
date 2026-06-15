@@ -6,7 +6,7 @@ import ResumoEstoqueClient, {
 } from "@/components/resumos/estoque/ResumoEstoqueClient";
 
 export const metadata: Metadata = {
-  title: "Resumo de Estoque | Sistema Stella",
+  title: "Relatório de Estoque | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";
