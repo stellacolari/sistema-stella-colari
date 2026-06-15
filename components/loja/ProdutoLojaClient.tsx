@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -292,9 +293,11 @@ function LogoLoja() {
   return (
     <Link href="/loja" className="flex shrink-0 items-center">
       {!logoErro && (
-        <img
+        <Image
           src={LOGO_URL}
           alt="Stella"
+          width={150}
+          height={40}
           onError={() => setLogoErro(true)}
           className="h-10 w-auto object-contain"
         />
@@ -450,7 +453,7 @@ function ProdutoFamiliaSection({
 }: {
   produtos: ProdutoLojaFamiliaProduto[];
 }) {
-  const opcoes = produtos.filter((item) => produtos.length > 1);
+  const opcoes = produtos.filter(() => produtos.length > 1);
 
   if (opcoes.length <= 1) {
     return null;
@@ -593,8 +596,14 @@ export default function ProdutoLojaClient({
   const router = useRouter();
   const thumbsRef = useRef<HTMLDivElement | null>(null);
 
-  const opcoesAdicionais = produto.opcoesAdicionais || [];
-  const embalagensPresente = produto.embalagensPresente || [];
+  const opcoesAdicionais = useMemo(
+    () => produto.opcoesAdicionais || [],
+    [produto.opcoesAdicionais],
+  );
+  const embalagensPresente = useMemo(
+    () => produto.embalagensPresente || [],
+    [produto.embalagensPresente],
+  );
   const variacaoPrincipal = getVariacaoPrincipalProduto(produto);
   const temVariacao = produtoTemVariacao(produto);
   const familiaProdutos = produto.familiaProdutos || [];

@@ -4,17 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   BarChart3,
-  CalendarClock,
   Filter,
   RefreshCcw,
   Search,
   ShoppingBag,
   TrendingUp,
-  UserCheck,
-  UserRound,
   Users,
-  UserX,
-  Wallet,
 } from "lucide-react";
 
 export type ResumoClienteItem = {

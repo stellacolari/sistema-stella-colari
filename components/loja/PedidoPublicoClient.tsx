@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   CheckCircle2,
   CreditCard,
-  Gift,
   MapPin,
   Package,
   ShoppingBag,

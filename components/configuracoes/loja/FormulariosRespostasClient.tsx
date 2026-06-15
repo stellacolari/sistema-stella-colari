@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Phone,
   Search,
-  UserCheck,
   X,
 } from "lucide-react";
 

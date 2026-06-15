@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Archive,
   CheckCircle2,
-  Copy,
-  Edit3,
   Eye,
   FileText,
   FolderTree,
@@ -210,7 +208,7 @@ export default function PaginasLojaClient({
   categorias: CategoriaPaginaBuilderOption[];
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const [busca, setBusca] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("TODOS");

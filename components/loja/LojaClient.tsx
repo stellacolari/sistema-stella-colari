@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import MenuPublicoLoja, {
@@ -110,9 +111,11 @@ function LogoLoja() {
   return (
     <Link href="/loja" className="flex shrink-0 items-center">
       {!logoErro && (
-        <img
+        <Image
           src={LOGO_URL}
           alt="Stella"
+          width={180}
+          height={48}
           onError={() => setLogoErro(true)}
           className="h-12 w-auto object-contain sm:h-8"
         />

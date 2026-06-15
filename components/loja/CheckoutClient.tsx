@@ -12,7 +12,13 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+} from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
 
@@ -400,7 +406,7 @@ export default function CheckoutClient({
     null
   );
   const [cashbackUsoInput, setCashbackUsoInput] = useState("");
-  const [pedidoFinalizado, setPedidoFinalizado] = useState<{
+  const [pedidoFinalizado] = useState<{
     codigo: string;
     cashbackPrevistoValor: number;
   } | null>(null);
@@ -597,7 +603,7 @@ function atualizarCampo(campo: keyof typeof form, valor: string) {
     [campo]: campo === "estado" ? valor.toUpperCase() : valor,
   }));
 }
-async function buscarEnderecoPorCep(cepInformado?: string) {
+const buscarEnderecoPorCep = useCallback(async (cepInformado?: string) => {
   const cep = String(cepInformado || form.cep || "").replace(/\D/g, "");
 
   setErroCep("");
@@ -642,7 +648,7 @@ async function buscarEnderecoPorCep(cepInformado?: string) {
   } finally {
     setBuscandoCep(false);
   }
-}
+}, [form.cep]);
 useEffect(() => {
   const cep = form.cep.replace(/\D/g, "");
 
@@ -659,7 +665,7 @@ useEffect(() => {
   }, 500);
 
   return () => window.clearTimeout(timer);
-}, [form.cep, ultimoCepBuscado]);
+}, [buscarEnderecoPorCep, form.cep, ultimoCepBuscado]);
 
   const assinaturaCotacaoFrete = useMemo(() => {
     const cep = form.cep.replace(/\D/g, "");

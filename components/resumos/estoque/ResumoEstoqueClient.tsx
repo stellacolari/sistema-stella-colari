@@ -4,14 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowDownUp,
   Boxes,
   Filter,
   Package,
   RefreshCcw,
   Search,
-  TrendingDown,
-  TrendingUp,
   Warehouse,
 } from "lucide-react";
 

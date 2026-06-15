@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  ShoppingBag,
   Sparkles,
 } from "lucide-react";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";

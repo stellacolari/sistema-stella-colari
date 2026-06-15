@@ -3,17 +3,13 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Eye,
   GripVertical,
   ImageIcon,
-  LinkIcon,
   Menu,
   Monitor,
   Plus,
   Search,
   Smartphone,
-  Sparkles,
-  Trash2,
   X,
 } from "lucide-react";
 
@@ -344,7 +340,7 @@ export default function ConfiguracoesLojaClient({
   categoriasNovas = [],
 }: ConfiguracoesLojaClientProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const categoriasParaUso = useMemo(() => {
     if (categoriasNovas.length > 0) {

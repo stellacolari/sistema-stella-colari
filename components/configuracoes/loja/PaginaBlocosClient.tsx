@@ -2054,8 +2054,8 @@ export default function PaginaBlocosClient({
 
   const [tipoSelecionado, setTipoSelecionado] = useState("BANNER");
   const [tituloBloco, setTituloBloco] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [sucesso, setSucesso] = useState<string | null>(null);
+  const [, setErro] = useState<string | null>(null);
+  const [, setSucesso] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [ordemSalvando, setOrdemSalvando] = useState(false);
 

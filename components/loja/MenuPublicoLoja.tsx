@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
 import { Heart, ChevronRight, Menu, Search, ShoppingBag, X } from "lucide-react";
@@ -122,9 +123,11 @@ function LogoLoja() {
       aria-label="Ir para a loja"
     >
       {!logoErro && (
-        <img
+        <Image
           src={LOGO_URL}
           alt="Stella"
+          width={170}
+          height={36}
           onError={() => setLogoErro(true)}
           className="block h-7 max-h-7 w-auto max-w-[116px] object-contain sm:h-8 sm:max-h-8 sm:max-w-[150px] lg:h-9 lg:max-h-9 lg:max-w-[170px]"
         />

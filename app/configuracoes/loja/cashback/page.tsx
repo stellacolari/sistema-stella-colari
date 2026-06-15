@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
-import CashbackConfiguracaoClient, {
-  type CashbackConfiguracao,
-} from "@/components/configuracoes/loja/CashbackConfiguracaoClient";
 
 export const metadata: Metadata = {
   title: "Cashback | Plataforma Stella Colari",
@@ -14,7 +11,7 @@ export const dynamic = "force-dynamic";
 const CHAVE_CONFIG = "PADRAO";
 
 export default async function CashbackConfiguracaoPage() {
-  const configRaw = await prisma.lojaCashbackConfiguracao.upsert({
+  await prisma.lojaCashbackConfiguracao.upsert({
     where: {
       chave: CHAVE_CONFIG,
     },
@@ -29,19 +26,6 @@ export default async function CashbackConfiguracaoPage() {
     },
     update: {},
   });
-
-  const config: CashbackConfiguracao = {
-    id: configRaw.id,
-    ativo: configRaw.ativo,
-    percentualPrimeiraCompra: Number(configRaw.percentualPrimeiraCompra || 0),
-    percentualCompraRecorrente: Number(
-      configRaw.percentualCompraRecorrente || 0
-    ),
-    somenteClienteCadastrado: configRaw.somenteClienteCadastrado,
-    permitirComCupom: configRaw.permitirComCupom,
-    permitirProdutoComDesconto: configRaw.permitirProdutoComDesconto,
-    diasValidade: configRaw.diasValidade,
-  };
 
 return (
   <main className="space-y-6">

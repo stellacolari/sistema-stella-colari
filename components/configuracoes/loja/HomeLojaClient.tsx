@@ -10,7 +10,6 @@ import {
   Plus,
   Save,
   ShieldCheck,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import LinkSugestoesInput from "@/components/configuracoes/loja/LinkSugestoesInput";

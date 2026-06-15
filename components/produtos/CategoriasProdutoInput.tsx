@@ -54,22 +54,6 @@ function montarCaminhoCategoria(
   return partes.join(" > ");
 }
 
-function ordenarCategorias(categorias: CategoriaProdutoOption[]) {
-  return [...categorias].sort((a, b) => {
-    const ordemA = Number(a.ordemMenu ?? 0);
-    const ordemB = Number(b.ordemMenu ?? 0);
-
-    if (ordemA !== ordemB) {
-      return ordemA - ordemB;
-    }
-
-    const caminhoA = montarCaminhoCategoria(a, categorias);
-    const caminhoB = montarCaminhoCategoria(b, categorias);
-
-    return caminhoA.localeCompare(caminhoB);
-  });
-}
-
 function ordenarTree(items: CategoriaTreeItem[]): CategoriaTreeItem[] {
   return [...items]
     .sort((a, b) => {
@@ -200,11 +184,6 @@ export default function CategoriasProdutoInput({
 
   const [categoriasAbertas, setCategoriasAbertas] = useState<string[]>([]);
   const [busca, setBusca] = useState("");
-
-  const categoriasOrdenadas = useMemo(
-    () => ordenarCategorias(categoriasIniciais),
-    [categoriasIniciais]
-  );
 
   const categoriasArvore = useMemo(
     () => montarArvoreCategorias(categoriasIniciais),
