@@ -16,7 +16,6 @@ import {
   Package,
   Plus,
   PlugZap,
-  Settings,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
@@ -326,6 +325,12 @@ const menuSections: MenuSection[] = [
             tone: "site",
           },
           {
+            href: "/configuracoes/loja/frete",
+            label: "Frete",
+            icon: Warehouse,
+            tone: "site",
+          },
+          {
             href: "/configuracoes/loja/formularios",
             label: "Formulários",
             icon: ClipboardList,
@@ -415,9 +420,9 @@ const menuSections: MenuSection[] = [
     items: [
       {
         type: "link",
-        href: "/configuracoes",
+        href: "/configuracoes/loja",
         label: "Configurações gerais",
-        icon: Settings,
+        icon: Store,
         description: "Preferências do sistema",
         tone: "system",
       },
@@ -682,24 +687,21 @@ function getSectionGroups(sections: MenuSection[]) {
 export default function SidebarMenu({
   perfil = "VENDEDOR",
   onNavigate,
+  compacto = false,
+  onCompactoChange,
+  showCompactToggle = false,
 }: {
   perfil?: PerfilAdmin;
   onNavigate?: () => void;
+  compacto?: boolean;
+  onCompactoChange?: () => void;
+  showCompactToggle?: boolean;
 }) {
   const pathname = usePathname();
   const sections = useMemo(() => getMenuSections(perfil), [perfil]);
 
   const groups = useMemo(() => getSectionGroups(sections), [sections]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [compacto, setCompacto] = useState(false);
-
-  useEffect(() => {
-    const modoSalvo = window.localStorage.getItem("stella-menu-density");
-
-    if (modoSalvo === "compacto") {
-      setCompacto(true);
-    }
-  }, []);
 
   useEffect(() => {
     setOpenGroups((current) => {
@@ -732,22 +734,13 @@ export default function SidebarMenu({
   }
 
   function alternarModoMenu() {
-    setCompacto((atual) => {
-      const proximo = !atual;
-
-      window.localStorage.setItem(
-        "stella-menu-density",
-        proximo ? "compacto" : "extendido"
-      );
-
-      return proximo;
-    });
+    onCompactoChange?.();
   }
 
   const sectionSpacing = compacto ? "space-y-3" : "space-y-6";
   const itemSpacing = compacto ? "space-y-0.5" : "space-y-1.5";
-  const itemPadding = compacto ? "px-2.5 py-2" : "px-3 py-3";
-  const itemGap = compacto ? "gap-2.5" : "gap-3";
+  const itemPadding = compacto ? "justify-center px-2 py-2" : "px-3 py-3";
+  const itemGap = compacto ? "gap-0" : "gap-3";
   const iconBoxSize = compacto ? "h-8 w-8 rounded-xl" : "h-10 w-10 rounded-2xl";
   const subItemPadding = compacto ? "px-2.5 py-1.5" : "px-3 py-2.5";
   const sectionTitleMargin = compacto ? "mb-1.5 px-2" : "mb-3 px-2";
@@ -757,29 +750,38 @@ export default function SidebarMenu({
 
   return (
     <aside className="flex h-full w-full flex-col rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur">
+      {showCompactToggle && (
       <div className="border-b border-slate-100 px-3 py-2.5">
         <button
           type="button"
           onClick={alternarModoMenu}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white px-3 py-2 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          title={compacto ? "Expandir menu" : "Compactar menu"}
+          className={`flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white px-3 py-2 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 ${
+            compacto ? "justify-center" : "justify-between"
+          }`}
         >
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 ring-1 ring-slate-200">
               <SlidersHorizontal className="h-4 w-4" />
             </div>
 
+            {!compacto && (
             <div>
               <p className="text-xs font-semibold text-slate-900">
                 Menu {compacto ? "compacto" : "extendido"}
               </p>
             </div>
+            )}
           </div>
 
+          {!compacto && (
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
             {compacto ? "Compacto" : "Extendido"}
           </span>
+          )}
         </button>
       </div>
+      )}
 
       <div className={`min-h-0 flex-1 overflow-y-auto ${panelPadding}`}>
         <nav className={sectionSpacing}>
@@ -787,7 +789,9 @@ export default function SidebarMenu({
             <div key={`${section.title || "sem-titulo"}-${sectionIndex}`}>
               {section.title ? (
                 <div className={sectionTitleMargin}>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ${
+                    compacto ? "sr-only" : ""
+                  }`}>
                     {section.title}
                   </p>
 
@@ -810,6 +814,7 @@ export default function SidebarMenu({
                       <Link
                         key={item.href}
                         href={item.href}
+                        title={item.label}
                         onClick={onNavigate}
                         className={`group flex items-center ${itemGap} rounded-2xl border transition ${itemPadding} ${getItemButtonClass(
                           {
@@ -830,7 +835,7 @@ export default function SidebarMenu({
                           <Icon className="h-[17px] w-[17px]" />
                         </div>
 
-                        <div className="min-w-0 flex-1 text-left">
+                        <div className={compacto ? "sr-only" : "min-w-0 flex-1 text-left"}>
                           <p className="truncate text-sm font-semibold">
                             {item.label}
                           </p>
@@ -865,6 +870,7 @@ export default function SidebarMenu({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          title={item.label}
                           onClick={() => toggleGroup(item.href)}
                           className={`group flex min-w-0 flex-1 items-center ${itemGap} rounded-2xl border text-left transition ${itemPadding} ${getItemButtonClass(
                             {
@@ -885,7 +891,7 @@ export default function SidebarMenu({
                             <Icon className="h-[17px] w-[17px]" />
                           </div>
 
-                          <div className="min-w-0 flex-1 text-left">
+                          <div className={compacto ? "sr-only" : "min-w-0 flex-1 text-left"}>
                             <p className="truncate text-sm font-semibold">
                               {item.label}
                             </p>
@@ -897,14 +903,16 @@ export default function SidebarMenu({
                             ) : null}
                           </div>
 
+                          {!compacto && (
                           <ChevronDown
                             className={`h-4 w-4 shrink-0 text-slate-400 transition ${
                               isOpen ? "rotate-180" : ""
                             }`}
                           />
+                          )}
                         </button>
 
-                        {item.quickAddHref ? (
+                        {item.quickAddHref && !compacto ? (
                           <Link
                             href={item.quickAddHref}
                             title={item.quickAddLabel || "Adicionar"}
@@ -918,7 +926,7 @@ export default function SidebarMenu({
                         ) : null}
                       </div>
 
-                      {isOpen ? (
+                      {isOpen && !compacto ? (
                         <div className={subItemsWrap}>
                           {item.links.length > 0 ? (
                             item.links.map((link) => {

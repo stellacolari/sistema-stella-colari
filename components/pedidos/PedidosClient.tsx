@@ -711,6 +711,10 @@ function origemPedidoClass(pedido: PedidoOperacionalItem) {
     return "bg-violet-50 text-violet-700 ring-violet-200";
   }
 
+  if (pedido.entregaManual || pedido.envio?.gatewayLogistico === "ENTREGA_MANUAL") {
+    return "bg-cyan-100 text-cyan-900 ring-cyan-300";
+  }
+
   if (pedido.origemCanal === "LOJA_STELLA") {
     return "bg-sky-50 text-sky-700 ring-sky-200";
   }
@@ -1544,19 +1548,18 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
   return (
     <>
-    <section className="w-full max-w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 sm:rounded-3xl">
-      <div className="border-b border-slate-200 px-3 py-2.5 sm:px-5 sm:py-4">
-        <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+    <section className="w-full max-w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 bg-white px-3 py-3 sm:px-5 sm:py-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 overflow-hidden">
-            <h2 className="truncate text-base font-semibold text-slate-950 sm:text-lg">
-              <span className="md:hidden">Pedidos</span>
-              <span className="hidden md:inline">Lista de pedidos</span>
+            <h2 className="truncate text-lg font-bold text-slate-950 sm:text-xl">
+              <span>Central de pedidos</span>
             </h2>
 
-            <p className="mt-0.5 truncate text-xs text-slate-500 sm:mt-1 sm:text-sm">
+            <p className="mt-1 truncate text-xs text-slate-500 sm:text-sm">
               {pedidosFiltrados.length} pedido
               {pedidosFiltrados.length === 1 ? "" : "s"} exibido
-              {pedidosFiltrados.length === 1 ? "" : "s"} ·{" "}
+              {pedidosFiltrados.length === 1 ? "" : "s"} -{" "}
               {moeda(totalFiltrado)}
             </p>
 
@@ -1609,7 +1612,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           </div>
         </div>
 
-        <div className="mt-4 hidden flex-wrap gap-2 md:flex">
+        <div className="mt-4 hidden flex-wrap gap-2 rounded-2xl bg-slate-100 p-2 md:flex">
           {FILTROS_OPERACIONAIS.map((filtro) => {
             const ativo = filtroRapido === filtro.value;
 
@@ -1618,10 +1621,10 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                 key={filtro.value}
                 type="button"
                 onClick={() => setFiltroRapido(filtro.value)}
-                className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${
+                className={`inline-flex min-h-9 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                   ativo
                     ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    : "border-white bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
                 <span>{filtro.label}</span>
@@ -1757,39 +1760,39 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
           </div>
         </div>
 
-        <div className="mt-4 hidden gap-2 md:grid md:grid-cols-4">
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+        <div className="mt-4 hidden gap-3 md:grid md:grid-cols-4">
+          <div className="rounded-2xl bg-indigo-700 px-4 py-3 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-100">
               Links pendentes
             </p>
-            <p className="mt-1 text-lg font-bold text-violet-950">
+            <p className="mt-1 text-2xl font-bold">
               {resumoOperacional.linksPendentes}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="rounded-2xl bg-emerald-700 px-4 py-3 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-100">
               Para separar
             </p>
-            <p className="mt-1 text-lg font-bold text-emerald-950">
+            <p className="mt-1 text-2xl font-bold">
               {resumoOperacional.pagosParaSeparar}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+          <div className="rounded-2xl bg-rose-700 px-4 py-3 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-100">
               Problemas
             </p>
-            <p className="mt-1 text-lg font-bold text-red-950">
+            <p className="mt-1 text-2xl font-bold">
               {resumoOperacional.problemas}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+          <div className="rounded-2xl bg-slate-800 px-4 py-3 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-200">
               Cancelados/expirados
             </p>
-            <p className="mt-1 text-lg font-bold text-slate-950">
+            <p className="mt-1 text-2xl font-bold">
               {resumoOperacional.canceladosExpirados}
             </p>
           </div>
@@ -1817,6 +1820,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             const estiloEtapa = estiloEtapaOperacional(etapa);
             const modalidade = modalidadeOperacional(pedido);
             const proximaAcaoMe = proximaAcaoMelhorEnvio(pedido);
+            const mostrarStatusPagamentoBadge =
+              etapa !== "AGUARDANDO_PAGAMENTO";
 
             const possuiCupom =
               Boolean(pedido.cupomCodigo) && pedido.cupomDescontoValor > 0;
@@ -1842,11 +1847,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
             return (
               <article
                 key={pedido.id}
-                className={`relative flex w-full max-w-full min-w-0 flex-col gap-3 overflow-hidden border-l-4 px-3 py-3 transition hover:bg-slate-50 sm:px-5 xl:grid xl:grid-cols-[32px_minmax(180px,0.9fr)_minmax(260px,1.2fr)_minmax(240px,1fr)_minmax(260px,auto)] xl:gap-4 ${estiloEtapa.cardClass} ${
+                className={`relative flex w-full max-w-full min-w-0 flex-col gap-4 overflow-hidden border-l-8 px-3 py-4 transition hover:bg-slate-50 sm:px-5 xl:grid xl:grid-cols-[minmax(220px,0.95fr)_minmax(280px,1.25fr)_minmax(260px,1fr)_minmax(220px,auto)] xl:gap-5 ${estiloEtapa.cardClass} ${
                   destaquePedidoClass
                 }`}
               >
-                <div className="absolute right-3 top-3 xl:static xl:pt-1">
+                <div className="absolute right-3 top-3">
                   <input
                     type="checkbox"
                     aria-label={`Selecionar etiqueta do pedido ${pedido.codigo}`}
@@ -2012,6 +2017,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
                 <div className="min-w-0 max-w-full overflow-hidden">
                   <div className="flex max-w-full flex-wrap gap-1.5 overflow-hidden sm:gap-2">
+                    {mostrarStatusPagamentoBadge && (
                     <span
                       className={`inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ring-1 sm:px-2.5 ${statusPagamentoClass(
                         pedido.statusPagamento,
@@ -2022,6 +2028,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         Pag.: {labelStatusPagamento(pedido.statusPagamento)}
                       </span>
                     </span>
+                    )}
 
                     {pedido.gatewayPagamento && (
                       <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 sm:px-2.5">
@@ -2031,23 +2038,25 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                       </span>
                     )}
 
+                    {pedido.envio && (
                     <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200 sm:px-2.5">
                       <Truck className="h-3 w-3 shrink-0" />
                       <span className="truncate">
                         {labelStatusEnvio(pedido.envio?.statusEnvio)}
                       </span>
                     </span>
+                    )}
                   </div>
 
                   {pedidoManualComLink && pagamentoPendente && (
-                    <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-violet-200 bg-white px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                    <div className="mt-3 max-w-full overflow-hidden rounded-2xl border border-violet-300 bg-violet-50 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-violet-800">
                         Link de pagamento
                       </p>
 
                       {pedido.linkPagamento ? (
                         <>
-                          <p className="mt-1 max-w-full truncate rounded-xl bg-slate-50 px-2 py-1 text-xs text-slate-500 ring-1 ring-slate-100">
+                          <p className="mt-1 max-w-full truncate rounded-xl bg-white px-2 py-1 text-xs font-medium text-violet-900 ring-1 ring-violet-100">
                             {linkCompacto(pedido.linkPagamento)}
                           </p>
 
@@ -2408,7 +2417,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                   )}
                 </div>
 
-                <div className="flex min-w-0 flex-col gap-2 border-t border-slate-100 pt-3 xl:items-end xl:border-t-0 xl:pt-0 xl:text-right">
+                <div className="flex min-w-0 flex-col gap-3 border-t border-slate-100 pt-3 xl:items-end xl:border-t-0 xl:pt-0 xl:text-right">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                       Total
@@ -2435,25 +2444,25 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-full xl:flex-col xl:items-stretch">
                     {acaoRapida && (
                       <button
                         type="button"
                         onClick={() => atualizarStatusRapido(pedido)}
                         disabled={estaProcessando}
-                        className={`inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${acaoRapida.className}`}
+                        className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-bold leading-tight shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 xl:w-full ${acaoRapida.className}`}
                       >
-                        <span className="truncate">
+                        <span className="whitespace-normal text-center">
                           {estaProcessando
                             ? "Atualizando..."
-                            : `Proximo passo: ${acaoRapida.label}`}
+                            : acaoRapida.label}
                         </span>
                       </button>
                     )}
 
                     <Link
                       href={`/pedidos/${pedido.id}`}
-                      className="inline-flex h-8 min-w-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 sm:px-3"
+                      className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                     >
                       <span className="truncate">Abrir pedido</span>
                     </Link>

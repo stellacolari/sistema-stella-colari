@@ -393,8 +393,8 @@ export default async function PedidosPage() {
   );
 
   return (
-    <main className="max-w-full space-y-3 overflow-hidden md:space-y-6">
-      <section className="hidden rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:block">
+    <main className="max-w-full space-y-4 overflow-hidden">
+      <section className="hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
@@ -412,7 +412,7 @@ export default async function PedidosPage() {
           </div>
         </div>
       </section>
-      <section className="hidden rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 md:block">
+      <section className="hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:block">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-950">
@@ -425,65 +425,65 @@ export default async function PedidosPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+          <div className="rounded-2xl bg-slate-950 px-4 py-3 text-sm text-white">
             <span className="font-medium text-slate-500">Total listado: </span>
-            <strong className="text-slate-950">{pedidos.length}</strong>
+            <strong>{pedidos.length}</strong>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <div className="rounded-2xl bg-emerald-700 px-4 py-4 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">
               Prioridade
             </p>
 
-            <p className="mt-2 text-2xl font-bold text-emerald-950">
+            <p className="mt-2 text-2xl font-bold">
               {pedidosPagosParaSeparar}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-emerald-700">
+            <p className="mt-1 text-xs leading-5 text-emerald-100">
               Pagos para separar.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+          <div className="rounded-2xl bg-amber-600 px-4 py-4 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-100">
               Pagamento pendente
             </p>
 
-            <p className="mt-2 text-2xl font-bold text-amber-950">
+            <p className="mt-2 text-2xl font-bold">
               {pagamentosPendentes}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-amber-700">
+            <p className="mt-1 text-xs leading-5 text-amber-100">
               Aguardando confirmação.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+          <div className="rounded-2xl bg-blue-700 px-4 py-4 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-100">
               Novos
             </p>
 
-            <p className="mt-2 text-2xl font-bold text-blue-950">
+            <p className="mt-2 text-2xl font-bold">
               {pedidosNovos}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-blue-700">
+            <p className="mt-1 text-xs leading-5 text-blue-100">
               Recebidos no sistema.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-2xl bg-slate-800 px-4 py-4 text-white shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-200">
               Envio/preparação
             </p>
 
-            <p className="mt-2 text-2xl font-bold text-slate-950">
+            <p className="mt-2 text-2xl font-bold">
               {pedidosEmEnvio}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-slate-500">
+            <p className="mt-1 text-xs leading-5 text-slate-200">
               Pendentes de envio.
             </p>
           </div>

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
-export default function LogoutButton() {
+export default function LogoutButton({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [erro, setErro] = useState("");
@@ -38,10 +38,13 @@ export default function LogoutButton() {
         type="button"
         onClick={sair}
         disabled={isPending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        title="Sair"
+        className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 ${
+          compacto ? "h-10 px-2" : "px-4 py-2"
+        }`}
       >
         <LogOut className="h-4 w-4" />
-        {isPending ? "Saindo..." : "Sair"}
+        {!compacto && (isPending ? "Saindo..." : "Sair")}
       </button>
 
       {erro && <p className="mt-2 text-xs text-red-600">{erro}</p>}

@@ -11,11 +11,20 @@ import LogoutButton from "@/components/layout/LogoutButton";
 type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
 
 function getPageInfo(pathname: string) {
+  if (pathname.startsWith("/pedidos")) {
+    return {
+      eyebrow: "Operacao",
+      title: "Pedidos",
+      description: "Central operacional de pagamento, separacao e entrega.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes/loja/home")) {
     return {
       eyebrow: "Loja online",
       title: "Home da loja",
-      description: "Categorias, seções personalizadas e bloco promocional.",
+      description: "Categorias, secoes personalizadas e bloco promocional.",
       showLojaButton: true,
     };
   }
@@ -23,24 +32,33 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja")) {
     return {
       eyebrow: "Loja online",
-      title: "Banners e menu da loja",
-      description: "Configuração dos banners e da navegação pública.",
+      title: "Configuracoes da loja",
+      description: "Vitrine, banners, navegacao, frete e campanhas.",
       showLojaButton: true,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/integracoes")) {
+    return {
+      eyebrow: "Integracoes",
+      title: "Integracoes",
+      description: "Canais, importacoes e produtos vinculados.",
+      showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/produtos")) {
     return {
-      eyebrow: "Cadastros",
+      eyebrow: "Catalogo",
       title: "Produtos",
-      description: "Cadastro e gestão dos produtos principais.",
+      description: "Cadastro e gestao dos produtos principais.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/itens-adicionais")) {
     return {
-      eyebrow: "Cadastros",
+      eyebrow: "Catalogo",
       title: "Itens adicionais",
       description: "Itens consumidos por regras de categoria.",
       showLojaButton: false,
@@ -49,25 +67,25 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/clientes")) {
     return {
-      eyebrow: "Cadastros",
+      eyebrow: "Operacao",
       title: "Clientes",
-      description: "Cadastro, histórico e análise de clientes.",
+      description: "Cadastro, historico e analise de clientes.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/vendas")) {
     return {
-      eyebrow: "Operação",
+      eyebrow: "Operacao",
       title: "Vendas",
-      description: "Registro, acompanhamento e gestão de vendas.",
+      description: "Registro, acompanhamento e gestao de vendas.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/compras")) {
     return {
-      eyebrow: "Operação",
+      eyebrow: "Catalogo / Estoque",
       title: "Compras",
       description: "Entrada de produtos, adicionais e controle de fornecedores.",
       showLojaButton: false,
@@ -76,7 +94,7 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/estoque")) {
     return {
-      eyebrow: "Operação",
+      eyebrow: "Catalogo / Estoque",
       title: "Estoque",
       description: "Saldos, valores e ajustes de estoque.",
       showLojaButton: false,
@@ -86,24 +104,24 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/movimentacoes")) {
     return {
       eyebrow: "Controle",
-      title: "Movimentações",
-      description: "Histórico de entradas, saídas, vendas e compras.",
+      title: "Movimentacoes",
+      description: "Historico de entradas, saidas, vendas e compras.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/lixeira")) {
     return {
-      eyebrow: "Controle",
+      eyebrow: "Sistema",
       title: "Lixeira",
-      description: "Itens removidos e opções de restauração.",
+      description: "Itens removidos e opcoes de restauracao.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/resumos/vendas")) {
     return {
-      eyebrow: "Relatórios",
+      eyebrow: "Relatorios",
       title: "Resumo de vendas",
       description: "Indicadores, filtros e rankings de venda.",
       showLojaButton: false,
@@ -112,27 +130,27 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/resumos/clientes")) {
     return {
-      eyebrow: "Relatórios",
+      eyebrow: "Relatorios",
       title: "Resumo de clientes",
-      description: "Perfil, recorrência e desempenho de clientes.",
+      description: "Perfil, recorrencia e desempenho de clientes.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/resumos/estoque")) {
     return {
-      eyebrow: "Relatórios",
+      eyebrow: "Relatorios",
       title: "Resumo de estoque",
-      description: "Valor acumulado, itens críticos e rankings.",
+      description: "Valor acumulado, itens criticos e rankings.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/regras-categoria")) {
     return {
-      eyebrow: "Regras",
+      eyebrow: "Loja online",
       title: "Regras por categoria",
-      description: "Consumo automático de adicionais por tipo de produto.",
+      description: "Consumo automatico de adicionais por tipo de produto.",
       showLojaButton: false,
     };
   }
@@ -141,15 +159,15 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Painel interno",
       title: "Dashboard",
-      description: "Visão geral da operação.",
+      description: "Visao geral da operacao.",
       showLojaButton: false,
     };
   }
 
   return {
     eyebrow: "Painel interno",
-    title: "Operação e gestão",
-    description: "Compras, vendas, estoque e clientes em um só lugar.",
+    title: "Operacao e gestao",
+    description: "Compras, vendas, estoque e clientes em um so lugar.",
     showLojaButton: false,
   };
 }
@@ -168,6 +186,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pageInfo = getPageInfo(pathname);
   const [perfil, setPerfil] = useState<PerfilAdmin>("VENDEDOR");
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const [sidebarCompacta, setSidebarCompacta] = useState(false);
 
   useEffect(() => {
     if (isPublicShell) {
@@ -220,6 +239,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [menuMobileAberto]);
 
+  useEffect(() => {
+    if (isPublicShell) {
+      return;
+    }
+
+    setSidebarCompacta(
+      window.localStorage.getItem("stella-admin-sidebar") === "compacta",
+    );
+  }, [isPublicShell]);
+
+  function alternarSidebarCompacta() {
+    setSidebarCompacta((atual) => {
+      const proximo = !atual;
+      window.localStorage.setItem(
+        "stella-admin-sidebar",
+        proximo ? "compacta" : "expandida",
+      );
+
+      return proximo;
+    });
+  }
+
   if (isPublicShell) {
     if (isLoja) {
       return (
@@ -233,33 +274,71 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[300px_1fr]">
-      <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:flex-col">
-        <div className="border-b border-slate-200 px-6 py-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Plataforma Stella Colari
-          </p>
+    <div
+      className={`min-h-screen bg-slate-50 lg:grid ${
+        sidebarCompacta
+          ? "lg:grid-cols-[92px_minmax(0,1fr)]"
+          : "lg:grid-cols-[312px_minmax(0,1fr)]"
+      }`}
+    >
+      <aside className="hidden min-w-0 border-r border-slate-200 bg-white lg:flex lg:flex-col">
+        <div
+          className={`border-b border-slate-200 ${
+            sidebarCompacta ? "px-3 py-4" : "px-6 py-6"
+          }`}
+        >
+          {sidebarCompacta ? (
+            <div
+              title="Plataforma Stella Colari"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white"
+            >
+              SC
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Plataforma Stella Colari
+              </p>
 
-          <h1 className="mt-2 text-2xl font-bold tracking-tight">Gestão</h1>
+              <h1 className="mt-2 text-2xl font-bold tracking-tight">Gestao</h1>
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Compras, vendas, estoque, clientes e loja online em um só lugar.
-          </p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Compras, vendas, estoque, clientes e loja online em um so lugar.
+              </p>
+            </>
+          )}
         </div>
 
-        <SidebarMenu perfil={perfil} />
+        <SidebarMenu
+          perfil={perfil}
+          compacto={sidebarCompacta}
+          onCompactoChange={alternarSidebarCompacta}
+          showCompactToggle
+        />
 
-        <div className="border-t border-slate-200 px-6 py-4">
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Acesso
-            </p>
+        <div
+          className={`border-t border-slate-200 ${
+            sidebarCompacta ? "px-3 py-3" : "px-6 py-4"
+          }`}
+        >
+          <div
+            className={`rounded-2xl border border-slate-200 bg-slate-50 ${
+              sidebarCompacta ? "p-2" : "space-y-3 px-4 py-3"
+            }`}
+          >
+            {!sidebarCompacta && (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Acesso
+                </p>
 
-            <p className="mt-1 text-sm font-medium text-slate-800">
-              Plataforma interna
-            </p>
+                <p className="mt-1 text-sm font-medium text-slate-800">
+                  Plataforma interna
+                </p>
+              </>
+            )}
 
-            <LogoutButton />
+            <LogoutButton compacto={sidebarCompacta} />
           </div>
         </div>
       </aside>
@@ -281,7 +360,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 </p>
 
                 <p className="mt-1 text-lg font-bold tracking-tight text-slate-950">
-                  Gestão
+                  Gestao
                 </p>
               </div>
 
@@ -298,6 +377,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="min-h-0 flex-1">
               <SidebarMenu
                 perfil={perfil}
+                compacto={false}
                 onNavigate={() => setMenuMobileAberto(false)}
               />
             </div>
@@ -344,7 +424,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   href="/loja"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-4"
                 >
-                  <span className="hidden sm:inline">Ver loja pública</span>
+                  <span className="hidden sm:inline">Ver loja publica</span>
                   <span className="sm:hidden">Loja</span>
                   <ExternalLink className="h-4 w-4" />
                 </Link>
@@ -357,7 +437,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6">{children}</div>
+        <div className="mx-auto w-full max-w-[1760px] p-3 sm:p-5 2xl:p-6">
+          {children}
+        </div>
       </main>
     </div>
   );
