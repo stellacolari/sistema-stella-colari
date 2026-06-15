@@ -453,7 +453,7 @@ function valorUnitarioFinal(item: ItemPedido) {
         return;
       }
 
-      window.location.href = "/compras";
+      window.location.href = "/compras/estoque";
     } catch {
       setErro("Erro ao finalizar compra.");
       setSalvando(false);
@@ -466,11 +466,11 @@ function valorUnitarioFinal(item: ItemPedido) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Compras
+              Compra de estoque
             </p>
 
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Nova Compra
+              Nova compra de estoque
             </h1>
 
             <p className="mt-2 text-sm text-slate-600">
@@ -480,10 +480,10 @@ function valorUnitarioFinal(item: ItemPedido) {
           </div>
 
           <Link
-            href="/compras"
+            href="/compras/estoque"
             className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
           >
-            Voltar para lista
+            Voltar para compras de estoque
           </Link>
         </div>
       </div>

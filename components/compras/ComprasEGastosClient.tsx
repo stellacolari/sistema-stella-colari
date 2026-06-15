@@ -17,9 +17,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import ComprasListClient, {
-  type CompraListItem,
-} from "@/components/compras/ComprasListClient";
 
 export type LancamentoFinanceiroListItem = {
   id: string;
@@ -52,13 +49,12 @@ export type LancamentoFinanceiroListItem = {
 };
 
 type Props = {
-  compras: CompraListItem[];
   lancamentos: LancamentoFinanceiroListItem[];
+  abrirNovoInicial?: boolean;
 };
 
 type AbaCompras =
   | "TODOS"
-  | "COMPRAS_ESTOQUE"
   | "GASTOS_GERAIS"
   | "ASSINATURAS"
   | "COMPRAS_UNICAS"
@@ -98,7 +94,6 @@ const PREFERENCIA_GASTOS_KEY = "stella:compras:gastos:visualizacao";
 
 const ABAS: { value: AbaCompras; label: string }[] = [
   { value: "TODOS", label: "Todos" },
-  { value: "COMPRAS_ESTOQUE", label: "Compras de estoque" },
   { value: "GASTOS_GERAIS", label: "Gastos gerais" },
   { value: "ASSINATURAS", label: "Assinaturas" },
   { value: "COMPRAS_UNICAS", label: "Compras únicas" },
@@ -373,7 +368,10 @@ function formParaPayload(form: FormState) {
   };
 }
 
-export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
+export default function ComprasEGastosClient({
+  lancamentos,
+  abrirNovoInicial = false,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [abaAtiva, setAbaAtiva] = useState<AbaCompras>("TODOS");
@@ -406,6 +404,12 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
   useEffect(() => {
     window.localStorage.setItem(PREFERENCIA_GASTOS_KEY, visualizacao);
   }, [visualizacao]);
+
+  useEffect(() => {
+    if (abrirNovoInicial) {
+      abrirNovoLancamento();
+    }
+  }, [abrirNovoInicial]);
 
   const lancamentosAtivos = useMemo(() => {
     return lancamentos.filter((lancamento) => lancamento.status !== "NA_LIXEIRA");
@@ -597,10 +601,6 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     );
   }, [lancamentosAtivos]);
 
-  const mostrarComprasEstoque =
-    abaAtiva === "TODOS" || abaAtiva === "COMPRAS_ESTOQUE";
-  const mostrarGastos =
-    abaAtiva !== "COMPRAS_ESTOQUE" && lancamentosFiltrados.length >= 0;
   const lancamentoEmEdicao = form.id
     ? lancamentosAtivos.find((lancamento) => lancamento.id === form.id) ?? null
     : null;
@@ -936,7 +936,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                 <th className="px-5 py-4 font-semibold">Tipo</th>
                 <th className="px-5 py-4 font-semibold">Categoria</th>
                 <th className="px-5 py-4 font-semibold">Vencimento</th>
-                <th className="px-5 py-4 font-semibold">Vencimento</th>
+                <th className="px-5 py-4 font-semibold">Status</th>
                 <th className="px-5 py-4 text-right font-semibold">Valor</th>
                 <th className="px-5 py-4 text-right font-semibold">Ações</th>
               </tr>
@@ -1025,14 +1025,14 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Compras
+              Gastos financeiros
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Compras e Gastos
+              Gastos financeiros
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Compra de estoque movimenta itens. Gasto financeiro registra
-              assinaturas, marketing, permutas e despesas sem alterar estoque.
+              Assinaturas, compras únicas, estrutura, marketing, tráfego,
+              influenciadores, permutas e despesas sem movimentar estoque.
             </p>
           </div>
 
@@ -1046,16 +1046,16 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
               Novo lançamento
             </button>
             <Link
-              href="/compras/nova-v2"
+              href="/compras"
               className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
-              Nova compra de estoque
+              Voltar para central
             </Link>
             <Link
-              href="/compras/reposicao"
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100"
+              href="/compras/estoque"
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
-              Reposição
+              Compras de estoque
             </Link>
           </div>
         </div>
@@ -1104,10 +1104,20 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         </div>
       </div>
 
-      {mostrarGastos && (
-        <section className="space-y-4">
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <section className="space-y-4">
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Lançamentos financeiros
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Gastos financeiros não entram no estoque, não criam compra e não
+            geram movimentação. Use esta lista para assinatura, domínio,
+            câmera, impressora, marketing, influencer, permuta e patrocínio.
+          </p>
+        </div>
+
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(140px,0.8fr))_auto]">
                 <label className="flex min-w-0 flex-col gap-2">
                   <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -1198,37 +1208,21 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
               </div>
             </div>
 
-            {erro && (
-              <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
-                {erro}
-              </div>
-            )}
+          {erro && (
+            <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
+              {erro}
+            </div>
+          )}
 
-            {mensagem && (
-              <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">
-                {mensagem}
-              </div>
-            )}
-          </div>
+          {mensagem && (
+            <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">
+              {mensagem}
+            </div>
+          )}
+        </div>
 
-          {renderListaGastos()}
-        </section>
-      )}
-
-      {mostrarComprasEstoque && (
-        <section className="space-y-4">
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Compras de estoque
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Fluxo operacional atual preservado: compras entram no estoque e
-              cancelamentos estornam estoque.
-            </p>
-          </div>
-          <ComprasListClient compras={compras} />
-        </section>
-      )}
+        {renderListaGastos()}
+      </section>
 
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">

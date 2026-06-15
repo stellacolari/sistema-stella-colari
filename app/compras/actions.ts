@@ -317,6 +317,7 @@ export async function criarCompra(formData: FormData) {
   });
 
   revalidatePath("/compras");
+  revalidatePath("/compras/estoque");
 }
 
 export async function adicionarItemCompra(compraId: string, formData: FormData) {
@@ -619,6 +620,7 @@ export async function adicionarItemCompra(compraId: string, formData: FormData) 
 
   revalidatePath(`/compras/${compraId}`);
   revalidatePath("/compras");
+  revalidatePath("/compras/estoque");
   revalidatePath("/estoque");
   revalidatePath("/movimentacoes");
 }
@@ -864,6 +866,7 @@ export async function alterarQuantidadeItemCompra(
 
   revalidatePath(`/compras/${compraId}`);
   revalidatePath("/compras");
+  revalidatePath("/compras/estoque");
   revalidatePath("/estoque");
   revalidatePath("/movimentacoes");
 }
@@ -1041,6 +1044,7 @@ export async function cancelarItensCompra(compraId: string, itemIds: string[]) {
 
   revalidatePath(`/compras/${compraId}`);
   revalidatePath("/compras");
+  revalidatePath("/compras/estoque");
   revalidatePath("/estoque");
   revalidatePath("/movimentacoes");
 }

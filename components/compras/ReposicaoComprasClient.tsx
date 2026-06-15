@@ -157,7 +157,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
             href="/compras"
             className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
-            Voltar para Compras
+            Voltar para central
           </Link>
         </div>
       </div>

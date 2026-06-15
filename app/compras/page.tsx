@@ -1,161 +1,316 @@
-import type { Prisma } from "@prisma/client";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  Boxes,
+  CreditCard,
+  Package,
+  Plus,
+  RefreshCcw,
+  Settings,
+  ShoppingCart,
+  Store,
+  type LucideIcon,
+} from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import ComprasEGastosClient, {
-  type LancamentoFinanceiroListItem,
-} from "@/components/compras/ComprasEGastosClient";
-import { type CompraListItem } from "@/components/compras/ComprasListClient";
 
 export const dynamic = "force-dynamic";
 
-type CompraComItens = Prisma.CompraGetPayload<{
-  include: {
-    itens: {
-      include: {
-        produto: {
-          select: {
-            imagemUrl: true;
-            imagens: {
-              orderBy: {
-                ordem: "asc";
-              };
-              select: {
-                imagemUrl: true;
-              };
-              take: 1;
-            };
-          };
-        };
-        itemAdicional: {
-          select: {
-            imagemUrl: true;
-          };
-        };
-      };
-    };
-  };
-}>;
+const atalhosRelacionados = [
+  {
+    label: "Produtos",
+    href: "/produtos",
+    icon: Package,
+  },
+  {
+    label: "Itens adicionais",
+    href: "/itens-adicionais",
+    icon: Boxes,
+  },
+  {
+    label: "Embalagens",
+    href: "/configuracoes/loja/embalagens",
+    icon: Store,
+  },
+  {
+    label: "Configurações de loja",
+    href: "/configuracoes/loja",
+    icon: Settings,
+  },
+];
+
+function moeda(valor: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valor);
+}
 
 export default async function ComprasPage() {
-  const [comprasRaw, lancamentosRaw] = await Promise.all([
-    prisma.compra.findMany({
-      orderBy: { criadoEm: "desc" },
-      include: {
-        itens: {
-          include: {
-            produto: {
-              select: {
-                imagemUrl: true,
-                imagens: {
-                  orderBy: {
-                    ordem: "asc",
-                  },
-                  select: {
-                    imagemUrl: true,
-                  },
-                  take: 1,
-                },
-              },
-            },
-            itemAdicional: {
-              select: {
-                imagemUrl: true,
-              },
-            },
+  const [totalComprasEstoque, totalGastos, gastosAbertos, gastosPagosMes] =
+    await Promise.all([
+      prisma.compra.count({
+        where: {
+          status: {
+            not: "NA_LIXEIRA",
           },
         },
-      },
-    }),
-    prisma.lancamentoFinanceiro.findMany({
-      orderBy: [{ dataVencimento: "asc" }, { criadoEm: "desc" }],
-    }),
-  ]);
+      }),
+      prisma.lancamentoFinanceiro.count({
+        where: {
+          status: {
+            not: "NA_LIXEIRA",
+          },
+        },
+      }),
+      prisma.lancamentoFinanceiro.aggregate({
+        where: {
+          status: {
+            not: "NA_LIXEIRA",
+          },
+          statusPagamento: {
+            in: ["PENDENTE", "VENCIDO"],
+          },
+        },
+        _sum: {
+          valorReal: true,
+        },
+      }),
+      prisma.lancamentoFinanceiro.aggregate({
+        where: {
+          status: {
+            not: "NA_LIXEIRA",
+          },
+          statusPagamento: "PAGO",
+          dataPagamento: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+        _sum: {
+          valorReal: true,
+        },
+      }),
+    ]);
 
-  const compras: CompraListItem[] = comprasRaw.map((compra: CompraComItens) => {
-    const itens = compra.itens.map((item) => ({
-      id: item.id,
-      tipoItem: item.tipoItem,
-      codigoDigitado: item.codigoDigitado,
-      descricao: item.descricao,
-      imagemUrl:
-        item.produto?.imagens[0]?.imagemUrl ??
-        item.produto?.imagemUrl ??
-        item.itemAdicional?.imagemUrl ??
-        null,
-      quantidade: item.quantidade,
-      tamanhoAnel: item.tamanhoAnel,
-      valorUnitarioBase: Number(item.valorUnitarioBase),
-      valorUnitarioFinal: Number(item.valorUnitarioFinal),
-      valorTotalBase: Number(item.valorTotalBase),
-      valorTotalFinal: Number(item.valorTotalFinal),
-      parcelaFrete: Number(item.parcelaFrete),
-      valorTotalComFrete: Number(item.valorTotalComFrete),
-    }));
+  return (
+    <div className="space-y-6">
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
+              Compras
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+              Compras e Financeiro
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Central para compras de estoque, gastos financeiros, assinaturas,
+              marketing, permutas e reposição.
+            </p>
+          </div>
 
-    const quantidadeItens = compra.itens.reduce(
-      (total: number, item) => total + item.quantidade,
-      0
-    );
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/compras/estoque"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Compras de estoque
+            </Link>
+            <Link
+              href="/compras/gastos"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <CreditCard className="h-4 w-4" />
+              Gastos financeiros
+            </Link>
+          </div>
+        </div>
+      </section>
 
-    return {
-      id: compra.id,
-      codigo: compra.codigo,
-      fornecedor: compra.fornecedor,
-      descontoPercentual: Number(compra.descontoPercentual),
-      frete: Number(compra.frete),
-      valorTotalBruto: Number(compra.valorTotalBruto),
-      valorTotalFinal: Number(compra.valorTotalFinal),
-      observacoes: compra.observacoes,
-      status: compra.status,
-      cancelamentoMotivo: compra.cancelamentoMotivo,
-      cancelamentoObservacao: compra.cancelamentoObservacao,
-      canceladoEm: compra.canceladoEm ? compra.canceladoEm.toISOString() : null,
-      criadoEm: compra.criadoEm.toISOString(),
-      itensTotais: compra.itens.length,
-      quantidadeItens,
-      itens,
-    };
-  });
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <ResumoCard titulo="Compras de estoque" valor={totalComprasEstoque} />
+        <ResumoCard titulo="Gastos cadastrados" valor={totalGastos} />
+        <ResumoCard
+          titulo="Gastos em aberto"
+          valor={moeda(Number(gastosAbertos._sum.valorReal ?? 0))}
+        />
+        <ResumoCard
+          titulo="Pago este mês"
+          valor={moeda(Number(gastosPagosMes._sum.valorReal ?? 0))}
+        />
+      </section>
 
-  const lancamentos: LancamentoFinanceiroListItem[] = lancamentosRaw.map(
-    (lancamento) => ({
-      id: lancamento.id,
-      codigo: lancamento.codigo,
-      tipo: lancamento.tipo,
-      categoria: lancamento.categoria,
-      titulo: lancamento.titulo,
-      descricao: lancamento.descricao,
-      fornecedorParceiro: lancamento.fornecedorParceiro,
-      valorPrevisto:
-        lancamento.valorPrevisto === null
-          ? null
-          : Number(lancamento.valorPrevisto),
-      valorReal: Number(lancamento.valorReal),
-      statusPagamento: lancamento.statusPagamento,
-      statusOperacional: lancamento.statusOperacional,
-      dataCompetencia: lancamento.dataCompetencia
-        ? lancamento.dataCompetencia.toISOString()
-        : null,
-      dataVencimento: lancamento.dataVencimento
-        ? lancamento.dataVencimento.toISOString()
-        : null,
-      dataPagamento: lancamento.dataPagamento
-        ? lancamento.dataPagamento.toISOString()
-        : null,
-      recorrente: lancamento.recorrente,
-      recorrencia: lancamento.recorrencia,
-      quantidadeParcelas: lancamento.quantidadeParcelas,
-      parcelaAtual: lancamento.parcelaAtual,
-      meioPagamento: lancamento.meioPagamento,
-      origemTipo: lancamento.origemTipo,
-      origemId: lancamento.origemId,
-      observacoes: lancamento.observacoes,
-      linkReferencia: lancamento.linkReferencia,
-      anexoUrl: lancamento.anexoUrl,
-      status: lancamento.status,
-      statusAntesLixeira: lancamento.statusAntesLixeira,
-      criadoEm: lancamento.criadoEm.toISOString(),
-    })
+      <section className="grid gap-4 lg:grid-cols-3">
+        <HubCard
+          icon={ShoppingCart}
+          title="Compras de estoque"
+          description="Registre compras que entram no estoque, como produtos, embalagens e insumos controlados."
+          primaryLabel="Ver compras de estoque"
+          primaryHref="/compras/estoque"
+          secondaryLabel="Nova compra de estoque"
+          secondaryHref="/compras/nova-v2"
+        />
+
+        <HubCard
+          icon={CreditCard}
+          title="Gastos financeiros"
+          description="Controle assinaturas, compras únicas, estrutura, marketing, tráfego, influenciadores e permutas sem alterar estoque."
+          primaryLabel="Ver gastos"
+          primaryHref="/compras/gastos"
+          secondaryLabel="Novo lançamento"
+          secondaryHref="/compras/gastos?novo=1"
+        />
+
+        <HubCard
+          icon={RefreshCcw}
+          title="Reposição"
+          description="Veja produtos, embalagens e insumos que precisam ser recomprados."
+          primaryLabel="Ver reposição"
+          primaryHref="/compras/reposicao"
+        />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <Boxes className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Cadastros relacionados
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Atalhos para cadastros usados por compras, estoque e loja.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {atalhosRelacionados.map((atalho) => {
+              const Icon = atalho.icon;
+
+              return (
+                <Link
+                  key={atalho.href}
+                  href={atalho.href}
+                  className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-slate-400" />
+                    {atalho.label}
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-slate-400" />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-700 ring-1 ring-slate-200">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Financeiro e distribuição
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Base futura para apuração mensal, caixa, reserva,
+                investimentos e pró-labore.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
+            {[
+              "Apuração mensal",
+              "Caixa",
+              "Reserva",
+              "Social media",
+              "Tráfego",
+              "Investimentos",
+              "Pró-labore",
+            ].map((item) => (
+              <span
+                key={item}
+                className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            disabled
+            className="mt-5 inline-flex min-h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-400"
+          >
+            Em breve
+          </button>
+        </div>
+      </section>
+    </div>
   );
+}
 
-  return <ComprasEGastosClient compras={compras} lancamentos={lancamentos} />;
+function ResumoCard({ titulo, valor }: { titulo: string; valor: string | number }) {
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p className="text-sm font-medium text-slate-500">{titulo}</p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+        {valor}
+      </p>
+    </div>
+  );
+}
+
+function HubCard({
+  icon: Icon,
+  title,
+  description,
+  primaryLabel,
+  primaryHref,
+  secondaryLabel,
+  secondaryHref,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+}) {
+  return (
+    <article className="flex h-full flex-col rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h2 className="mt-4 text-lg font-semibold text-slate-950">{title}</h2>
+      <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">
+        {description}
+      </p>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <Link
+          href={primaryHref}
+          className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          {primaryLabel}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+        {secondaryLabel && secondaryHref && (
+          <Link
+            href={secondaryHref}
+            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <Plus className="h-4 w-4" />
+            {secondaryLabel}
+          </Link>
+        )}
+      </div>
+    </article>
+  );
 }
