@@ -528,6 +528,26 @@ function montarEntregaManual(
   };
 }
 
+function validarCalculoAutomaticoEntregaManual(
+  entregaManual: ReturnType<typeof montarEntregaManual>,
+) {
+  if (entregaManual.modalidade !== "ENTREGA_MANUAL") {
+    return;
+  }
+
+  if (
+    !entregaManual.calculoAutomatico ||
+    !entregaManual.providerDistancia ||
+    !entregaManual.distanciaIdaKm ||
+    !entregaManual.distanciaTotalKm ||
+    entregaManual.valorFinal <= 0
+  ) {
+    throw new Error(
+      "Calcule a entrega antes de concluir. Ajuste o endereco ou selecione uma localizacao sugerida.",
+    );
+  }
+}
+
 function labelModalidadeEntrega(modalidade: ModalidadeEntregaManual) {
   if (modalidade === "RETIRADA_COMBINADA") return "Retirada combinada";
   if (
@@ -791,6 +811,7 @@ export async function criarPedidoManualOnline({
         envio,
         origemDespachoSnapshot,
       );
+      validarCalculoAutomaticoEntregaManual(entregaManualData);
       valorFrete = entregaManualData.valorFinal;
 
       envioData = {

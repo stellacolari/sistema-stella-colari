@@ -1818,6 +1818,17 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                               Origem por localizacao exata
                             </p>
                           ) : null}
+                          {pedido.entregaManual.precisaoDestino === "COORDENADA_FIXA" ? (
+                            <p className="mt-1 inline-flex rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-200">
+                              Destino por localizacao exata
+                            </p>
+                          ) : null}
+                          {!pedido.entregaManual.calculoAutomatico &&
+                          !pedido.entregaManual.erroCalculo ? (
+                            <p className="mt-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200">
+                              Entrega antiga sem calculo registrado.
+                            </p>
+                          ) : null}
                           {pedido.entregaManual.endereco && (
                             <p className="mt-1 line-clamp-2">
                               {pedido.entregaManual.endereco}

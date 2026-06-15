@@ -50,6 +50,25 @@ type TentativaGeocodificacao = {
     | "APROXIMADA_CIDADE";
 };
 
+type CandidatoDestino = {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  precisao: EnderecoGeocodificado["precisao"];
+  fonte: "openroute" | "nominatim";
+};
+
+class DestinoAmbiguoError extends Error {
+  candidatos: CandidatoDestino[];
+
+  constructor(candidatos: CandidatoDestino[]) {
+    super("Encontramos opcoes proximas. Escolha uma para calcular a entrega.");
+    this.name = "DestinoAmbiguoError";
+    this.candidatos = candidatos;
+  }
+}
+
 function texto(value: unknown) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
@@ -436,6 +455,41 @@ function featureCoordinates(value: unknown): unknown[] | null {
   return null;
 }
 
+function adicionarCandidato(
+  candidatos: CandidatoDestino[],
+  candidato: CandidatoDestino,
+) {
+  const existe = candidatos.some(
+    (atual) =>
+      Math.abs(atual.latitude - candidato.latitude) < 0.00001 &&
+      Math.abs(atual.longitude - candidato.longitude) < 0.00001,
+  );
+
+  if (!existe) {
+    candidatos.push({ ...candidato, id: String(candidatos.length + 1) });
+  }
+}
+
+function ufNominatim(address: Record<string, unknown>) {
+  const iso = texto(address["ISO3166-2-lvl4"]);
+
+  if (iso.includes("-")) {
+    return iso.split("-").pop() || "";
+  }
+
+  return texto(address.state_code || address.state).toUpperCase().slice(0, 2);
+}
+
+function cidadeNominatim(address: Record<string, unknown>) {
+  return texto(
+    address.city ||
+      address.town ||
+      address.village ||
+      address.municipality ||
+      address.county,
+  );
+}
+
 function pontuarFeature(
   feature: unknown,
   endereco: EnderecoEntrega,
@@ -503,11 +557,235 @@ function pontuarFeature(
   };
 }
 
+function pontuarNominatim(
+  item: Record<string, unknown>,
+  endereco: EnderecoEntrega,
+  precisao: TentativaGeocodificacao["precisao"],
+) {
+  const address =
+    item.address && typeof item.address === "object" && !Array.isArray(item.address)
+      ? (item.address as Record<string, unknown>)
+      : {};
+  const pais = texto(address.country_code || address.country);
+  const uf = ufNominatim(address);
+  const cidade = cidadeNominatim(address);
+  const rua = texto(address.road || address.pedestrian || address.residential);
+  const bairro = texto(address.neighbourhood || address.suburb || address.quarter);
+  const cep = normalizarCep(address.postcode);
+  const paisOk =
+    !pais || ["br", "BR", "Brasil", "Brazil"].some((valor) => mesmoTexto(pais, valor));
+  const ufOk = !uf || mesmoTexto(uf, normalizarUf(endereco.estado ?? endereco.uf));
+  const cidadeOk = !cidade || mesmoTexto(cidade, endereco.cidade);
+  const ruaOk = textoContem(rua, endereco.rua);
+  const bairroOk = texto(endereco.bairro)
+    ? textoContem(bairro, endereco.bairro)
+    : false;
+  const cepOk = cep && cep === normalizarCep(endereco.cep);
+
+  if (!paisOk || !ufOk || !cidadeOk) {
+    return { score: -100, precisao };
+  }
+
+  let score = 0;
+
+  if (paisOk) score += 2;
+  if (ufOk) score += 3;
+  if (cidadeOk) score += 4;
+  if (ruaOk) score += 5;
+  if (bairroOk) score += 2;
+  if (cepOk) score += 3;
+
+  return { score, precisao: ruaOk && cepOk ? precisao : "APROXIMADA_RUA" };
+}
+
+async function buscarNominatim(params: URLSearchParams) {
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+    {
+      cache: "no-store",
+      headers: {
+        "User-Agent": "PlataformaStellaColari/1.0",
+        Accept: "application/json",
+      },
+    },
+  );
+
+  const data = await response.json().catch(() => []);
+
+  return Array.isArray(data) ? data : [];
+}
+
+async function geocodificarNominatim(
+  endereco: EnderecoEntrega,
+  candidatos: CandidatoDestino[],
+): Promise<EnderecoGeocodificado | null> {
+  const rua = normalizarLogradouro(endereco.rua);
+  const numero = texto(endereco.numero);
+  const bairro = texto(endereco.bairro);
+  const cidade = texto(endereco.cidade);
+  const uf = normalizarUf(endereco.estado ?? endereco.uf);
+  const cep = formatarCep(endereco.cep);
+  const buscas: Array<{
+    params: URLSearchParams;
+    tentativa: string;
+    texto: string;
+    precisao: TentativaGeocodificacao["precisao"];
+  }> = [
+    {
+      params: new URLSearchParams({
+        street: montarPartesEndereco([rua, numero]),
+        city: cidade,
+        state: uf,
+        postalcode: cep,
+        country: "Brazil",
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+      }),
+      tentativa: "nominatim_estruturado",
+      texto: montarPartesEndereco([rua, numero, bairro, cidade, uf, cep, "Brasil"]),
+      precisao: "EXATA",
+    },
+    {
+      params: new URLSearchParams({
+        q: montarPartesEndereco([rua, numero, bairro, cidade, uf, cep, "Brasil"]),
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "br",
+      }),
+      tentativa: "nominatim_texto_completo",
+      texto: montarPartesEndereco([rua, numero, bairro, cidade, uf, cep, "Brasil"]),
+      precisao: "EXATA",
+    },
+    {
+      params: new URLSearchParams({
+        q: montarPartesEndereco([rua, cidade, uf, "Brasil"]),
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "br",
+      }),
+      tentativa: "nominatim_rua_cidade",
+      texto: montarPartesEndereco([rua, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_RUA",
+    },
+    {
+      params: new URLSearchParams({
+        q: montarPartesEndereco([bairro, cidade, uf, "Brasil"]),
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "br",
+      }),
+      tentativa: "nominatim_bairro",
+      texto: montarPartesEndereco([bairro, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_BAIRRO",
+    },
+    {
+      params: new URLSearchParams({
+        q: montarPartesEndereco([cep, cidade, uf, "Brasil"]),
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "br",
+      }),
+      tentativa: "nominatim_cep",
+      texto: montarPartesEndereco([cep, cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_CEP",
+    },
+    {
+      params: new URLSearchParams({
+        q: montarPartesEndereco([cidade, uf, "Brasil"]),
+        format: "json",
+        addressdetails: "1",
+        limit: "5",
+        countrycodes: "br",
+      }),
+      tentativa: "nominatim_cidade",
+      texto: montarPartesEndereco([cidade, uf, "Brasil"]),
+      precisao: "APROXIMADA_CIDADE",
+    },
+  ];
+
+  let melhor:
+    | {
+        item: Record<string, unknown>;
+        tentativa: (typeof buscas)[number];
+        score: number;
+        precisao: EnderecoGeocodificado["precisao"];
+      }
+    | null = null;
+
+  for (const busca of buscas) {
+    const resultados = await buscarNominatim(busca.params);
+
+    for (const resultado of resultados) {
+      if (!resultado || typeof resultado !== "object" || Array.isArray(resultado)) {
+        continue;
+      }
+
+      const item = resultado as Record<string, unknown>;
+      const latitude = Number(item.lat);
+      const longitude = Number(item.lon);
+      const pontuacao = pontuarNominatim(item, endereco, busca.precisao);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        continue;
+      }
+
+      if (pontuacao.score >= 4) {
+        adicionarCandidato(candidatos, {
+          id: "",
+          label: texto(item.display_name) || busca.texto,
+          latitude,
+          longitude,
+          precisao: pontuacao.precisao,
+          fonte: "nominatim",
+        });
+      }
+
+      const scoreMinimo = busca.precisao === "EXATA" ? 10 : 8;
+
+      if (pontuacao.score >= scoreMinimo && (!melhor || pontuacao.score > melhor.score)) {
+        melhor = {
+          item,
+          tentativa: busca,
+          score: pontuacao.score,
+          precisao: pontuacao.precisao,
+        };
+      }
+    }
+
+    if (melhor) {
+      break;
+    }
+  }
+
+  if (!melhor) {
+    return null;
+  }
+
+  return {
+    endereco,
+    enderecoFormatado: melhor.tentativa.texto || enderecoFormatado(endereco),
+    encontrado: texto(melhor.item.display_name) || melhor.tentativa.texto,
+    precisao: melhor.precisao,
+    tentativa: melhor.tentativa.tentativa,
+    coordenadas: {
+      latitude: Number(melhor.item.lat),
+      longitude: Number(melhor.item.lon),
+    },
+  };
+}
+
 async function geocodificarOpenRoute(
   endereco: EnderecoEntrega,
   key: string,
+  options?: { destino?: boolean },
 ): Promise<EnderecoGeocodificado> {
   const tentativas = montarTentativasGeocodificacao(endereco);
+  const candidatos: CandidatoDestino[] = [];
   let melhor:
     | {
         feature: unknown;
@@ -535,11 +813,44 @@ async function geocodificarOpenRoute(
     for (const feature of features) {
       const resultado = pontuarFeature(feature, endereco, tentativa);
       const coordinates = featureCoordinates(feature);
+      const longitudeCandidato = Number(coordinates?.[0]);
+      const latitudeCandidato = Number(coordinates?.[1]);
 
       const scoreMinimo = tentativa.precisao === "EXATA" ? 9 : 7;
 
       if (!coordinates || resultado.score < scoreMinimo) {
+        if (
+          options?.destino &&
+          coordinates &&
+          resultado.score >= 4 &&
+          Number.isFinite(longitudeCandidato) &&
+          Number.isFinite(latitudeCandidato)
+        ) {
+          adicionarCandidato(candidatos, {
+            id: "",
+            label: resultado.encontrado || tentativa.text,
+            latitude: latitudeCandidato,
+            longitude: longitudeCandidato,
+            precisao: resultado.precisao,
+            fonte: "openroute",
+          });
+        }
         continue;
+      }
+
+      if (
+        options?.destino &&
+        Number.isFinite(longitudeCandidato) &&
+        Number.isFinite(latitudeCandidato)
+      ) {
+        adicionarCandidato(candidatos, {
+          id: "",
+          label: resultado.encontrado || tentativa.text,
+          latitude: latitudeCandidato,
+          longitude: longitudeCandidato,
+          precisao: resultado.precisao,
+          fonte: "openroute",
+        });
       }
 
       if (!melhor || resultado.score > melhor.score) {
@@ -563,6 +874,18 @@ async function geocodificarOpenRoute(
   const latitude = Number(coordinates?.[1]);
 
   if (!melhor || !coordinates || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+    if (options?.destino) {
+      const nominatim = await geocodificarNominatim(endereco, candidatos);
+
+      if (nominatim) {
+        return nominatim;
+      }
+
+      if (candidatos.length > 0) {
+        throw new DestinoAmbiguoError(candidatos.slice(0, 6));
+      }
+    }
+
     throw new Error("Nao foi possivel localizar o endereco informado com seguranca.");
   }
 
@@ -632,10 +955,14 @@ async function calcularRotaOpenRoute(
   try {
     destinoGeo = temCoordenadas(destino)
       ? geocodificarCoordenadaFixa(destino)
-      : await geocodificarOpenRoute(destino, key);
-  } catch {
+      : await geocodificarOpenRoute(destino, key, { destino: true });
+  } catch (error) {
+    if (error instanceof DestinoAmbiguoError) {
+      throw error;
+    }
+
     throw new Error(
-      "Nao encontramos o destino com seguranca. Confira CEP, rua e numero ou preencha valor da entrega manualmente.",
+      "Nao encontramos o destino com seguranca. Revise CEP, rua e numero ou selecione uma sugestao de endereco.",
     );
   }
 
@@ -676,7 +1003,7 @@ function mesmaCidadeUf(origem: EnderecoEntrega, destino: EnderecoEntrega) {
 }
 
 function erroDistanciaAbsurda() {
-  return "A rota calculada parece incorreta. Revise o endereco ou use o botao Ver no Maps.";
+  return "A rota calculada parece incorreta. Ajuste o destino ou selecione outra sugestao.";
 }
 
 function precisaoAproximada(precisao: string | null | undefined) {
@@ -727,6 +1054,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  let origemErro: EnderecoEntrega | null = null;
+  let destinoErro: EnderecoEntrega | null = null;
+
   try {
     const key = texto(process.env.OPENROUTE_API_KEY);
     const body = (await req.json().catch(() => ({}))) as Record<
@@ -739,6 +1069,8 @@ export async function POST(req: Request) {
       enderecoCompleto(origemBody) && origemBody.id !== "frete-config"
         ? origemBody
         : await buscarOrigemPorId(texto(body.origemId || origemBody.id));
+    origemErro = origem;
+    destinoErro = destino;
 
     if (!enderecoCompleto(origem)) {
       return NextResponse.json(
@@ -902,6 +1234,19 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Erro ao calcular entrega manual:", error);
+
+    if (error instanceof DestinoAmbiguoError) {
+      return NextResponse.json(
+        {
+          error: "DESTINO_AMBIGUO",
+          message: error.message,
+          candidatosDestino: error.candidatos,
+          mapsUrl:
+            origemErro && destinoErro ? montarMapsUrl(origemErro, destinoErro) : "",
+        },
+        { status: 400 },
+      );
+    }
 
     const message =
       error instanceof Error ? error.message : "Erro ao calcular entrega manual.";

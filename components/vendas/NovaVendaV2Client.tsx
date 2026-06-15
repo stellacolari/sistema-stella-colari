@@ -130,6 +130,15 @@ type OrigemEntregaManualInfo = {
   origemSistema?: boolean;
 };
 
+type CandidatoDestinoEntrega = {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  precisao: string;
+  fonte: string;
+};
+
 const MODALIDADES_ENTREGA_MANUAL: {
   value: ModalidadeEntregaManual;
   label: string;
@@ -413,6 +422,16 @@ function normalizarCep(value: string | null | undefined) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function formatarCepExibicao(value: string | null | undefined) {
+  const cep = normalizarCep(value);
+
+  if (cep.length === 8) {
+    return `${cep.slice(0, 5)}-${cep.slice(5)}`;
+  }
+
+  return String(value || "").trim();
+}
+
 function labelModalidadeEntrega(value: ModalidadeEntregaManual) {
   const normalizada =
     value === "CIDADE_PROXIMA" || value === "ENTREGA_LOCAL"
@@ -497,6 +516,10 @@ function enderecoCompletoParaMaps(endereco?: Partial<EnderecoEntrega> | null) {
 }
 
 function enderecoParaMaps(endereco: Partial<EnderecoEntrega>) {
+  if (temCoordenadas(endereco)) {
+    return `${Number(endereco.latitude)},${Number(endereco.longitude)}`;
+  }
+
   return [
     endereco.rua,
     endereco.numero,
@@ -638,6 +661,8 @@ export default function NovaVendaV2Client({
     bairro: "",
     cidade: "",
     estado: "",
+    latitude: "",
+    longitude: "",
   });
   const [buscandoCepEntrega, setBuscandoCepEntrega] = useState(false);
   const [ultimoCepEntregaBuscado, setUltimoCepEntregaBuscado] = useState("");
@@ -681,7 +706,11 @@ export default function NovaVendaV2Client({
     "Preencha CEP e número.",
   );
   const [configCalculoAberta, setConfigCalculoAberta] = useState(false);
-  const [valorManualEditado, setValorManualEditado] = useState(false);
+  const [destinoCoordenadasAberto, setDestinoCoordenadasAberto] =
+    useState(false);
+  const [candidatosDestinoEntrega, setCandidatosDestinoEntrega] = useState<
+    CandidatoDestinoEntrega[]
+  >([]);
   const [entregaManual, setEntregaManual] = useState({
     valorManual: "",
     origemResumo: "",
@@ -1025,9 +1054,10 @@ export default function NovaVendaV2Client({
       entrega.bairro,
       entrega.cidade,
       entrega.estado,
+      formatarCepExibicao(entrega.cep),
     ]
       .filter(Boolean)
-      .join(", ") || entrega.cep || "";
+      .join(", ");
   const destinoEntregaResumo =
     entregaManual.destinoResumo || enderecoEntregaResumo;
   const mapsUrlEntregaManual = useMemo(
@@ -1100,9 +1130,18 @@ export default function NovaVendaV2Client({
     }
 
     if (etapa === "CALCULO" && modalidadeEntregaNormalizada === "ENTREGA_MANUAL") {
-      if ((numeroInputOuNull(entregaManual.valorManual) ?? 0) <= 0) {
+      const distanciaIda = numeroInputOuNull(entregaManual.distanciaIdaKm);
+      const distanciaTotal = numeroInputOuNull(entregaManual.distanciaTotalKm);
+      const valorFinal = numeroInputOuNull(entregaManual.valorManual);
+
+      if (
+        !entregaManual.calculoAutomatico ||
+        !distanciaIda ||
+        !distanciaTotal ||
+        !valorFinal
+      ) {
         setErroFrete(
-          "Nao conseguimos calcular com seguranca. Informe o valor manualmente ou confira no Maps.",
+          "Resolva o endereco para calcular a entrega.",
         );
         return false;
       }
@@ -1144,6 +1183,9 @@ export default function NovaVendaV2Client({
     setEntrega((atual) => ({
       ...atual,
       [campo]: campo === "estado" ? valor.toUpperCase().slice(0, 2) : valor,
+      ...(campo !== "latitude" && campo !== "longitude"
+        ? { latitude: "", longitude: "" }
+        : {}),
     }));
     setFreteSelecionadoId("");
     setOpcoesFrete([]);
@@ -1154,8 +1196,10 @@ export default function NovaVendaV2Client({
     }
 
     if (modalidadeEntregaNormalizada === "ENTREGA_MANUAL") {
+      setCandidatosDestinoEntrega([]);
       setEntregaManual((atual) => ({
         ...atual,
+        valorManual: "",
         destinoResumo: "",
         mapsUrl: "",
         distanciaIdaKm: "",
@@ -1196,17 +1240,13 @@ export default function NovaVendaV2Client({
     setErroFrete("");
   }
 
-  function atualizarValorCobrado(value: string) {
-    setValorManualEditado(true);
-    atualizarCampoEntregaManual("valorManual", value);
-  }
-
   const selecionarOrigemEntrega = useCallback((origem: OrigemEntregaManualInfo) => {
     setOrigemEntregaManual(origem);
     setOrigemSelecionadaId(origem.id);
     setSeletorOrigemAberto(false);
     setEntregaManual((atual) => ({
       ...atual,
+      valorManual: "",
       origemResumo: origem.resumo,
       mapsUrl: "",
       distanciaIdaKm: "",
@@ -1235,6 +1275,7 @@ export default function NovaVendaV2Client({
     setStatusCalculoEntrega("Preencha CEP e número.");
     setErroFrete("");
     setErroOrigensEntrega("");
+    setCandidatosDestinoEntrega([]);
   }, []);
 
   function resetarOrigemForm() {
@@ -1563,6 +1604,8 @@ export default function NovaVendaV2Client({
       bairro: clienteSelecionado.bairro || "",
       cidade: clienteSelecionado.cidade || "",
       estado: clienteSelecionado.estado || "",
+      latitude: "",
+      longitude: "",
     });
     setFreteSelecionadoId("");
     setOpcoesFrete([]);
@@ -1601,6 +1644,8 @@ export default function NovaVendaV2Client({
           bairro: data.endereco.bairro || atual.bairro,
           cidade: data.endereco.cidade || atual.cidade,
           estado: data.endereco.estado || atual.estado,
+          latitude: "",
+          longitude: "",
         }));
         setUltimoCepEntregaBuscado(cep);
       } catch {
@@ -1704,6 +1749,7 @@ export default function NovaVendaV2Client({
     setCalculandoEntregaManual(true);
     setStatusCalculoEntrega("Calculando entrega...");
     setErroFrete("");
+    setCandidatosDestinoEntrega([]);
 
     try {
       const response = await fetch("/api/vendas/entrega-manual/calcular", {
@@ -1733,13 +1779,19 @@ export default function NovaVendaV2Client({
 
       if (!response.ok) {
         const erroCalculo = String(
+          data.message ||
           data.erroCalculo ||
             data.error ||
-            "Nao foi possivel calcular a entrega com seguranca. Revise o endereco ou abra a rota no Maps.",
+            "Nao foi possivel calcular a entrega com seguranca. Revise o endereco ou selecione uma sugestao.",
         );
+        const candidatos = Array.isArray(data.candidatosDestino)
+          ? (data.candidatosDestino as CandidatoDestinoEntrega[])
+          : [];
+
+        setCandidatosDestinoEntrega(candidatos);
         setEntregaManual((atual) => ({
           ...atual,
-          valorManual: valorManualEditado ? atual.valorManual : "",
+          valorManual: "",
           mapsUrl: String(data.mapsUrl || mapsUrlEntregaManual || ""),
           origemResumo: String(data.origemResumo || origemEntregaResumo),
           destinoResumo: String(data.destinoResumo || enderecoEntregaResumo),
@@ -1769,16 +1821,17 @@ export default function NovaVendaV2Client({
           calculoAutomatico: false,
         }));
         setStatusCalculoEntrega(
-          data.error || "Não foi possível calcular automaticamente.",
+          candidatos.length > 0
+            ? "Encontramos possiveis destinos. Escolha uma sugestao."
+            : erroCalculo,
         );
         return;
       }
 
+      setCandidatosDestinoEntrega([]);
       setEntregaManual((atual) => ({
         ...atual,
-        valorManual: valorManualEditado
-          ? atual.valorManual
-          : numeroParaCampo(data.valorFinal),
+        valorManual: numeroParaCampo(data.valorFinal),
         origemResumo: String(data.origemResumo || origemEntregaResumo),
         destinoResumo: String(data.destinoResumo || enderecoEntregaResumo),
         mapsUrl: String(data.mapsUrl || mapsUrlEntregaManual || ""),
@@ -1834,8 +1887,38 @@ export default function NovaVendaV2Client({
     origemEntregaManual,
     origemEntregaResumo,
     salvandoOrigemManual,
-    valorManualEditado,
   ]);
+
+  function usarCandidatoDestino(candidato: CandidatoDestinoEntrega) {
+    const latitude = Number(candidato.latitude);
+    const longitude = Number(candidato.longitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setErroFrete("Sugestao de destino invalida.");
+      return;
+    }
+
+    setEntrega((atual) => ({
+      ...atual,
+      latitude: String(latitude),
+      longitude: String(longitude),
+    }));
+    setEntregaManual((atual) => ({
+      ...atual,
+      valorManual: "",
+      destinoResumo: candidato.label,
+      destinoCoordenadas: { latitude, longitude },
+      precisaoDestino: "COORDENADA_FIXA",
+      destinoEncontrado: candidato.label,
+      avisoDestinoAproximado: false,
+      calculoAutomatico: false,
+      erroCalculo: "",
+    }));
+    setDestinoCoordenadasAberto(true);
+    setCandidatosDestinoEntrega([]);
+    setStatusCalculoEntrega("Destino selecionado. Recalculando entrega...");
+    setErroFrete("");
+  }
 
   useEffect(() => {
     if (modalidadeEntregaNormalizada !== "ENTREGA_MANUAL") {
@@ -2035,9 +2118,15 @@ export default function NovaVendaV2Client({
 
     if (
       modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
-      numeroInputOuNull(entregaManual.valorManual) === null
+      (!entregaManual.calculoAutomatico ||
+        !numeroInputOuNull(entregaManual.distanciaIdaKm) ||
+        !numeroInputOuNull(entregaManual.distanciaTotalKm) ||
+        !numeroInputOuNull(entregaManual.valorManual) ||
+        !entregaManual.providerDistancia)
     ) {
-      setErroFrete("Informe o valor da entrega manual.");
+      setErroFrete(
+        "Calcule a entrega antes de concluir. Ajuste o endereco ou selecione uma localizacao sugerida.",
+      );
       return false;
     }
 
@@ -3911,6 +4000,70 @@ export default function NovaVendaV2Client({
                           </div>
                         ) : null}
 
+                        {etapaEntregaModal === "DESTINO" &&
+                        modalidadeEntregaNormalizada === "ENTREGA_MANUAL" ? (
+                          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-950">
+                                  Localizacao exata do destino
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                  Use quando o endereco nao for encontrado com seguranca.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDestinoCoordenadasAberto((atual) => !atual)
+                                }
+                                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                              >
+                                {destinoCoordenadasAberto
+                                  ? "Ocultar coordenadas"
+                                  : "Informar localizacao exata"}
+                              </button>
+                            </div>
+
+                            {destinoCoordenadasAberto ? (
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Latitude
+                                  </span>
+                                  <input
+                                    value={entrega.latitude}
+                                    onChange={(event) =>
+                                      atualizarCampoEntrega(
+                                        "latitude",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="-22.435000"
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Longitude
+                                  </span>
+                                  <input
+                                    value={entrega.longitude}
+                                    onChange={(event) =>
+                                      atualizarCampoEntrega(
+                                        "longitude",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="-46.820000"
+                                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-slate-500"
+                                  />
+                                </label>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
                         {modalidadeEntregaNormalizada === "ENTREGA_MANUAL" &&
                         etapaEntregaModal === "CALCULO" ? (
                           <div className="rounded-2xl border border-slate-200 bg-white p-3">
@@ -3956,6 +4109,38 @@ export default function NovaVendaV2Client({
                                 </p>
                               )}
                             </div>
+
+                            {candidatosDestinoEntrega.length > 0 ? (
+                              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                                <p className="text-sm font-semibold text-amber-950">
+                                  Encontramos possiveis destinos
+                                </p>
+                                <div className="mt-2 grid gap-2">
+                                  {candidatosDestinoEntrega.map((candidato) => (
+                                    <div
+                                      key={`${candidato.fonte}-${candidato.id}`}
+                                      className="rounded-xl bg-white p-3 text-xs text-slate-700 ring-1 ring-amber-200"
+                                    >
+                                      <p className="font-medium text-slate-950">
+                                        {candidato.label}
+                                      </p>
+                                      <p className="mt-1 text-slate-500">
+                                        {candidato.precisao} - {candidato.fonte}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          usarCandidatoDestino(candidato)
+                                        }
+                                        className="mt-2 rounded-xl bg-amber-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-800"
+                                      >
+                                        Usar este destino
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
 
                             {entregaManual.distanciaIdaKm ? (
                               <div className="mt-3 grid gap-2 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-950 ring-1 ring-emerald-200 sm:grid-cols-3">
@@ -4010,6 +4195,12 @@ export default function NovaVendaV2Client({
                               </p>
                             ) : null}
 
+                            {entregaManual.precisaoDestino === "COORDENADA_FIXA" ? (
+                              <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+                                Destino calculado por localizacao exata.
+                              </p>
+                            ) : null}
+
                             {entregaManual.calculoAutomatico &&
                             (entregaManual.avisoDestinoAproximado ||
                               entregaManual.precisaoOrigem.startsWith("APROXIMADA") ||
@@ -4035,12 +4226,13 @@ export default function NovaVendaV2Client({
                               </span>
                               <input
                                 value={entregaManual.valorManual}
-                                onChange={(event) =>
-                                  atualizarValorCobrado(event.target.value)
-                                }
+                                readOnly
                                 placeholder="0,00"
-                                className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-slate-500"
+                                className="h-11 w-full rounded-2xl border border-slate-300 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none"
                               />
+                              <span className="mt-1 block text-xs text-slate-500">
+                                Valor preenchido automaticamente apos calcular a rota.
+                              </span>
                             </label>
 
                             <button
