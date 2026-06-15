@@ -1771,12 +1771,20 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         <div className="mt-2 rounded-xl bg-slate-50 px-2.5 py-2 text-[11px] text-slate-600 ring-1 ring-slate-200">
                           <p className="font-semibold text-slate-800">
                             {pedido.entregaManual.label}
-                            {pedido.entregaManual.kmEstimado !== null
+                            {!pedido.entregaManual.distanciaPossivelmenteIncorreta &&
+                            pedido.entregaManual.kmEstimado !== null
                               ? ` | ${pedido.entregaManual.kmEstimado} km`
                               : ""}
                             {" | "}
                             {moeda(pedido.entregaManual.valor)}
                           </p>
+                          {pedido.entregaManual.distanciaPossivelmenteIncorreta ||
+                          pedido.entregaManual.erroCalculo ? (
+                            <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">
+                              {pedido.entregaManual.erroCalculo ||
+                                "Distancia possivelmente incorreta."}
+                            </p>
+                          ) : null}
                           {pedido.entregaManual.endereco && (
                             <p className="mt-1 line-clamp-2">
                               {pedido.entregaManual.endereco}

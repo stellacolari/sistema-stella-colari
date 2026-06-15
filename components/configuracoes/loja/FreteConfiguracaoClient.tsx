@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, PackageCheck, Save } from "lucide-react";
 
 export type FreteConfiguracao = {
@@ -35,6 +35,10 @@ function numeroParaInput(value: number | null | undefined) {
   }
 
   return String(value).replace(".", ",");
+}
+
+function normalizarCep(value: string) {
+  return String(value || "").replace(/\D/g, "");
 }
 
 export default function FreteConfiguracaoClient({
@@ -95,11 +99,64 @@ export default function FreteConfiguracaoClient({
   );
   const [remetenteUf, setRemetenteUf] = useState(config.remetenteUf);
   const [salvando, setSalvando] = useState(false);
+  const [buscandoCepOrigem, setBuscandoCepOrigem] = useState(false);
+  const [ultimoCepOrigemBuscado, setUltimoCepOrigemBuscado] = useState("");
   const [erro, setErro] = useState("");
+  const [erroCepOrigem, setErroCepOrigem] = useState("");
   const [sucesso, setSucesso] = useState("");
+
+  const buscarEnderecoOrigemPorCep = useCallback(
+    async (cepInformado?: string) => {
+      const cep = normalizarCep(cepInformado || cepOrigem);
+
+      if (!cep || cep.length !== 8 || cep === ultimoCepOrigemBuscado) {
+        return;
+      }
+
+      setBuscandoCepOrigem(true);
+      setErroCepOrigem("");
+
+      try {
+        const response = await fetch(`/api/loja/cep?cep=${cep}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.endereco) {
+          setErroCepOrigem(data.error || "CEP nao encontrado.");
+          setUltimoCepOrigemBuscado(cep);
+          return;
+        }
+
+        setCepOrigem(data.endereco.cep || cep);
+        setRemetenteEndereco((atual) => data.endereco.rua || atual);
+        setRemetenteBairro((atual) => data.endereco.bairro || atual);
+        setRemetenteCidade((atual) => data.endereco.cidade || atual);
+        setRemetenteUf((atual) => data.endereco.estado || atual);
+        setUltimoCepOrigemBuscado(cep);
+      } catch {
+        setErroCepOrigem("Nao foi possivel buscar o CEP automaticamente.");
+      } finally {
+        setBuscandoCepOrigem(false);
+      }
+    },
+    [cepOrigem, ultimoCepOrigemBuscado],
+  );
+
+  useEffect(() => {
+    const cep = normalizarCep(cepOrigem);
+
+    if (cep.length !== 8 || cep === ultimoCepOrigemBuscado) {
+      return;
+    }
+
+    void buscarEnderecoOrigemPorCep(cep);
+  }, [buscarEnderecoOrigemPorCep, cepOrigem, ultimoCepOrigemBuscado]);
 
   async function salvar() {
     setErro("");
+    setErroCepOrigem("");
     setSucesso("");
     setSalvando(true);
 
@@ -232,10 +289,25 @@ export default function FreteConfiguracaoClient({
 
               <input
                 value={cepOrigem}
-                onChange={(event) => setCepOrigem(event.target.value)}
+                onChange={(event) => {
+                  setCepOrigem(event.target.value);
+                  setUltimoCepOrigemBuscado("");
+                  setErroCepOrigem("");
+                }}
+                onBlur={() => buscarEnderecoOrigemPorCep()}
                 placeholder="00000000"
                 className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
               />
+              {buscandoCepOrigem ? (
+                <span className="mt-1 block text-xs text-slate-500">
+                  Buscando CEP...
+                </span>
+              ) : null}
+              {erroCepOrigem ? (
+                <span className="mt-1 block text-xs font-medium text-red-700">
+                  {erroCepOrigem}
+                </span>
+              ) : null}
             </label>
 
             <label>

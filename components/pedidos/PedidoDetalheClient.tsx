@@ -941,7 +941,15 @@ export default function PedidoDetalheClient({
                     {pedido.entregaManual.label} |{" "}
                     {moeda(pedido.entregaManual.valor)}
                   </p>
-                  {pedido.entregaManual.kmEstimado !== null && (
+                  {pedido.entregaManual.distanciaPossivelmenteIncorreta ||
+                  pedido.entregaManual.erroCalculo ? (
+                    <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-amber-800 ring-1 ring-amber-200">
+                      {pedido.entregaManual.erroCalculo ||
+                        "Distancia possivelmente incorreta. Revise a rota antes de usar esse valor."}
+                    </p>
+                  ) : null}
+                  {!pedido.entregaManual.distanciaPossivelmenteIncorreta &&
+                    pedido.entregaManual.kmEstimado !== null && (
                     <p className="mt-1 text-blue-800">
                       Distância ida: {pedido.entregaManual.kmIda} km
                       {pedido.entregaManual.kmIdaVolta !== null

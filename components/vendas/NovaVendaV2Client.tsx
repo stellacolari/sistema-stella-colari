@@ -643,6 +643,11 @@ export default function NovaVendaV2Client({
     valorSugerido: "",
     providerDistancia: "",
     calculoAutomatico: false,
+    origemEnderecoFormatado: "",
+    destinoEnderecoFormatado: "",
+    origemCoordenadas: null as { latitude: number; longitude: number } | null,
+    destinoCoordenadas: null as { latitude: number; longitude: number } | null,
+    erroCalculo: "",
     observacaoManual: "",
   });
   const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcaoVenda[]>([]);
@@ -1006,6 +1011,11 @@ export default function NovaVendaV2Client({
         valorSugerido: "",
         providerDistancia: "",
         calculoAutomatico: false,
+        origemEnderecoFormatado: "",
+        destinoEnderecoFormatado: "",
+        origemCoordenadas: null,
+        destinoCoordenadas: null,
+        erroCalculo: "",
       }));
       setStatusCalculoEntrega("Preencha CEP e número.");
     }
@@ -1045,6 +1055,11 @@ export default function NovaVendaV2Client({
       valorSugerido: "",
       providerDistancia: "",
       calculoAutomatico: false,
+      origemEnderecoFormatado: "",
+      destinoEnderecoFormatado: "",
+      origemCoordenadas: null,
+      destinoCoordenadas: null,
+      erroCalculo: "",
     }));
     setStatusCalculoEntrega("Preencha CEP e número.");
     setErroFrete("");
@@ -1381,6 +1396,11 @@ export default function NovaVendaV2Client({
       return;
     }
 
+    if (!String(entrega.numero || "").trim()) {
+      setStatusCalculoEntrega("Informe o numero para calcular a entrega.");
+      return;
+    }
+
     if (!enderecoCompletoParaMaps(entrega)) {
       setStatusCalculoEntrega("Preencha CEP e número.");
       return;
@@ -1415,11 +1435,31 @@ export default function NovaVendaV2Client({
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const erroCalculo = String(
+          data.erroCalculo ||
+            data.error ||
+            "Nao foi possivel calcular a entrega com seguranca. Revise o endereco ou abra a rota no Maps.",
+        );
         setEntregaManual((atual) => ({
           ...atual,
+          valorManual: valorManualEditado ? atual.valorManual : "",
           mapsUrl: String(data.mapsUrl || mapsUrlEntregaManual || ""),
           origemResumo: String(data.origemResumo || origemEntregaResumo),
           destinoResumo: String(data.destinoResumo || enderecoEntregaResumo),
+          distanciaIdaKm: "",
+          distanciaTotalKm: "",
+          duracaoTexto: "",
+          duracaoMinutos: "",
+          litrosEstimados: "",
+          custoCombustivel: "",
+          valorComMargem: "",
+          valorSugerido: "",
+          providerDistancia: String(data.providerDistancia || ""),
+          origemEnderecoFormatado: String(data.origemEnderecoFormatado || ""),
+          destinoEnderecoFormatado: String(data.destinoEnderecoFormatado || ""),
+          origemCoordenadas: data.origemCoordenadas || null,
+          destinoCoordenadas: data.destinoCoordenadas || null,
+          erroCalculo,
           calculoAutomatico: false,
         }));
         setStatusCalculoEntrega(
@@ -1450,6 +1490,11 @@ export default function NovaVendaV2Client({
         valorMinimo: numeroParaCampo(data.valorMinimo),
         valorSugerido: numeroParaCampo(data.valorSugerido),
         providerDistancia: String(data.providerDistancia || "openroute"),
+        origemEnderecoFormatado: String(data.origemEnderecoFormatado || ""),
+        destinoEnderecoFormatado: String(data.destinoEnderecoFormatado || ""),
+        origemCoordenadas: data.origemCoordenadas || null,
+        destinoCoordenadas: data.destinoCoordenadas || null,
+        erroCalculo: "",
         calculoAutomatico: true,
       }));
       setStatusCalculoEntrega("Entrega calculada.");
@@ -1480,6 +1525,11 @@ export default function NovaVendaV2Client({
 
     if (!enderecoCompletoParaMaps(origemParaEndereco(origemEntregaManual))) {
       setStatusCalculoEntrega("Selecione uma origem completa.");
+      return;
+    }
+
+    if (!String(entrega.numero || "").trim()) {
+      setStatusCalculoEntrega("Informe o numero para calcular a entrega.");
       return;
     }
 
@@ -1559,6 +1609,11 @@ export default function NovaVendaV2Client({
           ? 0
           : valorEntregaManual,
       providerDistancia: entregaManual.providerDistancia || null,
+      origemEnderecoFormatado: entregaManual.origemEnderecoFormatado || null,
+      destinoEnderecoFormatado: entregaManual.destinoEnderecoFormatado || null,
+      origemCoordenadas: entregaManual.origemCoordenadas,
+      destinoCoordenadas: entregaManual.destinoCoordenadas,
+      erroCalculo: entregaManual.erroCalculo || null,
       mapsUrl:
         modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
           ? mapsUrlEntregaManual || null

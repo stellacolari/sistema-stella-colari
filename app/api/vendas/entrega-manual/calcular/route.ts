@@ -21,8 +21,14 @@ type Coordenadas = {
   longitude: number;
 };
 
+type EnderecoGeocodificado = {
+  endereco: EnderecoEntrega;
+  enderecoFormatado: string;
+  coordenadas: Coordenadas;
+};
+
 function texto(value: unknown) {
-  return String(value || "").trim();
+  return String(value || "").trim().replace(/\s+/g, " ");
 }
 
 function numeroNaoNegativo(value: unknown, fallback = 0) {
@@ -43,8 +49,29 @@ function normalizarCep(value: unknown) {
   return String(value || "").replace(/\D/g, "");
 }
 
+function formatarCep(value: unknown) {
+  const cep = normalizarCep(value);
+
+  if (cep.length !== 8) {
+    return cep;
+  }
+
+  return `${cep.slice(0, 5)}-${cep.slice(5)}`;
+}
+
 function normalizarUf(value: unknown) {
   return texto(value).toUpperCase().slice(0, 2);
+}
+
+function removerAcentos(value: unknown) {
+  return texto(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function mesmoTexto(a: unknown, b: unknown) {
+  return removerAcentos(a) === removerAcentos(b);
 }
 
 function normalizarEndereco(value: unknown): EnderecoEntrega {
@@ -79,6 +106,22 @@ function enderecoCompleto(endereco: EnderecoEntrega) {
   );
 }
 
+function enderecoFormatado(endereco: EnderecoEntrega) {
+  return [
+    texto(endereco.rua),
+    texto(endereco.numero),
+    texto(endereco.bairro),
+    texto(endereco.cidade),
+    normalizarUf(endereco.estado ?? endereco.uf),
+    formatarCep(endereco.cep),
+    "Brasil",
+  ]
+    .filter(Boolean)
+    .join(", ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function resumoEndereco(endereco: EnderecoEntrega) {
   const enderecoResumo = [
     texto(endereco.rua),
@@ -87,7 +130,7 @@ function resumoEndereco(endereco: EnderecoEntrega) {
     texto(endereco.bairro),
     texto(endereco.cidade),
     normalizarUf(endereco.estado ?? endereco.uf),
-    normalizarCep(endereco.cep),
+    formatarCep(endereco.cep),
   ]
     .filter(Boolean)
     .join(", ");
@@ -95,25 +138,11 @@ function resumoEndereco(endereco: EnderecoEntrega) {
   return [texto(endereco.nome), enderecoResumo].filter(Boolean).join(" - ");
 }
 
-function enderecoParaBusca(endereco: EnderecoEntrega) {
-  return [
-    texto(endereco.rua),
-    texto(endereco.numero),
-    texto(endereco.bairro),
-    texto(endereco.cidade),
-    normalizarUf(endereco.estado ?? endereco.uf),
-    normalizarCep(endereco.cep),
-    "Brasil",
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
-
 function montarMapsUrl(origem: EnderecoEntrega, destino: EnderecoEntrega) {
   const params = new URLSearchParams({
     api: "1",
-    origin: enderecoParaBusca(origem),
-    destination: enderecoParaBusca(destino),
+    origin: enderecoFormatado(origem),
+    destination: enderecoFormatado(destino),
     travelmode: "driving",
   });
 
@@ -141,7 +170,7 @@ function montarEnderecoOrigemFrete(
 ): EnderecoEntrega {
   return {
     id: "frete-config",
-    nome: "Endereço de despacho",
+    nome: "Endereco de despacho",
     cep: config.cepOrigem,
     rua: config.remetenteEndereco,
     numero: config.remetenteNumero,
@@ -210,9 +239,7 @@ async function listarOrigens() {
   };
   const origens = salvas.map(serializarOrigem);
   const selecionada =
-    origens.find((origem) => origem.padrao) ||
-    origens[0] ||
-    fallback;
+    origens.find((origem) => origem.padrao) || origens[0] || fallback;
 
   return {
     origens: origens.length > 0 ? origens : [fallback],
@@ -234,30 +261,115 @@ async function buscarOrigemPorId(id: string | null | undefined) {
   );
 }
 
+function featureProps(value: unknown): Record<string, unknown> {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "properties" in value &&
+    value.properties &&
+    typeof value.properties === "object" &&
+    !Array.isArray(value.properties)
+  ) {
+    return value.properties as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function featureCoordinates(value: unknown): unknown[] | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "geometry" in value &&
+    value.geometry &&
+    typeof value.geometry === "object" &&
+    !Array.isArray(value.geometry) &&
+    "coordinates" in value.geometry &&
+    Array.isArray(value.geometry.coordinates)
+  ) {
+    return value.geometry.coordinates;
+  }
+
+  return null;
+}
+
+function featureCompativelComEndereco(feature: unknown, endereco: EnderecoEntrega) {
+  const props = featureProps(feature);
+  const pais = texto(props.country_a || props.country);
+  const uf = texto(props.region_a || props.region);
+  const cidades = [
+    props.locality,
+    props.localadmin,
+    props.county,
+    props.macrocounty,
+  ].filter(Boolean);
+  const confidence = Number(props.confidence);
+
+  if (pais && !["BR", "Brasil", "Brazil"].some((valor) => mesmoTexto(pais, valor))) {
+    return false;
+  }
+
+  if (uf && !mesmoTexto(uf, normalizarUf(endereco.estado ?? endereco.uf))) {
+    return false;
+  }
+
+  if (
+    cidades.length > 0 &&
+    !cidades.some((cidade) => mesmoTexto(cidade, endereco.cidade))
+  ) {
+    return false;
+  }
+
+  if (Number.isFinite(confidence) && confidence > 0 && confidence < 0.5) {
+    return false;
+  }
+
+  return true;
+}
+
 async function geocodificarOpenRoute(
   endereco: EnderecoEntrega,
   key: string,
-): Promise<Coordenadas> {
+): Promise<EnderecoGeocodificado> {
+  const enderecoBusca = enderecoFormatado(endereco);
   const params = new URLSearchParams({
     api_key: key,
-    text: enderecoParaBusca(endereco),
+    text: enderecoBusca,
     "boundary.country": "BR",
-    size: "1",
+    size: "5",
   });
   const response = await fetch(
     `https://api.openrouteservice.org/geocode/search?${params}`,
     { cache: "no-store" },
   );
   const data = await response.json().catch(() => ({}));
-  const coordinates = data?.features?.[0]?.geometry?.coordinates;
+  const features = Array.isArray(data?.features) ? data.features : [];
+  const feature = features.find((item: unknown) =>
+    featureCompativelComEndereco(item, endereco),
+  );
+  const coordinates = featureCoordinates(feature);
+  const longitude = Number(coordinates?.[0]);
+  const latitude = Number(coordinates?.[1]);
 
-  if (!response.ok || !Array.isArray(coordinates) || coordinates.length < 2) {
-    throw new Error("Não foi possível localizar o endereço informado.");
+  if (
+    !response.ok ||
+    !feature ||
+    !coordinates ||
+    !Number.isFinite(longitude) ||
+    !Number.isFinite(latitude)
+  ) {
+    throw new Error("Nao foi possivel localizar o endereco informado com seguranca.");
   }
 
   return {
-    longitude: Number(coordinates[0]),
-    latitude: Number(coordinates[1]),
+    endereco,
+    enderecoFormatado: enderecoBusca,
+    coordenadas: {
+      longitude,
+      latitude,
+    },
   };
 }
 
@@ -272,8 +384,8 @@ async function calcularRotaOpenRoute(
   ]);
   const params = new URLSearchParams({
     api_key: key,
-    start: `${origemGeo.longitude},${origemGeo.latitude}`,
-    end: `${destinoGeo.longitude},${destinoGeo.latitude}`,
+    start: `${origemGeo.coordenadas.longitude},${origemGeo.coordenadas.latitude}`,
+    end: `${destinoGeo.coordenadas.longitude},${destinoGeo.coordenadas.latitude}`,
   });
   const response = await fetch(
     `https://api.openrouteservice.org/v2/directions/driving-car?${params}`,
@@ -285,13 +397,29 @@ async function calcularRotaOpenRoute(
   const segundos = Number(summary?.duration);
 
   if (!response.ok || !Number.isFinite(metros)) {
-    throw new Error("Não foi possível calcular a rota pelo OpenRouteService.");
+    throw new Error("Nao foi possivel calcular a rota pelo OpenRouteService.");
   }
 
   return {
     distanciaIdaKm: metros / 1000,
     duracaoMinutos: Number.isFinite(segundos) ? segundos / 60 : 0,
+    origemGeo,
+    destinoGeo,
   };
+}
+
+function mesmaCidadeUf(origem: EnderecoEntrega, destino: EnderecoEntrega) {
+  return (
+    mesmoTexto(origem.cidade, destino.cidade) &&
+    mesmoTexto(
+      normalizarUf(origem.estado ?? origem.uf),
+      normalizarUf(destino.estado ?? destino.uf),
+    )
+  );
+}
+
+function erroDistanciaAbsurda() {
+  return "A rota calculada parece incorreta. Revise o endereco ou tente complementar o destino.";
 }
 
 export async function GET() {
@@ -323,10 +451,7 @@ export async function POST(req: Request) {
 
     if (!enderecoCompleto(origem)) {
       return NextResponse.json(
-        {
-          error:
-            "Complete a origem de entrega manual antes de calcular a rota.",
-        },
+        { error: "Complete a origem de entrega manual antes de calcular a rota." },
         { status: 400 },
       );
     }
@@ -334,7 +459,10 @@ export async function POST(req: Request) {
     if (!enderecoCompleto(destino)) {
       return NextResponse.json(
         {
-          error: "Preencha CEP, endereço, número, bairro, cidade e UF do destino.",
+          error:
+            texto(destino.numero)
+              ? "Preencha CEP, endereco, bairro, cidade e UF do destino."
+              : "Informe o numero para calcular a entrega.",
         },
         { status: 400 },
       );
@@ -347,9 +475,11 @@ export async function POST(req: Request) {
           destino,
           origemResumo: resumoEndereco(origem),
           destinoResumo: resumoEndereco(destino),
+          origemEnderecoFormatado: enderecoFormatado(origem),
+          destinoEnderecoFormatado: enderecoFormatado(destino),
           mapsUrl: montarMapsUrl(origem, destino),
           error:
-            "Configure OPENROUTE_API_KEY para calcular distância automaticamente.",
+            "Configure OPENROUTE_API_KEY para calcular distancia automaticamente.",
         },
         { status: 400 },
       );
@@ -365,10 +495,7 @@ export async function POST(req: Request) {
       parametros.consumoKmPorLitro,
       16,
     );
-    const precoCombustivel = numeroNaoNegativo(
-      parametros.precoCombustivel,
-      0,
-    );
+    const precoCombustivel = numeroNaoNegativo(parametros.precoCombustivel, 0);
     const margemPercentual = numeroNaoNegativo(
       parametros.margemPercentual,
       15,
@@ -377,6 +504,30 @@ export async function POST(req: Request) {
     const valorMinimo = numeroNaoNegativo(parametros.valorMinimo, 0);
     const rota = await calcularRotaOpenRoute(origem, destino, key);
     const distanciaIdaKm = Number(rota.distanciaIdaKm.toFixed(2));
+
+    if (mesmaCidadeUf(origem, destino) && distanciaIdaKm > 100) {
+      const error = erroDistanciaAbsurda();
+
+      return NextResponse.json(
+        {
+          origem,
+          destino,
+          origemResumo: resumoEndereco(origem),
+          destinoResumo: resumoEndereco(destino),
+          origemEnderecoFormatado: rota.origemGeo.enderecoFormatado,
+          destinoEnderecoFormatado: rota.destinoGeo.enderecoFormatado,
+          origemCoordenadas: rota.origemGeo.coordenadas,
+          destinoCoordenadas: rota.destinoGeo.coordenadas,
+          providerDistancia: "openroute",
+          mapsUrl: montarMapsUrl(origem, destino),
+          calculoAutomatico: false,
+          erroCalculo: error,
+          error,
+        },
+        { status: 400 },
+      );
+    }
+
     const distanciaTotalKm = Number((distanciaIdaKm * 2).toFixed(2));
     const litrosEstimados = Number(
       (distanciaTotalKm / consumoKmPorLitro).toFixed(2),
@@ -413,15 +564,17 @@ export async function POST(req: Request) {
       mapsUrl: montarMapsUrl(origem, destino),
       origemResumo: resumoEndereco(origem),
       destinoResumo: resumoEndereco(destino),
+      origemEnderecoFormatado: rota.origemGeo.enderecoFormatado,
+      destinoEnderecoFormatado: rota.destinoGeo.enderecoFormatado,
+      origemCoordenadas: rota.origemGeo.coordenadas,
+      destinoCoordenadas: rota.destinoGeo.coordenadas,
       calculoAutomatico: true,
     });
   } catch (error) {
     console.error("Erro ao calcular entrega manual:", error);
 
     const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao calcular entrega manual.";
+      error instanceof Error ? error.message : "Erro ao calcular entrega manual.";
 
     return NextResponse.json({ error: message }, { status: 400 });
   }

@@ -18,6 +18,10 @@ export type PedidoEntregaManual = {
   duracaoTexto: string | null;
   duracaoMinutos: number | null;
   calculoAutomatico: boolean;
+  distanciaPossivelmenteIncorreta: boolean;
+  origemEnderecoFormatado: string | null;
+  destinoEnderecoFormatado: string | null;
+  erroCalculo: string | null;
   origem: string | null;
   observacao: string | null;
   endereco: string | null;
@@ -61,6 +65,14 @@ function numero(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizarTexto(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 export function labelModalidadeEntregaManual(modalidade: string) {
   if (modalidade === "RETIRADA_COMBINADA") return "Retirada combinada";
   if (
@@ -91,6 +103,22 @@ function montarEndereco(record: Record<string, unknown>) {
   return partes.length > 0 ? partes.join(", ") : null;
 }
 
+function mesmaCidadeUf(record: Record<string, unknown>) {
+  const destino = isRecord(record.endereco) ? record.endereco : record;
+  const origem = isRecord(record.origemDespachoSnapshot)
+    ? record.origemDespachoSnapshot
+    : null;
+
+  if (!origem) {
+    return false;
+  }
+
+  return (
+    normalizarTexto(origem.cidade) === normalizarTexto(destino.cidade) &&
+    normalizarTexto(origem.estado) === normalizarTexto(destino.estado)
+  );
+}
+
 function normalizarEntregaManual(
   value: unknown,
 ): PedidoEntregaManual | null {
@@ -110,11 +138,15 @@ function normalizarEntregaManual(
     return null;
   }
 
+  const kmIda = numero(record.distanciaIdaKm ?? record.kmIda ?? record.kmEstimado);
+  const distanciaPossivelmenteIncorreta =
+    Boolean(kmIda && kmIda > 100) && mesmaCidadeUf(record);
+
   return {
     modalidade,
     label: labelModalidadeEntregaManual(modalidade),
     valor: numero(record.valorFinal ?? record.valor ?? record.valorManual) || 0,
-    kmIda: numero(record.distanciaIdaKm ?? record.kmIda ?? record.kmEstimado),
+    kmIda,
     kmEstimado: numero(record.kmEstimado ?? record.distanciaIdaKm ?? record.kmIda),
     kmIdaVolta: numero(record.distanciaTotalKm ?? record.kmIdaVolta),
     litrosEstimados: numero(record.litrosEstimados),
@@ -130,6 +162,10 @@ function normalizarEntregaManual(
     duracaoTexto: texto(record.duracaoTexto),
     duracaoMinutos: numero(record.duracaoMinutos),
     calculoAutomatico: Boolean(record.calculoAutomatico),
+    distanciaPossivelmenteIncorreta,
+    origemEnderecoFormatado: texto(record.origemEnderecoFormatado),
+    destinoEnderecoFormatado: texto(record.destinoEnderecoFormatado),
+    erroCalculo: texto(record.erroCalculo),
     origem: isRecord(record.origemDespachoSnapshot)
       ? montarEndereco(record.origemDespachoSnapshot)
       : texto(record.origemResumo),
