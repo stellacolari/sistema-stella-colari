@@ -62,6 +62,10 @@ export type EnvioPedidoManualOnlinePayload = {
   destinoEnderecoFormatado?: string | null;
   origemCoordenadas?: { latitude?: number; longitude?: number } | null;
   destinoCoordenadas?: { latitude?: number; longitude?: number } | null;
+  precisaoOrigem?: string | null;
+  precisaoDestino?: string | null;
+  origemEncontrada?: string | null;
+  destinoEncontrado?: string | null;
   erroCalculo?: string | null;
   mapsUrl?: string | null;
   mapsEmbedUrl?: string | null;
@@ -473,6 +477,10 @@ function montarEntregaManual(
     destinoEnderecoFormatado: texto(envio.destinoEnderecoFormatado) || null,
     origemCoordenadas: envio.origemCoordenadas || null,
     destinoCoordenadas: envio.destinoCoordenadas || null,
+    precisaoOrigem: texto(envio.precisaoOrigem) || null,
+    precisaoDestino: texto(envio.precisaoDestino) || null,
+    origemEncontrada: texto(envio.origemEncontrada) || null,
+    destinoEncontrado: texto(envio.destinoEncontrado) || null,
     erroCalculo: texto(envio.erroCalculo) || null,
     mapsUrl: texto(envio.mapsUrl) || null,
     mapsEmbedUrl: texto(envio.mapsEmbedUrl) || null,

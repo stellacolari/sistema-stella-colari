@@ -25,6 +25,14 @@ type EnderecoGeocodificado = {
   endereco: EnderecoEntrega;
   enderecoFormatado: string;
   coordenadas: Coordenadas;
+  encontrado: string;
+  precisao: "EXATA" | "APROXIMADA";
+  tentativa: string;
+};
+
+type TentativaGeocodificacao = {
+  label: string;
+  text: string;
 };
 
 function texto(value: unknown) {
@@ -63,6 +71,14 @@ function normalizarUf(value: unknown) {
   return texto(value).toUpperCase().slice(0, 2);
 }
 
+function normalizarLogradouro(value: unknown) {
+  return texto(value)
+    .replace(/^R\.\s+/i, "Rua ")
+    .replace(/^R\s+/i, "Rua ")
+    .replace(/^Av\.\s+/i, "Avenida ")
+    .replace(/^Av\s+/i, "Avenida ");
+}
+
 function removerAcentos(value: unknown) {
   return texto(value)
     .normalize("NFD")
@@ -72,6 +88,18 @@ function removerAcentos(value: unknown) {
 
 function mesmoTexto(a: unknown, b: unknown) {
   return removerAcentos(a) === removerAcentos(b);
+}
+
+function textoContem(a: unknown, b: unknown) {
+  const normalizadoA = removerAcentos(a);
+  const normalizadoB = removerAcentos(b);
+
+  return Boolean(
+    normalizadoA &&
+      normalizadoB &&
+      (normalizadoA.includes(normalizadoB) ||
+        normalizadoB.includes(normalizadoA)),
+  );
 }
 
 function normalizarEndereco(value: unknown): EnderecoEntrega {
@@ -84,7 +112,7 @@ function normalizarEndereco(value: unknown): EnderecoEntrega {
     id: texto(record.id),
     nome: texto(record.nome),
     cep: normalizarCep(record.cep),
-    rua: texto(record.rua),
+    rua: normalizarLogradouro(record.rua),
     numero: texto(record.numero),
     complemento: texto(record.complemento),
     bairro: texto(record.bairro),
@@ -120,6 +148,49 @@ function enderecoFormatado(endereco: EnderecoEntrega) {
     .join(", ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function montarPartesEndereco(partes: unknown[]) {
+  return partes
+    .map(texto)
+    .filter(Boolean)
+    .join(", ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function montarTentativasGeocodificacao(
+  endereco: EnderecoEntrega,
+): TentativaGeocodificacao[] {
+  const rua = normalizarLogradouro(endereco.rua);
+  const numero = texto(endereco.numero);
+  const bairro = texto(endereco.bairro);
+  const cidade = texto(endereco.cidade);
+  const uf = normalizarUf(endereco.estado ?? endereco.uf);
+  const cep = formatarCep(endereco.cep);
+
+  return [
+    {
+      label: "completo",
+      text: montarPartesEndereco([rua, numero, bairro, cidade, uf, cep, "Brasil"]),
+    },
+    {
+      label: "sem_bairro",
+      text: montarPartesEndereco([rua, numero, cidade, uf, cep, "Brasil"]),
+    },
+    {
+      label: "rua_bairro",
+      text: montarPartesEndereco([rua, bairro, cidade, uf, "Brasil"]),
+    },
+    {
+      label: "rua_cidade",
+      text: montarPartesEndereco([rua, cidade, uf, "Brasil"]),
+    },
+    {
+      label: "cep",
+      text: montarPartesEndereco([cep, cidade, uf, "Brasil"]),
+    },
+  ].filter((tentativa) => tentativa.text);
 }
 
 function resumoEndereco(endereco: EnderecoEntrega) {
@@ -295,7 +366,7 @@ function featureCoordinates(value: unknown): unknown[] | null {
   return null;
 }
 
-function featureCompativelComEndereco(feature: unknown, endereco: EnderecoEntrega) {
+function pontuarFeature(feature: unknown, endereco: EnderecoEntrega) {
   const props = featureProps(feature);
   const pais = texto(props.country_a || props.country);
   const uf = texto(props.region_a || props.region);
@@ -306,66 +377,136 @@ function featureCompativelComEndereco(feature: unknown, endereco: EnderecoEntreg
     props.macrocounty,
   ].filter(Boolean);
   const confidence = Number(props.confidence);
+  const rua = texto(props.street || props.name || props.label);
+  const bairro = texto(props.neighbourhood || props.borough || props.localadmin);
+  const numero = texto(props.housenumber || props.house_number || props.number);
+  const cep = normalizarCep(props.postalcode);
+  const cidadeOk =
+    cidades.length === 0 ||
+    cidades.some((cidade) => mesmoTexto(cidade, endereco.cidade));
+  const ufOk = !uf || mesmoTexto(uf, normalizarUf(endereco.estado ?? endereco.uf));
+  const paisOk =
+    !pais || ["BR", "Brasil", "Brazil"].some((valor) => mesmoTexto(pais, valor));
+  const ruaOk = textoContem(rua, endereco.rua);
+  const numeroOk = numero && mesmoTexto(numero, endereco.numero);
+  const bairroOk = texto(endereco.bairro)
+    ? textoContem(bairro, endereco.bairro)
+    : false;
+  const cepOk = cep && cep === normalizarCep(endereco.cep);
 
-  if (pais && !["BR", "Brasil", "Brazil"].some((valor) => mesmoTexto(pais, valor))) {
-    return false;
+  if (!paisOk || !ufOk || !cidadeOk) {
+    return {
+      score: -100,
+      precisao: "APROXIMADA" as const,
+      encontrado: texto(props.label || props.name || rua),
+      props,
+    };
   }
 
-  if (uf && !mesmoTexto(uf, normalizarUf(endereco.estado ?? endereco.uf))) {
-    return false;
-  }
+  let score = 0;
 
-  if (
-    cidades.length > 0 &&
-    !cidades.some((cidade) => mesmoTexto(cidade, endereco.cidade))
-  ) {
-    return false;
-  }
+  if (pais && paisOk) score += 2;
+  if (uf && ufOk) score += 3;
+  if (cidades.length > 0 && cidadeOk) score += 4;
+  if (ruaOk) score += 5;
+  if (numeroOk) score += 2;
+  if (cepOk) score += 3;
+  if (bairroOk) score += 2;
+  if (Number.isFinite(confidence)) score += Math.max(0, confidence);
 
   if (Number.isFinite(confidence) && confidence > 0 && confidence < 0.5) {
-    return false;
+    score -= 2;
   }
 
-  return true;
+  return {
+    score,
+    precisao:
+      numeroOk && cepOk && bairroOk && ruaOk
+        ? ("EXATA" as const)
+        : ("APROXIMADA" as const),
+    encontrado: texto(props.label || props.name || rua),
+    props,
+  };
 }
 
 async function geocodificarOpenRoute(
   endereco: EnderecoEntrega,
   key: string,
 ): Promise<EnderecoGeocodificado> {
-  const enderecoBusca = enderecoFormatado(endereco);
-  const params = new URLSearchParams({
-    api_key: key,
-    text: enderecoBusca,
-    "boundary.country": "BR",
-    size: "5",
-  });
-  const response = await fetch(
-    `https://api.openrouteservice.org/geocode/search?${params}`,
-    { cache: "no-store" },
-  );
-  const data = await response.json().catch(() => ({}));
-  const features = Array.isArray(data?.features) ? data.features : [];
-  const feature = features.find((item: unknown) =>
-    featureCompativelComEndereco(item, endereco),
-  );
-  const coordinates = featureCoordinates(feature);
+  const tentativas = montarTentativasGeocodificacao(endereco);
+  let melhor:
+    | {
+        feature: unknown;
+        tentativa: TentativaGeocodificacao;
+        score: number;
+        precisao: "EXATA" | "APROXIMADA";
+        encontrado: string;
+      }
+    | null = null;
+
+  for (const tentativa of tentativas) {
+    const params = new URLSearchParams({
+      api_key: key,
+      text: tentativa.text,
+      "boundary.country": "BR",
+      size: "8",
+    });
+    const response = await fetch(
+      `https://api.openrouteservice.org/geocode/search?${params}`,
+      { cache: "no-store" },
+    );
+    const data = await response.json().catch(() => ({}));
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    for (const feature of features) {
+      const resultado = pontuarFeature(feature, endereco);
+      const coordinates = featureCoordinates(feature);
+
+      if (!coordinates || resultado.score < 9) {
+        continue;
+      }
+
+      if (!melhor || resultado.score > melhor.score) {
+        melhor = {
+          feature,
+          tentativa,
+          score: resultado.score,
+          precisao: resultado.precisao,
+          encontrado: resultado.encontrado,
+        };
+      }
+    }
+
+    if (melhor && melhor.score >= 14) {
+      break;
+    }
+  }
+
+  const coordinates = featureCoordinates(melhor?.feature);
   const longitude = Number(coordinates?.[0]);
   const latitude = Number(coordinates?.[1]);
 
-  if (
-    !response.ok ||
-    !feature ||
-    !coordinates ||
-    !Number.isFinite(longitude) ||
-    !Number.isFinite(latitude)
-  ) {
+  if (!melhor || !coordinates || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
     throw new Error("Nao foi possivel localizar o endereco informado com seguranca.");
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    const props = featureProps(melhor.feature);
+    console.info("OpenRoute entrega manual geocode", {
+      tentativa: melhor.tentativa.label,
+      cidade: props.locality || props.localadmin || props.county,
+      uf: props.region_a || props.region,
+      precisao: melhor.precisao,
+      score: melhor.score,
+    });
   }
 
   return {
     endereco,
-    enderecoFormatado: enderecoBusca,
+    enderecoFormatado: melhor.tentativa.text || enderecoFormatado(endereco),
+    encontrado: melhor.encontrado,
+    precisao: melhor.precisao,
+    tentativa: melhor.tentativa.label,
     coordenadas: {
       longitude,
       latitude,
@@ -419,7 +560,7 @@ function mesmaCidadeUf(origem: EnderecoEntrega, destino: EnderecoEntrega) {
 }
 
 function erroDistanciaAbsurda() {
-  return "A rota calculada parece incorreta. Revise o endereco ou tente complementar o destino.";
+  return "A rota calculada parece incorreta. Revise o endereco ou use o botao Ver no Maps.";
 }
 
 export async function GET() {
@@ -518,6 +659,10 @@ export async function POST(req: Request) {
           destinoEnderecoFormatado: rota.destinoGeo.enderecoFormatado,
           origemCoordenadas: rota.origemGeo.coordenadas,
           destinoCoordenadas: rota.destinoGeo.coordenadas,
+          precisaoOrigem: rota.origemGeo.precisao,
+          precisaoDestino: rota.destinoGeo.precisao,
+          origemEncontrada: rota.origemGeo.encontrado,
+          destinoEncontrado: rota.destinoGeo.encontrado,
           providerDistancia: "openroute",
           mapsUrl: montarMapsUrl(origem, destino),
           calculoAutomatico: false,
@@ -526,6 +671,18 @@ export async function POST(req: Request) {
         },
         { status: 400 },
       );
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.info("OpenRoute entrega manual rota", {
+        distanciaIdaKm,
+        origemCidade: origem.cidade,
+        origemUf: origem.uf || origem.estado,
+        destinoCidade: destino.cidade,
+        destinoUf: destino.uf || destino.estado,
+        precisaoOrigem: rota.origemGeo.precisao,
+        precisaoDestino: rota.destinoGeo.precisao,
+      });
     }
 
     const distanciaTotalKm = Number((distanciaIdaKm * 2).toFixed(2));
@@ -568,6 +725,10 @@ export async function POST(req: Request) {
       destinoEnderecoFormatado: rota.destinoGeo.enderecoFormatado,
       origemCoordenadas: rota.origemGeo.coordenadas,
       destinoCoordenadas: rota.destinoGeo.coordenadas,
+      precisaoOrigem: rota.origemGeo.precisao,
+      precisaoDestino: rota.destinoGeo.precisao,
+      origemEncontrada: rota.origemGeo.encontrado,
+      destinoEncontrado: rota.destinoGeo.encontrado,
       calculoAutomatico: true,
     });
   } catch (error) {

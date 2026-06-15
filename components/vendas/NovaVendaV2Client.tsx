@@ -647,6 +647,10 @@ export default function NovaVendaV2Client({
     destinoEnderecoFormatado: "",
     origemCoordenadas: null as { latitude: number; longitude: number } | null,
     destinoCoordenadas: null as { latitude: number; longitude: number } | null,
+    precisaoOrigem: "",
+    precisaoDestino: "",
+    origemEncontrada: "",
+    destinoEncontrado: "",
     erroCalculo: "",
     observacaoManual: "",
   });
@@ -1015,6 +1019,10 @@ export default function NovaVendaV2Client({
         destinoEnderecoFormatado: "",
         origemCoordenadas: null,
         destinoCoordenadas: null,
+        precisaoOrigem: "",
+        precisaoDestino: "",
+        origemEncontrada: "",
+        destinoEncontrado: "",
         erroCalculo: "",
       }));
       setStatusCalculoEntrega("Preencha CEP e número.");
@@ -1059,6 +1067,10 @@ export default function NovaVendaV2Client({
       destinoEnderecoFormatado: "",
       origemCoordenadas: null,
       destinoCoordenadas: null,
+      precisaoOrigem: "",
+      precisaoDestino: "",
+      origemEncontrada: "",
+      destinoEncontrado: "",
       erroCalculo: "",
     }));
     setStatusCalculoEntrega("Preencha CEP e número.");
@@ -1459,6 +1471,10 @@ export default function NovaVendaV2Client({
           destinoEnderecoFormatado: String(data.destinoEnderecoFormatado || ""),
           origemCoordenadas: data.origemCoordenadas || null,
           destinoCoordenadas: data.destinoCoordenadas || null,
+          precisaoOrigem: String(data.precisaoOrigem || ""),
+          precisaoDestino: String(data.precisaoDestino || ""),
+          origemEncontrada: String(data.origemEncontrada || ""),
+          destinoEncontrado: String(data.destinoEncontrado || ""),
           erroCalculo,
           calculoAutomatico: false,
         }));
@@ -1494,6 +1510,10 @@ export default function NovaVendaV2Client({
         destinoEnderecoFormatado: String(data.destinoEnderecoFormatado || ""),
         origemCoordenadas: data.origemCoordenadas || null,
         destinoCoordenadas: data.destinoCoordenadas || null,
+        precisaoOrigem: String(data.precisaoOrigem || ""),
+        precisaoDestino: String(data.precisaoDestino || ""),
+        origemEncontrada: String(data.origemEncontrada || ""),
+        destinoEncontrado: String(data.destinoEncontrado || ""),
         erroCalculo: "",
         calculoAutomatico: true,
       }));
@@ -1613,6 +1633,10 @@ export default function NovaVendaV2Client({
       destinoEnderecoFormatado: entregaManual.destinoEnderecoFormatado || null,
       origemCoordenadas: entregaManual.origemCoordenadas,
       destinoCoordenadas: entregaManual.destinoCoordenadas,
+      precisaoOrigem: entregaManual.precisaoOrigem || null,
+      precisaoDestino: entregaManual.precisaoDestino || null,
+      origemEncontrada: entregaManual.origemEncontrada || null,
+      destinoEncontrado: entregaManual.destinoEncontrado || null,
       erroCalculo: entregaManual.erroCalculo || null,
       mapsUrl:
         modalidadeEntregaNormalizada === "ENTREGA_MANUAL"
@@ -3484,6 +3508,14 @@ export default function NovaVendaV2Client({
                                   </strong>
                                 </div>
                               </div>
+                            ) : null}
+
+                            {entregaManual.calculoAutomatico &&
+                            (entregaManual.precisaoOrigem === "APROXIMADA" ||
+                              entregaManual.precisaoDestino === "APROXIMADA") ? (
+                              <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                                Endereco localizado de forma aproximada. Confira a rota no Maps antes de confirmar.
+                              </p>
                             ) : null}
 
                             <label className="mt-3 block">

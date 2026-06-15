@@ -21,6 +21,10 @@ export type PedidoEntregaManual = {
   distanciaPossivelmenteIncorreta: boolean;
   origemEnderecoFormatado: string | null;
   destinoEnderecoFormatado: string | null;
+  precisaoOrigem: string | null;
+  precisaoDestino: string | null;
+  origemEncontrada: string | null;
+  destinoEncontrado: string | null;
   erroCalculo: string | null;
   origem: string | null;
   observacao: string | null;
@@ -165,6 +169,10 @@ function normalizarEntregaManual(
     distanciaPossivelmenteIncorreta,
     origemEnderecoFormatado: texto(record.origemEnderecoFormatado),
     destinoEnderecoFormatado: texto(record.destinoEnderecoFormatado),
+    precisaoOrigem: texto(record.precisaoOrigem),
+    precisaoDestino: texto(record.precisaoDestino),
+    origemEncontrada: texto(record.origemEncontrada),
+    destinoEncontrado: texto(record.destinoEncontrado),
     erroCalculo: texto(record.erroCalculo),
     origem: isRecord(record.origemDespachoSnapshot)
       ? montarEndereco(record.origemDespachoSnapshot)

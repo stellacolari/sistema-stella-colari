@@ -1785,6 +1785,13 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                                 "Distancia possivelmente incorreta."}
                             </p>
                           ) : null}
+                          {pedido.entregaManual.calculoAutomatico &&
+                          (pedido.entregaManual.precisaoOrigem === "APROXIMADA" ||
+                            pedido.entregaManual.precisaoDestino === "APROXIMADA") ? (
+                            <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">
+                              Endereco localizado de forma aproximada.
+                            </p>
+                          ) : null}
                           {pedido.entregaManual.endereco && (
                             <p className="mt-1 line-clamp-2">
                               {pedido.entregaManual.endereco}
