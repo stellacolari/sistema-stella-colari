@@ -1,20 +1,25 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Ban,
   CheckCircle2,
+  Eye,
   Filter,
+  LayoutGrid,
+  List,
   PackageCheck,
   RefreshCcw,
   Search,
   Send,
+  Table2,
   ShoppingBag,
   Trash2,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export type VendaProdutoListItem = {
   id: string;
@@ -57,6 +62,26 @@ export type VendaListItem = {
 type VendasListClientProps = {
   vendas: VendaListItem[];
 };
+
+type VisualizacaoVendas = "lista" | "cards" | "tabela";
+type DensidadeVendas = "compacta" | "confortavel";
+
+const PREFERENCIA_VENDAS_KEY = "stella:vendas:visualizacao";
+
+const VISUALIZACAO_OPTIONS: {
+  value: VisualizacaoVendas;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { value: "lista", label: "Lista", icon: List },
+  { value: "cards", label: "Cards", icon: LayoutGrid },
+  { value: "tabela", label: "Tabela", icon: Table2 },
+];
+
+const DENSIDADE_OPTIONS: { value: DensidadeVendas; label: string }[] = [
+  { value: "compacta", label: "Compacta" },
+  { value: "confortavel", label: "Confortavel" },
+];
 
 const STATUS_OPTIONS = [
   { value: "ATIVOS", label: "Ativos" },
@@ -233,6 +258,10 @@ function produtosResumo(produtos: VendaProdutoListItem[]) {
   }`;
 }
 
+function pagamentoVenda() {
+  return "-";
+}
+
 function LinhaResumo({
   label,
   value,
@@ -267,9 +296,76 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
   const [erroStatus, setErroStatus] = useState<string | null>(null);
   const [erroLixeira, setErroLixeira] = useState<string | null>(null);
   const [vendasSelecionadas, setVendasSelecionadas] = useState<string[]>([]);
+  const [visualizacao, setVisualizacao] =
+    useState<VisualizacaoVendas>("lista");
+  const [densidade, setDensidade] = useState<DensidadeVendas>("compacta");
+  const [preferenciasCarregadas, setPreferenciasCarregadas] = useState(false);
+  const [meioSelecionado, setMeioSelecionado] = useState("TODOS");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+
+  useEffect(() => {
+    try {
+      const preferenciaSalva = window.localStorage.getItem(
+        PREFERENCIA_VENDAS_KEY
+      );
+
+      if (preferenciaSalva) {
+        const preferencia = JSON.parse(preferenciaSalva) as {
+          visualizacao?: VisualizacaoVendas;
+          densidade?: DensidadeVendas;
+        };
+
+        if (
+          preferencia.visualizacao &&
+          VISUALIZACAO_OPTIONS.some(
+            (option) => option.value === preferencia.visualizacao
+          )
+        ) {
+          setVisualizacao(preferencia.visualizacao);
+        }
+
+        if (
+          preferencia.densidade &&
+          DENSIDADE_OPTIONS.some(
+            (option) => option.value === preferencia.densidade
+          )
+        ) {
+          setDensidade(preferencia.densidade);
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(PREFERENCIA_VENDAS_KEY);
+    } finally {
+      setPreferenciasCarregadas(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferenciasCarregadas) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      PREFERENCIA_VENDAS_KEY,
+      JSON.stringify({ visualizacao, densidade })
+    );
+  }, [densidade, preferenciasCarregadas, visualizacao]);
+
+  const meiosVenda = useMemo(() => {
+    return Array.from(new Set(vendas.map((venda) => venda.meioVenda)))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [vendas]);
 
   const vendasFiltradas = useMemo(() => {
     const buscaNormalizada = normalizarTexto(busca);
+    const inicioTimestamp = dataInicio
+      ? new Date(`${dataInicio}T00:00:00`).getTime()
+      : null;
+    const fimTimestamp = dataFim
+      ? new Date(`${dataFim}T23:59:59`).getTime()
+      : null;
 
     return vendas.filter((venda) => {
       if (statusSelecionado === "ATIVOS" && venda.status === "NA_LIXEIRA") {
@@ -280,6 +376,28 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
         statusSelecionado !== "ATIVOS" &&
         statusSelecionado !== "TODOS" &&
         venda.status !== statusSelecionado
+      ) {
+        return false;
+      }
+
+      if (meioSelecionado !== "TODOS" && venda.meioVenda !== meioSelecionado) {
+        return false;
+      }
+
+      const dataVenda = new Date(venda.criadoEm).getTime();
+
+      if (
+        inicioTimestamp !== null &&
+        !Number.isNaN(dataVenda) &&
+        dataVenda < inicioTimestamp
+      ) {
+        return false;
+      }
+
+      if (
+        fimTimestamp !== null &&
+        !Number.isNaN(dataVenda) &&
+        dataVenda > fimTimestamp
       ) {
         return false;
       }
@@ -310,7 +428,14 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
 
       return texto.includes(buscaNormalizada);
     });
-  }, [busca, statusSelecionado, vendas]);
+  }, [
+    busca,
+    dataFim,
+    dataInicio,
+    meioSelecionado,
+    statusSelecionado,
+    vendas,
+  ]);
 
   const totaisFiltrados = useMemo(() => {
     return vendasFiltradas.reduce(
@@ -341,6 +466,9 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
   function limparFiltros() {
     setBusca("");
     setStatusSelecionado("ATIVOS");
+    setMeioSelecionado("TODOS");
+    setDataInicio("");
+    setDataFim("");
     setVendasSelecionadas([]);
   }
 
@@ -544,6 +672,378 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
     });
   }
 
+  const compacto = densidade === "compacta";
+  const cardPadding = compacto ? "p-3" : "p-4";
+  const rowPadding = compacto ? "px-3 py-3" : "px-4 py-4";
+  const rowGap = compacto ? "gap-2" : "gap-3";
+
+  function renderStatusControl(venda: VendaListItem) {
+    const vendaCancelada = venda.status === "CANCELADA";
+    const vendaNaLixeira = venda.status === "NA_LIXEIRA";
+
+    if (vendaCancelada || vendaNaLixeira) {
+      return (
+        <div className="flex flex-col gap-1">
+          <span
+            className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(
+              venda.status
+            )}`}
+          >
+            {statusIcon(venda.status)}
+            {labelStatus(venda.status)}
+          </span>
+
+          {vendaCancelada && (
+            <span className="text-xs text-slate-500">
+              {labelMotivo(venda.cancelamentoMotivo)}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <select
+        value={venda.status}
+        disabled={isPending}
+        onChange={(event) => alterarStatus(venda.id, event.target.value)}
+        className={`h-9 max-w-full rounded-xl border px-2 text-xs font-semibold outline-none transition ${statusClass(
+          venda.status
+        )}`}
+      >
+        {STATUS_EDITAVEIS.map((status) => (
+          <option key={status.value} value={status.value}>
+            {status.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  function renderSelecao(venda: VendaListItem) {
+    return (
+      <input
+        type="checkbox"
+        checked={vendasSelecionadas.includes(venda.id)}
+        disabled={venda.status === "NA_LIXEIRA"}
+        onChange={() => alternarVendaSelecionada(venda.id)}
+        className="h-4 w-4 rounded border-slate-300"
+        aria-label={`Selecionar venda ${venda.codigo}`}
+      />
+    );
+  }
+
+  function renderAcoes(venda: VendaListItem) {
+    const vendaCancelada = venda.status === "CANCELADA";
+    const vendaNaLixeira = venda.status === "NA_LIXEIRA";
+
+    return (
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setVendaSelecionada(venda)}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          <Eye className="h-4 w-4" />
+          Ver
+        </button>
+
+        {vendaNaLixeira ? (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => restaurarDaLixeira(venda)}
+            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Restaurar
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={isPending || vendaCancelada}
+              onClick={() => abrirCancelamento(venda)}
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Ban className="h-4 w-4" />
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => moverParaLixeira(venda)}
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Lixeira
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function renderListaCompacta() {
+    return (
+      <div className="divide-y divide-slate-100">
+        {vendasFiltradas.map((venda) => (
+          <div
+            key={venda.id}
+            onClick={() => setVendaSelecionada(venda)}
+            className={`grid cursor-pointer ${rowGap} ${rowPadding} text-sm text-slate-700 transition hover:bg-slate-50 lg:grid-cols-[28px_minmax(95px,0.7fr)_minmax(150px,1.2fr)_minmax(120px,0.9fr)_minmax(130px,1fr)_minmax(86px,0.7fr)_minmax(105px,0.8fr)_auto] lg:items-center`}
+          >
+            <div onClick={(event) => event.stopPropagation()}>
+              {renderSelecao(venda)}
+            </div>
+
+            <div className="min-w-0">
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Venda
+              </span>
+              <span className="block truncate font-semibold text-slate-950">
+                {venda.codigo}
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Cliente
+              </span>
+              <span className="block truncate font-medium text-slate-900">
+                {venda.clienteNome}
+              </span>
+              <span className="block truncate text-xs text-slate-500">
+                {venda.clienteDocumento}
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Data / canal
+              </span>
+              <span className="block font-medium text-slate-900">
+                {dataCurta(venda.criadoEm)}
+              </span>
+              <span className="block truncate text-xs text-slate-500">
+                {venda.meioVenda}
+              </span>
+            </div>
+
+            <div
+              className="min-w-0"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Status
+              </span>
+              {renderStatusControl(venda)}
+            </div>
+
+            <div className="min-w-0">
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Pagamento
+              </span>
+              <span className="block truncate text-slate-600">
+                {pagamentoVenda()}
+              </span>
+            </div>
+
+            <div>
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-slate-500 lg:hidden">
+                Total
+              </span>
+              <span className="block font-semibold text-slate-950">
+                {moeda(venda.valorTotal)}
+              </span>
+            </div>
+
+            <div onClick={(event) => event.stopPropagation()}>
+              {renderAcoes(venda)}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderCards() {
+    return (
+      <div className={`grid ${compacto ? "gap-3" : "gap-4"} p-4 md:grid-cols-2 xl:grid-cols-3`}>
+        {vendasFiltradas.map((venda) => (
+          <article
+            key={venda.id}
+            className={`rounded-2xl border border-slate-200 bg-white ${cardPadding} shadow-sm`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-950">
+                  {venda.clienteNome}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {venda.codigo} · {dataCurta(venda.criadoEm)}
+                </p>
+              </div>
+
+              <div
+                className="flex shrink-0 items-center gap-2"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {renderSelecao(venda)}
+              </div>
+            </div>
+
+            <div className={compacto ? "mt-3" : "mt-4"}>
+              <p className="text-2xl font-bold text-slate-950">
+                {moeda(venda.valorTotal)}
+              </p>
+            </div>
+
+            <div
+              className={`${compacto ? "mt-3 gap-2" : "mt-4 gap-3"} grid grid-cols-2 text-sm`}
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-slate-500">Canal</p>
+                <p className="truncate font-medium text-slate-800">
+                  {venda.meioVenda}
+                </p>
+              </div>
+
+              <div onClick={(event) => event.stopPropagation()}>
+                <p className="text-xs font-medium text-slate-500">Status</p>
+                <div className="mt-1">{renderStatusControl(venda)}</div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-slate-500">Itens</p>
+                <p className="font-medium text-slate-800">
+                  {venda.quantidadeItens} un. em {venda.itensTotais} item
+                  {venda.itensTotais === 1 ? "" : "s"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-slate-500">Pagamento</p>
+                <p className="font-medium text-slate-800">{pagamentoVenda()}</p>
+              </div>
+            </div>
+
+            <div className={compacto ? "mt-3" : "mt-4"}>
+              <p className="text-xs font-medium text-slate-500">
+                Resumo de itens
+              </p>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-700">
+                {produtosResumo(venda.produtosVendidos)}
+              </p>
+            </div>
+
+            <div
+              className={`${compacto ? "mt-3" : "mt-4"}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {renderAcoes(venda)}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  function renderTabelaDetalhada() {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1180px] text-left">
+          <thead className="bg-slate-50">
+            <tr className="text-sm text-slate-600">
+              <th className="w-12 px-4 py-4">
+                <input
+                  type="checkbox"
+                  checked={todasSelecionadas}
+                  disabled={vendasSelecionaveis.length === 0}
+                  onChange={alternarTodasSelecionadas}
+                  className="h-4 w-4 rounded border-slate-300"
+                  aria-label="Selecionar todas as vendas visiveis"
+                />
+              </th>
+              <th className="px-4 py-4 font-semibold">Venda</th>
+              <th className="px-4 py-4 font-semibold">Data</th>
+              <th className="px-4 py-4 font-semibold">Cliente</th>
+              <th className="px-4 py-4 font-semibold">Canal</th>
+              <th className="px-4 py-4 font-semibold">Itens</th>
+              <th className="px-4 py-4 font-semibold">Pagamento</th>
+              <th className="px-4 py-4 font-semibold">Total</th>
+              <th className="px-4 py-4 font-semibold">Status</th>
+              <th className="px-4 py-4 text-right font-semibold">Acao</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-200">
+            {vendasFiltradas.map((venda) => (
+              <tr
+                key={venda.id}
+                onClick={() => setVendaSelecionada(venda)}
+                className="cursor-pointer text-sm text-slate-700 transition hover:bg-slate-50"
+              >
+                <td
+                  className={rowPadding}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {renderSelecao(venda)}
+                </td>
+                <td className={`${rowPadding} font-semibold text-slate-950`}>
+                  {venda.codigo}
+                </td>
+                <td className={rowPadding}>{dataCurta(venda.criadoEm)}</td>
+                <td className={rowPadding}>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="max-w-[220px] truncate font-medium text-slate-900">
+                      {venda.clienteNome}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {venda.clienteDocumento}
+                    </span>
+                  </div>
+                </td>
+                <td className={rowPadding}>{venda.meioVenda}</td>
+                <td className={rowPadding}>
+                  <div className="flex max-w-[300px] items-start gap-2">
+                    <ShoppingBag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="min-w-0">
+                      <span className="line-clamp-2 text-sm text-slate-700">
+                        {produtosResumo(venda.produtosVendidos)}
+                      </span>
+                      <span className="mt-1 block text-xs text-slate-500">
+                        {venda.quantidadeItens} un. · {venda.itensTotais} item
+                        {venda.itensTotais === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td className={rowPadding}>{pagamentoVenda()}</td>
+                <td className={`${rowPadding} font-semibold text-slate-950`}>
+                  {moeda(venda.valorTotal)}
+                </td>
+                <td
+                  className={rowPadding}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {renderStatusControl(venda)}
+                </td>
+                <td
+                  className={rowPadding}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {renderAcoes(venda)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-3">
@@ -597,7 +1097,7 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
           </button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_220px_220px_170px_170px]">
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Search className="h-4 w-4 text-slate-400" />
@@ -630,6 +1130,54 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-700">Canal</span>
+
+            <select
+              value={meioSelecionado}
+              onChange={(event) => {
+                setMeioSelecionado(event.target.value);
+                setVendasSelecionadas([]);
+              }}
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            >
+              <option value="TODOS">Todos</option>
+              {meiosVenda.map((meio) => (
+                <option key={meio} value={meio}>
+                  {meio}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-700">Inicio</span>
+
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(event) => {
+                setDataInicio(event.target.value);
+                setVendasSelecionadas([]);
+              }}
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            />
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-700">Fim</span>
+
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(event) => {
+                setDataFim(event.target.value);
+                setVendasSelecionadas([]);
+              }}
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            />
           </label>
         </div>
 
@@ -684,196 +1232,89 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
             Exibindo {vendasFiltradas.length} de {vendas.length} vendas. Clique
             em uma venda para abrir o resumo.
           </p>
+
+          <div className="mt-4 grid gap-3 xl:grid-cols-[auto_auto]">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Visualizacao
+              </p>
+              <div className="inline-flex w-full rounded-2xl border border-slate-200 bg-slate-50 p-1 sm:w-auto">
+                {VISUALIZACAO_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const ativo = visualizacao === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setVisualizacao(option.value)}
+                      className={`inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold transition sm:flex-none ${
+                        ativo
+                          ? "bg-white text-slate-950 shadow-sm"
+                          : "text-slate-600 hover:text-slate-950"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Densidade
+              </p>
+              <div className="inline-flex w-full rounded-2xl border border-slate-200 bg-slate-50 p-1 sm:w-auto">
+                {DENSIDADE_OPTIONS.map((option) => {
+                  const ativo = densidade === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setDensidade(option.value)}
+                      className={`min-h-9 flex-1 rounded-xl px-3 text-xs font-semibold transition sm:flex-none ${
+                        ativo
+                          ? "bg-white text-slate-950 shadow-sm"
+                          : "text-slate-600 hover:text-slate-950"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {visualizacao === "lista" && vendasFiltradas.length > 0 && (
+            <div className="mt-4 hidden grid-cols-[28px_minmax(95px,0.7fr)_minmax(150px,1.2fr)_minmax(120px,0.9fr)_minmax(130px,1fr)_minmax(86px,0.7fr)_minmax(105px,0.8fr)_auto] gap-3 border-t border-slate-100 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 lg:grid">
+              <span />
+              <span>Venda</span>
+              <span>Cliente</span>
+              <span>Data / canal</span>
+              <span>Status</span>
+              <span>Pagamento</span>
+              <span>Total</span>
+              <span className="text-right">Acao</span>
+            </div>
+          )}
         </div>
 
         {vendasFiltradas.length === 0 ? (
           <div className="px-6 py-10 text-sm text-slate-500">
             Nenhuma venda encontrada.
           </div>
+        ) : visualizacao === "cards" ? (
+          renderCards()
+        ) : visualizacao === "tabela" ? (
+          renderTabelaDetalhada()
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1250px] w-full text-left">
-              <thead className="bg-slate-50">
-                <tr className="text-sm text-slate-600">
-                  <th className="w-12 px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={todasSelecionadas}
-                      disabled={vendasSelecionaveis.length === 0}
-                      onChange={alternarTodasSelecionadas}
-                      className="h-4 w-4 rounded border-slate-300"
-                      aria-label="Selecionar todas as vendas visíveis"
-                    />
-                  </th>
-                  <th className="px-6 py-4 font-semibold">Código</th>
-                  <th className="px-6 py-4 font-semibold">Cliente</th>
-                  <th className="px-6 py-4 font-semibold">
-                    Produtos vendidos
-                  </th>
-                  <th className="px-6 py-4 text-center font-semibold">
-                    Itens totais
-                  </th>
-                  <th className="px-6 py-4 text-center font-semibold">
-                    Quantidade de itens
-                  </th>
-                  <th className="px-6 py-4 font-semibold">Total</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold">Data</th>
-                  <th className="px-6 py-4 text-right font-semibold">Ações</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-200">
-                {vendasFiltradas.map((venda) => {
-                  const vendaCancelada = venda.status === "CANCELADA";
-                  const vendaNaLixeira = venda.status === "NA_LIXEIRA";
-
-                  return (
-                    <tr
-                      key={venda.id}
-                      onClick={() => setVendaSelecionada(venda)}
-                      className="cursor-pointer text-sm text-slate-700 transition hover:bg-slate-50"
-                    >
-                      <td
-                        className="w-12 px-6 py-4"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={vendasSelecionadas.includes(venda.id)}
-                          disabled={vendaNaLixeira}
-                          onChange={() => alternarVendaSelecionada(venda.id)}
-                          className="h-4 w-4 rounded border-slate-300"
-                          aria-label={`Selecionar venda ${venda.codigo}`}
-                        />
-                      </td>
-
-                      <td className="px-6 py-4 font-medium text-slate-900">
-                        {venda.codigo}
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-slate-900">
-                            {venda.clienteNome}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {venda.clienteDocumento}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="flex max-w-[360px] items-start gap-2">
-                          <ShoppingBag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                          <span className="line-clamp-2 text-sm text-slate-700">
-                            {produtosResumo(venda.produtosVendidos)}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 text-center font-semibold text-slate-900">
-                        {venda.itensTotais}
-                      </td>
-
-                      <td className="px-6 py-4 text-center font-semibold text-slate-900">
-                        {venda.quantidadeItens}
-                      </td>
-
-                      <td className="px-6 py-4 font-semibold text-slate-900">
-                        {moeda(Number(venda.valorTotal))}
-                      </td>
-
-                      <td
-                        className="px-6 py-4"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        {vendaCancelada || vendaNaLixeira ? (
-                          <div className="flex flex-col gap-1">
-                            <span
-                              className={`inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(
-                                venda.status
-                              )}`}
-                            >
-                              {statusIcon(venda.status)}
-                              {labelStatus(venda.status)}
-                            </span>
-
-                            {vendaCancelada && (
-                              <span className="text-xs text-slate-500">
-                                {labelMotivo(venda.cancelamentoMotivo)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <select
-                            value={venda.status}
-                            disabled={isPending}
-                            onChange={(event) =>
-                              alterarStatus(venda.id, event.target.value)
-                            }
-                            className={`h-9 rounded-xl border px-2 text-xs font-semibold outline-none transition ${statusClass(
-                              venda.status
-                            )}`}
-                          >
-                            {STATUS_EDITAVEIS.map((status) => (
-                              <option key={status.value} value={status.value}>
-                                {status.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4">{dataCurta(venda.criadoEm)}</td>
-
-                      <td
-                        className="px-6 py-4"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <div className="flex justify-end gap-2">
-                          {vendaNaLixeira ? (
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => restaurarDaLixeira(venda)}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <RefreshCcw className="h-4 w-4" />
-                              Restaurar
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                disabled={isPending || vendaCancelada}
-                                onClick={() => abrirCancelamento(venda)}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <Ban className="h-4 w-4" />
-                                Cancelar
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={isPending}
-                                onClick={() => moverParaLixeira(venda)}
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Lixeira
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          renderListaCompacta()
         )}
+
       </div>
 
       {vendaSelecionada && (
