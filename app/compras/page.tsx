@@ -1,9 +1,9 @@
 import type { Prisma } from "@prisma/client";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import ComprasListClient, {
-  type CompraListItem,
-} from "@/components/compras/ComprasListClient";
+import ComprasEGastosClient, {
+  type LancamentoFinanceiroListItem,
+} from "@/components/compras/ComprasEGastosClient";
+import { type CompraListItem } from "@/components/compras/ComprasListClient";
 
 export const dynamic = "force-dynamic";
 
@@ -36,34 +36,39 @@ type CompraComItens = Prisma.CompraGetPayload<{
 }>;
 
 export default async function ComprasPage() {
-  const comprasRaw = await prisma.compra.findMany({
-    orderBy: { criadoEm: "desc" },
-    include: {
-      itens: {
-        include: {
-          produto: {
-            select: {
-              imagemUrl: true,
-              imagens: {
-                orderBy: {
-                  ordem: "asc",
+  const [comprasRaw, lancamentosRaw] = await Promise.all([
+    prisma.compra.findMany({
+      orderBy: { criadoEm: "desc" },
+      include: {
+        itens: {
+          include: {
+            produto: {
+              select: {
+                imagemUrl: true,
+                imagens: {
+                  orderBy: {
+                    ordem: "asc",
+                  },
+                  select: {
+                    imagemUrl: true,
+                  },
+                  take: 1,
                 },
-                select: {
-                  imagemUrl: true,
-                },
-                take: 1,
               },
             },
-          },
-          itemAdicional: {
-            select: {
-              imagemUrl: true,
+            itemAdicional: {
+              select: {
+                imagemUrl: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.lancamentoFinanceiro.findMany({
+      orderBy: [{ dataVencimento: "asc" }, { criadoEm: "desc" }],
+    }),
+  ]);
 
   const compras: CompraListItem[] = comprasRaw.map((compra: CompraComItens) => {
     const itens = compra.itens.map((item) => ({
@@ -111,35 +116,46 @@ export default async function ComprasPage() {
     };
   });
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Compras
-            </p>
-
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              Lista de Compras
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-600">
-              Consulte os pedidos de compra, acompanhe os itens e cancele
-              compras com estorno controlado de estoque.
-            </p>
-          </div>
-
-          <Link
-            href="/compras/nova-v2"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Nova compra
-          </Link>
-        </div>
-      </div>
-
-      <ComprasListClient compras={compras} />
-    </div>
+  const lancamentos: LancamentoFinanceiroListItem[] = lancamentosRaw.map(
+    (lancamento) => ({
+      id: lancamento.id,
+      codigo: lancamento.codigo,
+      tipo: lancamento.tipo,
+      categoria: lancamento.categoria,
+      titulo: lancamento.titulo,
+      descricao: lancamento.descricao,
+      fornecedorParceiro: lancamento.fornecedorParceiro,
+      valorPrevisto:
+        lancamento.valorPrevisto === null
+          ? null
+          : Number(lancamento.valorPrevisto),
+      valorReal: Number(lancamento.valorReal),
+      statusPagamento: lancamento.statusPagamento,
+      statusOperacional: lancamento.statusOperacional,
+      dataCompetencia: lancamento.dataCompetencia
+        ? lancamento.dataCompetencia.toISOString()
+        : null,
+      dataVencimento: lancamento.dataVencimento
+        ? lancamento.dataVencimento.toISOString()
+        : null,
+      dataPagamento: lancamento.dataPagamento
+        ? lancamento.dataPagamento.toISOString()
+        : null,
+      recorrente: lancamento.recorrente,
+      recorrencia: lancamento.recorrencia,
+      quantidadeParcelas: lancamento.quantidadeParcelas,
+      parcelaAtual: lancamento.parcelaAtual,
+      meioPagamento: lancamento.meioPagamento,
+      origemTipo: lancamento.origemTipo,
+      origemId: lancamento.origemId,
+      observacoes: lancamento.observacoes,
+      linkReferencia: lancamento.linkReferencia,
+      anexoUrl: lancamento.anexoUrl,
+      status: lancamento.status,
+      statusAntesLixeira: lancamento.statusAntesLixeira,
+      criadoEm: lancamento.criadoEm.toISOString(),
+    })
   );
+
+  return <ComprasEGastosClient compras={compras} lancamentos={lancamentos} />;
 }

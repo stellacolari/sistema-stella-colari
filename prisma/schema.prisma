@@ -431,6 +431,46 @@ model CompraItem {
   @@index([itemAdicionalId])
 }
 
+model LancamentoFinanceiro {
+  id                    String    @id @default(cuid())
+  codigo                String    @unique
+  tipo                  String
+  categoria             String
+  titulo                String
+  descricao             String?
+  fornecedorParceiro    String?
+  valorPrevisto         Float?
+  valorReal             Float
+  statusPagamento       String    @default("PENDENTE")
+  statusOperacional     String    @default("ATIVO")
+  dataCompetencia       DateTime?
+  dataVencimento        DateTime?
+  dataPagamento         DateTime?
+  recorrente            Boolean   @default(false)
+  recorrencia           String?
+  quantidadeParcelas    Int?
+  parcelaAtual          Int?
+  meioPagamento         String?
+  origemTipo            String?
+  origemId              String?
+  observacoes           String?
+  linkReferencia        String?
+  anexoUrl              String?
+  status                String    @default("ATIVO")
+  statusAntesLixeira    String?
+  criadoEm              DateTime  @default(now())
+  atualizadoEm          DateTime  @updatedAt
+
+  @@index([tipo])
+  @@index([categoria])
+  @@index([statusPagamento])
+  @@index([statusOperacional])
+  @@index([status])
+  @@index([dataCompetencia])
+  @@index([dataVencimento])
+  @@index([dataPagamento])
+}
+
 model EstoqueProduto {
   id              String   @id @default(cuid())
   produtoId       String
