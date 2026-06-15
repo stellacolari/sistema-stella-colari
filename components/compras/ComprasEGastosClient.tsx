@@ -68,6 +68,8 @@ type AbaCompras =
   | "PAGOS";
 
 type VisualizacaoGastos = "lista" | "cards" | "tabela";
+type FiltroVencimento = "" | "VENCIDOS" | "VENCEM_HOJE" | "A_VENCER" | "SEM_VENCIMENTO";
+type EstadoVencimento = "A_VENCER" | "VENCE_HOJE" | "VENCIDO" | "PAGO" | "SEM_VENCIMENTO";
 
 type FormState = {
   id?: string;
@@ -133,6 +135,13 @@ const FILTRO_RECORRENTE = [
   { value: "TODOS", label: "Todos" },
   { value: "RECORRENTE", label: "Recorrentes" },
   { value: "UNICO", label: "Não recorrentes" },
+];
+const FILTRO_VENCIMENTO: { value: FiltroVencimento; label: string }[] = [
+  { value: "", label: "Todos" },
+  { value: "VENCIDOS", label: "Vencidos" },
+  { value: "VENCEM_HOJE", label: "Vencem hoje" },
+  { value: "A_VENCER", label: "A vencer" },
+  { value: "SEM_VENCIMENTO", label: "Sem vencimento" },
 ];
 const VISUALIZACOES: {
   value: VisualizacaoGastos;
@@ -201,22 +210,55 @@ function labelTipo(tipo: string) {
   return TIPOS.find((item) => item.value === tipo)?.label ?? tipo;
 }
 
-function labelStatusPagamento(status: string) {
-  return (
-    STATUS_PAGAMENTO.find((item) => item.value === status)?.label ??
-    status.replaceAll("_", " ")
-  );
-}
-
 function hojeInput() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function statusPagamentoClass(status: string) {
-  if (status === "PAGO") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "VENCIDO") return "border-red-200 bg-red-50 text-red-700";
-  if (status === "CANCELADO") return "border-zinc-300 bg-zinc-100 text-zinc-600";
-  return "border-amber-200 bg-amber-50 text-amber-700";
+function chaveData(data: Date) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function chaveDataIso(dataIso: string | null) {
+  if (!dataIso) return null;
+
+  const data = new Date(dataIso);
+  return Number.isNaN(data.getTime()) ? null : chaveData(data);
+}
+
+function estadoVencimento(lancamento: LancamentoFinanceiroListItem): EstadoVencimento {
+  if (lancamento.statusPagamento === "PAGO") return "PAGO";
+
+  const vencimento = chaveDataIso(lancamento.dataVencimento);
+  if (!vencimento) return "SEM_VENCIMENTO";
+
+  const hoje = chaveData(new Date());
+
+  if (vencimento < hoje) return "VENCIDO";
+  if (vencimento === hoje) return "VENCE_HOJE";
+  return "A_VENCER";
+}
+
+function labelVencimento(estado: EstadoVencimento) {
+  const labels = {
+    A_VENCER: "A vencer",
+    VENCE_HOJE: "Vence hoje",
+    VENCIDO: "Vencido",
+    PAGO: "Pago",
+    SEM_VENCIMENTO: "Sem vencimento",
+  };
+
+  return labels[estado];
+}
+
+function vencimentoClass(estado: EstadoVencimento) {
+  if (estado === "PAGO") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (estado === "VENCIDO") return "border-red-200 bg-red-50 text-red-700";
+  if (estado === "VENCE_HOJE") return "border-orange-200 bg-orange-50 text-orange-700";
+  if (estado === "SEM_VENCIMENTO") return "border-zinc-300 bg-zinc-100 text-zinc-600";
+  return "border-sky-200 bg-sky-50 text-sky-700";
 }
 
 function dataBaseMes(lancamento: LancamentoFinanceiroListItem) {
@@ -249,6 +291,37 @@ function mesmoMesFiltro(dataIso: string | null, filtroMes: string) {
   if (Number.isNaN(data.getTime())) return false;
 
   return data.toISOString().slice(0, 7) === filtroMes;
+}
+
+function recorrenciaValida(recorrencia: string | null) {
+  return ["MENSAL", "TRIMESTRAL", "ANUAL"].includes(String(recorrencia ?? ""));
+}
+
+function adicionarPeriodo(data: Date, recorrencia: string) {
+  const proximaData = new Date(data);
+
+  if (recorrencia === "MENSAL") proximaData.setMonth(proximaData.getMonth() + 1);
+  if (recorrencia === "TRIMESTRAL") proximaData.setMonth(proximaData.getMonth() + 3);
+  if (recorrencia === "ANUAL") proximaData.setFullYear(proximaData.getFullYear() + 1);
+
+  return proximaData;
+}
+
+function proximoVencimentoChave(lancamento: LancamentoFinanceiroListItem) {
+  if (
+    lancamento.tipo !== "ASSINATURA" ||
+    !lancamento.recorrente ||
+    !recorrenciaValida(lancamento.recorrencia)
+  ) {
+    return null;
+  }
+
+  const baseIso =
+    lancamento.dataVencimento || lancamento.dataCompetencia || lancamento.criadoEm;
+  const base = new Date(baseIso);
+  if (Number.isNaN(base.getTime())) return null;
+
+  return chaveData(adicionarPeriodo(base, String(lancamento.recorrencia)));
 }
 
 function lancamentoParaForm(lancamento: LancamentoFinanceiroListItem): FormState {
@@ -309,6 +382,8 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
   const [filtroStatusPagamento, setFiltroStatusPagamento] = useState("");
   const [filtroMes, setFiltroMes] = useState("");
   const [filtroRecorrente, setFiltroRecorrente] = useState("TODOS");
+  const [filtroVencimento, setFiltroVencimento] =
+    useState<FiltroVencimento>("");
   const [visualizacao, setVisualizacao] =
     useState<VisualizacaoGastos>("lista");
   const [modalAberto, setModalAberto] = useState(false);
@@ -401,6 +476,34 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         return false;
       }
 
+      if (
+        filtroVencimento === "VENCIDOS" &&
+        estadoVencimento(lancamento) !== "VENCIDO"
+      ) {
+        return false;
+      }
+
+      if (
+        filtroVencimento === "VENCEM_HOJE" &&
+        estadoVencimento(lancamento) !== "VENCE_HOJE"
+      ) {
+        return false;
+      }
+
+      if (
+        filtroVencimento === "A_VENCER" &&
+        estadoVencimento(lancamento) !== "A_VENCER"
+      ) {
+        return false;
+      }
+
+      if (
+        filtroVencimento === "SEM_VENCIMENTO" &&
+        estadoVencimento(lancamento) !== "SEM_VENCIMENTO"
+      ) {
+        return false;
+      }
+
       if (!buscaNormalizada) {
         return true;
       }
@@ -427,6 +530,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     filtroRecorrente,
     filtroStatusPagamento,
     filtroTipo,
+    filtroVencimento,
     lancamentosAtivos,
   ]);
 
@@ -434,6 +538,15 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     return lancamentosAtivos.reduce(
       (acc, lancamento) => {
         const noMes = mesmoMesAtual(dataBaseMes(lancamento));
+        const vencimento = estadoVencimento(lancamento);
+
+        if (vencimento === "VENCIDO") {
+          acc.vencidos += lancamento.valorReal;
+        }
+
+        if (vencimento === "VENCE_HOJE") {
+          acc.vencemHoje += lancamento.valorReal;
+        }
 
         if (
           noMes &&
@@ -476,6 +589,8 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         aPagarMes: 0,
         pagoMes: 0,
         assinaturasAtivas: 0,
+        vencidos: 0,
+        vencemHoje: 0,
         marketingMes: 0,
         permutasAbertas: 0,
       }
@@ -486,6 +601,9 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     abaAtiva === "TODOS" || abaAtiva === "COMPRAS_ESTOQUE";
   const mostrarGastos =
     abaAtiva !== "COMPRAS_ESTOQUE" && lancamentosFiltrados.length >= 0;
+  const lancamentoEmEdicao = form.id
+    ? lancamentosAtivos.find((lancamento) => lancamento.id === form.id) ?? null
+    : null;
 
   function atualizarForm<K extends keyof FormState>(campo: K, valor: FormState[K]) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -511,6 +629,52 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
     setFiltroStatusPagamento("");
     setFiltroMes("");
     setFiltroRecorrente("TODOS");
+    setFiltroVencimento("");
+  }
+
+  function jaExisteProximaCobranca(lancamento: LancamentoFinanceiroListItem) {
+    const proximoVencimento = proximoVencimentoChave(lancamento);
+    if (!proximoVencimento) return false;
+
+    return lancamentosAtivos.some((item) => {
+      if (item.id === lancamento.id) return false;
+
+      return (
+        item.tipo === lancamento.tipo &&
+        item.titulo === lancamento.titulo &&
+        (item.fornecedorParceiro ?? "") ===
+          (lancamento.fornecedorParceiro ?? "") &&
+        item.recorrencia === lancamento.recorrencia &&
+        chaveDataIso(item.dataVencimento) === proximoVencimento
+      );
+    });
+  }
+
+  async function gerarProximaCobranca(lancamento: LancamentoFinanceiroListItem) {
+    setErro(null);
+    setMensagem(null);
+
+    const response = await fetch(
+      `/api/compras/gastos/${lancamento.id}/gerar-proxima-cobranca`,
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setErro(data.error || "Não foi possível gerar a próxima cobrança.");
+      return;
+    }
+
+    setMensagem(
+      `${data.lancamento?.codigo ?? "Nova cobrança"} criada com sucesso.`
+    );
+
+    startTransition(() => {
+      router.refresh();
+    });
   }
 
   async function salvarLancamento() {
@@ -633,20 +797,40 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
   }
 
   function renderStatus(lancamento: LancamentoFinanceiroListItem) {
+    const estado = estadoVencimento(lancamento);
+
     return (
       <span
-        className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${statusPagamentoClass(
-          lancamento.statusPagamento
+        className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${vencimentoClass(
+          estado
         )}`}
       >
-        {labelStatusPagamento(lancamento.statusPagamento)}
+        {labelVencimento(estado)}
       </span>
     );
   }
 
   function renderAcoes(lancamento: LancamentoFinanceiroListItem) {
+    const podeGerarProxima =
+      lancamento.tipo === "ASSINATURA" &&
+      lancamento.recorrente &&
+      recorrenciaValida(lancamento.recorrencia);
+    const proximaJaExiste = podeGerarProxima && jaExisteProximaCobranca(lancamento);
+
     return (
       <div className="flex flex-wrap justify-end gap-2">
+        {podeGerarProxima && (
+          <button
+            type="button"
+            disabled={isPending || proximaJaExiste}
+            onClick={() => gerarProximaCobranca(lancamento)}
+            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            {proximaJaExiste ? "Próxima já existe" : "Gerar próxima cobrança"}
+          </button>
+        )}
+
         {lancamento.statusPagamento !== "PAGO" && (
           <button
             type="button"
@@ -752,7 +936,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                 <th className="px-5 py-4 font-semibold">Tipo</th>
                 <th className="px-5 py-4 font-semibold">Categoria</th>
                 <th className="px-5 py-4 font-semibold">Vencimento</th>
-                <th className="px-5 py-4 font-semibold">Pagamento</th>
+                <th className="px-5 py-4 font-semibold">Vencimento</th>
                 <th className="px-5 py-4 text-right font-semibold">Valor</th>
                 <th className="px-5 py-4 text-right font-semibold">Ações</th>
               </tr>
@@ -872,6 +1056,12 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <ResumoCard titulo="Vencidos" valor={moeda(resumo.vencidos)} tom="rose" />
+        <ResumoCard
+          titulo="Vencem hoje"
+          valor={moeda(resumo.vencemHoje)}
+          tom="orange"
+        />
         <ResumoCard
           titulo="A pagar este mês"
           valor={moeda(resumo.aPagarMes)}
@@ -886,16 +1076,6 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
           titulo="Assinaturas ativas"
           valor={resumo.assinaturasAtivas}
           tom="sky"
-        />
-        <ResumoCard
-          titulo="Marketing do mês"
-          valor={moeda(resumo.marketingMes)}
-          tom="violet"
-        />
-        <ResumoCard
-          titulo="Permutas em aberto"
-          valor={resumo.permutasAbertas}
-          tom="rose"
         />
       </div>
 
@@ -922,7 +1102,7 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
         <section className="space-y-4">
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.2fr)_repeat(4,minmax(150px,0.8fr))_auto]">
+              <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(140px,0.8fr))_auto]">
                 <label className="flex min-w-0 flex-col gap-2">
                   <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
                     <Search className="h-4 w-4 text-slate-400" />
@@ -963,6 +1143,13 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                   value={filtroRecorrente}
                   onChange={setFiltroRecorrente}
                   options={FILTRO_RECORRENTE}
+                />
+
+                <CampoSelect
+                  label="Vencimento"
+                  value={filtroVencimento}
+                  onChange={(value) => setFiltroVencimento(value as FiltroVencimento)}
+                  options={FILTRO_VENCIMENTO}
                 />
 
                 <button
@@ -1246,6 +1433,22 @@ export default function ComprasEGastosClient({ compras, lancamentos }: Props) {
                     Marcar como pago
                   </button>
                 )}
+                {lancamentoEmEdicao &&
+                  lancamentoEmEdicao.tipo === "ASSINATURA" &&
+                  lancamentoEmEdicao.recorrente &&
+                  recorrenciaValida(lancamentoEmEdicao.recorrencia) && (
+                    <button
+                      type="button"
+                      onClick={() => gerarProximaCobranca(lancamentoEmEdicao)}
+                      disabled={isPending || jaExisteProximaCobranca(lancamentoEmEdicao)}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {jaExisteProximaCobranca(lancamentoEmEdicao)
+                        ? "Próxima cobrança já existe"
+                        : "Gerar próxima cobrança"}
+                    </button>
+                  )}
                 <button
                   type="button"
                   onClick={salvarLancamento}
@@ -1271,11 +1474,12 @@ function ResumoCard({
 }: {
   titulo: string;
   valor: string | number;
-  tom?: "amber" | "emerald" | "rose" | "sky" | "slate" | "violet";
+  tom?: "amber" | "emerald" | "orange" | "rose" | "sky" | "slate" | "violet";
 }) {
   const classes = {
     amber: "border-amber-200 bg-amber-50 text-amber-900",
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    orange: "border-orange-200 bg-orange-50 text-orange-900",
     rose: "border-rose-200 bg-rose-50 text-rose-900",
     sky: "border-sky-200 bg-sky-50 text-sky-900",
     slate: "border-slate-200 bg-white text-slate-950",

@@ -23,6 +23,12 @@ export const STATUS_OPERACIONAL_LANCAMENTO = [
   "CANCELADO",
 ] as const;
 
+export const RECORRENCIAS_LANCAMENTO = [
+  "MENSAL",
+  "TRIMESTRAL",
+  "ANUAL",
+] as const;
+
 export type LancamentoFinanceiroPayload = {
   tipo: string;
   categoria: string;
@@ -98,6 +104,49 @@ function valorEmLista(value: string, valores: readonly string[]) {
 
 export function gerarCodigoLancamentoFinanceiro(numero: number) {
   return `GAS-${String(numero).padStart(5, "0")}`;
+}
+
+export function extrairNumeroCodigoLancamentoFinanceiro(codigo: string | null) {
+  const numeroAtual = Number(String(codigo ?? "").replace("GAS-", ""));
+  return Number.isNaN(numeroAtual) ? 0 : numeroAtual;
+}
+
+export function recorrenciaValida(value: string | null | undefined) {
+  const recorrencia = String(value ?? "").trim().toUpperCase();
+
+  return RECORRENCIAS_LANCAMENTO.includes(
+    recorrencia as (typeof RECORRENCIAS_LANCAMENTO)[number]
+  )
+    ? recorrencia
+    : null;
+}
+
+export function adicionarPeriodoRecorrencia(data: Date, recorrencia: string) {
+  const proximaData = new Date(data);
+
+  if (recorrencia === "MENSAL") {
+    proximaData.setMonth(proximaData.getMonth() + 1);
+  }
+
+  if (recorrencia === "TRIMESTRAL") {
+    proximaData.setMonth(proximaData.getMonth() + 3);
+  }
+
+  if (recorrencia === "ANUAL") {
+    proximaData.setFullYear(proximaData.getFullYear() + 1);
+  }
+
+  return proximaData;
+}
+
+export function intervaloDia(data: Date) {
+  const inicio = new Date(data);
+  inicio.setHours(0, 0, 0, 0);
+
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 1);
+
+  return { inicio, fim };
 }
 
 export function montarPayloadLancamentoFinanceiro(body: Record<string, unknown>) {
