@@ -8,6 +8,7 @@ import EditorVisualPaginaClient, {
   type EditorVisualBloco,
   type EditorVisualCategoria,
   type EditorVisualPagina,
+  type EditorVisualPaginaLink,
   type EditorVisualProduto,
 } from "@/components/configuracoes/loja/EditorVisualPaginaClient";
 
@@ -94,7 +95,7 @@ function coletarIdsCategoriaComFilhas(
 export default async function EditorVisualPaginaPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [paginaRaw, categoriasRaw] = await Promise.all([
+  const [paginaRaw, categoriasRaw, paginasBuilderRaw] = await Promise.all([
     prisma.lojaPagina.findUnique({
       where: { id },
       include: {
@@ -119,9 +120,27 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         id: true,
         nome: true,
         slug: true,
+        imagemUrl: true,
         categoriaMaeId: true,
       },
       orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+    }),
+
+    prisma.lojaPagina.findMany({
+      where: {
+        ativo: true,
+        statusPublicacao: "PUBLICADA",
+        tipo: {
+          notIn: ["HOME", "CATEGORIA"],
+        },
+      },
+      select: {
+        id: true,
+        titulo: true,
+        slug: true,
+        tipo: true,
+      },
+      orderBy: [{ titulo: "asc" }],
     }),
   ]);
 
@@ -201,8 +220,19 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
       id: categoria.id,
       nome: categoria.nome,
       slug: categoria.slug,
+      imagemUrl: categoria.imagemUrl,
       categoriaMaeId: categoria.categoriaMaeId,
       caminho: montarCaminhoCategoria(categoria, categoriasRaw),
+    })
+  );
+
+  const paginasDisponiveis: EditorVisualPaginaLink[] = paginasBuilderRaw.map(
+    (paginaLink) => ({
+      id: paginaLink.id,
+      titulo: paginaLink.titulo,
+      slug: paginaLink.slug,
+      tipo: paginaLink.tipo,
+      urlPublica: `/loja/p/${paginaLink.slug}`,
     })
   );
 
@@ -295,6 +325,7 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         pagina={pagina}
         blocos={blocos}
         categoriasDisponiveis={categoriasDisponiveis}
+        paginasDisponiveis={paginasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
       />
     </main>

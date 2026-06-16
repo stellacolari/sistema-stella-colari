@@ -1,0 +1,435 @@
+"use client";
+
+import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
+import {
+  asConfig,
+  getArray,
+  getBoolean,
+  getNumber,
+  getString,
+  type BlocoPublicoProps,
+} from "@/components/loja/paginas/blocos/utils";
+
+type VitrineDevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
+
+type VitrineEditorialItem = {
+  id: string;
+  tipoLink: string;
+  categoriaId: string;
+  categoriaSlug: string;
+  categoriaNome: string;
+  categoriaImagemUrl: string;
+  paginaId: string;
+  paginaSlug: string;
+  paginaTitulo: string;
+  linkUrl: string;
+  label: string;
+  textoBotao: string;
+  imagemDesktop: string;
+  imagemMobile: string;
+  altText: string;
+  focoHorizontal: number;
+  focoVertical: number;
+  zoom: number;
+  ocultarNome: boolean;
+  ocultarBotao: boolean;
+  abrirNovaAba: boolean;
+};
+
+type VitrineEditorialPublicoProps = BlocoPublicoProps & {
+  device?: VitrineDevicePreview;
+  modo?: "publico" | "editor";
+  categorias?: {
+    id: string;
+    nome: string;
+    slug: string;
+    imagemUrl?: string | null;
+  }[];
+};
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function getQuantidade(value: number) {
+  const rounded = Math.round(value);
+  if ([3, 4, 5].includes(rounded)) return rounded;
+  return 3;
+}
+
+function getAlturaVisual(value: string) {
+  return value === "COMPACTA" ? "COMPACTA" : "PADRAO";
+}
+
+function getAnimacao(value: string) {
+  if (
+    [
+      "SUBINDO_EM_SEQUENCIA",
+      "LATERAL_EM_SEQUENCIA",
+      "FADE_EM_SEQUENCIA",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "SEM_ANIMACAO";
+}
+
+function criarItemPadrao(index: number): VitrineEditorialItem {
+  return {
+    id: `vitrine-${index}`,
+    tipoLink: "CATEGORIA",
+    categoriaId: "",
+    categoriaSlug: "",
+    categoriaNome: "",
+    categoriaImagemUrl: "",
+    paginaId: "",
+    paginaSlug: "",
+    paginaTitulo: "",
+    linkUrl: "",
+    label: "",
+    textoBotao: "Explorar",
+    imagemDesktop: "",
+    imagemMobile: "",
+    altText: "",
+    focoHorizontal: 50,
+    focoVertical: 50,
+    zoom: 100,
+    ocultarNome: false,
+    ocultarBotao: false,
+    abrirNovaAba: false,
+  };
+}
+
+function getItem(data: unknown, index: number): VitrineEditorialItem {
+  const config = asConfig(data);
+  const itemPadrao = criarItemPadrao(index + 1);
+
+  return {
+    id: getString(config, "id", itemPadrao.id),
+    tipoLink: getString(config, "tipoLink", itemPadrao.tipoLink),
+    categoriaId: getString(config, "categoriaId"),
+    categoriaSlug: getString(config, "categoriaSlug"),
+    categoriaNome: getString(config, "categoriaNome"),
+    categoriaImagemUrl:
+      getString(config, "categoriaImagemUrl") ||
+      getString(config, "imagemCategoriaUrl"),
+    paginaId: getString(config, "paginaId"),
+    paginaSlug: getString(config, "paginaSlug"),
+    paginaTitulo: getString(config, "paginaTitulo"),
+    linkUrl: getString(config, "linkUrl"),
+    label:
+      getString(config, "label") ||
+      getString(config, "titulo") ||
+      getString(config, "nome"),
+    textoBotao:
+      getString(config, "textoBotao") ||
+      getString(config, "textoLink") ||
+      itemPadrao.textoBotao,
+    imagemDesktop:
+      getString(config, "imagemDesktop") ||
+      getString(config, "imagemDesktopUrl") ||
+      getString(config, "imagemUrl"),
+    imagemMobile:
+      getString(config, "imagemMobile") ||
+      getString(config, "imagemMobileUrl"),
+    altText: getString(config, "altText") || getString(config, "alt"),
+    focoHorizontal: clampNumber(
+      getNumber(config, "focoHorizontal", getNumber(config, "mediaCropDesktopX", 50)),
+      0,
+      100,
+    ),
+    focoVertical: clampNumber(
+      getNumber(config, "focoVertical", getNumber(config, "mediaCropDesktopY", 50)),
+      0,
+      100,
+    ),
+    zoom: clampNumber(getNumber(config, "zoom", 100), 100, 160),
+    ocultarNome: getBoolean(config, "ocultarNome", false),
+    ocultarBotao: getBoolean(config, "ocultarBotao", false),
+    abrirNovaAba: getBoolean(config, "abrirNovaAba", false),
+  };
+}
+
+function getItens(config: Record<string, unknown>, quantidade: number) {
+  const itensConfig = getArray(config, "itens");
+  const itens =
+    itensConfig.length > 0
+      ? itensConfig.map((item, index) => getItem(item, index))
+      : Array.from({ length: quantidade }, (_, index) => criarItemPadrao(index + 1));
+
+  return Array.from({ length: quantidade }, (_, index) => {
+    return itens[index] || criarItemPadrao(index + 1);
+  });
+}
+
+function normalizeCustomUrl(value: string) {
+  const url = value.trim();
+
+  if (!url) return "";
+
+  if (/^(https?:\/\/|\/|mailto:|tel:)/i.test(url)) return url;
+
+  return "";
+}
+
+function getItemHref(item: VitrineEditorialItem) {
+  if (item.tipoLink === "CATEGORIA" && item.categoriaSlug) {
+    return `/loja/categoria/${item.categoriaSlug}`;
+  }
+
+  if (item.tipoLink === "PAGINA" && item.paginaSlug) {
+    return `/loja/p/${item.paginaSlug}`;
+  }
+
+  if (item.tipoLink === "URL_PERSONALIZADA") {
+    return normalizeCustomUrl(item.linkUrl);
+  }
+
+  return "";
+}
+
+function isExternalHref(href: string) {
+  return /^(https?:)?\/\//i.test(href) || /^mailto:|^tel:/i.test(href);
+}
+
+function getGridClass(quantidade: number) {
+  if (quantidade === 5) return "md:grid-cols-3 lg:grid-cols-5";
+  if (quantidade === 4) return "md:grid-cols-2 lg:grid-cols-4";
+  return "md:grid-cols-3";
+}
+
+function getForcedGridClass(quantidade: number, device?: VitrineDevicePreview) {
+  if (device === "MOBILE") {
+    return "grid-flow-col auto-cols-[78%] overflow-x-auto";
+  }
+
+  if (device === "TABLET") {
+    return "grid-flow-row auto-cols-auto grid-cols-2 overflow-visible";
+  }
+
+  if (device === "DESKTOP") {
+    if (quantidade === 5) {
+      return "grid-flow-row auto-cols-auto grid-cols-5 overflow-visible";
+    }
+
+    if (quantidade === 4) {
+      return "grid-flow-row auto-cols-auto grid-cols-4 overflow-visible";
+    }
+
+    return "grid-flow-row auto-cols-auto grid-cols-3 overflow-visible";
+  }
+
+  return `grid-flow-col auto-cols-[78%] overflow-x-auto sm:auto-cols-[44%] md:grid-flow-row md:auto-cols-auto md:overflow-visible ${getGridClass(
+    quantidade,
+  )}`;
+}
+
+function getAspectClass(alturaVisual: string) {
+  return alturaVisual === "COMPACTA" ? "aspect-[6/5]" : "aspect-[4/5]";
+}
+
+function CardWrapper({
+  href,
+  abrirNovaAba,
+  modo,
+  children,
+}: {
+  href: string;
+  abrirNovaAba: boolean;
+  modo: "publico" | "editor";
+  children: ReactNode;
+}) {
+  if (!href || modo === "editor") {
+    return <div className="block h-full">{children}</div>;
+  }
+
+  if (isExternalHref(href)) {
+    return (
+      <a
+        href={href}
+        target={abrirNovaAba ? "_blank" : undefined}
+        rel={abrirNovaAba ? "noreferrer" : undefined}
+        className="block h-full"
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      target={abrirNovaAba ? "_blank" : undefined}
+      className="block h-full"
+    >
+      {children}
+    </Link>
+  );
+}
+
+export default function VitrineEditorialPublico({
+  bloco,
+  device,
+  modo = "publico",
+  categorias = [],
+}: VitrineEditorialPublicoProps) {
+  const config = asConfig(bloco.configJson);
+  const quantidade = getQuantidade(getNumber(config, "quantidadeItens", 3));
+  const alturaVisual = getAlturaVisual(getString(config, "alturaVisual", "PADRAO"));
+  const animacaoBloco = getAnimacao(
+    getString(config, "animacaoBloco", "SEM_ANIMACAO"),
+  );
+  const itens = getItens(config, quantidade);
+  const gridClass = getForcedGridClass(quantidade, device);
+  const aspectClass = getAspectClass(alturaVisual);
+  const paddingYClass =
+    device === "MOBILE" ? "py-10" : device ? "py-12" : "py-10 md:py-14";
+  const forceMobile = device === "MOBILE";
+
+  return (
+    <section className="w-full bg-white text-slate-950">
+      <style>
+        {`
+          @media (prefers-reduced-motion: no-preference) {
+            .stella-vitrine-editorial-card[data-animation="SUBINDO_EM_SEQUENCIA"] {
+              opacity: 0;
+              animation: stella-vitrine-up 720ms cubic-bezier(.22, 1, .36, 1) forwards;
+            }
+
+            .stella-vitrine-editorial-card[data-animation="LATERAL_EM_SEQUENCIA"] {
+              opacity: 0;
+              animation: stella-vitrine-side 720ms cubic-bezier(.22, 1, .36, 1) forwards;
+            }
+
+            .stella-vitrine-editorial-card[data-animation="FADE_EM_SEQUENCIA"] {
+              opacity: 0;
+              animation: stella-vitrine-fade 640ms ease forwards;
+            }
+          }
+
+          @keyframes stella-vitrine-up {
+            from { opacity: 0; transform: translateY(22px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          @keyframes stella-vitrine-side {
+            from { opacity: 0; transform: translateX(22px); }
+            to { opacity: 1; transform: translateX(0); }
+          }
+
+          @keyframes stella-vitrine-fade {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}
+      </style>
+
+      <div
+        className={`grid w-full gap-5 ${paddingYClass} ${gridClass}`}
+        style={{ paddingInline: "8%" }}
+      >
+        {itens.map((item, index) => {
+          const categoriaFallback = categorias.find(
+            (categoria) =>
+              categoria.id === item.categoriaId ||
+              categoria.slug === item.categoriaSlug,
+          );
+          const itemResolvido = {
+            ...item,
+            categoriaSlug: item.categoriaSlug || categoriaFallback?.slug || "",
+            categoriaNome: item.categoriaNome || categoriaFallback?.nome || "",
+            categoriaImagemUrl:
+              item.categoriaImagemUrl || categoriaFallback?.imagemUrl || "",
+          };
+          const href = getItemHref(itemResolvido);
+          const imagemFallback =
+            itemResolvido.imagemDesktop || itemResolvido.categoriaImagemUrl;
+          const imagemMobile = item.imagemMobile || imagemFallback;
+          const imagemDesktop = imagemFallback || imagemMobile;
+          const imagemAtual =
+            forceMobile && imagemMobile ? imagemMobile : imagemDesktop;
+          const label =
+            itemResolvido.label ||
+            itemResolvido.categoriaNome ||
+            itemResolvido.paginaTitulo ||
+            "Vitrine";
+          const alt = item.altText || label;
+          const objectPosition = `${item.focoHorizontal}% ${item.focoVertical}%`;
+          const imageStyle: CSSProperties = {
+            objectPosition,
+            transform: `scale(${item.zoom / 100})`,
+          };
+          const cardStyle: CSSProperties =
+            animacaoBloco === "SEM_ANIMACAO"
+              ? {}
+              : { animationDelay: `${index * 90}ms` };
+
+          return (
+            <article
+              key={item.id || `${label}-${index}`}
+              className="stella-vitrine-editorial-card min-w-0"
+              data-animation={animacaoBloco}
+              style={cardStyle}
+            >
+              <CardWrapper
+                href={href}
+                abrirNovaAba={item.abrirNovaAba}
+                modo={modo}
+              >
+                <div
+                  className={`w-full overflow-hidden bg-slate-100 ${aspectClass}`}
+                >
+                  {imagemAtual ? (
+                    forceMobile ? (
+                      <img
+                        src={imagemAtual}
+                        alt={alt}
+                        className="h-full w-full object-cover transition-transform duration-500"
+                        style={imageStyle}
+                      />
+                    ) : (
+                      <picture className="block h-full w-full">
+                        {imagemMobile ? (
+                          <source media="(max-width: 767px)" srcSet={imagemMobile} />
+                        ) : null}
+                        <img
+                          src={imagemDesktop}
+                          alt={alt}
+                          className="h-full w-full object-cover transition-transform duration-500"
+                          style={imageStyle}
+                        />
+                      </picture>
+                    )
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      Imagem em breve
+                    </div>
+                  )}
+                </div>
+
+                {!item.ocultarNome || !item.ocultarBotao ? (
+                  <div className="pt-4 text-left">
+                    {!item.ocultarNome ? (
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-950">
+                        {label}
+                      </h3>
+                    ) : null}
+
+                    {!item.ocultarBotao && item.textoBotao ? (
+                      <span className="mt-2 inline-block border-b border-current pb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                        {item.textoBotao}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </CardWrapper>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

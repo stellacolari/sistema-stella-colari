@@ -11,6 +11,7 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "DESTAQUES_CARDS",
   "COLECOES_CATEGORIAS",
   "MOSAICO_COLECOES",
+  "VITRINE_EDITORIAL",
   "CTA",
   "CTA_SIMPLES",
   "CATEGORIAS",
@@ -38,6 +39,7 @@ function getTituloPadrao(tipo: string) {
     DESTAQUES_CARDS: "Destaques / cards",
     COLECOES_CATEGORIAS: "Coleções / categorias",
     MOSAICO_COLECOES: "Mosaico de coleções",
+    VITRINE_EDITORIAL: "Vitrine editorial",
     CTA: "Chamada para ação",
     CTA_SIMPLES: "CTA simples",
     CATEGORIAS: "Categorias",
@@ -420,6 +422,39 @@ function getConfigPadrao(tipo: string) {
       posicaoCabecalhoMosaico: "LATERAL",
       estiloBordaBotao: "RETO",
       itens: [1, 2, 3, 4].map(criarItem),
+    };
+  }
+
+  if (tipo === "VITRINE_EDITORIAL") {
+    const criarItem = (index: number) => ({
+      id: `vitrine-${index}`,
+      tipoLink: "CATEGORIA",
+      categoriaId: "",
+      categoriaSlug: "",
+      categoriaNome: "",
+      categoriaImagemUrl: "",
+      paginaId: "",
+      paginaSlug: "",
+      paginaTitulo: "",
+      linkUrl: "",
+      label: "",
+      textoBotao: "Explorar",
+      imagemDesktop: "",
+      imagemMobile: "",
+      altText: "",
+      focoHorizontal: 50,
+      focoVertical: 50,
+      zoom: 100,
+      ocultarNome: false,
+      ocultarBotao: false,
+      abrirNovaAba: false,
+    });
+
+    return {
+      quantidadeItens: 3,
+      alturaVisual: "PADRAO",
+      animacaoBloco: "SUBINDO_EM_SEQUENCIA",
+      itens: [1, 2, 3].map(criarItem),
     };
   }
 

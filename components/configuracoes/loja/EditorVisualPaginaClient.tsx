@@ -55,6 +55,7 @@ import BannerRenderer, {
   normalizeBannerModelo,
   type BannerDevicePreview,
 } from "@/components/loja/paginas/blocos/BannerRenderer";
+import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
 
 export type EditorVisualPagina = {
   id: string;
@@ -84,8 +85,17 @@ export type EditorVisualCategoria = {
   id: string;
   nome: string;
   slug: string;
+  imagemUrl?: string | null;
   categoriaMaeId: string | null;
   caminho: string;
+};
+
+export type EditorVisualPaginaLink = {
+  id: string;
+  titulo: string;
+  slug: string;
+  tipo: string;
+  urlPublica: string;
 };
 
 export type EditorVisualProduto = {
@@ -102,6 +112,7 @@ type EditorVisualPaginaClientProps = {
   pagina: EditorVisualPagina;
   blocos: EditorVisualBloco[];
   categoriasDisponiveis: EditorVisualCategoria[];
+  paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
 };
 
@@ -113,6 +124,7 @@ type TipoBlocoAdicionar =
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
   | "COLECOES_CATEGORIAS"
+  | "VITRINE_EDITORIAL"
   | "CTA_SIMPLES"
   | "CTA"
   | "CATEGORIAS"
@@ -170,6 +182,30 @@ type ColecaoCategoriaItemEditando = {
   mediaCropMobileY: number;
   tamanhoMosaico: string;
   ordem: number;
+};
+
+type VitrineEditorialItemEditando = {
+  id: string;
+  tipoLink: string;
+  categoriaId: string;
+  categoriaSlug: string;
+  categoriaNome: string;
+  categoriaImagemUrl: string;
+  paginaId: string;
+  paginaSlug: string;
+  paginaTitulo: string;
+  linkUrl: string;
+  label: string;
+  textoBotao: string;
+  imagemDesktop: string;
+  imagemMobile: string;
+  altText: string;
+  focoHorizontal: number;
+  focoVertical: number;
+  zoom: number;
+  ocultarNome: boolean;
+  ocultarBotao: boolean;
+  abrirNovaAba: boolean;
 };
 
 type TextStyleConfig = {
@@ -757,6 +793,7 @@ const TIPOS_BLOCO_ADICIONAR: {
   descricao: string;
   tituloInicial: string;
   icon: LucideIcon;
+  preview?: ReactNode;
 }[] = [
   {
     tipo: "BANNER",
@@ -792,6 +829,25 @@ const TIPOS_BLOCO_ADICIONAR: {
     descricao: "Mosaico editorial para coleções, campanhas e categorias.",
     tituloInicial: "Coleções / categorias",
     icon: LayoutGrid,
+  },
+  {
+    tipo: "VITRINE_EDITORIAL",
+    nome: "Vitrine editorial",
+    descricao: "Imagens grandes com links para categorias, paginas ou campanhas.",
+    tituloInicial: "Vitrine editorial",
+    icon: LayoutGrid,
+    preview: (
+      <span className="mt-3 grid grid-cols-4 gap-1.5">
+        {[0, 1, 2, 3].map((index) => (
+          <span
+            key={index}
+            className={`block rounded bg-slate-200 ${
+              index % 2 === 0 ? "h-11" : "h-14"
+            }`}
+          />
+        ))}
+      </span>
+    ),
   },
   {
     tipo: "CTA_SIMPLES",
@@ -944,6 +1000,197 @@ function getCategoriaResumo(
 
 function getProdutoResumo(produtoId: string, produtos: EditorVisualProduto[]) {
   return produtos.find((produto) => produto.id === produtoId) || null;
+}
+
+function getPaginaResumo(paginaId: string, paginas: EditorVisualPaginaLink[]) {
+  return paginas.find((pagina) => pagina.id === paginaId) || null;
+}
+
+function clampEditorNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizarQuantidadeVitrineEditorial(value: number) {
+  const rounded = Math.round(value);
+  return [3, 4, 5].includes(rounded) ? rounded : 3;
+}
+
+function normalizarAlturaVitrineEditorial(value: string) {
+  return value === "COMPACTA" ? "COMPACTA" : "PADRAO";
+}
+
+function normalizarAnimacaoVitrineEditorial(value: string) {
+  if (
+    [
+      "SEM_ANIMACAO",
+      "SUBINDO_EM_SEQUENCIA",
+      "LATERAL_EM_SEQUENCIA",
+      "FADE_EM_SEQUENCIA",
+    ].includes(value)
+  ) {
+    return value;
+  }
+
+  return "SUBINDO_EM_SEQUENCIA";
+}
+
+function normalizarTipoLinkVitrineEditorial(value: string) {
+  if (["CATEGORIA", "PAGINA", "URL_PERSONALIZADA"].includes(value)) {
+    return value;
+  }
+
+  return "CATEGORIA";
+}
+
+function criarItemVitrineEditorialPadrao(
+  index: number
+): VitrineEditorialItemEditando {
+  return {
+    id: `vitrine-${index}`,
+    tipoLink: "CATEGORIA",
+    categoriaId: "",
+    categoriaSlug: "",
+    categoriaNome: "",
+    categoriaImagemUrl: "",
+    paginaId: "",
+    paginaSlug: "",
+    paginaTitulo: "",
+    linkUrl: "",
+    label: "",
+    textoBotao: "Explorar",
+    imagemDesktop: "",
+    imagemMobile: "",
+    altText: "",
+    focoHorizontal: 50,
+    focoVertical: 50,
+    zoom: 100,
+    ocultarNome: false,
+    ocultarBotao: false,
+    abrirNovaAba: false,
+  };
+}
+
+function getItensVitrineEditorialConfig(config: Record<string, unknown>) {
+  const itensConfig = Array.isArray(config.itens) ? config.itens : [];
+  const quantidade = normalizarQuantidadeVitrineEditorial(
+    getNumberConfig(config, "quantidadeItens", 3)
+  );
+  const itens =
+    itensConfig.length > 0
+      ? itensConfig.map((item, index) => {
+          const data = getConfigObject(item);
+          const itemPadrao = criarItemVitrineEditorialPadrao(index + 1);
+
+          return {
+            id: getStringConfig(data, "id") || itemPadrao.id,
+            tipoLink: normalizarTipoLinkVitrineEditorial(
+              getStringConfig(data, "tipoLink")
+            ),
+            categoriaId: getStringConfig(data, "categoriaId"),
+            categoriaSlug: getStringConfig(data, "categoriaSlug"),
+            categoriaNome: getStringConfig(data, "categoriaNome"),
+            categoriaImagemUrl:
+              getStringConfig(data, "categoriaImagemUrl") ||
+              getStringConfig(data, "imagemCategoriaUrl"),
+            paginaId: getStringConfig(data, "paginaId"),
+            paginaSlug: getStringConfig(data, "paginaSlug"),
+            paginaTitulo: getStringConfig(data, "paginaTitulo"),
+            linkUrl: getStringConfig(data, "linkUrl"),
+            label:
+              getStringConfig(data, "label") ||
+              getStringConfig(data, "titulo") ||
+              getStringConfig(data, "nome"),
+            textoBotao:
+              getStringConfig(data, "textoBotao") ||
+              getStringConfig(data, "textoLink") ||
+              itemPadrao.textoBotao,
+            imagemDesktop:
+              getStringConfig(data, "imagemDesktop") ||
+              getStringConfig(data, "imagemDesktopUrl") ||
+              getStringConfig(data, "imagemUrl"),
+            imagemMobile:
+              getStringConfig(data, "imagemMobile") ||
+              getStringConfig(data, "imagemMobileUrl"),
+            altText:
+              getStringConfig(data, "altText") || getStringConfig(data, "alt"),
+            focoHorizontal: clampEditorNumber(
+              getNumberConfig(
+                data,
+                "focoHorizontal",
+                getNumberConfig(data, "mediaCropDesktopX", 50)
+              ),
+              0,
+              100
+            ),
+            focoVertical: clampEditorNumber(
+              getNumberConfig(
+                data,
+                "focoVertical",
+                getNumberConfig(data, "mediaCropDesktopY", 50)
+              ),
+              0,
+              100
+            ),
+            zoom: clampEditorNumber(getNumberConfig(data, "zoom", 100), 100, 160),
+            ocultarNome: getBooleanConfig(data, "ocultarNome", false),
+            ocultarBotao: getBooleanConfig(data, "ocultarBotao", false),
+            abrirNovaAba: getBooleanConfig(data, "abrirNovaAba", false),
+          };
+        })
+      : Array.from({ length: quantidade }, (_, index) =>
+          criarItemVitrineEditorialPadrao(index + 1)
+        );
+
+  return Array.from({ length: quantidade }, (_, index) => {
+    return itens[index] || criarItemVitrineEditorialPadrao(index + 1);
+  });
+}
+
+function getConfigVitrineEditorial(config: Record<string, unknown>) {
+  const quantidadeItens = normalizarQuantidadeVitrineEditorial(
+    getNumberConfig(config, "quantidadeItens", 3)
+  );
+
+  return {
+    quantidadeItens,
+    alturaVisual: normalizarAlturaVitrineEditorial(
+      getStringConfig(config, "alturaVisual")
+    ),
+    animacaoBloco: normalizarAnimacaoVitrineEditorial(
+      getStringConfig(config, "animacaoBloco")
+    ),
+    itens: getItensVitrineEditorialConfig({
+      ...config,
+      quantidadeItens,
+    }),
+  };
+}
+
+function normalizarUrlPersonalizadaVitrine(value: string) {
+  const url = value.trim();
+
+  if (!url) return "";
+
+  if (/^(https?:\/\/|\/|mailto:|tel:)/i.test(url)) return url;
+
+  return "";
+}
+
+function getOpcoesCategoriasVitrine(categorias: EditorVisualCategoria[]) {
+  const ordenadas = [...categorias].sort((a, b) =>
+    a.caminho.localeCompare(b.caminho, "pt-BR")
+  );
+
+  return ordenadas.map((categoria) => {
+    const nivel = Math.max(0, categoria.caminho.split(" > ").length - 1);
+    const prefixo = nivel > 0 ? `${"- ".repeat(nivel)}` : "";
+
+    return {
+      categoria,
+      label: `${prefixo}${categoria.nome}`,
+    };
+  });
 }
 
 function getTextStyleDefaults(kind: string): TextStyleConfig {
@@ -1189,6 +1436,7 @@ function getTipoLabel(tipo: string) {
   if (tipo === "COLECOES_CATEGORIAS" || tipo === "MOSAICO_COLECOES") {
     return "Coleções / categorias";
   }
+  if (tipo === "VITRINE_EDITORIAL") return "Vitrine editorial";
   if (tipo === "CATEGORIAS") return "Categorias";
   if (tipo === "FAQ") return "FAQ";
   if (tipo === "FORMULARIO") return "Formulário";
@@ -1237,6 +1485,10 @@ function isDestaquesCardsTipo(tipo: string) {
 
 function isColecoesCategoriasTipo(tipo: string) {
   return tipo === "COLECOES_CATEGORIAS" || tipo === "MOSAICO_COLECOES";
+}
+
+function isVitrineEditorialTipo(tipo: string) {
+  return tipo === "VITRINE_EDITORIAL";
 }
 
 function isCtaTipo(tipo: string) {
@@ -3020,6 +3272,7 @@ function RenderBlocoPreview({
   onInlineTextChange,
   onInlineCardChange,
   onInlineColecaoItemChange,
+  categoriasDisponiveis,
   produtosDisponiveis,
 }: {
   bloco: EditorVisualBloco;
@@ -3027,6 +3280,7 @@ function RenderBlocoPreview({
   onSelect: () => void;
   onEdit: () => void;
   device: DevicePreview;
+  categoriasDisponiveis: EditorVisualCategoria[];
   produtosDisponiveis: EditorVisualProduto[];
   onInlineTextChange: (blocoId: string, patch: Record<string, unknown>) => void;
   onInlineCardChange: (
@@ -3835,7 +4089,14 @@ function RenderBlocoPreview({
         {getTipoLabel(bloco.tipo)}
       </div>
 
-      {isBannerTipo(bloco.tipo) ? (
+      {isVitrineEditorialTipo(bloco.tipo) ? (
+        <VitrineEditorialPublico
+          bloco={bloco}
+          device={device}
+          modo="editor"
+          categorias={categoriasDisponiveis}
+        />
+      ) : isBannerTipo(bloco.tipo) ? (
         <>
           <BannerRenderer
             bloco={bloco}
@@ -7559,10 +7820,440 @@ function BannerStudioEditor({
   );
 }
 
+function VitrineEditorialEditor({
+  estado,
+  categoriasDisponiveis,
+  paginasDisponiveis,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  categoriasDisponiveis: EditorVisualCategoria[];
+  paginasDisponiveis: EditorVisualPaginaLink[];
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  const configAtual = getConfigObject(estado.bloco.configJson);
+  const configVitrine = getConfigVitrineEditorial(configAtual);
+  const categoriasOpcoes = getOpcoesCategoriasVitrine(categoriasDisponiveis);
+  const previewBloco: EditorVisualBloco = {
+    ...estado.bloco,
+    configJson: configVitrine,
+  };
+
+  function aplicarConfig(patch: Record<string, unknown>) {
+    const proximoConfig = getConfigVitrineEditorial({
+      ...configAtual,
+      ...patch,
+    });
+
+    onChange({
+      bloco: {
+        ...estado.bloco,
+        configJson: proximoConfig,
+      },
+    });
+  }
+
+  function atualizarItem(
+    itemId: string,
+    patch: Partial<VitrineEditorialItemEditando>
+  ) {
+    aplicarConfig({
+      itens: configVitrine.itens.map((item) =>
+        item.id === itemId ? { ...item, ...patch } : item
+      ),
+    });
+  }
+
+  function atualizarQuantidade(quantidade: number) {
+    const quantidadeNormalizada =
+      normalizarQuantidadeVitrineEditorial(quantidade);
+    const itens = Array.from({ length: quantidadeNormalizada }, (_, index) => {
+      return (
+        configVitrine.itens[index] ||
+        criarItemVitrineEditorialPadrao(index + 1)
+      );
+    });
+
+    aplicarConfig({
+      quantidadeItens: quantidadeNormalizada,
+      itens,
+    });
+  }
+
+  function selecionarCategoria(
+    item: VitrineEditorialItemEditando,
+    categoriaId: string
+  ) {
+    const categoria = getCategoriaResumo(categoriaId, categoriasDisponiveis);
+
+    atualizarItem(item.id, {
+      categoriaId: categoria?.id || "",
+      categoriaSlug: categoria?.slug || "",
+      categoriaNome: categoria?.nome || "",
+      categoriaImagemUrl: categoria?.imagemUrl || "",
+    });
+  }
+
+  function selecionarPagina(
+    item: VitrineEditorialItemEditando,
+    paginaId: string
+  ) {
+    const paginaSelecionada = getPaginaResumo(paginaId, paginasDisponiveis);
+
+    atualizarItem(item.id, {
+      paginaId: paginaSelecionada?.id || "",
+      paginaSlug: paginaSelecionada?.slug || "",
+      paginaTitulo: paginaSelecionada?.titulo || "",
+    });
+  }
+
+  return (
+    <div className="grid gap-5 px-6 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+      <div className="space-y-5">
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Nome interno
+          </span>
+
+          <input
+            value={estado.nomeInterno}
+            onChange={(event) => onChange({ nomeInterno: event.target.value })}
+            placeholder="Ex: Vitrine de colecoes"
+            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          />
+        </label>
+
+        <PainelSecao title="Layout">
+          <div className="space-y-4">
+            <div>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Quantidade de itens
+              </span>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[3, 4, 5].map((quantidade) => (
+                  <button
+                    key={quantidade}
+                    type="button"
+                    onClick={() => atualizarQuantidade(quantidade)}
+                    className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                      configVitrine.quantidadeItens === quantidade
+                        ? "border-slate-950 bg-slate-950 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {quantidade}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Altura visual
+                </span>
+
+                <select
+                  value={configVitrine.alturaVisual}
+                  onChange={(event) =>
+                    aplicarConfig({ alturaVisual: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="PADRAO">Padrao</option>
+                  <option value="COMPACTA">Compacta</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Animacao
+                </span>
+
+                <select
+                  value={configVitrine.animacaoBloco}
+                  onChange={(event) =>
+                    aplicarConfig({ animacaoBloco: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="SEM_ANIMACAO">Sem animacao</option>
+                  <option value="SUBINDO_EM_SEQUENCIA">
+                    Subindo em sequencia
+                  </option>
+                  <option value="LATERAL_EM_SEQUENCIA">
+                    Lateral em sequencia
+                  </option>
+                  <option value="FADE_EM_SEQUENCIA">Fade em sequencia</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </PainelSecao>
+
+        <div className="space-y-4">
+          {configVitrine.itens.map((item, index) => {
+            const linkPersonalizadoInvalido =
+              item.tipoLink === "URL_PERSONALIZADA" &&
+              item.linkUrl.trim().length > 0 &&
+              !normalizarUrlPersonalizadaVitrine(item.linkUrl);
+
+            return (
+              <SecaoRecolhivel
+                key={item.id}
+                title={`Item ${index + 1}`}
+                description="Desktop recomendado: 1600 x 2000 px. Mobile recomendado: 1080 x 1400 px."
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Tipo de link
+                    </span>
+
+                    <select
+                      value={item.tipoLink}
+                      onChange={(event) =>
+                        atualizarItem(item.id, {
+                          tipoLink: normalizarTipoLinkVitrineEditorial(
+                            event.target.value
+                          ),
+                        })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      <option value="CATEGORIA">Categoria</option>
+                      <option value="PAGINA">Pagina</option>
+                      <option value="URL_PERSONALIZADA">
+                        URL personalizada
+                      </option>
+                    </select>
+                  </label>
+
+                  {item.tipoLink === "CATEGORIA" ? (
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        Categoria
+                      </span>
+
+                      <select
+                        value={item.categoriaId}
+                        onChange={(event) =>
+                          selecionarCategoria(item, event.target.value)
+                        }
+                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                      >
+                        <option value="">Selecione uma categoria</option>
+                        {categoriasOpcoes.map(({ categoria, label }) => (
+                          <option key={categoria.id} value={categoria.id}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : item.tipoLink === "PAGINA" ? (
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        Pagina
+                      </span>
+
+                      <select
+                        value={item.paginaId}
+                        onChange={(event) =>
+                          selecionarPagina(item, event.target.value)
+                        }
+                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                      >
+                        <option value="">Selecione uma pagina</option>
+                        {paginasDisponiveis.map((paginaOpcao) => (
+                          <option key={paginaOpcao.id} value={paginaOpcao.id}>
+                            {paginaOpcao.titulo}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-slate-700">
+                        URL
+                      </span>
+
+                      <input
+                        value={item.linkUrl}
+                        onChange={(event) =>
+                          atualizarItem(item.id, { linkUrl: event.target.value })
+                        }
+                        placeholder="/loja/campanha"
+                        className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {linkPersonalizadoInvalido ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                    Use uma URL iniciando com /, http://, https://, mailto: ou
+                    tel:.
+                  </div>
+                ) : null}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Nome exibido
+                    </span>
+
+                    <input
+                      value={item.label}
+                      onChange={(event) =>
+                        atualizarItem(item.id, { label: event.target.value })
+                      }
+                      placeholder={
+                        item.categoriaNome || item.paginaTitulo || "Ex: Colares"
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Texto do botao
+                    </span>
+
+                    <input
+                      value={item.textoBotao}
+                      onChange={(event) =>
+                        atualizarItem(item.id, { textoBotao: event.target.value })
+                      }
+                      placeholder="Explorar"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <UploadMidiaCampo
+                    label="Imagem desktop"
+                    value={item.imagemDesktop}
+                    tipoMidia="IMAGEM"
+                    onChange={(url) =>
+                      atualizarItem(item.id, { imagemDesktop: url })
+                    }
+                    orientacao="Opcional. Quando vazio, usa a imagem da categoria selecionada."
+                  />
+
+                  <UploadMidiaCampo
+                    label="Imagem mobile"
+                    value={item.imagemMobile}
+                    tipoMidia="IMAGEM"
+                    onChange={(url) =>
+                      atualizarItem(item.id, { imagemMobile: url })
+                    }
+                    orientacao="Opcional. Quando vazio, usa a imagem desktop."
+                  />
+                </div>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Texto alternativo
+                  </span>
+
+                  <input
+                    value={item.altText}
+                    onChange={(event) =>
+                      atualizarItem(item.id, { altText: event.target.value })
+                    }
+                    placeholder={item.label || item.categoriaNome || item.paginaTitulo}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <RangeControl
+                    label="Foco horizontal"
+                    value={item.focoHorizontal}
+                    min={0}
+                    max={100}
+                    suffix="%"
+                    onChange={(value) =>
+                      atualizarItem(item.id, { focoHorizontal: value })
+                    }
+                  />
+
+                  <RangeControl
+                    label="Foco vertical"
+                    value={item.focoVertical}
+                    min={0}
+                    max={100}
+                    suffix="%"
+                    onChange={(value) =>
+                      atualizarItem(item.id, { focoVertical: value })
+                    }
+                  />
+
+                  <RangeControl
+                    label="Zoom"
+                    value={item.zoom}
+                    min={100}
+                    max={160}
+                    suffix="%"
+                    onChange={(value) => atualizarItem(item.id, { zoom: value })}
+                  />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <CampoToggle
+                    checked={item.ocultarNome}
+                    label="Ocultar nome"
+                    onChange={(checked) =>
+                      atualizarItem(item.id, { ocultarNome: checked })
+                    }
+                  />
+
+                  <CampoToggle
+                    checked={item.ocultarBotao}
+                    label="Ocultar botao"
+                    onChange={(checked) =>
+                      atualizarItem(item.id, { ocultarBotao: checked })
+                    }
+                  />
+
+                  <CampoToggle
+                    checked={item.abrirNovaAba}
+                    label="Abrir em nova aba"
+                    onChange={(checked) =>
+                      atualizarItem(item.id, { abrirNovaAba: checked })
+                    }
+                  />
+                </div>
+              </SecaoRecolhivel>
+            );
+          })}
+        </div>
+      </div>
+
+      <aside className="h-fit rounded-3xl border border-slate-200 bg-slate-50 p-4 xl:sticky xl:top-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Preview
+        </p>
+        <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <VitrineEditorialPublico
+            bloco={previewBloco}
+            device="DESKTOP"
+            modo="editor"
+            categorias={categoriasDisponiveis}
+          />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function EditorConteudoBlocoModal({
   estado,
   pagina,
   categoriasDisponiveis,
+  paginasDisponiveis,
   produtosDisponiveis,
   onChange,
   onClose,
@@ -7572,6 +8263,7 @@ function EditorConteudoBlocoModal({
   estado: BlocoEditandoState;
   pagina: EditorVisualPagina;
   categoriasDisponiveis: EditorVisualCategoria[];
+  paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onClose: () => void;
@@ -7596,6 +8288,7 @@ function EditorConteudoBlocoModal({
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
+  const isVitrineEditorial = isVitrineEditorialTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
   const modeloBannerInfo = getBannerModeloEditorInfo(estado.modeloBanner);
   const modeloBannerAceitaProdutos =
@@ -7765,7 +8458,9 @@ function EditorConteudoBlocoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div
         className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
-          isBanner ? "max-w-[min(96vw,1760px)]" : "max-w-3xl"
+          isBanner || isVitrineEditorial
+            ? "max-w-[min(96vw,1760px)]"
+            : "max-w-3xl"
         }`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
@@ -7789,9 +8484,11 @@ function EditorConteudoBlocoModal({
                       ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
                       : isColecoesCategorias
                         ? "Configure mosaicos editoriais com coleções, categorias, mídia e links."
-                      : isCta
-                        ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
-                        : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
+                        : isVitrineEditorial
+                          ? "Configure imagens grandes com links para categorias, páginas ou campanhas."
+                          : isCta
+                            ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
+                            : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -9051,6 +9748,13 @@ function EditorConteudoBlocoModal({
             </PainelSecao>
 
           </div>
+        ) : isVitrineEditorial ? (
+          <VitrineEditorialEditor
+            estado={estado}
+            categoriasDisponiveis={categoriasDisponiveis}
+            paginasDisponiveis={paginasDisponiveis}
+            onChange={onChange}
+          />
         ) : isListaProdutos ? (
           <div className="space-y-5 px-6 py-5">
             <label>
@@ -10327,6 +11031,8 @@ function AdicionarBlocoModal({
                   <span className="mt-1 block text-sm leading-6 text-slate-500">
                     {item.descricao}
                   </span>
+
+                  {item.preview}
                 </span>
               </button>
             );
@@ -10341,6 +11047,7 @@ export default function EditorVisualPaginaClient({
   pagina,
   blocos,
   categoriasDisponiveis,
+  paginasDisponiveis,
   produtosDisponiveis,
 }: EditorVisualPaginaClientProps) {
   const [isPending] = useTransition();
@@ -11071,8 +11778,10 @@ export default function EditorVisualPaginaClient({
     setSalvando(true);
 
     const blocoAtual = getBlocoEditorAtual(editando.bloco.id) || editando.bloco;
-    const configAtual = getConfigObject(blocoAtual.configJson);
-
+    const isVitrineEditorial = isVitrineEditorialTipo(blocoAtual.tipo);
+    const configAtual = getConfigObject(
+      isVitrineEditorial ? editando.bloco.configJson : blocoAtual.configJson
+    );
     const isBanner = isBannerTipo(blocoAtual.tipo);
     const isTextoImagem = isTextoImagemTipo(blocoAtual.tipo);
     const isListaProdutos = isListaProdutosTipo(blocoAtual.tipo);
@@ -11663,6 +12372,7 @@ export default function EditorVisualPaginaClient({
                 onInlineTextChange={atualizarTextoInline}
                 onInlineCardChange={atualizarCardInline}
                 onInlineColecaoItemChange={atualizarColecaoItemInline}
+                categoriasDisponiveis={categoriasDisponiveis}
                 produtosDisponiveis={produtosDisponiveis}
               />
             ))}
@@ -11836,6 +12546,7 @@ export default function EditorVisualPaginaClient({
         estado={editando}
         pagina={pagina}
         categoriasDisponiveis={categoriasDisponiveis}
+        paginasDisponiveis={paginasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}

@@ -1532,6 +1532,7 @@ export default function LojaPaginaBuilderClient({
                   key={bloco.id}
                   bloco={bloco}
                   produtos={produtos}
+                  categorias={categoriasMenu}
                   listaCompletaProdutos={Boolean(categoriaAtual)}
                 />
               );
