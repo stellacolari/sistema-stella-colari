@@ -4,6 +4,7 @@ import {
   gerarCodigoLancamentoFinanceiro,
   montarPayloadLancamentoFinanceiro,
 } from "@/lib/compras/lancamentos-financeiros";
+import { registrarPagamentoLancamentoFinanceiro } from "@/lib/financeiro/resultado";
 
 export async function GET() {
   try {
@@ -55,6 +56,8 @@ export async function POST(req: Request) {
         ...resultado.payload,
       },
     });
+
+    await registrarPagamentoLancamentoFinanceiro(lancamento.id);
 
     return NextResponse.json({ ok: true, lancamento });
   } catch (error) {

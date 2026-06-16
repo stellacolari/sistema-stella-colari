@@ -460,8 +460,13 @@ model LancamentoFinanceiro {
   anexoUrl              String?
   status                String    @default("ATIVO")
   statusAntesLixeira    String?
+  impactaCaixa          Boolean   @default(false)
+  contaFinanceiraId     String?
+  movimentacaoCaixaId   String?   @unique
   criadoEm              DateTime  @default(now())
   atualizadoEm          DateTime  @updatedAt
+  contaFinanceira       ContaFinanceira?   @relation("LancamentoContaFinanceira", fields: [contaFinanceiraId], references: [id])
+  movimentacaoCaixa     MovimentacaoCaixa? @relation("LancamentoMovimentacaoCaixa", fields: [movimentacaoCaixaId], references: [id])
 
   @@index([tipo])
   @@index([categoria])
@@ -471,6 +476,140 @@ model LancamentoFinanceiro {
   @@index([dataCompetencia])
   @@index([dataVencimento])
   @@index([dataPagamento])
+  @@index([impactaCaixa])
+  @@index([contaFinanceiraId])
+}
+
+model ContaFinanceira {
+  id                     String                 @id @default(cuid())
+  nome                   String
+  tipo                   String
+  saldoInicial           Float                  @default(0)
+  dataSaldoInicial       DateTime?
+  ativo                  Boolean                @default(true)
+  observacoes            String?
+  criadoEm               DateTime               @default(now())
+  atualizadoEm           DateTime               @updatedAt
+  lancamentosFinanceiros LancamentoFinanceiro[] @relation("LancamentoContaFinanceira")
+  movimentacoesCaixa     MovimentacaoCaixa[]
+
+  @@index([tipo])
+  @@index([ativo])
+}
+
+model MovimentacaoCaixa {
+  id                    String                    @id @default(cuid())
+  codigo                String                    @unique
+  contaId               String
+  tipo                  String
+  categoria             String
+  descricao             String
+  valor                 Float
+  status                String                    @default("PREVISTA")
+  dataPrevista          DateTime?
+  dataEfetiva           DateTime?
+  origemTipo            String?
+  origemId              String?
+  aprovadoEm            DateTime?
+  pagoEm                DateTime?
+  observacoes           String?
+  criadoEm              DateTime                  @default(now())
+  atualizadoEm          DateTime                  @updatedAt
+  conta                 ContaFinanceira           @relation(fields: [contaId], references: [id])
+  destinoApuracao       ApuracaoResultadoDestino?
+  lancamentoFinanceiro  LancamentoFinanceiro?     @relation("LancamentoMovimentacaoCaixa")
+
+  @@unique([origemTipo, origemId])
+  @@index([contaId])
+  @@index([tipo])
+  @@index([categoria])
+  @@index([status])
+  @@index([dataPrevista])
+  @@index([dataEfetiva])
+  @@index([pagoEm])
+}
+
+model RegraDistribuicaoResultado {
+  id                    String                     @id @default(cuid())
+  nome                  String
+  ativa                 Boolean                    @default(true)
+  percentualEmpresa     Float                      @default(50)
+  percentualProLabore   Float                      @default(50)
+  observacoes           String?
+  criadoEm              DateTime                   @default(now())
+  atualizadoEm          DateTime                   @updatedAt
+  destinos              RegraDistribuicaoDestino[]
+
+  @@index([ativa])
+}
+
+model RegraDistribuicaoDestino {
+  id           String                      @id @default(cuid())
+  regraId      String
+  tipo         String
+  nome         String
+  percentual   Float
+  ordem        Int                         @default(0)
+  ativo        Boolean                     @default(true)
+  observacoes  String?
+  regra        RegraDistribuicaoResultado  @relation(fields: [regraId], references: [id], onDelete: Cascade)
+
+  @@index([regraId])
+  @@index([tipo])
+  @@index([ativo])
+}
+
+model ApuracaoResultadoMensal {
+  id                    String                      @id @default(cuid())
+  codigo                String                      @unique
+  mes                   Int
+  ano                   Int
+  periodoInicio         DateTime
+  periodoFim            DateTime
+  status                String                      @default("RASCUNHO")
+  receitaRecebida       Float                       @default(0)
+  custoProdutos         Float                       @default(0)
+  custoEmbalagens       Float                       @default(0)
+  taxas                 Float                       @default(0)
+  fretes                Float                       @default(0)
+  gastosOperacionais    Float                       @default(0)
+  comprasEstoqueCaixa   Float                       @default(0)
+  resultadoBruto        Float                       @default(0)
+  lucroApuravel         Float                       @default(0)
+  caixaLiquido          Float                       @default(0)
+  regraSnapshotJson     Json?
+  fontesSnapshotJson    Json?
+  alertasSnapshotJson   Json?
+  fechadoEm             DateTime?
+  observacoes           String?
+  criadoEm              DateTime                    @default(now())
+  atualizadoEm          DateTime                    @updatedAt
+  destinos              ApuracaoResultadoDestino[]
+
+  @@unique([mes, ano])
+  @@index([status])
+  @@index([periodoInicio])
+  @@index([periodoFim])
+}
+
+model ApuracaoResultadoDestino {
+  id                    String                    @id @default(cuid())
+  apuracaoId            String
+  tipo                  String
+  nome                  String
+  percentual            Float
+  valor                 Float
+  statusPagamento       String                    @default("PREVISTO")
+  movimentacaoCaixaId   String?                   @unique
+  observacoes           String?
+  criadoEm              DateTime                  @default(now())
+  atualizadoEm          DateTime                  @updatedAt
+  apuracao              ApuracaoResultadoMensal   @relation(fields: [apuracaoId], references: [id], onDelete: Cascade)
+  movimentacaoCaixa     MovimentacaoCaixa?        @relation(fields: [movimentacaoCaixaId], references: [id])
+
+  @@index([apuracaoId])
+  @@index([tipo])
+  @@index([statusPagamento])
 }
 
 model EstoqueProduto {

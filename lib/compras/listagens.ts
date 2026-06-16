@@ -114,6 +114,9 @@ function mapearLancamento(
     anexoUrl: lancamento.anexoUrl,
     status: lancamento.status,
     statusAntesLixeira: lancamento.statusAntesLixeira,
+    impactaCaixa: lancamento.impactaCaixa,
+    contaFinanceiraId: lancamento.contaFinanceiraId,
+    movimentacaoCaixaId: lancamento.movimentacaoCaixaId,
     criadoEm: lancamento.criadoEm.toISOString(),
   };
 }

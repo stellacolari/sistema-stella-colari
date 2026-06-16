@@ -53,6 +53,8 @@ export type LancamentoFinanceiroPayload = {
   linkReferencia?: string | null;
   anexoUrl?: string | null;
   status?: string;
+  impactaCaixa?: boolean;
+  contaFinanceiraId?: string | null;
 };
 
 function textoOpcional(value: unknown) {
@@ -96,6 +98,13 @@ function dataOpcional(value: unknown) {
 
   const data = new Date(texto);
   return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function booleanOpcional(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value === "true";
+
+  return false;
 }
 
 function valorEmLista(value: string, valores: readonly string[]) {
@@ -211,6 +220,8 @@ export function montarPayloadLancamentoFinanceiro(body: Record<string, unknown>)
     linkReferencia: textoOpcional(body.linkReferencia),
     anexoUrl: textoOpcional(body.anexoUrl),
     status: textoOpcional(body.status) || "ATIVO",
+    impactaCaixa: booleanOpcional(body.impactaCaixa),
+    contaFinanceiraId: textoOpcional(body.contaFinanceiraId),
   };
 
   return { payload };

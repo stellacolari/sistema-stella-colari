@@ -45,11 +45,21 @@ export type LancamentoFinanceiroListItem = {
   anexoUrl: string | null;
   status: string;
   statusAntesLixeira: string | null;
+  impactaCaixa: boolean;
+  contaFinanceiraId: string | null;
+  movimentacaoCaixaId: string | null;
   criadoEm: string;
+};
+
+export type ContaFinanceiraOption = {
+  id: string;
+  nome: string;
+  tipo: string;
 };
 
 type Props = {
   lancamentos: LancamentoFinanceiroListItem[];
+  contasFinanceiras: ContaFinanceiraOption[];
   abrirNovoInicial?: boolean;
 };
 
@@ -88,6 +98,8 @@ type FormState = {
   observacoes: string;
   linkReferencia: string;
   descricao: string;
+  impactaCaixa: boolean;
+  contaFinanceiraId: string;
 };
 
 const PREFERENCIA_GASTOS_KEY = "stella:compras:gastos:visualizacao";
@@ -168,6 +180,8 @@ const FORM_INICIAL: FormState = {
   observacoes: "",
   linkReferencia: "",
   descricao: "",
+  impactaCaixa: false,
+  contaFinanceiraId: "",
 };
 
 function moeda(valor: number) {
@@ -341,6 +355,8 @@ function lancamentoParaForm(lancamento: LancamentoFinanceiroListItem): FormState
     observacoes: lancamento.observacoes ?? "",
     linkReferencia: lancamento.linkReferencia ?? "",
     descricao: lancamento.descricao ?? "",
+    impactaCaixa: lancamento.impactaCaixa,
+    contaFinanceiraId: lancamento.contaFinanceiraId ?? "",
   };
 }
 
@@ -365,11 +381,14 @@ function formParaPayload(form: FormState) {
     observacoes: form.observacoes,
     linkReferencia: form.linkReferencia,
     descricao: form.descricao,
+    impactaCaixa: form.impactaCaixa,
+    contaFinanceiraId: form.impactaCaixa ? form.contaFinanceiraId : null,
   };
 }
 
 export default function ComprasEGastosClient({
   lancamentos,
+  contasFinanceiras,
   abrirNovoInicial = false,
 }: Props) {
   const router = useRouter();
@@ -1331,6 +1350,42 @@ export default function ComprasEGastosClient({
                   onChange={(value) => atualizarForm("meioPagamento", value)}
                   placeholder="Pix, boleto, cartão..."
                 />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <label className="flex items-center gap-3 text-sm font-semibold text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={form.impactaCaixa}
+                    onChange={(event) =>
+                      atualizarForm("impactaCaixa", event.target.checked)
+                    }
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                  Impacta caixa gerencial
+                </label>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Somente lancamentos pagos criam saida no caixa. Pendentes
+                  entram apenas na previsao.
+                </p>
+
+                {form.impactaCaixa && (
+                  <div className="mt-4">
+                    <CampoSelect
+                      label="Conta financeira"
+                      value={form.contaFinanceiraId}
+                      onChange={(value) =>
+                        atualizarForm("contaFinanceiraId", value)
+                      }
+                      options={contasFinanceiras.map((conta) => ({
+                        value: conta.id,
+                        label: conta.nome,
+                      }))}
+                      placeholder="Usar caixa principal"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

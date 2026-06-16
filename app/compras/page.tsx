@@ -243,13 +243,22 @@ export default async function ComprasPage() {
             ))}
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="mt-5 inline-flex min-h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-400"
-          >
-            Em breve
-          </button>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <Link
+              href="/compras/resultado"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Resultado
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/compras/financeiro"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Central Financeira
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </section>
     </div>

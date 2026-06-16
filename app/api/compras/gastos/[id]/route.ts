@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { montarPayloadLancamentoFinanceiro } from "@/lib/compras/lancamentos-financeiros";
+import { registrarPagamentoLancamentoFinanceiro } from "@/lib/financeiro/resultado";
 
 export async function PATCH(
   req: Request,
@@ -31,6 +32,8 @@ export async function PATCH(
       where: { id },
       data: resultado.payload,
     });
+
+    await registrarPagamentoLancamentoFinanceiro(lancamento.id);
 
     return NextResponse.json({ ok: true, lancamento });
   } catch (error) {
