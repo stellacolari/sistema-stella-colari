@@ -6856,6 +6856,8 @@ function BannerStudioEditor({
                 </>
               )}
 
+              {!isTipograficoExpandido && (
+                <>
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">
                   Presets de escala
@@ -6977,6 +6979,8 @@ function BannerStudioEditor({
                 suffix="%"
                 onChange={(value) => onChange({ margemSeguraY: value })}
               />
+                </>
+              )}
             </>
           ) : null}
 
@@ -7214,14 +7218,6 @@ function BannerStudioEditor({
                       ))}
                     </select>
                   </label>
-                  <RangeControl
-                    label="Margem segura lateral"
-                    value={estado.margemSeguraX}
-                    min={0}
-                    max={18}
-                    suffix="%"
-                    onChange={(value) => onChange({ margemSeguraX: value })}
-                  />
                 </>
               ) : (
                 <>

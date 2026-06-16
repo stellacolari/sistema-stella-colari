@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
@@ -683,6 +686,79 @@ function getTypographyFontSize(lines: string[], isMobile: boolean, safeX: number
   }px)`;
 }
 
+const TYPOGRAPHY_SAFE_X = 8;
+function getTypographyFallbackFontSize(lines: string[], isMobile: boolean) {
+  return getTypographyFontSize(lines, isMobile, TYPOGRAPHY_SAFE_X);
+}
+
+function useFittedTypographySizes(lines: string[], isMobile: boolean) {
+  const textAreaRef = useRef<HTMLDivElement | null>(null);
+  const lineRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const linesKey = useMemo(() => lines.join("\n"), [lines]);
+  const [fontSizes, setFontSizes] = useState<number[]>([]);
+
+  useEffect(() => {
+    const textArea = textAreaRef.current;
+
+    if (!textArea) return;
+
+    function updateSizes() {
+      if (!textArea) return;
+
+      const availableWidth = textArea.clientWidth;
+      const nextSizes = lines.map((_, index) => {
+        const lineElement = lineRefs.current[index];
+
+        if (!lineElement || availableWidth <= 0) {
+          return fontSizes[index] || 0;
+        }
+
+        const letterRects = Array.from(lineElement.children)
+          .map((letter) => letter.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+
+        if (letterRects.length === 0) {
+          return fontSizes[index] || 0;
+        }
+
+        const left = Math.min(...letterRects.map((rect) => rect.left));
+        const right = Math.max(...letterRects.map((rect) => rect.right));
+        const renderedWidth = Math.max(right - left, 1);
+        const currentSize =
+          parseFloat(getComputedStyle(lineElement).fontSize) ||
+          fontSizes[index] ||
+          100;
+        const fittedSize = currentSize * (availableWidth / renderedWidth) * 0.985;
+
+        return clamp(fittedSize, isMobile ? 44 : 64, isMobile ? 220 : 520);
+      });
+
+      setFontSizes((currentSizes) => {
+        const changed =
+          currentSizes.length !== nextSizes.length ||
+          currentSizes.some(
+            (size, index) => Math.abs(size - nextSizes[index]) > 0.5
+          );
+
+        return changed ? nextSizes : currentSizes;
+      });
+    }
+
+    updateSizes();
+
+    const resizeObserver = new ResizeObserver(updateSizes);
+    resizeObserver.observe(textArea);
+
+    if (document.fonts) {
+      document.fonts.ready.then(updateSizes).catch(() => undefined);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [fontSizes, isMobile, lines, linesKey]);
+
+  return { textAreaRef, lineRefs, fontSizes };
+}
+
 function getTypographySpeed(value: string) {
   if (value === "RAPIDA") {
     return { duration: 360, stagger: 18 };
@@ -753,27 +829,33 @@ function BannerTipograficoExpandido({
     getString(config, ["titulo", "nome"]) ||
     bloco.titulo ||
     "STELLA COLARI";
-  const lines = getTypographyLines(textoPrincipal);
+  const lines = useMemo(
+    () => getTypographyLines(textoPrincipal),
+    [textoPrincipal]
+  );
   const varianteVisual = getString(config, "varianteVisual", "BRANCO_AZUL");
   const animarLetras = getBoolean(config, "animarLetras", true);
   const velocidade = getString(config, "velocidadeAnimacao", "MEDIA");
-  const safeX = getNumberClamped(config, "margemSeguraX", 8, 0, 18);
   const speed = getTypographySpeed(velocidade);
   const isBlueBackground = varianteVisual === "AZUL_BRANCO";
   const sectionClass = isBlueBackground
     ? "bg-[var(--brand-blue)] text-white"
     : "bg-white text-[var(--brand-blue)]";
-  const fontSize = getTypographyFontSize(lines, isMobile, safeX);
+  const fallbackFontSize = getTypographyFallbackFontSize(lines, isMobile);
+  const { textAreaRef, lineRefs, fontSizes } = useFittedTypographySizes(
+    lines,
+    isMobile
+  );
   let letterIndex = 0;
 
   return (
-    <section className={`relative overflow-hidden ${sectionClass}`}>
+    <section className={`relative w-full overflow-hidden ${sectionClass}`}>
       <TypographyAnimationStyles active={animarLetras} />
 
       <div
-        className="flex items-center justify-center"
+        className="flex w-full items-center justify-center"
         style={{
-          padding: `clamp(3rem, 8vw, 8rem) ${safeX}%`,
+          padding: `clamp(3rem, 8vw, 8rem) ${TYPOGRAPHY_SAFE_X}%`,
         }}
       >
         <div
@@ -782,7 +864,7 @@ function BannerTipograficoExpandido({
             event.stopPropagation();
             onElementSelect?.("TITULO");
           }}
-          className={`group relative block w-full rounded-[2rem] text-center transition ${
+          className={`group relative block w-full text-center transition ${
             isEditor
               ? selectedElement === "TITULO"
                 ? "ring-4 ring-indigo-400"
@@ -792,17 +874,27 @@ function BannerTipograficoExpandido({
         >
           <span className="sr-only">{textoPrincipal}</span>
           <span
+            ref={textAreaRef}
             aria-hidden="true"
-            className="mx-auto block w-full font-black uppercase leading-[0.86]"
+            className="block w-full font-black uppercase leading-[0.86]"
             style={{
-              fontSize,
               letterSpacing: 0,
-              overflowWrap: "anywhere",
               textWrap: "balance",
             }}
           >
             {lines.map((line, lineIndex) => (
-              <span key={`${line}-${lineIndex}`} className="block">
+              <span
+                key={`${line}-${lineIndex}`}
+                ref={(element) => {
+                  lineRefs.current[lineIndex] = element;
+                }}
+                className="block w-full whitespace-nowrap"
+                style={{
+                  fontSize: fontSizes[lineIndex]
+                    ? `${fontSizes[lineIndex]}px`
+                    : fallbackFontSize,
+                }}
+              >
                 {Array.from(line).map((char, charIndex) => {
                   const currentIndex = letterIndex;
                   const shouldAnimateLetter = animarLetras && char !== " ";
