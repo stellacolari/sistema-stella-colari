@@ -1120,6 +1120,14 @@ model LojaFreteConfiguracao {
   atualizadoEm            DateTime @updatedAt
 }
 
+model LojaMenuRodapeConfiguracao {
+  id           String   @id @default(cuid())
+  chave        String   @unique @default("PADRAO")
+  configJson   Json
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 model LojaEntregaManualOrigem {
   id          String   @id @default(cuid())
   nome        String

@@ -174,6 +174,7 @@ const menuSections: MenuSection[] = [
           "/configuracoes/loja/formularios",
           "/configuracoes/loja/frete",
           "/configuracoes/loja/home",
+          "/configuracoes/loja/menu-rodape",
           "/configuracoes/loja/paginas",
         ],
       },

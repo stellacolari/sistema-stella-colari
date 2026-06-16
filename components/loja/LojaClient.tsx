@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import MenuPublicoLoja, {
@@ -9,6 +8,8 @@ import MenuPublicoLoja, {
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
+import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 
 export type LojaProdutoItem = {
   id: string;
@@ -86,12 +87,11 @@ type LojaClientProps = {
   secoesHome: LojaSecaoHomeItem[];
   blocoHome: LojaBlocoHomeItem | null;
   categoriasMenu?: CategoriaMenuPublicoItem[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
   mostrarTodosProdutos?: boolean;
   tituloVazio?: string;
   textoVazio?: string;
 };
-
-const LOGO_URL = "/logo-stella.png";
 
 function normalizarTexto(value: string | null | undefined) {
   return String(value ?? "")
@@ -103,31 +103,6 @@ function normalizarTexto(value: string | null | undefined) {
 
 function slugify(value: string) {
   return normalizarTexto(value).replace(/\s+/g, "-");
-}
-
-function LogoLoja() {
-  const [logoErro, setLogoErro] = useState(false);
-
-  return (
-    <Link href="/loja" className="flex shrink-0 items-center">
-      {!logoErro && (
-        <Image
-          src={LOGO_URL}
-          alt="Stella"
-          width={180}
-          height={48}
-          onError={() => setLogoErro(true)}
-          className="h-12 w-auto object-contain sm:h-8"
-        />
-      )}
-
-      {logoErro && (
-        <div className="flex h-12 items-center brand-bg px-5 text-base font-semibold tracking-[0.22em] sm:h-8">
-          STELLA
-        </div>
-      )}
-    </Link>
-  );
 }
 
 function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
@@ -373,42 +348,18 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
   );
 }
 
-function RodapeLoja({ menus }: { menus: LojaMenuItem[] }) {
+function RodapeLoja({
+  menus,
+  configuracaoMenuRodape,
+}: {
+  menus: LojaMenuItem[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
+}) {
   return (
-    <footer className="mt-12 border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
-        <div>
-          <LogoLoja />
-
-          <p className="mt-4 max-w-md text-sm font-medium leading-6 text-slate-500">
-            Stella Colari. Produtos selecionados para compra online.
-          </p>
-        </div>
-
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
-          <Link href="/loja" className="hover:text-[var(--brand-blue)]">
-            Home
-          </Link>
-
-          {menus.map((menu) => (
-            <Link
-              key={menu.id}
-              href={menu.href}
-              className="hover:text-[var(--brand-blue)]"
-            >
-              {menu.nome}
-            </Link>
-          ))}
-
-          <Link
-            href="/loja/carrinho"
-            className="hover:text-[var(--brand-blue)]"
-          >
-            Carrinho
-          </Link>
-        </nav>
-      </div>
-    </footer>
+    <RodapePublicoLoja
+      menus={menus}
+      configuracaoMenuRodape={configuracaoMenuRodape}
+    />
   );
 }
 
@@ -420,6 +371,7 @@ export default function LojaClient({
   secoesHome,
   blocoHome,
   categoriasMenu = [],
+  configuracaoMenuRodape,
   mostrarTodosProdutos = true,
   tituloVazio = "Nenhum produto disponível no momento.",
   textoVazio = "Cadastre produtos ativos para que eles apareçam na loja.",
@@ -467,6 +419,7 @@ export default function LojaClient({
         menus={menusPublicos}
         categorias={categoriasMenu}
         produtos={produtos}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -522,7 +475,10 @@ export default function LojaClient({
         )}
       </main>
 
-      <RodapeLoja menus={menus} />
+      <RodapeLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

@@ -133,7 +133,6 @@ export async function buscarCategoriasMenuPublico(): Promise<
   const categorias = await prisma.categoriaProduto.findMany({
     where: {
       ativo: true,
-      exibirNoMenu: true,
     },
     select: {
       id: true,

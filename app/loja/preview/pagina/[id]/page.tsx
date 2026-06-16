@@ -12,6 +12,7 @@ import LojaPaginaBuilderClient, {
 } from "@/components/loja/LojaPaginaBuilderClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import {
   buscarProdutosPublicos,
   buscarProdutosPublicosPorCategoriaIds,
@@ -324,9 +325,15 @@ export default async function LojaPreviewPaginaPage({
   const { categoriaAtual, idsCategoria } =
     await montarCategoriaAtual(categoriaPreview);
 
-  const [menusPublicos, categoriasMenu, produtosPublicos] = await Promise.all([
+  const [
+    menusPublicos,
+    categoriasMenu,
+    configuracaoMenuRodape,
+    produtosPublicos,
+  ] = await Promise.all([
     buscarMenusPublicos(),
     buscarCategoriasMenuPublico(),
+    buscarConfiguracaoMenuRodape(),
     idsCategoria.length > 0
       ? buscarProdutosPublicosPorCategoriaIds(idsCategoria)
       : buscarProdutosPublicos(),
@@ -405,6 +412,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
         menus={menus}
         categoriasMenu={categoriasMenu}
         categoriaAtual={categoriaAtual}
+        configuracaoMenuRodape={configuracaoMenuRodape}
       />
     </>
   );

@@ -29,7 +29,10 @@ function getPageInfo(pathname: string) {
     };
   }
 
-  if (pathname.startsWith("/configuracoes/loja/banners-menu")) {
+  if (
+    pathname.startsWith("/configuracoes/loja/menu-rodape") ||
+    pathname.startsWith("/configuracoes/loja/banners-menu")
+  ) {
     return {
       eyebrow: "Loja online",
       title: "Menu e Rodape",

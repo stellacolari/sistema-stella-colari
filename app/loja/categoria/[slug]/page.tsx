@@ -20,6 +20,7 @@ import {
   slugifyCategoria,
 } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicosPorCategoriaIds } from "@/lib/loja/produtos";
 
 type LojaCategoriaPageProps = {
@@ -229,12 +230,14 @@ export default async function LojaCategoriaPage({
     produtosCategoria,
     menusPublicos,
     categoriasMenu,
+    configuracaoMenuRodape,
     paginaCategoriaRaw,
     templateCategoriaRaw,
   ] = await Promise.all([
     buscarProdutosPublicosPorCategoriaIds(resultadoCategoria.idsCategoria),
     buscarMenusPublicos(),
     buscarCategoriasMenuPublico(),
+    buscarConfiguracaoMenuRodape(),
 
     prisma.lojaPagina.findFirst(getPaginaBuilderPublicaSelect(categoria.id)),
 
@@ -317,6 +320,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
         menus={menus}
         categoriasMenu={categoriasMenu}
         categoriaAtual={categoriaAtual}
+        configuracaoMenuRodape={configuracaoMenuRodape}
       />
     );
   }
@@ -387,6 +391,7 @@ const banners: LojaBannerItem[] = categoria.imagemUrl
       ]}
       blocoHome={blocoHome}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       mostrarTodosProdutos={false}
       tituloVazio={`Nenhum produto em ${categoria.nome}.`}
       textoVazio="Produtos vinculados a esta categoria aparecerão aqui automaticamente."

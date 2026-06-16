@@ -19,8 +19,8 @@ import MenuPublicoLoja, {
 import BlocoPublicoRenderer, {
   isBlocoVisualPublico,
 } from "@/components/loja/paginas/BlocoPublicoRenderer";
-
-const LOGO_URL = "/logo-stella.png";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
+import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 
 export type LojaBuilderPagina = {
   id: string;
@@ -369,29 +369,6 @@ function getTituloSizeClass(tamanho: string) {
   if (tamanho === "GRANDE") return "text-4xl md:text-6xl";
   if (tamanho === "IMPACTO") return "text-5xl md:text-7xl";
   return "text-3xl md:text-5xl";
-}
-
-function LogoLoja() {
-  const [logoErro, setLogoErro] = useState(false);
-
-  return (
-    <Link href="/loja" className="flex shrink-0 items-center">
-      {!logoErro && (
-        <img
-          src={LOGO_URL}
-          alt="Stella"
-          onError={() => setLogoErro(true)}
-          className="h-8 w-auto object-contain sm:h-9"
-        />
-      )}
-
-      {logoErro && (
-        <div className="flex h-8 items-center brand-bg px-4 text-sm font-semibold tracking-[0.22em] sm:h-9">
-          STELLA
-        </div>
-      )}
-    </Link>
-  );
 }
 
 function ProdutoCard({ produto }: { produto: LojaBuilderProduto }) {
@@ -1482,42 +1459,18 @@ function BlocoProdutos({
   );
 }
 
-function RodapeLoja({ menus }: { menus: LojaBuilderMenu[] }) {
+function RodapeLoja({
+  menus,
+  configuracaoMenuRodape,
+}: {
+  menus: LojaBuilderMenu[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
+}) {
   return (
-    <footer className="mt-12 border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
-        <div>
-          <LogoLoja />
-
-          <p className="mt-4 max-w-md text-sm font-medium leading-6 text-slate-500">
-            Stella Colari. Produtos selecionados para compra online.
-          </p>
-        </div>
-
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-slate-600">
-          <Link href="/loja" className="hover:text-[var(--brand-blue)]">
-            Home
-          </Link>
-
-          {menus.map((menu) => (
-            <Link
-              key={menu.id}
-              href={menu.href}
-              className="hover:text-[var(--brand-blue)]"
-            >
-              {menu.nome}
-            </Link>
-          ))}
-
-          <Link
-            href="/loja/carrinho"
-            className="hover:text-[var(--brand-blue)]"
-          >
-            Carrinho
-          </Link>
-        </nav>
-      </div>
-    </footer>
+    <RodapePublicoLoja
+      menus={menus}
+      configuracaoMenuRodape={configuracaoMenuRodape}
+    />
   );
 }
 
@@ -1528,6 +1481,7 @@ export default function LojaPaginaBuilderClient({
   menus,
   categoriasMenu = [],
   categoriaAtual = null,
+  configuracaoMenuRodape,
 }: {
   pagina: LojaBuilderPagina;
   blocos: LojaBuilderBloco[];
@@ -1535,6 +1489,7 @@ export default function LojaPaginaBuilderClient({
   menus: LojaBuilderMenu[];
   categoriasMenu?: CategoriaMenuPublicoItem[];
   categoriaAtual?: LojaBuilderCategoriaAtual | null;
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
 }) {
   const menusPublicos: MenuPublicoItem[] = menus.map((menu) => ({
     id: menu.id,
@@ -1550,6 +1505,7 @@ export default function LojaPaginaBuilderClient({
         menus={menusPublicos}
         categorias={categoriasMenu}
         produtos={produtos}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -1727,7 +1683,10 @@ export default function LojaPaginaBuilderClient({
         )}
       </main>
 
-      <RodapeLoja menus={menus} />
+      <RodapeLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

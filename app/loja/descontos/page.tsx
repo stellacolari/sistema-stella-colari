@@ -6,6 +6,7 @@ import LojaClient, {
 } from "@/components/loja/LojaClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 
 export const metadata: Metadata = {
@@ -28,11 +29,17 @@ function produtoTemDesconto(produto: {
 }
 
 export default async function LojaDescontosPage() {
-  const [produtosPublicos, menusPublicos, categoriasMenu, bannersRaw] =
-    await Promise.all([
+  const [
+    produtosPublicos,
+    menusPublicos,
+    categoriasMenu,
+    configuracaoMenuRodape,
+    bannersRaw,
+  ] = await Promise.all([
       buscarProdutosPublicos(),
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
+      buscarConfiguracaoMenuRodape(),
 
       prisma.bannerLoja.findMany({
         where: {
@@ -90,6 +97,7 @@ export default async function LojaDescontosPage() {
       ]}
       blocoHome={null}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       mostrarTodosProdutos={false}
       tituloVazio="Nenhum produto com desconto no momento."
       textoVazio="Ative desconto direto no cadastro de produto para que ele apareça aqui."

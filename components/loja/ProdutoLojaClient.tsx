@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import {
@@ -21,11 +20,12 @@ import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import ImageBox from "@/components/ui/ImageBox";
+import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
-const LOGO_URL = "/logo-stella.png";
 const CASHBACK_PERCENTUAL = 0.05;
 
 export type ProdutoLojaMenuItem = {
@@ -287,31 +287,6 @@ function getItemKey(item: {
   ].join("-");
 }
 
-function LogoLoja() {
-  const [logoErro, setLogoErro] = useState(false);
-
-  return (
-    <Link href="/loja" className="flex shrink-0 items-center">
-      {!logoErro && (
-        <Image
-          src={LOGO_URL}
-          alt="Stella"
-          width={150}
-          height={40}
-          onError={() => setLogoErro(true)}
-          className="h-10 w-auto object-contain"
-        />
-      )}
-
-      {logoErro && (
-        <div className="flex h-10 items-center brand-bg px-4 text-sm font-semibold tracking-[0.22em]">
-          STELLA
-        </div>
-      )}
-    </Link>
-  );
-}
-
 function ProdutoRelacionadoCard({
   produto,
 }: {
@@ -541,42 +516,18 @@ function ProdutoFamiliaSection({
   );
 }
 
-function RodapeLoja({ menus }: { menus: ProdutoLojaMenuItem[] }) {
+function RodapeLoja({
+  menus,
+  configuracaoMenuRodape,
+}: {
+  menus: ProdutoLojaMenuItem[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
+}) {
   return (
-    <footer className="mt-12 border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-6 lg:grid-cols-[1fr_auto] lg:px-8">
-        <div>
-          <LogoLoja />
-
-          <p className="mt-4 max-w-md text-sm font-light leading-6 text-slate-500">
-            Stella Colari. Produtos selecionados para compra online.
-          </p>
-        </div>
-
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-light text-slate-600">
-          <Link href="/loja" className="hover:text-[var(--brand-blue)]">
-            Home
-          </Link>
-
-          {menus.map((menu) => (
-            <Link
-              key={menu.id}
-              href={menu.href}
-              className="hover:text-[var(--brand-blue)]"
-            >
-              {menu.nome}
-            </Link>
-          ))}
-
-          <Link
-            href="/loja/carrinho"
-            className="hover:text-[var(--brand-blue)]"
-          >
-            Carrinho
-          </Link>
-        </nav>
-      </div>
-    </footer>
+    <RodapePublicoLoja
+      menus={menus}
+      configuracaoMenuRodape={configuracaoMenuRodape}
+    />
   );
 }
 
@@ -584,12 +535,14 @@ export default function ProdutoLojaClient({
   produto,
   menus,
   categoriasMenu = [],
+  configuracaoMenuRodape,
   relacionados,
   descontos,
 }: {
   produto: ProdutoLojaDetalhe;
   menus: ProdutoLojaMenuItem[];
   categoriasMenu?: CategoriaMenuPublicoItem[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
   relacionados: LojaProdutoRelacionado[];
   descontos: LojaProdutoRelacionado[];
 }) {
@@ -1086,6 +1039,7 @@ export default function ProdutoLojaClient({
         menus={menusPublicos}
         categorias={categoriasMenu}
         produtos={produtosBuscaMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -1966,7 +1920,10 @@ export default function ProdutoLojaClient({
         />
       </main>
 
-      <RodapeLoja menus={menus} />
+      <RodapeLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
 
       {embalagemPresenteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-5 py-8">

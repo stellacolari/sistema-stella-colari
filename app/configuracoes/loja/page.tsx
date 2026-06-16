@@ -371,7 +371,7 @@ export default async function LojaOnlineCentralPage() {
           metricLabel="links ativos no menu"
           actions={[
             {
-              href: "/configuracoes/loja/banners-menu",
+              href: "/configuracoes/loja/menu-rodape",
               label: "Editar menu e rodapé",
               primary: true,
             },

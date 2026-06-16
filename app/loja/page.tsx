@@ -15,6 +15,7 @@ import LojaPaginaBuilderClient, {
 } from "@/components/loja/LojaPaginaBuilderClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 
 export const metadata: Metadata = {
@@ -28,11 +29,18 @@ export const dynamic = "force-dynamic";
 const HOME_VISUAL_SLUG = "home";
 
 export default async function LojaPage() {
-  const [produtos, menusPublicos, categoriasMenu, homeVisualRaw] =
+  const [
+    produtos,
+    menusPublicos,
+    categoriasMenu,
+    configuracaoMenuRodape,
+    homeVisualRaw,
+  ] =
     await Promise.all([
       buscarProdutosPublicos(),
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
+      buscarConfiguracaoMenuRodape(),
 
       prisma.lojaPagina.findFirst({
         where: {
@@ -102,6 +110,7 @@ export default async function LojaPage() {
         produtos={produtosBuilder}
         menus={menusBuilder}
         categoriasMenu={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
       />
     );
   }
@@ -207,6 +216,7 @@ export default async function LojaPage() {
       secoesHome={secoesHome}
       blocoHome={blocoHome}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       mostrarTodosProdutos
     />
   );

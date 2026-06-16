@@ -31,7 +31,7 @@ const tabs = [
     exact: true,
   },
   {
-    href: "/configuracoes/loja/banners-menu",
+    href: "/configuracoes/loja/menu-rodape",
     label: "Menu e Rodapé",
     icon: Menu,
   },

@@ -9,6 +9,8 @@ import {
   FAVORITOS_UPDATED_EVENT,
   lerFavoritosIds,
 } from "./favoritos";
+import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import { normalizarLojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 
 const LOGO_URL = "/logo-stella.png";
 const CONTATO_URL = "/loja/quem-somos";
@@ -36,6 +38,10 @@ type CategoriaMenuComFilhos = CategoriaMenuPublicoItem & {
   filhos: CategoriaMenuComFilhos[];
 };
 
+type CategoriaMenuNivelada = CategoriaMenuComFilhos & {
+  nivel: number;
+};
+
 type ProdutoBuscaMenuItem = {
   id: string;
   codigoInterno: string;
@@ -51,6 +57,7 @@ type MenuPublicoLojaProps = {
   menus: MenuPublicoItem[];
   categorias?: CategoriaMenuPublicoItem[];
   produtos?: ProdutoBuscaMenuItem[];
+  configuracaoMenuRodape?: LojaMenuRodapeConfig;
   mostrarBusca?: boolean;
   mostrarPerfil?: boolean;
   mostrarCarrinho?: boolean;
@@ -65,11 +72,20 @@ function normalizarTexto(value: string | null | undefined) {
     .trim();
 }
 
+function isExternalUrl(href: string) {
+  return /^https?:\/\//i.test(href);
+}
+
 function ordenarCategorias(
-  items: CategoriaMenuComFilhos[]
+  items: CategoriaMenuComFilhos[],
+  ordenacao: "ORDEM" | "AZ"
 ): CategoriaMenuComFilhos[] {
   return [...items]
     .sort((a, b) => {
+      if (ordenacao === "AZ") {
+        return a.nome.localeCompare(b.nome);
+      }
+
       const ordemA = Number(a.ordemMenu ?? 0);
       const ordemB = Number(b.ordemMenu ?? 0);
 
@@ -79,20 +95,17 @@ function ordenarCategorias(
     })
     .map((item) => ({
       ...item,
-      filhos: ordenarCategorias(item.filhos),
+      filhos: ordenarCategorias(item.filhos, ordenacao),
     }));
 }
 
 function montarArvoreCategorias(
-  categorias: CategoriaMenuPublicoItem[]
+  categorias: CategoriaMenuPublicoItem[],
+  ordenacao: "ORDEM" | "AZ"
 ): CategoriaMenuComFilhos[] {
-  const categoriasVisiveis = categorias.filter(
-    (categoria) => categoria.exibirNoMenu !== false
-  );
-
   const mapa = new Map<string, CategoriaMenuComFilhos>();
 
-  categoriasVisiveis.forEach((categoria) => {
+  categorias.forEach((categoria) => {
     mapa.set(categoria.id, {
       ...categoria,
       filhos: [],
@@ -110,7 +123,20 @@ function montarArvoreCategorias(
     raiz.push(categoria);
   });
 
-  return ordenarCategorias(raiz);
+  return ordenarCategorias(raiz, ordenacao);
+}
+
+function achatarCategorias(
+  categorias: CategoriaMenuComFilhos[],
+  nivel = 0
+): CategoriaMenuNivelada[] {
+  return categorias.flatMap((categoria) => [
+    {
+      ...categoria,
+      nivel,
+    },
+    ...achatarCategorias(categoria.filhos, nivel + 1),
+  ]);
 }
 
 function LogoLoja() {
@@ -281,6 +307,7 @@ export default function MenuPublicoLoja({
   menus,
   categorias = [],
   produtos = [],
+  configuracaoMenuRodape,
   mostrarBusca = true,
   mostrarPerfil = true,
   mostrarCarrinho = true,
@@ -299,9 +326,57 @@ export default function MenuPublicoLoja({
   const [favoritosCount, setFavoritosCount] = useState(0);
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
 
+  const configMenu = useMemo(
+    () => normalizarLojaMenuRodapeConfig(configuracaoMenuRodape).menu,
+    [configuracaoMenuRodape]
+  );
+
+  const categoriasConfiguradas = useMemo(() => {
+    if (!configMenu.ativo || !configMenu.categoriasAutomaticasAtivas) {
+      return [];
+    }
+
+    const categoriasOcultas = new Set(configMenu.categoriasOcultasIds);
+
+    return categorias.filter((categoria) => {
+      if (categoriasOcultas.has(categoria.id)) return false;
+      if (
+        configMenu.mostrarApenasCategoriasVisiveis &&
+        categoria.exibirNoMenu === false
+      ) {
+        return false;
+      }
+      if (!configMenu.mostrarCategoriasMae && !categoria.categoriaMaeId) {
+        return false;
+      }
+      if (categoria.categoriaMaeId && !configMenu.mostrarCategoriasFilhas) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [categorias, configMenu]);
+
+  const menusConfigurados = useMemo(() => {
+    if (!configMenu.ativo || !configMenu.linksManuaisAtivos) {
+      return [];
+    }
+
+    return menus;
+  }, [configMenu, menus]);
+
   const categoriasArvore = useMemo(
-    () => montarArvoreCategorias(categorias),
-    [categorias]
+    () =>
+      montarArvoreCategorias(
+        categoriasConfiguradas,
+        configMenu.ordenacaoCategorias
+      ),
+    [categoriasConfiguradas, configMenu.ordenacaoCategorias]
+  );
+
+  const categoriasListaSimples = useMemo(
+    () => achatarCategorias(categoriasArvore),
+    [categoriasArvore]
   );
 
   const categoriaSelecionada =
@@ -647,51 +722,105 @@ export default function MenuPublicoLoja({
                         Categorias
                       </p>
 
-                      <div className="lg:hidden">
-                        {categoriasArvore.map((categoria) => (
-                          <CategoriaMobileItem
-                            key={categoria.id}
-                            categoria={categoria}
-                            aberta={categoriasMobileAbertas.includes(
-                              categoria.id
-                            )}
-                            onToggle={() => toggleCategoriaMobile(categoria.id)}
-                            onNavigate={fecharMenu}
-                          />
-                        ))}
-                      </div>
+                      {configMenu.exibicaoCategorias === "SIMPLES" ? (
+                        <div className="space-y-1 lg:hidden">
+                          {categoriasListaSimples.map((categoria) => (
+                            <Link
+                              key={categoria.id}
+                              href={`/loja/categoria/${categoria.slug}`}
+                              onClick={fecharMenu}
+                              className="block py-3 text-base font-medium tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
+                              style={{
+                                paddingLeft: `${categoria.nivel * 16}px`,
+                              }}
+                            >
+                              {categoria.nome}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="lg:hidden">
+                          {categoriasArvore.map((categoria) => (
+                            <CategoriaMobileItem
+                              key={categoria.id}
+                              categoria={categoria}
+                              aberta={categoriasMobileAbertas.includes(
+                                categoria.id
+                              )}
+                              onToggle={() =>
+                                toggleCategoriaMobile(categoria.id)
+                              }
+                              onNavigate={fecharMenu}
+                            />
+                          ))}
+                        </div>
+                      )}
 
-                      <div className="hidden space-y-7 lg:block">
-                        {categoriasArvore.map((categoria) => (
-                          <button
-                            key={categoria.id}
-                            type="button"
-                            onClick={() =>
-                              setCategoriaSelecionadaId(categoria.id)
-                            }
-                            className={`block w-full text-left text-[18px] font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
-                              categoriaSelecionadaId === categoria.id
-                                ? "text-[var(--brand-blue)]"
-                                : "text-slate-950"
-                            }`}
-                          >
-                            {categoria.nome}
-                          </button>
-                        ))}
-                      </div>
+                      {configMenu.exibicaoCategorias === "SIMPLES" ? (
+                        <div className="hidden space-y-3 lg:block">
+                          {categoriasListaSimples.map((categoria) => (
+                            <Link
+                              key={categoria.id}
+                              href={`/loja/categoria/${categoria.slug}`}
+                              onClick={fecharMenu}
+                              className={`block text-left font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
+                                categoria.nivel === 0
+                                  ? "text-[18px] text-slate-950"
+                                  : "text-[15px] text-slate-600"
+                              }`}
+                              style={{
+                                paddingLeft: `${categoria.nivel * 16}px`,
+                              }}
+                            >
+                              {categoria.nome}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : configMenu.exibicaoCategorias === "GRUPO" ? (
+                        <div className="hidden space-y-4 lg:block">
+                          {categoriasArvore.map((categoria) => (
+                            <CategoriaSubLink
+                              key={categoria.id}
+                              categoria={categoria}
+                              onNavigate={fecharMenu}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="hidden space-y-7 lg:block">
+                          {categoriasArvore.map((categoria) => (
+                            <button
+                              key={categoria.id}
+                              type="button"
+                              onClick={() =>
+                                setCategoriaSelecionadaId(categoria.id)
+                              }
+                              className={`block w-full text-left text-[18px] font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
+                                categoriaSelecionadaId === categoria.id
+                                  ? "text-[var(--brand-blue)]"
+                                  : "text-slate-950"
+                              }`}
+                            >
+                              {categoria.nome}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {menus.length > 0 && (
+                  {menusConfigurados.length > 0 && (
                     <div className="mt-7 space-y-1 border-t border-slate-100 pt-5 lg:mt-0 lg:space-y-7 lg:pt-7">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 lg:hidden">
                         Links
                       </p>
 
-                      {menus.map((menu) => (
+                      {menusConfigurados.map((menu) => (
                         <Link
                           key={menu.id}
                           href={menu.href}
+                          target={isExternalUrl(menu.href) ? "_blank" : undefined}
+                          rel={isExternalUrl(menu.href) ? "noreferrer" : undefined}
                           onClick={fecharMenu}
                           className={`block py-3 text-base font-medium leading-tight tracking-tight transition hover:text-[var(--brand-blue)] lg:py-0 lg:text-[20px] lg:font-normal ${
                             menu.destaque
@@ -733,69 +862,71 @@ export default function MenuPublicoLoja({
             </div>
           </aside>
 
-          <section
-            className={`absolute top-0 hidden h-full bg-white shadow-2xl transition-all duration-300 ease-out lg:block ${
-              categoriaSelecionada && menuVisivel
-                ? "left-[20vw] w-[25vw] translate-x-0 opacity-100"
-                : "left-[20vw] w-[0vw] -translate-x-4 overflow-hidden opacity-0"
-            }`}
-          >
-            {categoriaSelecionada && (
-              <div className="h-full overflow-y-auto">
-                {categoriaSelecionada.imagemUrl ? (
-                  <div className="relative h-64 w-full overflow-hidden bg-slate-100">
-                    <img
-                      src={categoriaSelecionada.imagemUrl}
-                      alt={categoriaSelecionada.nome}
-                      className="h-full w-full object-cover"
-                    />
+          {configMenu.exibicaoCategorias === "DROPDOWN" && (
+            <section
+              className={`absolute top-0 hidden h-full bg-white shadow-2xl transition-all duration-300 ease-out lg:block ${
+                categoriaSelecionada && menuVisivel
+                  ? "left-[20vw] w-[25vw] translate-x-0 opacity-100"
+                  : "left-[20vw] w-[0vw] -translate-x-4 overflow-hidden opacity-0"
+              }`}
+            >
+              {categoriaSelecionada && (
+                <div className="h-full overflow-y-auto">
+                  {categoriaSelecionada.imagemUrl ? (
+                    <div className="relative h-64 w-full overflow-hidden bg-slate-100">
+                      <img
+                        src={categoriaSelecionada.imagemUrl}
+                        alt={categoriaSelecionada.nome}
+                        className="h-full w-full object-cover"
+                      />
 
-                    <div className="pointer-events-none absolute inset-0 bg-black/5" />
-                  </div>
-                ) : (
-                  <div className="flex h-64 w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
-                    Sem imagem cadastrada
-                  </div>
-                )}
-
-                <div className="px-10 pt-8">
-                  <Link
-                    href={`/loja/categoria/${categoriaSelecionada.slug}`}
-                    onClick={fecharMenu}
-                    className="text-[24px] font-medium tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
-                  >
-                    {categoriaSelecionada.nome}
-                  </Link>
-
-                  {categoriaSelecionada.descricao && (
-                    <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
-                      {categoriaSelecionada.descricao}
-                    </p>
+                      <div className="pointer-events-none absolute inset-0 bg-black/5" />
+                    </div>
+                  ) : (
+                    <div className="flex h-64 w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
+                      Sem imagem cadastrada
+                    </div>
                   )}
-                </div>
 
-                <div className="px-10 pb-10 pt-8">
-                  <div className="border-t border-slate-200 pt-6">
-                    {categoriaSelecionada.filhos.length > 0 ? (
-                      <div className="space-y-1">
-                        {categoriaSelecionada.filhos.map((filho) => (
-                          <CategoriaSubLink
-                            key={filho.id}
-                            categoria={filho}
-                            onNavigate={fecharMenu}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        Nenhuma subcategoria cadastrada.
+                  <div className="px-10 pt-8">
+                    <Link
+                      href={`/loja/categoria/${categoriaSelecionada.slug}`}
+                      onClick={fecharMenu}
+                      className="text-[24px] font-medium tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
+                    >
+                      {categoriaSelecionada.nome}
+                    </Link>
+
+                    {categoriaSelecionada.descricao && (
+                      <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                        {categoriaSelecionada.descricao}
                       </p>
                     )}
                   </div>
+
+                  <div className="px-10 pb-10 pt-8">
+                    <div className="border-t border-slate-200 pt-6">
+                      {categoriaSelecionada.filhos.length > 0 ? (
+                        <div className="space-y-1">
+                          {categoriaSelecionada.filhos.map((filho) => (
+                            <CategoriaSubLink
+                              key={filho.id}
+                              categoria={filho}
+                              onNavigate={fecharMenu}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">
+                          Nenhuma subcategoria cadastrada.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
         </div>
       )}
     </>

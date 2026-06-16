@@ -9,6 +9,7 @@ import LojaPaginaBuilderClient, {
 } from "@/components/loja/LojaPaginaBuilderClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,13 @@ export default async function LojaPaginaPublicaPage({
 }) {
   const { slug } = await params;
 
-  const [paginaRaw, produtosPublicos, menusPublicos, categoriasMenu] =
+  const [
+    paginaRaw,
+    produtosPublicos,
+    menusPublicos,
+    categoriasMenu,
+    configuracaoMenuRodape,
+  ] =
     await Promise.all([
       prisma.lojaPagina.findFirst({
         where: {
@@ -79,6 +86,8 @@ export default async function LojaPaginaPublicaPage({
       buscarMenusPublicos(),
 
       buscarCategoriasMenuPublico(),
+
+      buscarConfiguracaoMenuRodape(),
     ]);
 
   if (!paginaRaw) {
@@ -134,6 +143,7 @@ export default async function LojaPaginaPublicaPage({
       produtos={produtos}
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
     />
   );
 }

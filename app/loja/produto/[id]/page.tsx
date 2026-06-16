@@ -7,6 +7,7 @@ import ProdutoLojaClient, {
 } from "@/components/loja/ProdutoLojaClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarEmbalagensPresentePublicas } from "@/lib/embalagens/presente-loja";
 import {
   buscarDescontosProduto,
@@ -47,6 +48,7 @@ export default async function ProdutoLojaPage({
   const [
     menusPublicos,
     categoriasMenu,
+    configuracaoMenuRodape,
     garantiaRaw,
     relacionados,
     descontos,
@@ -56,6 +58,8 @@ export default async function ProdutoLojaPage({
     buscarMenusPublicos(),
 
     buscarCategoriasMenuPublico(),
+
+    buscarConfiguracaoMenuRodape(),
 
     prisma.lojaTextoInstitucional.findUnique({
       where: {
@@ -154,6 +158,7 @@ export default async function ProdutoLojaPage({
       produto={produto}
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       relacionados={relacionados}
       descontos={descontos}
     />
