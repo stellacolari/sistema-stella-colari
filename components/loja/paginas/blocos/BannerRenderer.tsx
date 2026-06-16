@@ -26,6 +26,7 @@ export type BannerModeloFinal =
   | "HERO_PRINCIPAL"
   | "BANNER_CLASSICO"
   | "EDITORIAL_IMAGEM"
+  | "TIPOGRAFICO_EXPANDIDO"
   | "CAMADAS_PARALLAX"
   | "CATEGORIA"
   | "FAIXA_PROMOCIONAL";
@@ -63,6 +64,7 @@ export const BANNER_MODELO_LABELS: Record<BannerModeloFinal, string> = {
   HERO_PRINCIPAL: "Hero principal",
   BANNER_CLASSICO: "Banner clássico",
   EDITORIAL_IMAGEM: "Editorial com imagem",
+  TIPOGRAFICO_EXPANDIDO: "Tipográfico expandido",
   CAMADAS_PARALLAX: "Camadas visuais",
   CATEGORIA: "Banner de categoria",
   FAIXA_PROMOCIONAL: "Faixa promocional",
@@ -84,6 +86,8 @@ export function normalizeBannerModelo(value: string): BannerModeloFinal {
   ) {
     return "EDITORIAL_IMAGEM";
   }
+
+  if (value === "TIPOGRAFICO_EXPANDIDO") return "TIPOGRAFICO_EXPANDIDO";
 
   if (value === "CAMADAS_PARALLAX" || value === "PRODUTOS_FLUTUANTES") {
     return "CAMADAS_PARALLAX";
@@ -632,6 +636,209 @@ function HeroAnimationStyles({ active }: { active: boolean }) {
   );
 }
 
+function getTypographyLines(value: string) {
+  const text = value.trim().replace(/\s+/g, " ");
+
+  if (!text) return ["STELLA COLARI"];
+  if (text.length <= 18 || !text.includes(" ")) return [text];
+
+  const words = text.split(" ");
+  const target = text.length / 2;
+  let firstLine = "";
+  let secondLine = "";
+
+  for (const word of words) {
+    const candidate = firstLine ? `${firstLine} ${word}` : word;
+
+    if (candidate.length <= target || !firstLine) {
+      firstLine = candidate;
+    } else {
+      secondLine = secondLine ? `${secondLine} ${word}` : word;
+    }
+  }
+
+  return secondLine ? [firstLine, secondLine] : [firstLine];
+}
+
+function getTypographyTextWeight(value: string) {
+  return Math.max(value.replace(/\s/g, "").length + value.split(/\s+/).length * 0.35, 4);
+}
+
+function getTypographyFontSize(lines: string[], isMobile: boolean, safeX: number) {
+  const longestLine = lines.reduce((longest, line) => {
+    return getTypographyTextWeight(line) > getTypographyTextWeight(longest)
+      ? line
+      : longest;
+  }, lines[0] || "STELLA");
+  const textWeight = getTypographyTextWeight(longestLine);
+  const usefulWidth = Math.max(100 - safeX * 2, 64);
+  const fluidVw = clamp(
+    usefulWidth / (textWeight * 0.58),
+    isMobile ? 7.5 : 6,
+    isMobile ? 24 : 30
+  );
+
+  return `clamp(${isMobile ? 52 : 72}px, ${fluidVw.toFixed(2)}vw, ${
+    isMobile ? 132 : 420
+  }px)`;
+}
+
+function getTypographySpeed(value: string) {
+  if (value === "RAPIDA") {
+    return { duration: 360, stagger: 18 };
+  }
+
+  if (value === "SUAVE") {
+    return { duration: 680, stagger: 42 };
+  }
+
+  return { duration: 500, stagger: 28 };
+}
+
+function TypographyAnimationStyles({ active }: { active: boolean }) {
+  if (!active) return null;
+
+  return (
+    <style>
+      {`
+        @keyframes stellaTypographyLetterIn {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 0.42em, 0);
+          }
+
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        .stella-typography-letter {
+          opacity: 0;
+          animation: stellaTypographyLetterIn var(--stella-typography-duration) cubic-bezier(0.16, 1, 0.3, 1) var(--stella-typography-delay) both;
+          will-change: opacity, transform;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .stella-typography-letter {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+        }
+      `}
+    </style>
+  );
+}
+
+function BannerTipograficoExpandido({
+  bloco,
+  config,
+  device,
+  modo,
+  selectedElement,
+  onElementSelect,
+}: {
+  bloco: BlocoPublico;
+  config: Record<string, unknown>;
+  device?: BannerDevicePreview;
+  modo: "publico" | "editor";
+  selectedElement?: BannerElement;
+  onElementSelect?: (element: BannerElement) => void;
+}) {
+  const isEditor = modo === "editor";
+  const isMobile = device === "MOBILE";
+  const textoPrincipal =
+    getString(config, "textoPrincipal") ||
+    getString(config, ["titulo", "nome"]) ||
+    bloco.titulo ||
+    "STELLA COLARI";
+  const lines = getTypographyLines(textoPrincipal);
+  const varianteVisual = getString(config, "varianteVisual", "BRANCO_AZUL");
+  const animarLetras = getBoolean(config, "animarLetras", true);
+  const velocidade = getString(config, "velocidadeAnimacao", "MEDIA");
+  const safeX = getNumberClamped(config, "margemSeguraX", 8, 0, 18);
+  const speed = getTypographySpeed(velocidade);
+  const isBlueBackground = varianteVisual === "AZUL_BRANCO";
+  const sectionClass = isBlueBackground
+    ? "bg-[var(--brand-blue)] text-white"
+    : "bg-white text-[var(--brand-blue)]";
+  const fontSize = getTypographyFontSize(lines, isMobile, safeX);
+  let letterIndex = 0;
+
+  return (
+    <section className={`relative overflow-hidden ${sectionClass}`}>
+      <TypographyAnimationStyles active={animarLetras} />
+
+      <div
+        className="flex items-center justify-center"
+        style={{
+          padding: `clamp(3rem, 8vw, 8rem) ${safeX}%`,
+        }}
+      >
+        <div
+          onClick={(event) => {
+            if (!isEditor) return;
+            event.stopPropagation();
+            onElementSelect?.("TITULO");
+          }}
+          className={`group relative block w-full rounded-[2rem] text-center transition ${
+            isEditor
+              ? selectedElement === "TITULO"
+                ? "ring-4 ring-indigo-400"
+                : "cursor-text hover:ring-2 hover:ring-slate-400/35"
+              : ""
+          }`}
+        >
+          <span className="sr-only">{textoPrincipal}</span>
+          <span
+            aria-hidden="true"
+            className="mx-auto block w-full font-black uppercase leading-[0.86]"
+            style={{
+              fontSize,
+              letterSpacing: 0,
+              overflowWrap: "anywhere",
+              textWrap: "balance",
+            }}
+          >
+            {lines.map((line, lineIndex) => (
+              <span key={`${line}-${lineIndex}`} className="block">
+                {Array.from(line).map((char, charIndex) => {
+                  const currentIndex = letterIndex;
+                  const shouldAnimateLetter = animarLetras && char !== " ";
+
+                  if (char !== " ") {
+                    letterIndex += 1;
+                  }
+
+                  return (
+                    <span
+                      key={`${lineIndex}-${charIndex}-${char}`}
+                      className={`inline-block ${
+                        shouldAnimateLetter ? "stella-typography-letter" : ""
+                      }`}
+                      style={
+                        shouldAnimateLetter
+                          ? ({
+                              "--stella-typography-delay": `${currentIndex * speed.stagger}ms`,
+                              "--stella-typography-duration": `${speed.duration}ms`,
+                            } as CSSProperties)
+                          : undefined
+                      }
+                    >
+                      {char === " " ? "\u00A0" : char}
+                    </span>
+                  );
+                })}
+              </span>
+            ))}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function BannerRenderer({
   bloco,
   produtos = [],
@@ -646,6 +853,20 @@ export default function BannerRenderer({
 }: BannerRendererProps) {
   const config = asConfig(bloco.configJson);
   const modelo = normalizeBannerModelo(getString(config, "modeloBanner"));
+
+  if (modelo === "TIPOGRAFICO_EXPANDIDO") {
+    return (
+      <BannerTipograficoExpandido
+        bloco={bloco}
+        config={config}
+        device={device}
+        modo={modo}
+        selectedElement={selectedElement}
+        onElementSelect={onElementSelect}
+      />
+    );
+  }
+
   const isHeroPrincipal = modelo === "HERO_PRINCIPAL";
   const isEditor = modo === "editor";
   const isMobile = device === "MOBILE";

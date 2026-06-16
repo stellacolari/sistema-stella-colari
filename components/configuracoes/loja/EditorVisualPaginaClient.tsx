@@ -280,6 +280,10 @@ type BlocoEditandoState = {
   alinhamentoTextoDesktop: string;
   alinhamentoTextoMobile: string;
   modeloBanner: string;
+  textoPrincipal: string;
+  varianteVisual: string;
+  animarLetras: boolean;
+  velocidadeAnimacao: string;
   mostrarTitulo: boolean;
   mostrarSubtitulo: boolean;
   mostrarCta: boolean;
@@ -438,6 +442,17 @@ const ANIMACAO_HERO_PRESETS = [
   { value: "ZOOM_SUAVE", label: "Zoom suave" },
 ];
 
+const VARIANTES_TIPOGRAFICO_PRESETS = [
+  { value: "BRANCO_AZUL", label: "Fundo branco + texto azul" },
+  { value: "AZUL_BRANCO", label: "Fundo azul + texto branco" },
+];
+
+const VELOCIDADE_ANIMACAO_LETRAS_PRESETS = [
+  { value: "SUAVE", label: "Suave" },
+  { value: "MEDIA", label: "Média" },
+  { value: "RAPIDA", label: "Rápida" },
+];
+
 const ALINHAMENTO_VERTICAL_BANNER_PRESETS = [
   { value: "TOPO", label: "Topo" },
   { value: "CENTRO", label: "Centro" },
@@ -479,6 +494,14 @@ const MODELO_BANNER_PRESETS = [
     uso: "Lookbook, coleção premium e narrativa visual.",
     medidas: "Desktop 1600 x 900 px · mobile 1080 x 1350 px",
     preview: "EDITORIAL",
+  },
+  {
+    value: "TIPOGRAFICO_EXPANDIDO",
+    label: "Tipográfico expandido",
+    descricao: "Palavra ou frase curta ocupando quase toda a largura.",
+    uso: "Campanhas editoriais, manifesto de coleção e impacto de marca.",
+    medidas: "Altura automática · texto ajustado à largura útil",
+    preview: "TIPOGRAFICO",
   },
   {
     value: "CAMADAS_PARALLAX",
@@ -5713,6 +5736,10 @@ function getBannerPreviewBloco(estado: NonNullable<BlocoEditandoState>) {
       videoLoop: estado.videoLoop,
       videoSom: estado.videoSom,
       modeloBanner: estado.modeloBanner,
+      textoPrincipal: estado.textoPrincipal,
+      varianteVisual: estado.varianteVisual,
+      animarLetras: estado.animarLetras,
+      velocidadeAnimacao: estado.velocidadeAnimacao,
       mostrarTitulo: estado.mostrarTitulo,
       mostrarSubtitulo: estado.mostrarSubtitulo,
       mostrarCta: estado.mostrarCta,
@@ -5790,6 +5817,38 @@ function getBannerModeloPatch(modeloBanner: string) {
     };
   }
 
+  if (modeloBanner === "TIPOGRAFICO_EXPANDIDO") {
+    return {
+      modeloBanner,
+      textoPrincipal: "STELLA COLARI",
+      varianteVisual: "BRANCO_AZUL",
+      animarLetras: true,
+      velocidadeAnimacao: "MEDIA",
+      exibirMidia: false,
+      tipoMidia: "IMAGEM",
+      imagemDesktopUrl: "",
+      imagemMobileUrl: "",
+      videoDesktopUrl: "",
+      videoMobileUrl: "",
+      exibirSubtitulo: false,
+      exibirBotaoPrimario: false,
+      exibirBotaoSecundario: false,
+      alturaBanner: "AUTO_CONTEUDO",
+      larguraTextoPercentual: 100,
+      fonteTituloDesktop: 220,
+      fonteTituloMobile: 86,
+      lineHeightTitulo: 0.86,
+      letterSpacingTitulo: 0,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+      overlayBanner: "NENHUM",
+      alinhamentoConteudo: "CENTRO",
+      alinhamentoTextoDesktop: "CENTRO",
+      alinhamentoTextoMobile: "CENTRO",
+      alinhamentoVertical: "CENTRO",
+    };
+  }
+
   if (modeloBanner === "CAMADAS_PARALLAX") {
     return {
       modeloBanner,
@@ -5863,6 +5922,16 @@ function BannerModeloMiniatura({ tipo }: { tipo: string }) {
           <span className="mt-2 h-5 w-14 rounded-full bg-white" />
         </div>
         <div className="bg-gradient-to-br from-slate-200 to-slate-500" />
+      </div>
+    );
+  }
+
+  if (tipo === "TIPOGRAFICO") {
+    return (
+      <div className="flex h-full items-center overflow-hidden rounded-xl bg-white px-3">
+        <span className="w-full text-center text-[34px] font-black uppercase leading-none text-[var(--brand-blue)]">
+          STELLA
+        </span>
       </div>
     );
   }
@@ -5947,7 +6016,15 @@ function getBannerStudioPanelTitle(element: BannerStudioElement) {
   return "Modelo";
 }
 
-function getBannerStudioPanelDescription(element: BannerStudioElement) {
+function getBannerStudioPanelDescription(
+  element: BannerStudioElement,
+  modeloBanner?: string
+) {
+  if (modeloBanner === "TIPOGRAFICO_EXPANDIDO") {
+    if (element === "DESIGN") return "Variação visual e margem lateral.";
+    if (element === "TITULO") return "Texto principal e animação por letra.";
+  }
+
   if (element === "MIDIA") {
     return "Ajuste a mídia principal, zoom e foco do enquadramento ativo.";
   }
@@ -6249,6 +6326,7 @@ function BannerStudioEditor({
   const previewBloco = getBannerPreviewBloco(estado);
   const modeloNormalizado = normalizeBannerModelo(estado.modeloBanner);
   const isHeroPrincipal = modeloNormalizado === "HERO_PRINCIPAL";
+  const isTipograficoExpandido = modeloNormalizado === "TIPOGRAFICO_EXPANDIDO";
   const modeloBannerSelecionado =
     MODELO_BANNER_PRESETS.find((preset) => preset.value === modeloNormalizado) ||
     MODELO_BANNER_PRESETS[1];
@@ -6454,7 +6532,7 @@ function BannerStudioEditor({
                 }`}
               >
                 <BannerRenderer
-                  key={`${estado.animacaoElementos}-${animacaoPreviewKey}`}
+                  key={`${estado.modeloBanner}-${estado.animacaoElementos}-${estado.animarLetras}-${estado.velocidadeAnimacao}-${animacaoPreviewKey}`}
                   bloco={previewBloco}
                   produtos={toBannerProdutosPublicos(produtosDisponiveis)}
                   device={device}
@@ -6485,7 +6563,10 @@ function BannerStudioEditor({
                 {getBannerStudioPanelTitle(selectedElement)}
               </h3>
               <p className="mt-1 text-sm leading-5 text-slate-500">
-                {getBannerStudioPanelDescription(selectedElement)}
+                {getBannerStudioPanelDescription(
+                  selectedElement,
+                  modeloNormalizado
+                )}
               </p>
             </div>
           </div>
@@ -6516,6 +6597,81 @@ function BannerStudioEditor({
                   {modeloBannerSelecionado.medidas}
                 </p>
               </div>
+
+              {isTipograficoExpandido && (
+                <>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Texto principal
+                    </span>
+                    <input
+                      value={estado.textoPrincipal}
+                      onChange={(event) =>
+                        onChange({ textoPrincipal: event.target.value })
+                      }
+                      placeholder="Ex: STELLA"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                    />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Variação visual
+                    </span>
+                    <select
+                      value={estado.varianteVisual}
+                      onChange={(event) =>
+                        onChange({ varianteVisual: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                    >
+                      {VARIANTES_TIPOGRAFICO_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <CampoToggle
+                    checked={estado.animarLetras}
+                    label="Animar letras"
+                    onChange={(checked) => onChange({ animarLetras: checked })}
+                  />
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Velocidade da animação
+                    </span>
+                    <select
+                      value={estado.velocidadeAnimacao}
+                      onChange={(event) => {
+                        onChange({ velocidadeAnimacao: event.target.value });
+                        setAnimacaoPreviewKey((current) => current + 1);
+                      }}
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                    >
+                      {VELOCIDADE_ANIMACAO_LETRAS_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {estado.animarLetras && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAnimacaoPreviewKey((current) => current + 1)
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                    >
+                      Rever animação
+                    </button>
+                  )}
+                </>
+              )}
 
               {isHeroPrincipal && (
                 <>
@@ -6603,20 +6759,67 @@ function BannerStudioEditor({
                 >
                   Design
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onSelectedElementChange("AVANCADO")}
-                  className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  Avançado
-                </button>
+                {!isTipograficoExpandido && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectedElementChange("AVANCADO")}
+                    className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Avançado
+                  </button>
+                )}
               </div>
             </>
           ) : null}
 
           {selectedElement === "TITULO" || selectedElement === "SUBTITULO" ? (
             <>
-              {isHeroPrincipal ? (
+              {isTipograficoExpandido ? (
+                <>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Texto principal
+                    </span>
+                    <input
+                      value={estado.textoPrincipal}
+                      onChange={(event) =>
+                        onChange({ textoPrincipal: event.target.value })
+                      }
+                      placeholder="Ex: STELLA"
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                    />
+                  </label>
+
+                  <CampoToggle
+                    checked={estado.animarLetras}
+                    label="Animar letras"
+                    onChange={(checked) => {
+                      onChange({ animarLetras: checked });
+                      setAnimacaoPreviewKey((current) => current + 1);
+                    }}
+                  />
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Velocidade da animação
+                    </span>
+                    <select
+                      value={estado.velocidadeAnimacao}
+                      onChange={(event) => {
+                        onChange({ velocidadeAnimacao: event.target.value });
+                        setAnimacaoPreviewKey((current) => current + 1);
+                      }}
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                    >
+                      {VELOCIDADE_ANIMACAO_LETRAS_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : isHeroPrincipal ? (
                 <>
                   <CampoToggle
                     checked={estado.mostrarTitulo}
@@ -6988,129 +7191,168 @@ function BannerStudioEditor({
 
           {selectedElement === "DESIGN" ? (
             <>
-              <ResponsiveTextAlignControls
-                desktopValue={estado.alinhamentoTextoDesktop}
-                mobileValue={estado.alinhamentoTextoMobile}
-                onChange={onChange}
-              />
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Alinhamento horizontal
-                </span>
-                <select
-                  value={estado.alinhamentoConteudo}
-                  onChange={(event) =>
-                    onChange({ alinhamentoConteudo: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Altura
-                </span>
-                <select
-                  value={estado.alturaBanner}
-                  onChange={(event) => onChange({ alturaBanner: event.target.value })}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {ALTURA_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Alinhamento vertical
-                </span>
-                <select
-                  value={estado.alinhamentoVertical}
-                  onChange={(event) =>
-                    onChange({ alinhamentoVertical: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {ALINHAMENTO_VERTICAL_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Largura do bloco
-                </span>
-                <select
-                  value={estado.larguraBanner}
-                  onChange={(event) => onChange({ larguraBanner: event.target.value })}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {LARGURA_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Overlay
-                </span>
-                <select
-                  value={estado.overlayBanner}
-                  onChange={(event) => onChange({ overlayBanner: event.target.value })}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {OVERLAY_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Cor do texto
-                </span>
-                <select
-                  value={estado.corTextoBanner}
-                  onChange={(event) =>
-                    onChange({ corTextoBanner: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {COR_TEXTO_BANNER_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <RangeControl
-                label="Margem segura lateral"
-                value={estado.margemSeguraX}
-                min={0}
-                max={18}
-                suffix="%"
-                onChange={(value) => onChange({ margemSeguraX: value })}
-              />
-              <RangeControl
-                label="Margem segura topo/base"
-                value={estado.margemSeguraY}
-                min={0}
-                max={18}
-                suffix="%"
-                onChange={(value) => onChange({ margemSeguraY: value })}
-              />
+              {isTipograficoExpandido ? (
+                <>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Variação visual
+                    </span>
+                    <select
+                      value={estado.varianteVisual}
+                      onChange={(event) =>
+                        onChange({ varianteVisual: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {VARIANTES_TIPOGRAFICO_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <RangeControl
+                    label="Margem segura lateral"
+                    value={estado.margemSeguraX}
+                    min={0}
+                    max={18}
+                    suffix="%"
+                    onChange={(value) => onChange({ margemSeguraX: value })}
+                  />
+                </>
+              ) : (
+                <>
+                  <ResponsiveTextAlignControls
+                    desktopValue={estado.alinhamentoTextoDesktop}
+                    mobileValue={estado.alinhamentoTextoMobile}
+                    onChange={onChange}
+                  />
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Alinhamento horizontal
+                    </span>
+                    <select
+                      value={estado.alinhamentoConteudo}
+                      onChange={(event) =>
+                        onChange({ alinhamentoConteudo: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Altura
+                    </span>
+                    <select
+                      value={estado.alturaBanner}
+                      onChange={(event) =>
+                        onChange({ alturaBanner: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {ALTURA_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Alinhamento vertical
+                    </span>
+                    <select
+                      value={estado.alinhamentoVertical}
+                      onChange={(event) =>
+                        onChange({ alinhamentoVertical: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {ALINHAMENTO_VERTICAL_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Largura do bloco
+                    </span>
+                    <select
+                      value={estado.larguraBanner}
+                      onChange={(event) =>
+                        onChange({ larguraBanner: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {LARGURA_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Overlay
+                    </span>
+                    <select
+                      value={estado.overlayBanner}
+                      onChange={(event) =>
+                        onChange({ overlayBanner: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {OVERLAY_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Cor do texto
+                    </span>
+                    <select
+                      value={estado.corTextoBanner}
+                      onChange={(event) =>
+                        onChange({ corTextoBanner: event.target.value })
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      {COR_TEXTO_BANNER_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <RangeControl
+                    label="Margem segura lateral"
+                    value={estado.margemSeguraX}
+                    min={0}
+                    max={18}
+                    suffix="%"
+                    onChange={(value) => onChange({ margemSeguraX: value })}
+                  />
+                  <RangeControl
+                    label="Margem segura topo/base"
+                    value={estado.margemSeguraY}
+                    min={0}
+                    max={18}
+                    suffix="%"
+                    onChange={(value) => onChange({ margemSeguraY: value })}
+                  />
+                </>
+              )}
             </>
           ) : null}
 
@@ -10720,6 +10962,15 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "alinhamentoConteudo") ||
         "CENTRO",
       modeloBanner: normalizeBannerModelo(getStringConfig(config, "modeloBanner")),
+      textoPrincipal:
+        getStringConfig(config, "textoPrincipal") ||
+        getStringConfig(config, "titulo") ||
+        "STELLA COLARI",
+      varianteVisual:
+        getStringConfig(config, "varianteVisual") || "BRANCO_AZUL",
+      animarLetras: getBooleanConfig(config, "animarLetras", true),
+      velocidadeAnimacao:
+        getStringConfig(config, "velocidadeAnimacao") || "MEDIA",
       mostrarTitulo: getBooleanConfig(config, "mostrarTitulo", true),
       mostrarSubtitulo: getBooleanConfig(config, "mostrarSubtitulo", true),
       mostrarCta: getBooleanConfig(config, "mostrarCta", true),
@@ -10889,11 +11140,11 @@ export default function EditorVisualPaginaClient({
       cardTextoStyle: editando.cardTextoStyle,
       cardBotaoStyle: editando.cardBotaoStyle,
       ...(isBanner
-          ? {
-              tipoMidia: editando.tipoMidia,
-              exibirMidia: editando.exibirMidia,
-              exibirTexto: editando.exibirTexto,
-              exibirSubtitulo: editando.exibirSubtitulo,
+        ? {
+            tipoMidia: editando.tipoMidia,
+            exibirMidia: editando.exibirMidia,
+            exibirTexto: editando.exibirTexto,
+            exibirSubtitulo: editando.exibirSubtitulo,
             exibirBotaoPrimario: editando.exibirBotaoPrimario,
             exibirBotaoSecundario: editando.exibirBotaoSecundario,
             imagemDesktopUrl: editando.imagemDesktopUrl,
@@ -10910,44 +11161,48 @@ export default function EditorVisualPaginaClient({
             botaoSecundarioTexto: editando.textoBotaoSecundario,
             linkBotaoSecundario: editando.linkBotaoSecundario,
             botaoSecundarioLink: editando.linkBotaoSecundario,
-              modeloBanner: editando.modeloBanner,
-              mostrarTitulo: editando.mostrarTitulo,
-              mostrarSubtitulo: editando.mostrarSubtitulo,
-              mostrarCta: editando.mostrarCta,
-              animacaoElementos: editando.animacaoElementos,
-              alinhamentoConteudo: editando.alinhamentoConteudo,
-              alturaBanner: editando.alturaBanner,
-              larguraBanner: editando.larguraBanner,
-              overlayBanner: editando.overlayBanner,
-              corTextoBanner: editando.corTextoBanner,
-              alinhamentoVertical: editando.alinhamentoVertical,
-              margemSeguraX: editando.margemSeguraX,
-              margemSeguraY: editando.margemSeguraY,
-              larguraTextoPercentual: editando.larguraTextoPercentual,
-              fonteTituloDesktop: editando.fonteTituloDesktop,
-              fonteTituloMobile: editando.fonteTituloMobile,
-              lineHeightTitulo: editando.lineHeightTitulo,
-              letterSpacingTitulo: editando.letterSpacingTitulo,
-              mediaZoomDesktop: editando.mediaZoomDesktop,
-              mediaZoomMobile: editando.mediaZoomMobile,
-              imagemFrenteDesktopUrl: editando.imagemFrenteDesktopUrl,
-              imagemFrenteMobileUrl: editando.imagemFrenteMobileUrl,
-              imagemFrenteAlt: editando.imagemFrenteAlt,
-              imagemFrenteX: editando.imagemFrenteX,
-              imagemFrenteY: editando.imagemFrenteY,
-              imagemFrenteLarguraDesktop: editando.imagemFrenteLarguraDesktop,
-              imagemFrenteLarguraMobile: editando.imagemFrenteLarguraMobile,
-              estiloCtaBanner: editando.estiloCtaBanner,
-              ctaNovaAba: editando.ctaNovaAba,
-              produtosFlutuantesAtivos: editando.produtosFlutuantesAtivos,
-              produtosIds: editando.produtosSelecionadosIds,
-              mediaCropDesktopX: editando.mediaCropDesktopX,
-              mediaCropDesktopY: editando.mediaCropDesktopY,
-              mediaCropMobileX: editando.mediaCropMobileX,
-              mediaCropMobileY: editando.mediaCropMobileY,
-              mediaPositionDesktop: editando.mediaPositionDesktop,
-              mediaPositionMobile: editando.mediaPositionMobile,
-            }
+            modeloBanner: editando.modeloBanner,
+            textoPrincipal: editando.textoPrincipal,
+            varianteVisual: editando.varianteVisual,
+            animarLetras: editando.animarLetras,
+            velocidadeAnimacao: editando.velocidadeAnimacao,
+            mostrarTitulo: editando.mostrarTitulo,
+            mostrarSubtitulo: editando.mostrarSubtitulo,
+            mostrarCta: editando.mostrarCta,
+            animacaoElementos: editando.animacaoElementos,
+            alinhamentoConteudo: editando.alinhamentoConteudo,
+            alturaBanner: editando.alturaBanner,
+            larguraBanner: editando.larguraBanner,
+            overlayBanner: editando.overlayBanner,
+            corTextoBanner: editando.corTextoBanner,
+            alinhamentoVertical: editando.alinhamentoVertical,
+            margemSeguraX: editando.margemSeguraX,
+            margemSeguraY: editando.margemSeguraY,
+            larguraTextoPercentual: editando.larguraTextoPercentual,
+            fonteTituloDesktop: editando.fonteTituloDesktop,
+            fonteTituloMobile: editando.fonteTituloMobile,
+            lineHeightTitulo: editando.lineHeightTitulo,
+            letterSpacingTitulo: editando.letterSpacingTitulo,
+            mediaZoomDesktop: editando.mediaZoomDesktop,
+            mediaZoomMobile: editando.mediaZoomMobile,
+            imagemFrenteDesktopUrl: editando.imagemFrenteDesktopUrl,
+            imagemFrenteMobileUrl: editando.imagemFrenteMobileUrl,
+            imagemFrenteAlt: editando.imagemFrenteAlt,
+            imagemFrenteX: editando.imagemFrenteX,
+            imagemFrenteY: editando.imagemFrenteY,
+            imagemFrenteLarguraDesktop: editando.imagemFrenteLarguraDesktop,
+            imagemFrenteLarguraMobile: editando.imagemFrenteLarguraMobile,
+            estiloCtaBanner: editando.estiloCtaBanner,
+            ctaNovaAba: editando.ctaNovaAba,
+            produtosFlutuantesAtivos: editando.produtosFlutuantesAtivos,
+            produtosIds: editando.produtosSelecionadosIds,
+            mediaCropDesktopX: editando.mediaCropDesktopX,
+            mediaCropDesktopY: editando.mediaCropDesktopY,
+            mediaCropMobileX: editando.mediaCropMobileX,
+            mediaCropMobileY: editando.mediaCropMobileY,
+            mediaPositionDesktop: editando.mediaPositionDesktop,
+            mediaPositionMobile: editando.mediaPositionMobile,
+          }
         : isTextoImagem
           ? {
               tipoMidia: editando.tipoMidia,
