@@ -51,6 +51,7 @@ import {
   getRichTextPresetCss,
 } from "@/components/loja/paginas/richTextPresets";
 import BannerRenderer, {
+  BANNER_MODELO_LABELS,
   normalizeBannerModelo,
   type BannerDevicePreview,
 } from "@/components/loja/paginas/blocos/BannerRenderer";
@@ -474,59 +475,20 @@ const MODELO_BANNER_PRESETS = [
   {
     value: "HERO_PRINCIPAL",
     label: "Hero principal",
-    descricao: "Banner principal da home ou de uma campanha.",
-    uso: "Home, lançamentos e campanhas fortes.",
+    descricao:
+      "Banner principal com imagem, texto opcional, CTA opcional e animação dos elementos.",
+    uso: "Home, campanhas e lançamentos.",
     medidas: "Desktop 1920 x 900 px · mobile 1080 x 1400 px",
     preview: "HERO",
   },
   {
-    value: "BANNER_CLASSICO",
-    label: "Banner clássico",
-    descricao: "Imagem ampla com texto e botão, simples e versátil.",
-    uso: "Campanhas secundárias e chamadas gerais.",
-    medidas: "Desktop 1600 x 700 px · mobile 1080 x 1200 px",
-    preview: "CLASSICO",
-  },
-  {
-    value: "EDITORIAL_IMAGEM",
-    label: "Editorial com imagem",
-    descricao: "Texto grande com imagem forte em composição editorial.",
-    uso: "Lookbook, coleção premium e narrativa visual.",
-    medidas: "Desktop 1600 x 900 px · mobile 1080 x 1350 px",
-    preview: "EDITORIAL",
-  },
-  {
     value: "TIPOGRAFICO_EXPANDIDO",
     label: "Tipográfico expandido",
-    descricao: "Palavra ou frase curta ocupando quase toda a largura.",
-    uso: "Campanhas editoriais, manifesto de coleção e impacto de marca.",
+    descricao:
+      "Banner sem imagem, com palavra ou frase grande ocupando quase toda a largura da página.",
+    uso: "SALE, ANÉIS, NOVA COLEÇÃO, campanhas tipográficas.",
     medidas: "Altura automática · texto ajustado à largura útil",
     preview: "TIPOGRAFICO",
-  },
-  {
-    value: "CAMADAS_PARALLAX",
-    label: "Camadas visuais",
-    descricao: "Fundo, texto grande e imagem frontal com profundidade.",
-    uso: "Campanhas com still, modelo ou produto destacado.",
-    medidas:
-      "Fundo desktop 1920 x 1000 px · frente PNG/WebP transparente · mobile 1080 x 1400 px",
-    preview: "CAMADAS",
-  },
-  {
-    value: "CATEGORIA",
-    label: "Banner de categoria",
-    descricao: "Destaque visual para uma categoria da loja.",
-    uso: "Páginas de categoria e chamadas para coleção.",
-    medidas: "Desktop 1600 x 700 px · mobile 1080 x 1200 px",
-    preview: "CATEGORIA",
-  },
-  {
-    value: "FAIXA_PROMOCIONAL",
-    label: "Faixa promocional",
-    descricao: "Faixa baixa para uma mensagem rápida.",
-    uso: "Promoções, avisos e chamadas curtas.",
-    medidas: "Desktop 1920 x 320 px · mobile 1080 x 420 px",
-    preview: "FAIXA",
   },
 ];
 
@@ -5928,10 +5890,17 @@ function BannerModeloMiniatura({ tipo }: { tipo: string }) {
 
   if (tipo === "TIPOGRAFICO") {
     return (
-      <div className="flex h-full items-center overflow-hidden rounded-xl bg-white px-3">
-        <span className="w-full text-center text-[34px] font-black uppercase leading-none text-[var(--brand-blue)]">
-          STELLA
-        </span>
+      <div className="grid h-full grid-cols-2 gap-2 overflow-hidden rounded-xl bg-slate-100 p-2">
+        <div className="flex min-w-0 items-center overflow-hidden rounded-lg bg-white px-1">
+          <span className="w-full text-center text-[30px] font-black uppercase leading-none text-[var(--brand-blue)]">
+            SALE
+          </span>
+        </div>
+        <div className="flex min-w-0 items-center overflow-hidden rounded-lg bg-[var(--brand-blue)] px-1">
+          <span className="w-full text-center text-[27px] font-black uppercase leading-none text-white">
+            ANÉIS
+          </span>
+        </div>
       </div>
     );
   }
@@ -5947,9 +5916,14 @@ function BannerModeloMiniatura({ tipo }: { tipo: string }) {
   if (tipo === "HERO") {
     return (
       <div className="relative h-full overflow-hidden rounded-xl bg-slate-900">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-500 to-slate-950" />
-        <div className="absolute left-1/2 top-1/2 h-4 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90" />
-        <div className="absolute left-1/2 top-[60%] h-2 w-16 -translate-x-1/2 rounded-full bg-white/50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-300 via-slate-500 to-slate-950" />
+        <div className="absolute right-3 top-3 h-24 w-20 rounded-t-full bg-white/30 shadow-2xl ring-1 ring-white/20" />
+        <div className="absolute inset-0 bg-slate-950/30" />
+        <div className="absolute left-4 top-1/2 w-28 -translate-y-1/2">
+          <span className="block h-3 w-24 rounded-full bg-white/90" />
+          <span className="mt-2 block h-2 w-16 rounded-full bg-white/50" />
+          <span className="mt-4 block h-5 w-14 rounded-full bg-white" />
+        </div>
       </div>
     );
   }
@@ -6151,6 +6125,30 @@ function BannerModeloCards({
   );
 }
 
+function getBannerModeloEditorInfo(modeloBanner: string) {
+  const modeloNormalizado = normalizeBannerModelo(modeloBanner);
+  const preset = MODELO_BANNER_PRESETS.find(
+    (item) => item.value === modeloNormalizado
+  );
+
+  if (preset) {
+    return {
+      ...preset,
+      legado: false,
+    };
+  }
+
+  return {
+    value: modeloNormalizado,
+    label: BANNER_MODELO_LABELS[modeloNormalizado],
+    descricao: "Modelo antigo preservado para compatibilidade.",
+    uso: "Banner criado antes da simplificação dos modelos.",
+    medidas: "Compatibilidade legada",
+    preview: "LEGADO",
+    legado: true,
+  };
+}
+
 function BannerMediaMiniPreview({
   estado,
   device,
@@ -6327,9 +6325,7 @@ function BannerStudioEditor({
   const modeloNormalizado = normalizeBannerModelo(estado.modeloBanner);
   const isHeroPrincipal = modeloNormalizado === "HERO_PRINCIPAL";
   const isTipograficoExpandido = modeloNormalizado === "TIPOGRAFICO_EXPANDIDO";
-  const modeloBannerSelecionado =
-    MODELO_BANNER_PRESETS.find((preset) => preset.value === modeloNormalizado) ||
-    MODELO_BANNER_PRESETS[1];
+  const modeloBannerInfo = getBannerModeloEditorInfo(estado.modeloBanner);
   const PanelIcon = getBannerStudioPanelIcon(selectedElement);
   const produtoFrenteFallback = produtosDisponiveis.find(
     (produto) => produto.id === estado.produtosSelecionadosIds[0]
@@ -6454,14 +6450,14 @@ function BannerStudioEditor({
                 {estado.nomeInterno || "Banner sem nome"}
               </p>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {modeloBannerSelecionado.label}
+                {modeloBannerInfo.label}
               </span>
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                 Preview real
               </span>
             </div>
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              {modeloBannerSelecionado.medidas}
+              {modeloBannerInfo.medidas}
             </p>
           </div>
 
@@ -6590,13 +6586,20 @@ function BannerStudioEditor({
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
                 <p className="font-semibold text-slate-800">
-                  {modeloBannerSelecionado.label}
+                  {modeloBannerInfo.label}
                 </p>
-                <p className="mt-1">{modeloBannerSelecionado.descricao}</p>
+                <p className="mt-1">{modeloBannerInfo.descricao}</p>
                 <p className="mt-2 text-xs font-semibold text-slate-500">
-                  {modeloBannerSelecionado.medidas}
+                  {modeloBannerInfo.medidas}
                 </p>
               </div>
+
+              {modeloBannerInfo.legado && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                  Este banner usa um modelo antigo. Para novos banners, use
+                  Hero principal ou Tipográfico expandido.
+                </div>
+              )}
 
               {isTipograficoExpandido && (
                 <>
@@ -7598,10 +7601,7 @@ function EditorConteudoBlocoModal({
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
-  const modeloBannerSelecionado =
-    MODELO_BANNER_PRESETS.find(
-      (preset) => preset.value === estado.modeloBanner
-    ) || MODELO_BANNER_PRESETS[1];
+  const modeloBannerInfo = getBannerModeloEditorInfo(estado.modeloBanner);
   const modeloBannerAceitaProdutos =
     estado.modeloBanner === "PRODUTOS_FLUTUANTES";
   const produtosFiltradosManual = produtosDisponiveis
@@ -7880,7 +7880,7 @@ function EditorConteudoBlocoModal({
               </label>
 
               <p className="mt-3 text-xs font-medium text-slate-500">
-                Medidas recomendadas: {modeloBannerSelecionado.medidas}
+                Medidas recomendadas: {modeloBannerInfo.medidas}
               </p>
             </div>
 

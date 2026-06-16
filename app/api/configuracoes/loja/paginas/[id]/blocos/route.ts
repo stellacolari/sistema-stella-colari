@@ -102,7 +102,7 @@ function getConfigPadrao(tipo: string) {
       exibirSubtitulo: true,
       exibirBotaoPrimario: true,
       exibirBotaoSecundario: false,
-      modeloBanner: "BANNER_CLASSICO",
+      modeloBanner: "HERO_PRINCIPAL",
       textoPrincipal: "STELLA COLARI",
       varianteVisual: "BRANCO_AZUL",
       animarLetras: true,
