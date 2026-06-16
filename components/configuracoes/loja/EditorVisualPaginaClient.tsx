@@ -280,6 +280,10 @@ type BlocoEditandoState = {
   alinhamentoTextoDesktop: string;
   alinhamentoTextoMobile: string;
   modeloBanner: string;
+  mostrarTitulo: boolean;
+  mostrarSubtitulo: boolean;
+  mostrarCta: boolean;
+  animacaoElementos: string;
   alturaBanner: string;
   larguraBanner: string;
   overlayBanner: string;
@@ -423,6 +427,15 @@ const OVERLAY_BANNER_PRESETS = [
 const COR_TEXTO_BANNER_PRESETS = [
   { value: "CLARO", label: "Claro" },
   { value: "ESCURO", label: "Escuro" },
+];
+
+const ANIMACAO_HERO_PRESETS = [
+  { value: "SEM_ANIMACAO", label: "Sem animação" },
+  { value: "FADE_IN", label: "Fade in" },
+  { value: "SUBIR_SUAVE", label: "Subir suave" },
+  { value: "ENTRAR_DA_ESQUERDA", label: "Entrar da esquerda" },
+  { value: "ENTRAR_DA_DIREITA", label: "Entrar da direita" },
+  { value: "ZOOM_SUAVE", label: "Zoom suave" },
 ];
 
 const ALINHAMENTO_VERTICAL_BANNER_PRESETS = [
@@ -5700,6 +5713,10 @@ function getBannerPreviewBloco(estado: NonNullable<BlocoEditandoState>) {
       videoLoop: estado.videoLoop,
       videoSom: estado.videoSom,
       modeloBanner: estado.modeloBanner,
+      mostrarTitulo: estado.mostrarTitulo,
+      mostrarSubtitulo: estado.mostrarSubtitulo,
+      mostrarCta: estado.mostrarCta,
+      animacaoElementos: estado.animacaoElementos,
       alinhamentoConteudo: estado.alinhamentoConteudo,
       alinhamentoTextoDesktop: estado.alinhamentoTextoDesktop,
       alinhamentoTextoMobile: estado.alinhamentoTextoMobile,
@@ -5747,6 +5764,10 @@ function getBannerModeloPatch(modeloBanner: string) {
   if (modeloBanner === "HERO_PRINCIPAL") {
     return {
       modeloBanner,
+      mostrarTitulo: true,
+      mostrarSubtitulo: true,
+      mostrarCta: true,
+      animacaoElementos: "SEM_ANIMACAO",
       alturaBanner: "TELA_CHEIA",
       larguraTextoPercentual: 62,
       fonteTituloDesktop: 92,
@@ -6227,6 +6248,7 @@ function BannerStudioEditor({
   const configAtual = getConfigObject(estado.bloco.configJson);
   const previewBloco = getBannerPreviewBloco(estado);
   const modeloNormalizado = normalizeBannerModelo(estado.modeloBanner);
+  const isHeroPrincipal = modeloNormalizado === "HERO_PRINCIPAL";
   const modeloBannerSelecionado =
     MODELO_BANNER_PRESETS.find((preset) => preset.value === modeloNormalizado) ||
     MODELO_BANNER_PRESETS[1];
@@ -6238,6 +6260,7 @@ function BannerStudioEditor({
     device === "MOBILE" && estado.imagemFrenteMobileUrl
       ? estado.imagemFrenteMobileUrl
       : estado.imagemFrenteDesktopUrl || produtoFrenteFallback?.imagemUrl || "";
+  const [animacaoPreviewKey, setAnimacaoPreviewKey] = useState(0);
 
   function atualizarConfigInterno(patch: Record<string, unknown>) {
     onChange({
@@ -6249,6 +6272,21 @@ function BannerStudioEditor({
         },
       },
     });
+  }
+
+  function atualizarVisibilidadeHero(
+    campo: "mostrarTitulo" | "mostrarSubtitulo" | "mostrarCta",
+    checked: boolean
+  ) {
+    onChange({
+      [campo]: checked,
+      ...(checked ? { exibirTexto: true } : {}),
+    } as Partial<NonNullable<BlocoEditandoState>>);
+  }
+
+  function atualizarAnimacaoHero(value: string) {
+    onChange({ animacaoElementos: value });
+    setAnimacaoPreviewKey((current) => current + 1);
   }
 
   const titleSlot = ({
@@ -6416,6 +6454,7 @@ function BannerStudioEditor({
                 }`}
               >
                 <BannerRenderer
+                  key={`${estado.animacaoElementos}-${animacaoPreviewKey}`}
                   bloco={previewBloco}
                   produtos={toBannerProdutosPublicos(produtosDisponiveis)}
                   device={device}
@@ -6478,6 +6517,75 @@ function BannerStudioEditor({
                 </p>
               </div>
 
+              {isHeroPrincipal && (
+                <>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-slate-950">
+                      Conteúdo
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      <CampoToggle
+                        checked={estado.mostrarTitulo}
+                        label="Mostrar título"
+                        onChange={(checked) =>
+                          atualizarVisibilidadeHero("mostrarTitulo", checked)
+                        }
+                      />
+                      <CampoToggle
+                        checked={estado.mostrarSubtitulo}
+                        label="Mostrar subtítulo"
+                        onChange={(checked) =>
+                          atualizarVisibilidadeHero("mostrarSubtitulo", checked)
+                        }
+                      />
+                      <CampoToggle
+                        checked={estado.mostrarCta}
+                        label="Mostrar botão"
+                        onChange={(checked) =>
+                          atualizarVisibilidadeHero("mostrarCta", checked)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <label>
+                      <span className="mb-2 block text-sm font-semibold text-slate-950">
+                        Animação dos elementos
+                      </span>
+                      <select
+                        value={estado.animacaoElementos}
+                        onChange={(event) =>
+                          atualizarAnimacaoHero(event.target.value)
+                        }
+                        className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                      >
+                        {ANIMACAO_HERO_PRESETS.map((preset) => (
+                          <option key={preset.value} value={preset.value}>
+                            {preset.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      A animação afeta título, subtítulo e botão. A imagem de
+                      fundo permanece estática.
+                    </p>
+                    {estado.animacaoElementos !== "SEM_ANIMACAO" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAnimacaoPreviewKey((current) => current + 1)
+                        }
+                        className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                      >
+                        Rever animação
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
               <button
                 type="button"
                 onClick={() => setModelosAbertos(true)}
@@ -6508,16 +6616,39 @@ function BannerStudioEditor({
 
           {selectedElement === "TITULO" || selectedElement === "SUBTITULO" ? (
             <>
-              <CampoToggle
-                checked={estado.exibirTexto}
-                label="Exibir texto"
-                onChange={(checked) => onChange({ exibirTexto: checked })}
-              />
-              <CampoToggle
-                checked={estado.exibirSubtitulo}
-                label="Exibir subtítulo"
-                onChange={(checked) => onChange({ exibirSubtitulo: checked })}
-              />
+              {isHeroPrincipal ? (
+                <>
+                  <CampoToggle
+                    checked={estado.mostrarTitulo}
+                    label="Mostrar título"
+                    onChange={(checked) =>
+                      atualizarVisibilidadeHero("mostrarTitulo", checked)
+                    }
+                  />
+                  <CampoToggle
+                    checked={estado.mostrarSubtitulo}
+                    label="Mostrar subtítulo"
+                    onChange={(checked) =>
+                      atualizarVisibilidadeHero("mostrarSubtitulo", checked)
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <CampoToggle
+                    checked={estado.exibirTexto}
+                    label="Exibir texto"
+                    onChange={(checked) => onChange({ exibirTexto: checked })}
+                  />
+                  <CampoToggle
+                    checked={estado.exibirSubtitulo}
+                    label="Exibir subtítulo"
+                    onChange={(checked) =>
+                      onChange({ exibirSubtitulo: checked })
+                    }
+                  />
+                </>
+              )}
 
               <div>
                 <p className="mb-2 text-sm font-medium text-slate-700">
@@ -6646,10 +6777,16 @@ function BannerStudioEditor({
           {selectedElement === "CTA" ? (
             <>
               <CampoToggle
-                checked={estado.exibirBotaoPrimario}
-                label="Exibir CTA principal"
+                checked={
+                  isHeroPrincipal
+                    ? estado.mostrarCta
+                    : estado.exibirBotaoPrimario
+                }
+                label={isHeroPrincipal ? "Mostrar botão" : "Exibir CTA principal"}
                 onChange={(checked) =>
-                  onChange({ exibirBotaoPrimario: checked })
+                  isHeroPrincipal
+                    ? atualizarVisibilidadeHero("mostrarCta", checked)
+                    : onChange({ exibirBotaoPrimario: checked })
                 }
               />
               <label>
@@ -10583,6 +10720,11 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "alinhamentoConteudo") ||
         "CENTRO",
       modeloBanner: normalizeBannerModelo(getStringConfig(config, "modeloBanner")),
+      mostrarTitulo: getBooleanConfig(config, "mostrarTitulo", true),
+      mostrarSubtitulo: getBooleanConfig(config, "mostrarSubtitulo", true),
+      mostrarCta: getBooleanConfig(config, "mostrarCta", true),
+      animacaoElementos:
+        getStringConfig(config, "animacaoElementos") || "SEM_ANIMACAO",
       alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
       larguraBanner: getStringConfig(config, "larguraBanner") || "FULL_BLEED",
       overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
@@ -10769,6 +10911,10 @@ export default function EditorVisualPaginaClient({
             linkBotaoSecundario: editando.linkBotaoSecundario,
             botaoSecundarioLink: editando.linkBotaoSecundario,
               modeloBanner: editando.modeloBanner,
+              mostrarTitulo: editando.mostrarTitulo,
+              mostrarSubtitulo: editando.mostrarSubtitulo,
+              mostrarCta: editando.mostrarCta,
+              animacaoElementos: editando.animacaoElementos,
               alinhamentoConteudo: editando.alinhamentoConteudo,
               alturaBanner: editando.alturaBanner,
               larguraBanner: editando.larguraBanner,

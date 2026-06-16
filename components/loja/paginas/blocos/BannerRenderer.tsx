@@ -560,6 +560,78 @@ function renderCtaLink({
   );
 }
 
+function getHeroAnimationName(value: string) {
+  if (value === "FADE_IN") return "stellaHeroFadeIn";
+  if (value === "SUBIR_SUAVE") return "stellaHeroSubirSuave";
+  if (value === "ENTRAR_DA_ESQUERDA") return "stellaHeroEntrarDaEsquerda";
+  if (value === "ENTRAR_DA_DIREITA") return "stellaHeroEntrarDaDireita";
+  if (value === "ZOOM_SUAVE") return "stellaHeroZoomSuave";
+
+  return "";
+}
+
+function getHeroAnimationStyle(value: string, delay: number): CSSProperties {
+  const animationName = getHeroAnimationName(value);
+
+  if (!animationName) return {};
+
+  return {
+    "--stella-hero-animation": `${animationName} 720ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms both`,
+  } as CSSProperties;
+}
+
+function getHeroAnimationClass(value: string) {
+  return getHeroAnimationName(value) ? "stella-hero-animated" : "";
+}
+
+function HeroAnimationStyles({ active }: { active: boolean }) {
+  if (!active) return null;
+
+  return (
+    <style>
+      {`
+        @keyframes stellaHeroFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes stellaHeroSubirSuave {
+          from { opacity: 0; transform: translate3d(0, 24px, 0); }
+          to { opacity: 1; transform: translate3d(0, 0, 0); }
+        }
+
+        @keyframes stellaHeroEntrarDaEsquerda {
+          from { opacity: 0; transform: translate3d(-36px, 0, 0); }
+          to { opacity: 1; transform: translate3d(0, 0, 0); }
+        }
+
+        @keyframes stellaHeroEntrarDaDireita {
+          from { opacity: 0; transform: translate3d(36px, 0, 0); }
+          to { opacity: 1; transform: translate3d(0, 0, 0); }
+        }
+
+        @keyframes stellaHeroZoomSuave {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        .stella-hero-animated {
+          animation: var(--stella-hero-animation);
+          will-change: opacity, transform;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .stella-hero-animated {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+        }
+      `}
+    </style>
+  );
+}
+
 export default function BannerRenderer({
   bloco,
   produtos = [],
@@ -574,6 +646,7 @@ export default function BannerRenderer({
 }: BannerRendererProps) {
   const config = asConfig(bloco.configJson);
   const modelo = normalizeBannerModelo(getString(config, "modeloBanner"));
+  const isHeroPrincipal = modelo === "HERO_PRINCIPAL";
   const isEditor = modo === "editor";
   const isMobile = device === "MOBILE";
   const titulo = getString(config, ["titulo", "nome"]);
@@ -590,6 +663,18 @@ export default function BannerRenderer({
   const exibirSubtitulo = getBoolean(config, "exibirSubtitulo", true);
   const exibirBotaoPrimario = getBoolean(config, "exibirBotaoPrimario", true);
   const exibirBotaoSecundario = getBoolean(config, "exibirBotaoSecundario", false);
+  const mostrarTitulo = isHeroPrincipal
+    ? getBoolean(config, "mostrarTitulo", true)
+    : true;
+  const mostrarSubtitulo = isHeroPrincipal
+    ? getBoolean(config, "mostrarSubtitulo", true)
+    : true;
+  const mostrarCta = isHeroPrincipal ? getBoolean(config, "mostrarCta", true) : true;
+  const animacaoElementos = isHeroPrincipal
+    ? getString(config, "animacaoElementos", "SEM_ANIMACAO")
+    : "SEM_ANIMACAO";
+  const heroAnimationClass = getHeroAnimationClass(animacaoElementos);
+  const hasHeroAnimation = isHeroPrincipal && Boolean(heroAnimationClass);
   const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"], "Conhecer");
   const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
   const textoBotaoSecundario = getStringWithDefault(config, [
@@ -600,18 +685,30 @@ export default function BannerRenderer({
     "linkBotaoSecundario",
     "botaoSecundarioLink",
   ]);
-  const hasTitulo = hasTextContent(tituloRichText, titulo);
-  const hasSubtitulo = hasTextContent(subtituloRichText, subtitulo);
-  const hasBotaoPrimario = exibirBotaoPrimario && Boolean(textoBotao || primaryCtaSlot);
-  const hasBotaoSecundario =
-    exibirBotaoSecundario && Boolean(textoBotaoSecundario || secondaryCtaSlot);
-  const hasConteudo =
+  const hasTituloContent = hasTextContent(tituloRichText, titulo);
+  const hasSubtituloContent = hasTextContent(subtituloRichText, subtitulo);
+  const shouldRenderTitulo =
+    exibirTexto && mostrarTitulo && (hasTituloContent || isEditor);
+  const shouldRenderSubtitulo =
     exibirTexto &&
-    (hasTitulo ||
-      (exibirSubtitulo && hasSubtitulo) ||
-      hasBotaoPrimario ||
-      hasBotaoSecundario ||
-      isEditor);
+    mostrarSubtitulo &&
+    exibirSubtitulo &&
+    (hasSubtituloContent || isEditor);
+  const hasBotaoPrimario =
+    exibirTexto &&
+    mostrarCta &&
+    exibirBotaoPrimario &&
+    Boolean(textoBotao || primaryCtaSlot);
+  const hasBotaoSecundario =
+    exibirTexto &&
+    mostrarCta &&
+    exibirBotaoSecundario &&
+    Boolean(textoBotaoSecundario || secondaryCtaSlot);
+  const hasConteudo =
+    shouldRenderTitulo ||
+    shouldRenderSubtitulo ||
+    hasBotaoPrimario ||
+    hasBotaoSecundario;
   const largura = getString(config, "larguraBanner", "FULL_BLEED");
   const altura = getString(config, "alturaBanner", "PADRAO");
   const overlay = getString(config, "overlayBanner", "LEVE");
@@ -666,6 +763,9 @@ export default function BannerRenderer({
     (modelo === "CAMADAS_PARALLAX" ? selectedProducts[0]?.imagemUrl || "" : "");
   const frontImageAlt =
     getString(config, "imagemFrenteAlt") || selectedProducts[0]?.nome || titulo;
+  const renderFrontImage = Boolean(
+    (modelo === "CAMADAS_PARALLAX" || isHeroPrincipal) && frontImage
+  );
   const frontWidth = getNumberClamped(
     config,
     isMobile ? "imagemFrenteLarguraMobile" : "imagemFrenteLarguraDesktop",
@@ -682,7 +782,7 @@ export default function BannerRenderer({
   );
   const hasMedia = Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
 
-  if (!hasMedia && !hasConteudo && !frontImage) {
+  if (!hasMedia && !hasConteudo && !renderFrontImage) {
     return null;
   }
 
@@ -762,15 +862,16 @@ export default function BannerRenderer({
       style={contentStyle}
     >
       <div className={`${textAlignClass}`} style={{ width: "100%", maxWidth: contentMaxWidth }}>
-        {hasTitulo || isEditor ? (
+        {shouldRenderTitulo ? (
           <div
-            className={`relative rounded-2xl font-light transition ${
+            className={`relative rounded-2xl font-light transition ${heroAnimationClass} ${
               isEditor
                 ? selectedElement === "TITULO"
                   ? "ring-4 ring-indigo-400"
                   : "hover:ring-2 hover:ring-white/45"
                 : ""
             } ${textClass.title}`}
+            style={getHeroAnimationStyle(animacaoElementos, 0)}
             onClick={(event) => {
               event.stopPropagation();
               onElementSelect?.("TITULO");
@@ -780,15 +881,16 @@ export default function BannerRenderer({
           </div>
         ) : null}
 
-        {exibirSubtitulo && (hasSubtitulo || isEditor) ? (
+        {shouldRenderSubtitulo ? (
           <div
-            className={`relative mt-5 rounded-2xl transition ${
+            className={`relative mt-5 rounded-2xl transition ${heroAnimationClass} ${
               isEditor
                 ? selectedElement === "SUBTITULO"
                   ? "ring-4 ring-indigo-400"
                   : "hover:ring-2 hover:ring-white/45"
                 : ""
             } ${textClass.body}`}
+            style={getHeroAnimationStyle(animacaoElementos, 120)}
             onClick={(event) => {
               event.stopPropagation();
               onElementSelect?.("SUBTITULO");
@@ -800,7 +902,7 @@ export default function BannerRenderer({
 
         {hasBotaoPrimario || hasBotaoSecundario ? (
           <div
-            className={`mt-8 flex flex-wrap gap-3 rounded-2xl transition ${
+            className={`mt-8 flex flex-wrap gap-3 rounded-2xl transition ${heroAnimationClass} ${
               isEditor
                 ? selectedElement === "CTA"
                   ? "ring-4 ring-indigo-400"
@@ -811,8 +913,9 @@ export default function BannerRenderer({
                 ? "justify-center"
                 : alinhamentoHorizontal === "DIREITA"
                   ? "justify-end"
-                  : "justify-start"
+                : "justify-start"
             }`}
+            style={getHeroAnimationStyle(animacaoElementos, 240)}
             onClick={(event) => {
               event.stopPropagation();
               onElementSelect?.("CTA");
@@ -848,6 +951,8 @@ export default function BannerRenderer({
           modelo === "EDITORIAL_IMAGEM" ? "isolate" : ""
         }`}
       >
+        <HeroAnimationStyles active={hasHeroAnimation} />
+
         <div
           className={`absolute inset-0 overflow-hidden ${
             modelo === "EDITORIAL_IMAGEM" ? "md:left-[42%]" : ""
@@ -892,7 +997,7 @@ export default function BannerRenderer({
 
         <div className={`absolute inset-0 z-10 ${getOverlayClass(overlay, modelo)}`} />
 
-        {modelo === "CAMADAS_PARALLAX" && frontImage ? (
+        {renderFrontImage ? (
           <div
             className="pointer-events-none absolute z-20"
             style={{
@@ -905,7 +1010,14 @@ export default function BannerRenderer({
             <img
               src={frontImage}
               alt={frontImageAlt}
-              className="h-auto w-full drop-shadow-[0_32px_70px_rgba(15,23,42,0.38)]"
+              className={`h-auto w-full drop-shadow-[0_32px_70px_rgba(15,23,42,0.38)] ${
+                isHeroPrincipal ? heroAnimationClass : ""
+              }`}
+              style={
+                isHeroPrincipal
+                  ? getHeroAnimationStyle(animacaoElementos, 360)
+                  : undefined
+              }
             />
 
             {isEditor ? (
