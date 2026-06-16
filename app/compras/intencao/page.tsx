@@ -65,6 +65,22 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
   const params = await searchParams;
   const dias = Math.min(Math.max(Math.round(numero(params.dias, 30)), 7), 120);
   const dados = await montarIntencaoComercial({ dias });
+  const produtosRiscoRupturaIntencao = dados.produtos
+    .filter(
+      (produto) =>
+        produto.estoqueTotal <= 1 &&
+        (produto.vendasQuantidade > 0 ||
+          produto.scoreInteresse >= 30 ||
+          produto.adicoesCarrinho >= 2 ||
+          produto.favoritos >= 3)
+    )
+    .sort(
+      (a, b) =>
+        b.scoreInteresse - a.scoreInteresse ||
+        a.estoqueTotal - b.estoqueTotal ||
+        a.nome.localeCompare(b.nome, "pt-BR")
+    )
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -124,6 +140,37 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
         />
       </section>
 
+      <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <SectionTitle
+          icon={Sparkles}
+          title="Leitura adaptativa da intencao"
+          description="Sinais para decidir exposicao, oferta e recompra sem confundir pouca amostra com produto ruim."
+        />
+
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <LeituraCard
+            title="Pouco testados"
+            value={inteiro(dados.produtosPoucoTestados.length)}
+            text="Produto pouco testado nao deve ser considerado ruim. Ele precisa de mais exposicao."
+          />
+          <LeituraCard
+            title="Interesse sem conversao"
+            value={inteiro(dados.produtosTravados.length)}
+            text="Produto com interesse sem conversao deve ter preco, foto, descricao ou oferta revisados antes de recompra."
+          />
+          <LeituraCard
+            title="Risco de ruptura"
+            value={inteiro(produtosRiscoRupturaIntencao.length)}
+            text="Estoque baixo com interesse pede reposicao seletiva antes de aumentar campanha."
+          />
+          <LeituraCard
+            title="Buscas sem resultado"
+            value={inteiro(dados.buscasSemResultado.length)}
+            text="Termos recorrentes sem produto podem orientar vitrine, nomes, tags ou compra futura."
+          />
+        </div>
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <SectionTitle
@@ -155,6 +202,12 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
             produtos={dados.produtosTravados}
             empty="Nenhum gargalo forte de produto no periodo."
             orientacao="Revisar oferta, preco, fotos e descricao antes de comprar mais."
+          />
+          <ListaProdutos
+            title="Risco de ruptura por intencao"
+            produtos={produtosRiscoRupturaIntencao}
+            empty="Nenhum produto com estoque baixo e sinal forte no periodo."
+            orientacao="Repor seletivamente antes de aumentar vitrine, trafego ou campanha."
           />
           <ListaProdutos
             title="Pouco testados"
@@ -224,6 +277,26 @@ function ResumoCard({
         {valor}
       </p>
       <p className="mt-1 text-xs font-medium text-slate-400">{detalhe}</p>
+    </div>
+  );
+}
+
+function LeituraCard({
+  title,
+  value,
+  text,
+}: {
+  title: string;
+  value: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+      <p className="mt-2 text-sm leading-5 text-slate-600">{text}</p>
     </div>
   );
 }

@@ -184,6 +184,13 @@ function confiancaClasses(confianca: string) {
   return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
+function labelInteligenciaMargem(acao: string) {
+  if (acao === "PROTEGER_MARGEM") return "Proteger margem";
+  if (acao === "TESTAR_DESCONTO_CONTROLADO") return "Desconto controlado";
+  if (acao === "REVER_OFERTA") return "Revisar oferta antes de desconto";
+  return "Manter margem";
+}
+
 function severidadeClasses(severidade: string) {
   if (severidade === "CRITICO") return "border-red-200 bg-red-50 text-red-800";
   if (severidade === "RISCO") return "border-orange-200 bg-orange-50 text-orange-800";
@@ -344,6 +351,79 @@ export default function CentralFinanceiraClient({
     {
       label: "Campanhas",
       valor: diagnostico.adaptativa.distribuicao.descontosCampanhas,
+    },
+  ];
+  const cardsAdaptativos = [
+    {
+      label: "Marketing recomendado",
+      value: diagnostico.adaptativa.metas.marketingPago.label,
+      detail: `Realizado: ${percentual(diagnostico.marketing.percentual)} da receita.`,
+    },
+    {
+      label: "Pro-labore recomendado",
+      value: diagnostico.adaptativa.metas.proLabore.label,
+      detail: `Pago no mes: ${moeda(diagnostico.proLabore.pago)}.`,
+    },
+    {
+      label: "Reserva recomendada",
+      value: diagnostico.adaptativa.metas.reserva.label,
+      detail: `Runway atual: ${diagnostico.indicadores.runwayMeses} mes(es).`,
+    },
+    {
+      label: "Reposicao recomendada",
+      value: diagnostico.adaptativa.metas.reposicao.label,
+      detail: `Compras no caixa: ${percentual(
+        diagnostico.indicadores.comprasEstoquePct
+      )}.`,
+    },
+    {
+      label: "Caixa / Runway",
+      value: `${diagnostico.indicadores.runwayMeses} mes(es)`,
+      detail: `Caixa gerencial: ${moeda(saldoGerencial)}.`,
+    },
+  ];
+  const metasAdaptativas = [
+    {
+      label: "Marketing pago",
+      faixa: diagnostico.adaptativa.metas.marketingPago.label,
+      motivo: diagnostico.adaptativa.metas.marketingPago.recomendacao,
+      realizado: `${percentual(diagnostico.marketing.percentual)} da receita`,
+    },
+    {
+      label: "Reserva",
+      faixa: diagnostico.adaptativa.metas.reserva.label,
+      motivo: diagnostico.adaptativa.metas.reserva.recomendacao,
+      realizado: `${diagnostico.indicadores.runwayMeses} mes(es) de runway`,
+    },
+    {
+      label: "Pro-labore",
+      faixa: `${diagnostico.adaptativa.metas.proLabore.label} do lucro`,
+      motivo: diagnostico.adaptativa.metas.proLabore.recomendacao,
+      realizado: `${moeda(diagnostico.proLabore.pago)} pago no mes`,
+    },
+    {
+      label: "Reposicao",
+      faixa: diagnostico.adaptativa.metas.reposicao.label,
+      motivo: diagnostico.adaptativa.metas.reposicao.recomendacao,
+      realizado: `${percentual(
+        diagnostico.indicadores.comprasEstoquePct
+      )} em compras de estoque`,
+    },
+    {
+      label: "Caixa",
+      faixa: `${percentual(
+        diagnostico.adaptativa.distribuicao.caixa
+      )} caixa + ${percentual(diagnostico.adaptativa.distribuicao.reserva)} reserva`,
+      motivo: diagnostico.adaptativa.distribuicao.leitura,
+      realizado: `${moeda(saldoGerencial)} em caixa gerencial`,
+    },
+    {
+      label: "Margem / desconto",
+      faixa: labelInteligenciaMargem(diagnostico.adaptativa.margemDesconto.acao),
+      motivo: diagnostico.adaptativa.margemDesconto.recomendacao,
+      realizado: `${percentual(
+        diagnostico.indicadores.margemBrutaPct
+      )} de margem bruta`,
     },
   ];
 
@@ -630,61 +710,126 @@ export default function CentralFinanceiraClient({
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+              <Compass className="h-4 w-4" />
+              Inteligencia adaptativa
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              {diagnostico.adaptativa.faseLabel}
+            </h2>
+            <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
+              {diagnostico.adaptativa.motivo} {diagnostico.adaptativa.leituraDados}
+            </p>
+          </div>
+          <div
+            className={`rounded-2xl border px-4 py-3 text-center ${confiancaClasses(
+              diagnostico.adaptativa.confiancaAnalise
+            )}`}
+          >
+            <p className="text-xs font-bold uppercase tracking-wide">
+              Confianca
+            </p>
+            <p className="mt-1 text-2xl font-black">
+              {diagnostico.adaptativa.confiancaAnalise}
+            </p>
+            <p className="text-xs font-semibold">
+              {diagnostico.adaptativa.scoreConfianca}/100
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-5">
+          {cardsAdaptativos.map((card) => (
+            <div
+              key={card.label}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {card.label}
+              </p>
+              <p className="mt-2 text-lg font-black text-slate-950">
+                {card.value}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {card.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Acoes prioritarias
+            </p>
+            <div className="mt-2 space-y-2">
+              {diagnostico.adaptativa.acoesPrioritarias.slice(0, 3).map((acao) => (
+                <p key={acao} className="text-sm leading-5 text-slate-700">
+                  {acao}
+                </p>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Principais riscos
+            </p>
+            <div className="mt-2 space-y-2">
+              {diagnostico.adaptativa.riscos.slice(0, 3).map((risco) => (
+                <p key={risco} className="text-sm leading-5 text-slate-700">
+                  {risco}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-                <Compass className="h-4 w-4" />
-                Fase atual da empresa
+                <Scale className="h-4 w-4" />
+                Metas adaptativas do momento
               </p>
-              <h2 className="mt-2 text-2xl font-black text-slate-950">
-                {diagnostico.adaptativa.faseLabel}
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                {diagnostico.adaptativa.motivo}
-              </p>
-            </div>
-            <div
-              className={`rounded-2xl border px-4 py-3 text-center ${confiancaClasses(
-                diagnostico.adaptativa.confiancaAnalise
-              )}`}
-            >
-              <p className="text-xs font-bold uppercase tracking-wide">
-                Confianca
-              </p>
-              <p className="mt-1 text-2xl font-black">
-                {diagnostico.adaptativa.confiancaAnalise}
-              </p>
-              <p className="text-xs font-semibold">
-                {diagnostico.adaptativa.scoreConfianca}/100
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                As faixas abaixo usam a fase {diagnostico.adaptativa.faseLabel}
+                como contexto, sem tratar metas fixas como verdade absoluta.
               </p>
             </div>
           </div>
 
-          <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-            {diagnostico.adaptativa.leituraDados}
-          </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <LinhaResumo
-              label="Vendas reais"
-              value={`${diagnostico.adaptativa.dados.vendasReaisTotal} un.`}
-            />
-            <LinhaResumo
-              label="Produtos testados"
-              value={`${percentual(
-                diagnostico.adaptativa.dados.percentualProdutosTestados
-              )}`}
-            />
-            <LinhaResumo
-              label="Intencao recente"
-              value={`${diagnostico.adaptativa.dados.eventosIntencaoRecentes} eventos`}
-            />
-            <LinhaResumo
-              label="Dados simulados"
-              value={`${diagnostico.adaptativa.dados.registrosSimulados} reg.`}
-            />
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {metasAdaptativas.map((meta) => (
+              <div
+                key={meta.label}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {meta.label}
+                    </p>
+                    <p className="mt-1 text-lg font-black text-slate-950">
+                      {meta.faixa}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {diagnostico.adaptativa.faseLabel}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-5 text-slate-600">
+                  {meta.motivo}
+                </p>
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  Realizado atual: {meta.realizado}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -692,28 +837,13 @@ export default function CentralFinanceiraClient({
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-slate-400" />
             <h2 className="text-lg font-semibold text-slate-950">
-              Metas adaptativas e balanca recomendada
+              Balanca recomendada
             </h2>
           </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <LinhaResumo
-              label="Marketing"
-              value={diagnostico.adaptativa.metas.marketingPago.label}
-            />
-            <LinhaResumo
-              label="Reserva"
-              value={diagnostico.adaptativa.metas.reserva.label}
-            />
-            <LinhaResumo
-              label="Reposicao"
-              value={diagnostico.adaptativa.metas.reposicao.label}
-            />
-            <LinhaResumo
-              label="Pro-labore"
-              value={diagnostico.adaptativa.metas.proLabore.label}
-            />
-          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Distribuicao sugerida para decisao gerencial deste momento. Nada e
+            salvo automaticamente.
+          </p>
 
           <div className="mt-5 space-y-3">
             {distribuicaoAdaptativa.map((item) => (
@@ -735,33 +865,6 @@ export default function CentralFinanceiraClient({
           <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-700">
             {diagnostico.adaptativa.distribuicao.leitura}
           </p>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                Acoes prioritarias
-              </p>
-              <div className="mt-2 space-y-2">
-                {diagnostico.adaptativa.acoesPrioritarias.slice(0, 3).map((acao) => (
-                  <p key={acao} className="text-sm leading-5 text-slate-700">
-                    {acao}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                Riscos
-              </p>
-              <div className="mt-2 space-y-2">
-                {diagnostico.adaptativa.riscos.slice(0, 3).map((risco) => (
-                  <p key={risco} className="text-sm leading-5 text-slate-700">
-                    {risco}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

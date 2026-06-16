@@ -3,6 +3,7 @@ import {
   avaliarCompraLoteProduto,
   montarInteligenciaAdaptativaAtual,
 } from "@/lib/financeiro/inteligencia-adaptativa";
+import { exigirAdmin } from "@/lib/auth/admin";
 import { gerarRecomendacaoReposicao } from "@/lib/produtos/metricas-produto";
 import ReposicaoComprasClient, {
   type ReposicaoCompraItem,
@@ -14,6 +15,8 @@ const ESTOQUE_MINIMO_PADRAO = 5;
 const ESTOQUE_IDEAL_PADRAO = 10;
 
 export default async function ReposicaoComprasPage() {
+  const usuario = await exigirAdmin();
+  const podeVerInteligenciaAdaptativa = usuario.perfil === "ACESSO_GERAL";
   const [estoqueProdutosRaw, estoqueAdicionaisRaw, contextoAdaptativo] = await Promise.all([
     prisma.estoqueProduto.findMany({
       where: {
@@ -70,19 +73,23 @@ export default async function ReposicaoComprasPage() {
         },
       },
     }),
-    montarInteligenciaAdaptativaAtual(),
+    podeVerInteligenciaAdaptativa
+      ? montarInteligenciaAdaptativaAtual()
+      : Promise.resolve(null),
   ]);
 
   const estoqueProdutosReposicao = estoqueProdutosRaw.filter(
     (estoque) => estoque.quantidadeAtual <= ESTOQUE_MINIMO_PADRAO
   );
-  const inteligenciaProdutos = await Promise.all(
-    estoqueProdutosReposicao.map((estoque) =>
-      gerarRecomendacaoReposicao(estoque.produto.id, {
-        tamanhoAnel: estoque.tamanhoAnel,
-      })
-    )
-  );
+  const inteligenciaProdutos = podeVerInteligenciaAdaptativa
+    ? await Promise.all(
+        estoqueProdutosReposicao.map((estoque) =>
+          gerarRecomendacaoReposicao(estoque.produto.id, {
+            tamanhoAnel: estoque.tamanhoAnel,
+          })
+        )
+      )
+    : estoqueProdutosReposicao.map(() => null);
 
   const itensProdutos: ReposicaoCompraItem[] = estoqueProdutosReposicao.map(
     (estoque, index) => {
@@ -98,7 +105,7 @@ export default async function ReposicaoComprasPage() {
               ((precoAtivo - estoque.produto.custoBase) / precoAtivo) * 10000
             ) / 100
           : 0;
-      const decisaoLote = inteligencia
+      const decisaoLote = inteligencia && contextoAdaptativo
         ? avaliarCompraLoteProduto({
             fase: contextoAdaptativo.fase,
             confiancaAnalise: contextoAdaptativo.confiancaAnalise,
@@ -136,24 +143,40 @@ export default async function ReposicaoComprasPage() {
       ),
       linkCompra: estoque.produto.linkCompra,
       tamanhoAnel: estoque.tamanhoAnel,
-      statusComercial: inteligencia?.statusComercial,
-      recomendacaoReposicao: inteligencia?.recomendacao,
-      confiancaReposicao: inteligencia?.confianca,
-      cicloAtual: cicloAtual
+      statusComercial: podeVerInteligenciaAdaptativa
+        ? inteligencia?.statusComercial
+        : null,
+      recomendacaoReposicao: podeVerInteligenciaAdaptativa
+        ? inteligencia?.recomendacao
+        : null,
+      confiancaReposicao: podeVerInteligenciaAdaptativa ? inteligencia?.confianca : null,
+      cicloAtual: podeVerInteligenciaAdaptativa && cicloAtual
         ? `${cicloAtual.quantidadeVendida}/${
             cicloAtual.quantidadeInicial + cicloAtual.quantidadeEntrada
           }`
         : null,
-      sellThrough: inteligencia?.sellThrough,
-      acaoSugerida: inteligencia?.motivo,
-      visualizacoesIntencao: inteligencia?.intencao.visualizacoes,
-      favoritosIntencao: inteligencia?.intencao.favoritos,
-      carrinhosIntencao: inteligencia?.intencao.adicoesCarrinho,
-      scoreInteresse: inteligencia?.intencao.scoreInteresse,
-      taxaConversao: inteligencia?.intencao.taxaConversao,
-      confiancaAnalise: inteligencia?.intencao.confiancaAnalise,
-      faseEmpresa: contextoAdaptativo.fase,
-      faseEmpresaLabel: contextoAdaptativo.faseLabel,
+      sellThrough: podeVerInteligenciaAdaptativa ? inteligencia?.sellThrough : null,
+      acaoSugerida: podeVerInteligenciaAdaptativa ? inteligencia?.motivo : null,
+      visualizacoesIntencao: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.visualizacoes
+        : null,
+      favoritosIntencao: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.favoritos
+        : null,
+      carrinhosIntencao: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.adicoesCarrinho
+        : null,
+      scoreInteresse: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.scoreInteresse
+        : null,
+      taxaConversao: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.taxaConversao
+        : null,
+      confiancaAnalise: podeVerInteligenciaAdaptativa
+        ? inteligencia?.intencao.confiancaAnalise
+        : null,
+      faseEmpresa: contextoAdaptativo?.fase,
+      faseEmpresaLabel: contextoAdaptativo?.faseLabel,
       loteDecisao: decisaoLote?.decisao,
       loteGrandeLiberado: decisaoLote?.loteGrandeLiberado,
       loteSugestao: decisaoLote?.sugestao,
@@ -200,5 +223,10 @@ export default async function ReposicaoComprasPage() {
     return a.nome.localeCompare(b.nome, "pt-BR");
   });
 
-  return <ReposicaoComprasClient itens={itens} />;
+  return (
+    <ReposicaoComprasClient
+      itens={itens}
+      exibirInteligenciaAdaptativa={podeVerInteligenciaAdaptativa}
+    />
+  );
 }

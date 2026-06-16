@@ -44,6 +44,7 @@ export type ReposicaoCompraItem = {
 
 type Props = {
   itens: ReposicaoCompraItem[];
+  exibirInteligenciaAdaptativa?: boolean;
 };
 
 const TIPO_OPTIONS = [
@@ -70,6 +71,23 @@ function labelTipo(tipo: ReposicaoCompraItem["tipo"]) {
 function labelInteligencia(value: string | null | undefined) {
   const texto = String(value || "-").replaceAll("_", " ").toLowerCase();
   return texto.replace(/(^|\s)\S/g, (letra) => letra.toUpperCase());
+}
+
+function labelAcaoLote(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    EXPOR_MAIS: "Expor mais",
+    REVISAR_OFERTA: "Revisar oferta",
+    REPOR_PEQUENO: "Repor pequeno",
+    REPOR_MEDIO: "Repor lote medio",
+    REPOR_LOTE_MEDIO: "Repor lote medio",
+    LOTE_GRANDE: "Repor lote grande",
+    REPOR_LOTE_GRANDE: "Repor lote grande",
+    NAO_REPOR: "Nao recomprar ainda",
+    OBSERVAR: "Nao recomprar ainda",
+    LIQUIDAR_COM_CUIDADO: "Liquidar com cuidado",
+  };
+
+  return labels[String(value || "")] || labelInteligencia(value);
 }
 
 function numeroCurto(value: number | null | undefined) {
@@ -138,7 +156,10 @@ function ResumoCard({
   );
 }
 
-export default function ReposicaoComprasClient({ itens }: Props) {
+export default function ReposicaoComprasClient({
+  itens,
+  exibirInteligenciaAdaptativa = false,
+}: Props) {
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<(typeof TIPO_OPTIONS)[number]["value"]>(
     "todos"
@@ -185,6 +206,21 @@ export default function ReposicaoComprasClient({ itens }: Props) {
   const produtos = itens.filter((item) => item.tipo === "produto").length;
   const adicionais = itens.filter((item) => item.tipo === "adicional").length;
   const embalagens = itens.filter((item) => item.tipo === "embalagem").length;
+  const itensComDecisao = itens.filter((item) => item.loteDecisao);
+  const loteGrandeLiberado = itensComDecisao.filter(
+    (item) => item.loteGrandeLiberado
+  ).length;
+  const loteGrandeBloqueado = itensComDecisao.filter(
+    (item) => !item.loteGrandeLiberado
+  ).length;
+  const revisarOferta = itensComDecisao.filter(
+    (item) => item.loteSugestao === "REVISAR_OFERTA"
+  ).length;
+  const reporPequenoOuMedio = itensComDecisao.filter((item) =>
+    ["REPOR_PEQUENO", "REPOR_MEDIO", "REPOR_LOTE_MEDIO"].includes(
+      String(item.loteSugestao || "")
+    )
+  ).length;
 
   function limparFiltros() {
     setBusca("");
@@ -241,6 +277,31 @@ export default function ReposicaoComprasClient({ itens }: Props) {
           description={`${adicionais} adicionais e ${embalagens} embalagens.`}
         />
       </div>
+
+      {exibirInteligenciaAdaptativa && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <ResumoCard
+            label="Lote grande liberado"
+            value={String(loteGrandeLiberado)}
+            description="Apenas produtos com ciclo e confiança suficientes."
+          />
+          <ResumoCard
+            label="Lote grande bloqueado"
+            value={String(loteGrandeBloqueado)}
+            description="Uma venda ou amostra curta nunca libera compra grande."
+          />
+          <ResumoCard
+            label="Repor pequeno / medio"
+            value={String(reporPequenoOuMedio)}
+            description="Reposicao seletiva para preservar caixa e aprendizado."
+          />
+          <ResumoCard
+            label="Revisar oferta"
+            value={String(revisarOferta)}
+            description="Interesse sem conversao pede ajuste antes de recompra."
+          />
+        </div>
+      )}
 
       <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_220px_220px_auto] lg:items-end">
@@ -351,7 +412,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      {item.statusComercial ? (
+                      {exibirInteligenciaAdaptativa && item.statusComercial ? (
                         <div className="space-y-1">
                           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
                             {labelInteligencia(item.statusComercial)}
@@ -402,38 +463,46 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                     <td className="px-5 py-4">
                       {item.tipo === "produto" ? (
                         <div className="max-w-[220px] space-y-1 text-xs text-slate-600">
-                          <p>
-                            Ciclo atual:{" "}
-                            <span className="font-semibold text-slate-900">
-                              {item.cicloAtual || "-"}
+                          {exibirInteligenciaAdaptativa ? (
+                            <>
+                              <p>
+                                Ciclo atual:{" "}
+                                <span className="font-semibold text-slate-900">
+                                  {item.cicloAtual || "-"}
+                                </span>
+                              </p>
+                              <p>Sell-through: {percentualDireto(item.sellThrough)}</p>
+                              {item.acaoSugerida && (
+                                <p className="leading-5 text-slate-500">
+                                  {item.acaoSugerida}
+                                </p>
+                              )}
+                              {item.loteMotivo && (
+                                <p className="leading-5 font-semibold text-slate-700">
+                                  {item.loteMotivo}
+                                </p>
+                              )}
+                              {item.loteSugestao && (
+                                <p className="text-slate-500">
+                                  Acao sugerida:{" "}
+                                  <span className="font-semibold text-slate-900">
+                                    {labelAcaoLote(item.loteSugestao)}
+                                  </span>
+                                  {item.loteSugestaoQuantidade
+                                    ? ` (${item.loteSugestaoQuantidade} un.)`
+                                    : ""}
+                                </p>
+                              )}
+                              {item.margemRecomendacao && (
+                                <p className="leading-5 text-slate-500">
+                                  {item.margemRecomendacao}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-slate-400">
+                              Controle operacional
                             </span>
-                          </p>
-                          <p>Sell-through: {percentualDireto(item.sellThrough)}</p>
-                          {item.acaoSugerida && (
-                            <p className="leading-5 text-slate-500">
-                              {item.acaoSugerida}
-                            </p>
-                          )}
-                          {item.loteMotivo && (
-                            <p className="leading-5 font-semibold text-slate-700">
-                              {item.loteMotivo}
-                            </p>
-                          )}
-                          {item.loteSugestao && (
-                            <p className="text-slate-500">
-                              Sugestao adaptativa:{" "}
-                              <span className="font-semibold text-slate-900">
-                                {labelInteligencia(item.loteSugestao)}
-                              </span>
-                              {item.loteSugestaoQuantidade
-                                ? ` (${item.loteSugestaoQuantidade} un.)`
-                                : ""}
-                            </p>
-                          )}
-                          {item.margemRecomendacao && (
-                            <p className="leading-5 text-slate-500">
-                              {item.margemRecomendacao}
-                            </p>
                           )}
                         </div>
                       ) : (

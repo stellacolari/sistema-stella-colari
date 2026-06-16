@@ -336,6 +336,49 @@ export default function ResultadoDistribuicaoClient({
         id: null,
         pagoEm: null,
       }));
+  const leituraAdaptativaMes = [
+    {
+      label: "Regra 50/50",
+      value: diagnostico.leituraResultado.distribuicaoSegura
+        ? "Segura com controle"
+        : "Meta futura",
+      detail: diagnostico.leituraResultado.distribuicaoSegura
+        ? "Pode ser usada neste mes se caixa e pendencias forem respeitados."
+        : "Use retirada conservadora ate giro, caixa e reserva ficarem mais consistentes.",
+    },
+    {
+      label: "Pro-labore",
+      value: diagnostico.proLabore.seguro ? "Manter teto" : "Reduzir ou pausar",
+      detail: diagnostico.leituraResultado.recomendacaoProLabore,
+    },
+    {
+      label: "Caixa e reserva",
+      value:
+        diagnostico.indicadores.runwayMeses >= diagnostico.adaptativa.metas.reserva.minimo
+          ? "Preservar"
+          : "Priorizar",
+      detail: diagnostico.adaptativa.metas.reserva.recomendacao,
+    },
+    {
+      label: "Reposicao",
+      value:
+        diagnostico.adaptativa.distribuicao.reposicao >= 25
+          ? "Receber mais verba"
+          : "Seletiva",
+      detail: diagnostico.estoque.recomendacao,
+    },
+    {
+      label: "Marketing",
+      value:
+        diagnostico.marketing.percentual >
+        diagnostico.adaptativa.metas.marketingPago.maximo
+          ? "Reduzir"
+          : diagnostico.adaptativa.metas.marketingPago.maximo <= 5
+            ? "Cautela"
+            : "Medir e escalar",
+      detail: diagnostico.marketing.recomendacao,
+    },
+  ];
 
   function navegarMes(value: string) {
     const [novoAno, novoMes] = value.split("-").map(Number);
@@ -493,6 +536,47 @@ export default function ResultadoDistribuicaoClient({
           detalhe={`Regra atual; faixa adaptativa da fase: ${diagnostico.adaptativa.metas.proLabore.label}.`}
           icon={<CheckCircle2 className="h-5 w-5" />}
         />
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+              <Lightbulb className="h-4 w-4" />
+              Leitura adaptativa do mes
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              {diagnostico.adaptativa.faseLabel}
+            </h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+              A distribuicao 50/50 e uma meta de referencia. Para a fase atual,
+              a plataforma ajusta retirada, caixa, reposicao e marketing pela
+              confianca dos dados e pelo risco do mes.
+            </p>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
+            Confianca {diagnostico.adaptativa.confiancaAnalise}
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-5">
+          {leituraAdaptativaMes.map((item) => (
+            <div
+              key={item.label}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {item.label}
+              </p>
+              <p className="mt-2 text-lg font-black text-slate-950">
+                {item.value}
+              </p>
+              <p className="mt-2 text-sm leading-5 text-slate-600">
+                {item.detail}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
