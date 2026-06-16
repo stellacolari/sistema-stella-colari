@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/tmp/auditorias
 
 # next.js
 /.next/
