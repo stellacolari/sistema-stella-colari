@@ -8,10 +8,13 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = criarMetadataLoja({
   title: "Descontos | Stella Colari",
-};
+  description: "Produtos Stella Colari com descontos ativos para comprar online.",
+  path: "/loja/descontos",
+});
 
 export const dynamic = "force-dynamic";
 

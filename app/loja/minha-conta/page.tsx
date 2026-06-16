@@ -7,10 +7,16 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import MinhaContaClient, {
   type MinhaContaClienteData,
 } from "@/components/loja/MinhaContaClient";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = criarMetadataLoja({
   title: "Minha conta | Stella Colari",
-};
+  path: "/loja/minha-conta",
+  robots: {
+    index: false,
+    follow: false,
+  },
+});
 
 export const dynamic = "force-dynamic";
 

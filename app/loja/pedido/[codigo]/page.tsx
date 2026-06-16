@@ -7,12 +7,26 @@ import PedidoPublicoClient, {
 import AtualizarPedidoPagamentoClient from "@/components/loja/AtualizarPedidoPagamentoClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
-
-export const metadata: Metadata = {
-  title: "Pedido | Loja Stella",
-};
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ codigo: string }>;
+}): Promise<Metadata> {
+  const { codigo } = await params;
+
+  return criarMetadataLoja({
+    title: "Pedido | Loja Stella",
+    path: `/loja/pedido/${codigo}`,
+    robots: {
+      index: false,
+      follow: false,
+    },
+  });
+}
 
 export default async function PedidoPublicoPage({
   params,

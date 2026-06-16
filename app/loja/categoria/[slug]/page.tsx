@@ -22,6 +22,7 @@ import {
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicosPorCategoriaIds } from "@/lib/loja/produtos";
+import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 
 type LojaCategoriaPageProps = {
   params: Promise<{
@@ -37,6 +38,31 @@ function montarTituloSlug(slug: string) {
     .filter(Boolean)
     .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1))
     .join(" ");
+}
+
+function normalizarTextoSeo(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function montarTituloSeoCategoria(tituloSeo: string | null | undefined, nome: string) {
+  const tituloLimpo = tituloSeo?.trim();
+
+  if (!tituloLimpo) {
+    return `${nome} | Stella Colari`;
+  }
+
+  const tituloNormalizado = normalizarTextoSeo(tituloLimpo);
+  const nomeNormalizado = normalizarTextoSeo(nome);
+
+  if (tituloNormalizado.includes(nomeNormalizado)) {
+    return `${tituloLimpo} | Stella Colari`;
+  }
+
+  return `${tituloLimpo} | ${nome} | Stella Colari`;
 }
 
 function paginaEstaPublica(pagina: {
@@ -175,9 +201,14 @@ export async function generateMetadata({
   const resultado = await buscarCategoriaPublicaPorSlug(slugNormalizado);
 
   if (!resultado) {
-    return {
+    return criarMetadataLoja({
       title: `${montarTituloSlug(slug)} | Stella Colari`,
-    };
+      path: `/loja/categoria/${slugNormalizado}`,
+      robots: {
+        index: false,
+        follow: false,
+      },
+    });
   }
 
   const paginaBuilder = await prisma.lojaPagina.findFirst({
@@ -191,25 +222,56 @@ export async function generateMetadata({
       titulo: true,
       seoTitle: true,
       seoDescription: true,
+      blocos: {
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        select: {
+          configJson: true,
+        },
+      },
     },
   });
+  const templateBuilder = paginaBuilder
+    ? null
+    : await prisma.lojaPagina.findFirst({
+        where: {
+          tipo: "TEMPLATE_CATEGORIA",
+          usarComoTemplatePadrao: true,
+          ativo: true,
+          statusPublicacao: "PUBLICADA",
+        },
+        select: {
+          seoDescription: true,
+          blocos: {
+            where: {
+              ativo: true,
+            },
+            orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+            select: {
+              configJson: true,
+            },
+          },
+        },
+      });
 
-  if (paginaBuilder) {
-    return {
-      title: `${
-        paginaBuilder.seoTitle || paginaBuilder.titulo || resultado.categoria.nome
-      } | Stella Colari`,
-      description:
-        paginaBuilder.seoDescription ||
-        resultado.categoria.descricao ||
-        undefined,
-    };
-  }
-
-  return {
-    title: `${resultado.categoria.nome} | Stella Colari`,
-    description: resultado.categoria.descricao || undefined,
-  };
+  return criarMetadataLoja({
+    title: montarTituloSeoCategoria(
+      paginaBuilder?.seoTitle || paginaBuilder?.titulo,
+      resultado.categoria.nome
+    ),
+    description:
+      paginaBuilder?.seoDescription ||
+      resultado.categoria.descricao ||
+      templateBuilder?.seoDescription ||
+      `Conheca os produtos de ${resultado.categoria.nome} da Stella Colari.`,
+    path: `/loja/categoria/${resultado.categoria.slug}`,
+    image:
+      resultado.categoria.imagemUrl ||
+      getImagemSeoBlocos(paginaBuilder?.blocos ?? []) ||
+      getImagemSeoBlocos(templateBuilder?.blocos ?? []),
+  });
 }
 
 export default async function LojaCategoriaPage({

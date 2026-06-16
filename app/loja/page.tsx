@@ -17,16 +17,50 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
-
-export const metadata: Metadata = {
-  title: "Stella Colari | Loja Online",
-  description:
-    "Joias e peças selecionadas da Stella Colari para comprar online com praticidade.",
-};
+import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 
 export const dynamic = "force-dynamic";
 
 const HOME_VISUAL_SLUG = "home";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const homeVisual = await prisma.lojaPagina.findFirst({
+    where: {
+      slug: HOME_VISUAL_SLUG,
+      tipo: "HOME",
+      ativo: true,
+      statusPublicacao: "PUBLICADA",
+    },
+    include: {
+      blocos: {
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+      },
+    },
+  });
+  const banner = homeVisual
+    ? null
+    : await prisma.bannerLoja.findFirst({
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }],
+        select: {
+          imagemUrl: true,
+        },
+      });
+
+  return criarMetadataLoja({
+    title: homeVisual?.seoTitle || "Stella Colari | Loja Online",
+    description:
+      homeVisual?.seoDescription ||
+      "Joias e pecas selecionadas da Stella Colari para comprar online com praticidade.",
+    path: "/loja",
+    image: getImagemSeoBlocos(homeVisual?.blocos ?? []) || banner?.imagemUrl,
+  });
+}
 
 export default async function LojaPage() {
   const [

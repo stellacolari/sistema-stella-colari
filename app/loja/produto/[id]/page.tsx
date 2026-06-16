@@ -14,12 +14,43 @@ import {
   buscarProdutoDetalhePublico,
   buscarRelacionadosProduto,
 } from "@/lib/loja/produto-detalhe";
-
-export const metadata: Metadata = {
-  title: "Produto | Stella Colari",
-};
+import {
+  criarDescricaoProduto,
+  criarJsonLdProduto,
+  criarMetadataLoja,
+  getImagemPrincipalProduto,
+} from "@/lib/loja/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const produtoDetalhe = await buscarProdutoDetalhePublico(id);
+
+  if (!produtoDetalhe) {
+    return criarMetadataLoja({
+      title: "Produto | Stella Colari",
+      path: `/loja/produto/${id}`,
+      robots: {
+        index: false,
+        follow: false,
+      },
+    });
+  }
+
+  const produto = produtoDetalhe.produto;
+
+  return criarMetadataLoja({
+    title: `${produto.nome} | Stella Colari`,
+    description: criarDescricaoProduto(produto),
+    path: `/loja/produto/${produto.id}`,
+    image: getImagemPrincipalProduto(produto),
+  });
+}
 
 export default async function ProdutoLojaPage({
   params,
@@ -152,15 +183,22 @@ export default async function ProdutoLojaPage({
         garantiaRaw?.conteudo || produtoDetalhe.produto.garantia.conteudo,
     },
   };
+  const produtoJsonLd = criarJsonLdProduto(produtoDetalhe.produto);
 
   return (
-    <ProdutoLojaClient
-      produto={produto}
-      menus={menus}
-      categoriasMenu={categoriasMenu}
-      configuracaoMenuRodape={configuracaoMenuRodape}
-      relacionados={relacionados}
-      descontos={descontos}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(produtoJsonLd) }}
+      />
+      <ProdutoLojaClient
+        produto={produto}
+        menus={menus}
+        categoriasMenu={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+        relacionados={relacionados}
+        descontos={descontos}
+      />
+    </>
   );
 }

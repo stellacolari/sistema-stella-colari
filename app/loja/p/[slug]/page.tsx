@@ -11,6 +11,7 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
+import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -36,15 +37,35 @@ export async function generateMetadata({
       titulo: true,
       seoTitle: true,
       seoDescription: true,
+      blocos: {
+        where: {
+          ativo: true,
+        },
+        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        select: {
+          configJson: true,
+        },
+      },
     },
   });
 
-  return {
-    title: pagina
-      ? `${pagina.seoTitle || pagina.titulo} | Stella Colari`
-      : "Stella Colari | Loja Online",
-    description: pagina?.seoDescription || undefined,
-  };
+  if (!pagina) {
+    return criarMetadataLoja({
+      title: "Stella Colari | Loja Online",
+      path: `/loja/p/${slug}`,
+      robots: {
+        index: false,
+        follow: false,
+      },
+    });
+  }
+
+  return criarMetadataLoja({
+    title: `${pagina.seoTitle || pagina.titulo} | Stella Colari`,
+    description: pagina.seoDescription,
+    path: `/loja/p/${slug}`,
+    image: getImagemSeoBlocos(pagina.blocos),
+  });
 }
 
 export default async function LojaPaginaPublicaPage({

@@ -6,15 +6,17 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarLojaInteligente } from "@/lib/loja/busca";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = criarMetadataLoja({
   title: "Busca | Stella Colari",
   description: "Encontre joias, acessorios e presentes na Stella Colari.",
+  path: "/loja/busca",
   robots: {
     index: false,
     follow: true,
   },
-};
+});
 
 export const dynamic = "force-dynamic";
 

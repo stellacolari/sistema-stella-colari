@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = criarMetadataLoja({
   title: "Quem somos | Stella Colari",
-  description: "Conheça a loja online Stella Colari.",
-};
+  description: "Conheca a loja online Stella Colari e sua proposta.",
+  path: "/loja/quem-somos",
+});
 
 export default function QuemSomosPage() {
   return (
