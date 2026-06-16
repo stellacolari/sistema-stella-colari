@@ -11,7 +11,8 @@
     "db:estoque-teste": "node scripts/estoque-inicial-teste.mjs",
     "db:criar-admin": "node scripts/criar-admin.mjs",
     "simular:operacao": "node scripts/simular-operacao-2-meses.mjs",
-    "auditar:simulacao": "node scripts/auditar-operacao-simulada.mjs"
+    "auditar:simulacao": "node scripts/auditar-operacao-simulada.mjs",
+    "consultoria:financeira": "node scripts/consultoria-financeira-stella.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
