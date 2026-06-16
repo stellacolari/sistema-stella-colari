@@ -63,7 +63,7 @@ export const BANNER_MODELO_LABELS: Record<BannerModeloFinal, string> = {
   HERO_PRINCIPAL: "Hero principal",
   BANNER_CLASSICO: "Banner clássico",
   EDITORIAL_IMAGEM: "Editorial com imagem",
-  CAMADAS_PARALLAX: "Camadas / Parallax visual",
+  CAMADAS_PARALLAX: "Camadas visuais",
   CATEGORIA: "Banner de categoria",
   FAIXA_PROMOCIONAL: "Faixa promocional",
 };
@@ -123,7 +123,8 @@ function getConfigStyle(config: Record<string, unknown>, key: string) {
 function getTextStyle(
   config: Record<string, unknown>,
   key: string,
-  fallback: CSSProperties = {}
+  fallback: CSSProperties = {},
+  options: { ignoreFontSizePreset?: boolean } = {}
 ): CSSProperties {
   const style = getConfigStyle(config, key);
   const fontSizePreset = getString(style, "fontSizePreset");
@@ -160,7 +161,7 @@ function getTextStyle(
 
   return {
     ...fallback,
-    ...(fontSizeMap[fontSizePreset]
+    ...(!options.ignoreFontSizePreset && fontSizeMap[fontSizePreset]
       ? { fontSize: fontSizeMap[fontSizePreset] }
       : {}),
     ...(fontWeightMap[fontWeight]
@@ -700,7 +701,9 @@ export default function BannerRenderer({
     lineHeight: lineHeightTitulo,
     letterSpacing: `${letterSpacingTitulo}px`,
   };
-  const titleStyle = getTextStyle(config, "tituloStyle", textStyleBase);
+  const titleStyle = getTextStyle(config, "tituloStyle", textStyleBase, {
+    ignoreFontSizePreset: true,
+  });
   const subtitleStyle = getTextStyle(config, "subtituloStyle", {});
   const primaryCtaStyle = getTextStyle(config, "botaoPrimarioStyle", {});
   const secondaryCtaStyle = getTextStyle(config, "botaoSecundarioStyle", {});
@@ -761,7 +764,13 @@ export default function BannerRenderer({
       <div className={`${textAlignClass}`} style={{ width: "100%", maxWidth: contentMaxWidth }}>
         {hasTitulo || isEditor ? (
           <div
-            className={`relative font-light ${textClass.title}`}
+            className={`relative rounded-2xl font-light transition ${
+              isEditor
+                ? selectedElement === "TITULO"
+                  ? "ring-4 ring-indigo-400"
+                  : "hover:ring-2 hover:ring-white/45"
+                : ""
+            } ${textClass.title}`}
             onClick={(event) => {
               event.stopPropagation();
               onElementSelect?.("TITULO");
@@ -773,7 +782,13 @@ export default function BannerRenderer({
 
         {exibirSubtitulo && (hasSubtitulo || isEditor) ? (
           <div
-            className={`relative mt-5 ${textClass.body}`}
+            className={`relative mt-5 rounded-2xl transition ${
+              isEditor
+                ? selectedElement === "SUBTITULO"
+                  ? "ring-4 ring-indigo-400"
+                  : "hover:ring-2 hover:ring-white/45"
+                : ""
+            } ${textClass.body}`}
             onClick={(event) => {
               event.stopPropagation();
               onElementSelect?.("SUBTITULO");
@@ -785,7 +800,13 @@ export default function BannerRenderer({
 
         {hasBotaoPrimario || hasBotaoSecundario ? (
           <div
-            className={`mt-8 flex flex-wrap gap-3 ${
+            className={`mt-8 flex flex-wrap gap-3 rounded-2xl transition ${
+              isEditor
+                ? selectedElement === "CTA"
+                  ? "ring-4 ring-indigo-400"
+                  : "hover:ring-2 hover:ring-white/45"
+                : ""
+            } ${
               modelo === "FAIXA_PROMOCIONAL" || alinhamentoHorizontal === "CENTRO"
                 ? "justify-center"
                 : alinhamentoHorizontal === "DIREITA"
@@ -863,7 +884,9 @@ export default function BannerRenderer({
           } ${
             isEditor && selectedElement === "MIDIA"
               ? "ring-4 ring-inset ring-indigo-400"
-              : ""
+              : isEditor && onElementSelect
+                ? "hover:ring-2 hover:ring-inset hover:ring-white/45"
+                : ""
           }`}
         />
 
@@ -940,7 +963,7 @@ export default function BannerRenderer({
                 element="IMAGEM_FRENTE"
                 selectedElement={selectedElement}
                 onElementSelect={onElementSelect}
-                label="Imagem de frente"
+                label="Camada frontal"
                 className="right-4 bottom-4"
               />
             ) : null}

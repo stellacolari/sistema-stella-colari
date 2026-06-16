@@ -469,7 +469,7 @@ const MODELO_BANNER_PRESETS = [
   },
   {
     value: "CAMADAS_PARALLAX",
-    label: "Camadas / Parallax visual",
+    label: "Camadas visuais",
     descricao: "Fundo, texto grande e imagem frontal com profundidade.",
     uso: "Campanhas com still, modelo ou produto destacado.",
     medidas:
@@ -491,6 +491,66 @@ const MODELO_BANNER_PRESETS = [
     uso: "Promoções, avisos e chamadas curtas.",
     medidas: "Desktop 1920 x 320 px · mobile 1080 x 420 px",
     preview: "FAIXA",
+  },
+];
+
+const TEXTO_BANNER_PRESETS: {
+  id: string;
+  label: string;
+  patch: Partial<NonNullable<BlocoEditandoState>>;
+}[] = [
+  {
+    id: "PEQUENO",
+    label: "Pequeno",
+    patch: {
+      fonteTituloDesktop: 48,
+      fonteTituloMobile: 32,
+      larguraTextoPercentual: 54,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+      lineHeightTitulo: 1,
+      letterSpacingTitulo: 0,
+    },
+  },
+  {
+    id: "MEDIO",
+    label: "Médio",
+    patch: {
+      fonteTituloDesktop: 68,
+      fonteTituloMobile: 42,
+      larguraTextoPercentual: 58,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+      lineHeightTitulo: 0.98,
+      letterSpacingTitulo: 0,
+    },
+  },
+  {
+    id: "GRANDE",
+    label: "Grande",
+    patch: {
+      fonteTituloDesktop: 92,
+      fonteTituloMobile: 56,
+      larguraTextoPercentual: 70,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+      lineHeightTitulo: 0.94,
+      letterSpacingTitulo: 0,
+    },
+  },
+  {
+    id: "EDITORIAL_GIGANTE",
+    label: "Editorial gigante",
+    patch: {
+      alturaBanner: "AUTO_CONTEUDO",
+      fonteTituloDesktop: 124,
+      fonteTituloMobile: 72,
+      larguraTextoPercentual: 82,
+      margemSeguraX: 8,
+      margemSeguraY: 10,
+      lineHeightTitulo: 0.9,
+      letterSpacingTitulo: 0,
+    },
   },
 ];
 
@@ -2137,7 +2197,7 @@ function UploadMidiaCampo({
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder="Cole ou digite uma URL"
-            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
           />
 
           <p className="text-xs leading-5 text-slate-500">
@@ -5853,6 +5913,281 @@ function RangeControl({
   );
 }
 
+function getBannerStudioPanelTitle(element: BannerStudioElement) {
+  if (element === "MIDIA") return "Imagem / crop";
+  if (element === "IMAGEM_FRENTE") return "Camada frontal";
+  if (element === "CTA") return "CTA";
+  if (element === "DESIGN") return "Design";
+  if (element === "PRODUTOS") return "Produtos";
+  if (element === "AVANCADO") return "Avançado";
+  if (element === "SUBTITULO") return "Subtítulo";
+  if (element === "TITULO") return "Texto";
+
+  return "Modelo";
+}
+
+function getBannerStudioPanelDescription(element: BannerStudioElement) {
+  if (element === "MIDIA") {
+    return "Ajuste a mídia principal, zoom e foco do enquadramento ativo.";
+  }
+
+  if (element === "IMAGEM_FRENTE") {
+    return "Edite a imagem frontal da composição de camadas.";
+  }
+
+  if (element === "CTA") return "Configure texto, link e estilo do botão.";
+  if (element === "DESIGN") return "Controle altura, largura, overlay e margens.";
+  if (element === "PRODUTOS") {
+    return "Use produto apenas como apoio visual para a composição.";
+  }
+
+  if (element === "AVANCADO") return "Ajustes técnicos de vídeo e salvamento.";
+  if (element === "SUBTITULO") return "Ajuste exibição e leitura do subtítulo.";
+  if (element === "TITULO") return "Ajuste escala, peso, alinhamento e margens.";
+
+  return "Resumo do modelo atual e troca de composição.";
+}
+
+function getBannerStudioPanelIcon(element: BannerStudioElement) {
+  if (element === "MIDIA") return ImageIcon;
+  if (element === "IMAGEM_FRENTE") return Layers;
+  if (element === "CTA") return MousePointer2;
+  if (element === "DESIGN") return LayoutGrid;
+  if (element === "PRODUTOS") return ClipboardList;
+  if (element === "AVANCADO") return HelpCircle;
+  if (element === "TITULO" || element === "SUBTITULO") return Type;
+
+  return PanelRight;
+}
+
+function BannerDeviceSwitcher({
+  device,
+  onChange,
+}: {
+  device: BannerDevicePreview;
+  onChange: (device: BannerDevicePreview) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+      {(["DESKTOP", "MOBILE"] as const).map((item) => {
+        const Icon = item === "DESKTOP" ? Monitor : Smartphone;
+
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            className={`inline-flex min-h-9 items-center gap-2 rounded-xl px-3 text-xs font-semibold transition ${
+              device === item
+                ? "bg-slate-950 text-white shadow-sm"
+                : "text-slate-600 hover:bg-white"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {item === "DESKTOP" ? "Desktop" : "Mobile"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BannerModeloCards({
+  modeloNormalizado,
+  onSelect,
+}: {
+  modeloNormalizado: string;
+  onSelect: (modelo: string) => void;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      {MODELO_BANNER_PRESETS.map((preset) => {
+        const selecionado = modeloNormalizado === preset.value;
+
+        return (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => onSelect(preset.value)}
+            className={`group rounded-3xl border bg-white p-4 text-left transition ${
+              selecionado
+                ? "border-indigo-400 shadow-sm ring-2 ring-indigo-100"
+                : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+            }`}
+          >
+            <div className="h-36">
+              <BannerModeloMiniatura tipo={preset.preview} />
+            </div>
+
+            <div className="mt-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-slate-950">
+                  {preset.label}
+                </p>
+                <p className="mt-1 text-sm leading-5 text-slate-500">
+                  {preset.descricao}
+                </p>
+              </div>
+
+              {selecionado && (
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                  Atual
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 space-y-1.5 text-xs leading-5 text-slate-500">
+              <p>
+                <span className="font-semibold text-slate-700">Uso: </span>
+                {preset.uso}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-700">Medida: </span>
+                {preset.medidas}
+              </p>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BannerMediaMiniPreview({
+  estado,
+  device,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  device: BannerDevicePreview;
+}) {
+  const isMobile = device === "MOBILE";
+  const imageUrl =
+    isMobile && estado.imagemMobileUrl
+      ? estado.imagemMobileUrl
+      : estado.imagemDesktopUrl;
+  const videoUrl =
+    isMobile && estado.videoMobileUrl
+      ? estado.videoMobileUrl
+      : estado.videoDesktopUrl;
+  const x = isMobile ? estado.mediaCropMobileX : estado.mediaCropDesktopX;
+  const y = isMobile ? estado.mediaCropMobileY : estado.mediaCropDesktopY;
+  const zoom = isMobile ? estado.mediaZoomMobile : estado.mediaZoomDesktop;
+  const objectPosition = getMediaObjectPosition(x, y);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+      <div className="relative aspect-[16/9] overflow-hidden">
+        {estado.tipoMidia === "VIDEO" && videoUrl ? (
+          <video
+            src={videoUrl}
+            poster={estado.videoPosterUrl || undefined}
+            muted
+            loop
+            playsInline
+            className="h-full w-full object-cover"
+            style={{
+              objectPosition,
+              transform: `scale(${zoom / 100})`,
+            }}
+          />
+        ) : imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{
+              objectPosition,
+              transform: `scale(${zoom / 100})`,
+            }}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm font-medium text-slate-500">
+            Sem mídia para pré-visualizar
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BannerCropFocusControls({
+  estado,
+  device,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  device: BannerDevicePreview;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  const isMobile = device === "MOBILE";
+  const cropXKey = isMobile ? "mediaCropMobileX" : "mediaCropDesktopX";
+  const cropYKey = isMobile ? "mediaCropMobileY" : "mediaCropDesktopY";
+  const positionKey = isMobile ? "mediaPositionMobile" : "mediaPositionDesktop";
+  const zoomKey = isMobile ? "mediaZoomMobile" : "mediaZoomDesktop";
+  const cropX = isMobile ? estado.mediaCropMobileX : estado.mediaCropDesktopX;
+  const cropY = isMobile ? estado.mediaCropMobileY : estado.mediaCropDesktopY;
+  const zoom = isMobile ? estado.mediaZoomMobile : estado.mediaZoomDesktop;
+  const deviceLabel = isMobile ? "mobile" : "desktop";
+
+  function updateFocus(nextX: number, nextY: number) {
+    onChange({
+      [cropXKey]: nextX,
+      [cropYKey]: nextY,
+      [positionKey]: getMediaObjectPosition(nextX, nextY),
+    } as Partial<NonNullable<BlocoEditandoState>>);
+  }
+
+  function updateZoom(value: number) {
+    onChange({ [zoomKey]: value } as Partial<NonNullable<BlocoEditandoState>>);
+  }
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-slate-950">
+          Crop do {deviceLabel}
+        </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            updateFocus(50, 50);
+            updateZoom(100);
+          }}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+        >
+          Resetar
+        </button>
+      </div>
+
+      <RangeControl
+        label="Zoom"
+        value={zoom}
+        min={80}
+        max={180}
+        suffix="%"
+        onChange={updateZoom}
+      />
+      <RangeControl
+        label="Foco horizontal"
+        value={cropX}
+        min={0}
+        max={100}
+        suffix="%"
+        onChange={(value) => updateFocus(value, cropY)}
+      />
+      <RangeControl
+        label="Foco vertical"
+        value={cropY}
+        min={0}
+        max={100}
+        suffix="%"
+        onChange={(value) => updateFocus(cropX, value)}
+      />
+    </div>
+  );
+}
+
 function BannerStudioEditor({
   estado,
   produtosDisponiveis,
@@ -5860,6 +6195,9 @@ function BannerStudioEditor({
   produtosFiltradosManual,
   selectedElement,
   device,
+  onClose,
+  onSave,
+  salvando,
   onChange,
   onSelectedElementChange,
   onDeviceChange,
@@ -5874,6 +6212,9 @@ function BannerStudioEditor({
   produtosFiltradosManual: EditorVisualProduto[];
   selectedElement: BannerStudioElement;
   device: BannerDevicePreview;
+  onClose: () => void;
+  onSave: () => void;
+  salvando: boolean;
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onSelectedElementChange: (element: BannerStudioElement) => void;
   onDeviceChange: (device: BannerDevicePreview) => void;
@@ -5882,12 +6223,21 @@ function BannerStudioEditor({
   removerProdutoManual: (produtoId: string) => void;
   moverProdutoManual: (produtoId: string, direction: "UP" | "DOWN") => void;
 }) {
+  const [modelosAbertos, setModelosAbertos] = useState(false);
   const configAtual = getConfigObject(estado.bloco.configJson);
   const previewBloco = getBannerPreviewBloco(estado);
   const modeloNormalizado = normalizeBannerModelo(estado.modeloBanner);
   const modeloBannerSelecionado =
     MODELO_BANNER_PRESETS.find((preset) => preset.value === modeloNormalizado) ||
     MODELO_BANNER_PRESETS[1];
+  const PanelIcon = getBannerStudioPanelIcon(selectedElement);
+  const produtoFrenteFallback = produtosDisponiveis.find(
+    (produto) => produto.id === estado.produtosSelecionadosIds[0]
+  );
+  const imagemFrentePreviewUrl =
+    device === "MOBILE" && estado.imagemFrenteMobileUrl
+      ? estado.imagemFrenteMobileUrl
+      : estado.imagemFrenteDesktopUrl || produtoFrenteFallback?.imagemUrl || "";
 
   function atualizarConfigInterno(patch: Record<string, unknown>) {
     onChange({
@@ -5979,161 +6329,129 @@ function BannerStudioEditor({
   );
 
   return (
-    <div className="grid min-h-[620px] gap-5 px-6 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="space-y-5">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-950">
-                Escolher modelo
+    <div className="space-y-5 px-4 py-4 sm:px-6 sm:py-5">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-base font-semibold text-slate-950">
+                {estado.nomeInterno || "Banner sem nome"}
               </p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Escolha pelo visual. Modelos antigos são mapeados automaticamente.
-              </p>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {modeloBannerSelecionado.label}
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                Preview real
+              </span>
             </div>
-            <p className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+            <p className="mt-1 text-sm leading-6 text-slate-500">
               {modeloBannerSelecionado.medidas}
             </p>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {MODELO_BANNER_PRESETS.map((preset) => {
-              const selecionado = modeloNormalizado === preset.value;
+          <div className="flex flex-wrap items-center gap-2">
+            <BannerDeviceSwitcher device={device} onChange={onDeviceChange} />
 
-              return (
-                <button
-                  key={preset.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(getBannerModeloPatch(preset.value));
-                    onSelectedElementChange("MODELO");
-                  }}
-                  className={`rounded-2xl border bg-white p-3 text-left transition ${
-                    selecionado
-                      ? "border-indigo-400 shadow-sm ring-2 ring-indigo-100"
-                      : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                  }`}
-                >
-                  <div className="h-28">
-                    <BannerModeloMiniatura tipo={preset.preview} />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-950">
-                    {preset.label}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {preset.descricao}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {preset.uso}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-950">
-                Preview editável
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Clique no texto, CTA ou imagem para editar vendo o resultado real.
-              </p>
-            </div>
-            <div className="inline-flex rounded-2xl bg-slate-100 p-1">
-              {(["DESKTOP", "MOBILE"] as const).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => onDeviceChange(item)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                    device === item
-                      ? "bg-white text-slate-950 shadow-sm"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  {item === "DESKTOP" ? "Desktop" : "Mobile"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-slate-100 p-4">
-            <div
-              className={`mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 ${
-                device === "MOBILE" ? "max-w-[390px]" : "max-w-none"
-              }`}
+            <button
+              type="button"
+              onClick={() => setModelosAbertos(true)}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              <BannerRenderer
-                bloco={previewBloco}
-                produtos={toBannerProdutosPublicos(produtosDisponiveis)}
-                device={device}
-                modo="editor"
-                selectedElement={selectedElement}
-                onElementSelect={onSelectedElementChange}
-                titleSlot={titleSlot}
-                subtitleSlot={subtitleSlot}
-                primaryCtaSlot={primaryCtaSlot}
-                secondaryCtaSlot={secondaryCtaSlot}
-              />
-            </div>
+              <LayoutGrid className="h-4 w-4" />
+              Trocar modelo
+            </button>
+
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={salvando}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {salvando ? "Salvando..." : "Salvar"}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={salvando}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Fechar edição"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
 
-      <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-          Elemento selecionado
-        </p>
-        <h3 className="mt-1 text-lg font-semibold text-slate-950">
-          {selectedElement === "MIDIA"
-            ? "Imagem / crop"
-            : selectedElement === "IMAGEM_FRENTE"
-              ? "Imagem de frente"
-              : selectedElement === "CTA"
-                ? "CTA"
-                : selectedElement === "DESIGN"
-                  ? "Design"
-                  : selectedElement === "PRODUTOS"
-                    ? "Produtos"
-                    : selectedElement === "AVANCADO"
-                      ? "Avançado"
-                      : selectedElement === "SUBTITULO"
-                        ? "Subtítulo"
-                        : selectedElement === "TITULO"
-                          ? "Título"
-                          : "Modelo"}
-        </h3>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
+          <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">
+                  Preview editável
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Clique no texto, CTA, imagem ou camada frontal para editar.
+                </p>
+              </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {[
-            ["MODELO", "Modelo"],
-            ["MIDIA", "Imagem"],
-            ["TITULO", "Texto"],
-            ["CTA", "CTA"],
-            ["DESIGN", "Design"],
-            ["IMAGEM_FRENTE", "Frente"],
-            ["PRODUTOS", "Produtos"],
-            ["AVANCADO", "Avançado"],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onSelectedElementChange(id as BannerStudioElement)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                selectedElement === id
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                {device === "DESKTOP" ? (
+                  <Monitor className="h-4 w-4" />
+                ) : (
+                  <Smartphone className="h-4 w-4" />
+                )}
+                {device === "DESKTOP" ? "Desktop" : "Mobile"}
+              </div>
+            </div>
+
+            <div className="bg-slate-100 p-4 sm:p-6 xl:p-8">
+              <div
+                className={`loja-publica stella-storefront-render mx-auto overflow-hidden bg-white text-slate-900 shadow-xl ring-1 ring-slate-200 ${
+                  device === "MOBILE"
+                    ? "max-w-[390px] rounded-[2rem]"
+                    : "max-w-[1180px]"
+                }`}
+              >
+                <BannerRenderer
+                  bloco={previewBloco}
+                  produtos={toBannerProdutosPublicos(produtosDisponiveis)}
+                  device={device}
+                  modo="editor"
+                  selectedElement={selectedElement}
+                  onElementSelect={onSelectedElementChange}
+                  titleSlot={titleSlot}
+                  subtitleSlot={subtitleSlot}
+                  primaryCtaSlot={primaryCtaSlot}
+                  secondaryCtaSlot={secondaryCtaSlot}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+              <PanelIcon className="h-5 w-5" />
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Painel contextual
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-950">
+                {getBannerStudioPanelTitle(selectedElement)}
+              </h3>
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                {getBannerStudioPanelDescription(selectedElement)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-4">
           {selectedElement === "MODELO" ? (
             <>
               <label>
@@ -6146,10 +6464,11 @@ function BannerStudioEditor({
                     onChange({ nomeInterno: event.target.value })
                   }
                   placeholder="Ex: Banner principal"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
                 />
               </label>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
                 <p className="font-semibold text-slate-800">
                   {modeloBannerSelecionado.label}
                 </p>
@@ -6157,6 +6476,32 @@ function BannerStudioEditor({
                 <p className="mt-2 text-xs font-semibold text-slate-500">
                   {modeloBannerSelecionado.medidas}
                 </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setModelosAbertos(true)}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Trocar modelo
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSelectedElementChange("DESIGN")}
+                  className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Design
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectedElementChange("AVANCADO")}
+                  className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Avançado
+                </button>
               </div>
             </>
           ) : null}
@@ -6173,6 +6518,25 @@ function BannerStudioEditor({
                 label="Exibir subtítulo"
                 onChange={(checked) => onChange({ exibirSubtitulo: checked })}
               />
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700">
+                  Presets de escala
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {TEXTO_BANNER_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => onChange(preset.patch)}
+                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <RangeControl
                 label="Fonte desktop"
                 value={estado.fonteTituloDesktop}
@@ -6190,7 +6554,7 @@ function BannerStudioEditor({
                 onChange={(value) => onChange({ fonteTituloMobile: value })}
               />
               <RangeControl
-                label="Line-height"
+                label="Entrelinhas"
                 value={estado.lineHeightTitulo}
                 min={0.8}
                 max={1.4}
@@ -6198,13 +6562,59 @@ function BannerStudioEditor({
                 onChange={(value) => onChange({ lineHeightTitulo: value })}
               />
               <RangeControl
-                label="Letter spacing"
+                label="Espaço entre letras"
                 value={estado.letterSpacingTitulo}
-                min={-2}
+                min={0}
                 max={8}
                 step={0.5}
                 suffix="px"
                 onChange={(value) => onChange({ letterSpacingTitulo: value })}
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Peso
+                </span>
+                <select
+                  value={estado.tituloStyle.fontWeight}
+                  onChange={(event) =>
+                    onChange({
+                      tituloStyle: {
+                        ...estado.tituloStyle,
+                        fontWeight: event.target.value,
+                      },
+                    })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                >
+                  {TEXT_FONT_WEIGHT_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor
+                </span>
+                <select
+                  value={estado.corTextoBanner}
+                  onChange={(event) =>
+                    onChange({ corTextoBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
+                >
+                  {COR_TEXTO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <ResponsiveTextAlignControls
+                desktopValue={estado.alinhamentoTextoDesktop}
+                mobileValue={estado.alinhamentoTextoMobile}
+                onChange={onChange}
               />
               <RangeControl
                 label="Largura do texto"
@@ -6213,6 +6623,22 @@ function BannerStudioEditor({
                 max={100}
                 suffix="%"
                 onChange={(value) => onChange({ larguraTextoPercentual: value })}
+              />
+              <RangeControl
+                label="Margem segura lateral"
+                value={estado.margemSeguraX}
+                min={0}
+                max={18}
+                suffix="%"
+                onChange={(value) => onChange({ margemSeguraX: value })}
+              />
+              <RangeControl
+                label="Margem segura topo/base"
+                value={estado.margemSeguraY}
+                min={0}
+                max={18}
+                suffix="%"
+                onChange={(value) => onChange({ margemSeguraY: value })}
               />
             </>
           ) : null}
@@ -6234,7 +6660,7 @@ function BannerStudioEditor({
                   value={estado.textoBotao}
                   onChange={(event) => onChange({ textoBotao: event.target.value })}
                   placeholder="Ex: Comprar agora"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
                 />
               </label>
               <label>
@@ -6245,7 +6671,7 @@ function BannerStudioEditor({
                   value={estado.linkBotao}
                   onChange={(event) => onChange({ linkBotao: event.target.value })}
                   placeholder="/loja/descontos"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
                 />
               </label>
               <label>
@@ -6257,7 +6683,7 @@ function BannerStudioEditor({
                   onChange={(event) =>
                     onChange({ estiloCtaBanner: event.target.value })
                   }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
                 >
                   {ESTILO_CTA_BANNER_PRESETS.map((preset) => (
                     <option key={preset.value} value={preset.value}>
@@ -6292,7 +6718,7 @@ function BannerStudioEditor({
                 <select
                   value={estado.tipoMidia}
                   onChange={(event) => onChange({ tipoMidia: event.target.value })}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-base outline-none focus:border-slate-500 sm:text-sm"
                 >
                   {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
                     <option key={preset.value} value={preset.value}>
@@ -6336,32 +6762,40 @@ function BannerStudioEditor({
                   />
                 </>
               )}
-              <CropPositionControls
-                desktopValue={estado.mediaPositionDesktop}
-                mobileValue={estado.mediaPositionMobile}
+              <BannerMediaMiniPreview estado={estado} device={device} />
+              <BannerCropFocusControls
+                estado={estado}
+                device={device}
                 onChange={onChange}
-              />
-              <RangeControl
-                label="Zoom desktop"
-                value={estado.mediaZoomDesktop}
-                min={80}
-                max={180}
-                suffix="%"
-                onChange={(value) => onChange({ mediaZoomDesktop: value })}
-              />
-              <RangeControl
-                label="Zoom mobile"
-                value={estado.mediaZoomMobile}
-                min={80}
-                max={180}
-                suffix="%"
-                onChange={(value) => onChange({ mediaZoomMobile: value })}
               />
             </>
           ) : null}
 
           {selectedElement === "IMAGEM_FRENTE" ? (
             <>
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                <div className="flex aspect-[4/3] items-center justify-center p-4">
+                  {imagemFrentePreviewUrl ? (
+                    <img
+                      src={imagemFrentePreviewUrl}
+                      alt={estado.imagemFrenteAlt || "Camada frontal"}
+                      className="max-h-full max-w-full object-contain drop-shadow-xl"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-slate-500">
+                      Sem imagem frontal
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {produtoFrenteFallback && !estado.imagemFrenteDesktopUrl && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-800">
+                  Usando o primeiro produto selecionado como imagem frontal
+                  enquanto não houver upload específico.
+                </div>
+              )}
+
               <UploadMidiaCampo
                 label="Imagem frontal desktop"
                 value={estado.imagemFrenteDesktopUrl}
@@ -6680,8 +7114,69 @@ function BannerStudioEditor({
               </div>
             </>
           ) : null}
+
+          {selectedElement !== "MODELO" && (
+            <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                onClick={() => onSelectedElementChange("MODELO")}
+                className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Modelo
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectedElementChange("AVANCADO")}
+                className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Avançado
+              </button>
+            </div>
+          )}
         </div>
       </aside>
+    </div>
+
+      {modelosAbertos && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 px-4 py-6">
+          <div className="max-h-[88vh] w-full max-w-6xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Modelos de banner
+                </p>
+                <h3 className="mt-1 text-2xl font-semibold text-slate-950">
+                  Escolha pela composição visual
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+                  Cada modelo mantém imagem desktop, imagem mobile, CTA,
+                  overlay, altura e largura dentro do bloco do builder.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setModelosAbertos(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Fechar modelos"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <BannerModeloCards
+                modeloNormalizado={modeloNormalizado}
+                onSelect={(modeloBanner) => {
+                  onChange(getBannerModeloPatch(modeloBanner));
+                  onSelectedElementChange("MODELO");
+                  setModelosAbertos(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -6893,7 +7388,11 @@ function EditorConteudoBlocoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
+      <div
+        className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
+          isBanner ? "max-w-[min(96vw,1760px)]" : "max-w-3xl"
+        }`}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -6940,6 +7439,9 @@ function EditorConteudoBlocoModal({
               produtosFiltradosManual={produtosFiltradosManual}
               selectedElement={bannerStudioElement}
               device={bannerStudioDevice}
+              onClose={onClose}
+              onSave={onSave}
+              salvando={salvando}
               onChange={onChange}
               onSelectedElementChange={setBannerStudioElement}
               onDeviceChange={setBannerStudioDevice}
@@ -9355,26 +9857,28 @@ function EditorConteudoBlocoModal({
           </div>
         )}
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={salvando}
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cancelar
-          </button>
+        {!isBanner && (
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={salvando}
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancelar
+            </button>
 
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={salvando}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Save className="h-4 w-4" />
-            {salvando ? "Salvando..." : "Salvar conteúdo"}
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={salvando}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {salvando ? "Salvando..." : "Salvar conteúdo"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
