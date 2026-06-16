@@ -520,7 +520,7 @@ function montarRoadmap(status: StatusSaudeFinanceira) {
     mes3: [
       "Escalar produtos vencedores.",
       "Revisar precos e margens.",
-      "Formar reserva de 2 a 3 meses.",
+      "Formar reserva conforme a fase adaptativa.",
       "Criar calendario de campanhas.",
     ],
   };

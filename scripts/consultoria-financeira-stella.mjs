@@ -841,28 +841,41 @@ function adaptiveRange(min, max, recommendation) {
   return { min, max, label: `${min}% a ${max}%`, recommendation };
 }
 
+function adaptiveMonthRange(min, max, recommendation) {
+  return {
+    min,
+    max,
+    label: min === 3 && max === 4 ? "3 meses ou mais" : `${min} a ${max} meses`,
+    recommendation,
+  };
+}
+
 function buildAdaptiveTargets(phase, confidence, current, diagnosis) {
+  const marginAndCashAllowScale =
+    current.margemBrutaPct >= 55 &&
+    current.lucroApuravel > 0 &&
+    diagnosis.runwayMonths >= 3;
   const marketingByPhase = {
-    PRE_OPERACAO: [0, 2],
-    VALIDACAO_INICIAL: [0, 4],
-    PRIMEIRA_TRACAO: [3, 7],
-    GIRO_COMPROVADO: [5, 9],
-    CRESCIMENTO_SAUDAVEL: [6, 10],
-    ESCALA: [8, 12],
-    PRESSAO_CAIXA: [0, 3],
-    CRISE_DEFESA: [0, 1],
-    ESTOQUE_TRAVADO: [0, 4],
+    PRE_OPERACAO: [0, 3],
+    VALIDACAO_INICIAL: [3, 8],
+    PRIMEIRA_TRACAO: [5, 10],
+    GIRO_COMPROVADO: [6, 10],
+    CRESCIMENTO_SAUDAVEL: [8, 12],
+    ESCALA: marginAndCashAllowScale ? [12, 18] : [8, 12],
+    PRESSAO_CAIXA: [0, 5],
+    CRISE_DEFESA: [0, 0],
+    ESTOQUE_TRAVADO: [0, 5],
   };
   const proLaboreByPhase = {
     PRE_OPERACAO: [0, 0],
     VALIDACAO_INICIAL: [0, 10],
-    PRIMEIRA_TRACAO: [10, 25],
+    PRIMEIRA_TRACAO: [10, 20],
     GIRO_COMPROVADO: [20, 35],
-    CRESCIMENTO_SAUDAVEL: [25, 40],
-    ESCALA: [30, 45],
-    PRESSAO_CAIXA: [0, 15],
-    CRISE_DEFESA: [0, 5],
-    ESTOQUE_TRAVADO: [0, 20],
+    CRESCIMENTO_SAUDAVEL: marginAndCashAllowScale ? [25, 50] : [20, 35],
+    ESCALA: marginAndCashAllowScale ? [30, 50] : [25, 35],
+    PRESSAO_CAIXA: [0, 8],
+    CRISE_DEFESA: [0, 0],
+    ESTOQUE_TRAVADO: [0, 15],
   };
   const stockByPhase = {
     PRE_OPERACAO: [0, 5],
@@ -876,22 +889,22 @@ function buildAdaptiveTargets(phase, confidence, current, diagnosis) {
     ESTOQUE_TRAVADO: [0, 15],
   };
   const reserveByPhase = {
-    PRE_OPERACAO: [40, 70],
-    VALIDACAO_INICIAL: [30, 55],
-    PRIMEIRA_TRACAO: [20, 40],
-    GIRO_COMPROVADO: [15, 30],
-    CRESCIMENTO_SAUDAVEL: [10, 25],
-    ESCALA: [10, 20],
-    PRESSAO_CAIXA: [45, 75],
-    CRISE_DEFESA: [60, 90],
-    ESTOQUE_TRAVADO: [35, 60],
+    PRE_OPERACAO: [2, 4],
+    VALIDACAO_INICIAL: [1, 2],
+    PRIMEIRA_TRACAO: [1.5, 2.5],
+    GIRO_COMPROVADO: [2, 3],
+    CRESCIMENTO_SAUDAVEL: [2, 3],
+    ESCALA: [3, 4],
+    PRESSAO_CAIXA: [3, 5],
+    CRISE_DEFESA: [4, 6],
+    ESTOQUE_TRAVADO: [2, 4],
   };
   const marketing = marketingByPhase[phase];
   const proLabore = proLaboreByPhase[phase];
   const stock = stockByPhase[phase];
   const reserve = reserveByPhase[phase];
-  const marketingMax = confidence === "BAIXA" ? Math.min(marketing[1], 4) : marketing[1];
-  const stockMax = confidence === "BAIXA" ? Math.min(stock[1], 20) : stock[1];
+  const marketingMax = confidence === "BAIXA" ? Math.max(marketing[0], Math.min(marketing[1], 4)) : marketing[1];
+  const stockMax = confidence === "BAIXA" ? Math.max(stock[0], Math.min(stock[1], 20)) : stock[1];
 
   return {
     marketing: adaptiveRange(
@@ -901,12 +914,12 @@ function buildAdaptiveTargets(phase, confidence, current, diagnosis) {
         ? "Reduzir marketing pago ate a fase validar margem, produto e conversao."
         : "Manter pago pequeno e ligado a produto com margem e sinal real."
     ),
-    reserve: adaptiveRange(
+    reserve: adaptiveMonthRange(
       reserve[0],
       reserve[1],
-      diagnosis.runwayMonths < 2
-        ? "Priorizar caixa e reserva antes de compras, marketing ou retirada."
-        : "Preservar reserva antes de acelerar compras e campanhas."
+      diagnosis.runwayMonths < reserve[0]
+        ? "Priorizar caixa e reserva em meses antes de compras, marketing ou retirada."
+        : "Preservar a faixa de meses da fase antes de acelerar compras e campanhas."
     ),
     proLabore: adaptiveRange(
       proLabore[0],
@@ -1121,7 +1134,7 @@ function buildRecommendations(current, history, context, inventory, diagnosis, a
   if (diagnosis.runwayMonths < 2) {
     recommendations.push(adaptive.targets.reserve.recommendation);
   } else {
-    recommendations.push(`Reserva adaptativa da fase: ${adaptive.targets.reserve.label} do lucro/caixa livre antes de acelerar.`);
+    recommendations.push(`Reserva adaptativa da fase: ${adaptive.targets.reserve.label} de caixa antes de acelerar.`);
   }
 
   if (!diagnosis.proLaboreSeguro) {
@@ -1134,7 +1147,7 @@ function buildRecommendations(current, history, context, inventory, diagnosis, a
   goals.push(`Faturamento mensal alvo: ${fmtMoney(round(targetRevenueBase * 1.1))} a ${fmtMoney(round(targetRevenueBase * 1.2))}.`);
   goals.push(`Fase atual: ${adaptive.phaseLabel}; confianca ${adaptive.confidence} (${adaptive.confidenceScore}/100).`);
   goals.push(`Marketing pago: ${adaptive.targets.marketing.label} da receita enquanto CAC/ROAS nao estiverem claros.`);
-  goals.push(`Reserva: ${adaptive.targets.reserve.label} do lucro/caixa livre conforme fase e runway.`);
+  goals.push(`Reserva: ${adaptive.targets.reserve.label} de caixa conforme fase e runway.`);
   goals.push(`Reposicao: ${adaptive.targets.stock.label}; lote grande so com ciclo repetido e caixa livre.`);
   goals.push(`Pro-labore: ${adaptive.targets.proLabore.label} do lucro realizado, com reserva preservada.`);
 
@@ -1207,7 +1220,7 @@ function roadmap90Days() {
       "Escalar produtos vencedores.",
       "Criar calendario de campanhas.",
       "Aumentar marketing apenas se CAC for saudavel.",
-      "Formar reserva de 2 a 3 meses de gastos fixos.",
+      "Formar reserva conforme a fase adaptativa e o runway.",
       "Revisar precos, margens e curva de giro.",
     ],
   };

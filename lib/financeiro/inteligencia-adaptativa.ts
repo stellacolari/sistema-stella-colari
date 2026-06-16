@@ -210,6 +210,18 @@ function faixa(minimo: number, maximo: number, recomendacao: string): FaixaAdapt
   };
 }
 
+function faixaMeses(minimo: number, maximo: number, recomendacao: string): FaixaAdaptativa {
+  return {
+    minimo,
+    maximo,
+    label:
+      minimo === 3 && maximo === 4
+        ? "3 meses ou mais"
+        : `${minimo} a ${maximo} meses`,
+    recomendacao,
+  };
+}
+
 function diasDesde(data: Date | null | undefined) {
   if (!data) return 0;
   const diff = Date.now() - data.getTime();
@@ -602,27 +614,31 @@ function montarMetas(
   confianca: ConfiancaAnaliseGerencial
 ) {
   const baixaConfianca = confianca === "BAIXA";
+  const margemECaixaPermitemEscala =
+    params.margemBrutaPct >= 55 &&
+    params.lucroApuravel > 0 &&
+    params.runwayMeses >= 3;
   const marketingBase: Record<FaseEmpresa, [number, number]> = {
-    PRE_OPERACAO: [0, 2],
-    VALIDACAO_INICIAL: [0, 4],
-    PRIMEIRA_TRACAO: [3, 7],
-    GIRO_COMPROVADO: [5, 9],
-    CRESCIMENTO_SAUDAVEL: [6, 10],
-    ESCALA: [8, 12],
-    PRESSAO_CAIXA: [0, 3],
-    CRISE_DEFESA: [0, 1],
-    ESTOQUE_TRAVADO: [0, 4],
+    PRE_OPERACAO: [0, 3],
+    VALIDACAO_INICIAL: [3, 8],
+    PRIMEIRA_TRACAO: [5, 10],
+    GIRO_COMPROVADO: [6, 10],
+    CRESCIMENTO_SAUDAVEL: [8, 12],
+    ESCALA: margemECaixaPermitemEscala ? [12, 18] : [8, 12],
+    PRESSAO_CAIXA: [0, 5],
+    CRISE_DEFESA: [0, 0],
+    ESTOQUE_TRAVADO: [0, 5],
   };
   const proLaboreBase: Record<FaseEmpresa, [number, number]> = {
     PRE_OPERACAO: [0, 0],
     VALIDACAO_INICIAL: [0, 10],
-    PRIMEIRA_TRACAO: [10, 25],
+    PRIMEIRA_TRACAO: [10, 20],
     GIRO_COMPROVADO: [20, 35],
-    CRESCIMENTO_SAUDAVEL: [25, 40],
-    ESCALA: [30, 45],
-    PRESSAO_CAIXA: [0, 15],
-    CRISE_DEFESA: [0, 5],
-    ESTOQUE_TRAVADO: [0, 20],
+    CRESCIMENTO_SAUDAVEL: margemECaixaPermitemEscala ? [25, 50] : [20, 35],
+    ESCALA: margemECaixaPermitemEscala ? [30, 50] : [25, 35],
+    PRESSAO_CAIXA: [0, 8],
+    CRISE_DEFESA: [0, 0],
+    ESTOQUE_TRAVADO: [0, 15],
   };
   const reposicaoBase: Record<FaseEmpresa, [number, number]> = {
     PRE_OPERACAO: [0, 5],
@@ -635,24 +651,28 @@ function montarMetas(
     CRISE_DEFESA: [0, 5],
     ESTOQUE_TRAVADO: [0, 15],
   };
-  const reservaBase: Record<FaseEmpresa, [number, number]> = {
-    PRE_OPERACAO: [40, 70],
-    VALIDACAO_INICIAL: [30, 55],
-    PRIMEIRA_TRACAO: [20, 40],
-    GIRO_COMPROVADO: [15, 30],
-    CRESCIMENTO_SAUDAVEL: [10, 25],
-    ESCALA: [10, 20],
-    PRESSAO_CAIXA: [45, 75],
-    CRISE_DEFESA: [60, 90],
-    ESTOQUE_TRAVADO: [35, 60],
+  const reservaBaseMeses: Record<FaseEmpresa, [number, number]> = {
+    PRE_OPERACAO: [2, 4],
+    VALIDACAO_INICIAL: [1, 2],
+    PRIMEIRA_TRACAO: [1.5, 2.5],
+    GIRO_COMPROVADO: [2, 3],
+    CRESCIMENTO_SAUDAVEL: [2, 3],
+    ESCALA: [3, 4],
+    PRESSAO_CAIXA: [3, 5],
+    CRISE_DEFESA: [4, 6],
+    ESTOQUE_TRAVADO: [2, 4],
   };
 
   const marketing = marketingBase[fase];
   const proLabore = proLaboreBase[fase];
   const reposicao = reposicaoBase[fase];
-  const reserva = reservaBase[fase];
-  const marketingMax = baixaConfianca ? Math.min(marketing[1], 4) : marketing[1];
-  const reposicaoMax = baixaConfianca ? Math.min(reposicao[1], 20) : reposicao[1];
+  const reserva = reservaBaseMeses[fase];
+  const marketingMax = baixaConfianca
+    ? Math.max(marketing[0], Math.min(marketing[1], 4))
+    : marketing[1];
+  const reposicaoMax = baixaConfianca
+    ? Math.max(reposicao[0], Math.min(reposicao[1], 20))
+    : reposicao[1];
 
   return {
     marketingPago: faixa(
@@ -662,12 +682,12 @@ function montarMetas(
         ? "Reduzir marketing pago ate a fase validar margem, produto e conversao."
         : "Manter pago pequeno e vinculado a produtos com margem e sinal real."
     ),
-    reserva: faixa(
+    reserva: faixaMeses(
       reserva[0],
       reserva[1],
-      params.runwayMeses < 2
-        ? "Priorizar caixa e reserva antes de novas compras ou retiradas."
-        : "Preservar reserva antes de acelerar compras e campanhas."
+      params.runwayMeses < reserva[0]
+        ? "Priorizar caixa e reserva em meses antes de novas compras, marketing pago ou retiradas."
+        : "Preservar a faixa de meses da fase antes de acelerar compras e campanhas."
     ),
     proLabore: faixa(
       proLabore[0],
