@@ -277,8 +277,10 @@ type BlocoEditandoState = {
   alinhamentoTextoMobile: string;
   modeloBanner: string;
   alturaBanner: string;
+  larguraBanner: string;
   overlayBanner: string;
   corTextoBanner: string;
+  produtosFlutuantesAtivos: boolean;
   tipoMidia: string;
   exibirTexto: boolean;
   exibirSubtitulo: boolean;
@@ -371,10 +373,16 @@ const ALTURA_BANNER_PRESETS = [
   { value: "TELA_CHEIA", label: "Tela cheia" },
 ];
 
+const LARGURA_BANNER_PRESETS = [
+  { value: "FULL_BLEED", label: "Full bleed" },
+  { value: "CONTIDA", label: "Contida" },
+];
+
 const OVERLAY_BANNER_PRESETS = [
   { value: "NENHUM", label: "Nenhum" },
   { value: "LEVE", label: "Leve" },
   { value: "MEDIO", label: "Médio" },
+  { value: "GRADIENTE", label: "Gradiente" },
 ];
 
 const COR_TEXTO_BANNER_PRESETS = [
@@ -399,18 +407,13 @@ const MODELO_BANNER_PRESETS = [
     medidas: "Desktop 1920x640 px · mobile 1080x1350 px",
   },
   {
-    value: "TEXTO_GRANDE",
-    label: "Banner com texto grande",
-    medidas: "Desktop 1920x720 px · mobile 1080x1350 px",
-  },
-  {
     value: "CATEGORIA",
     label: "Banner de categoria",
     medidas: "Desktop 1920x520 px · mobile 1080x1200 px",
   },
   {
     value: "IMAGEM_LATERAL",
-    label: "Banner com imagem lateral",
+    label: "Banner com imagem lateral sangrando",
     medidas: "Desktop 1600x720 px · mobile 1080x1350 px",
   },
   {
@@ -423,6 +426,16 @@ const MODELO_BANNER_PRESETS = [
     label: "Faixa promocional",
     medidas: "Desktop 1920x320 px · mobile 1080x560 px",
   },
+];
+
+type BannerEditorAba = "CONTEUDO" | "IMAGENS" | "DESIGN" | "PRODUTOS" | "AVANCADO";
+
+const ABAS_BANNER_EDITOR: { id: BannerEditorAba; label: string }[] = [
+  { id: "CONTEUDO", label: "Conteúdo" },
+  { id: "IMAGENS", label: "Imagens" },
+  { id: "DESIGN", label: "Design" },
+  { id: "PRODUTOS", label: "Produtos" },
+  { id: "AVANCADO", label: "Avançado" },
 ];
 
 const VIDEO_SOM_PRESETS = [
@@ -1727,6 +1740,9 @@ function getBannerAlignmentClass(alinhamento: string, isMobile: boolean) {
 function getBannerOverlayClass(overlay: string) {
   if (overlay === "MEDIO") return "bg-black/45";
   if (overlay === "LEVE") return "bg-black/20";
+  if (overlay === "GRADIENTE") {
+    return "bg-gradient-to-r from-black/60 via-black/25 to-transparent";
+  }
 
   return "bg-transparent";
 }
@@ -1825,14 +1841,18 @@ function PainelSecao({
 function SecaoRecolhivel({
   title,
   description,
+  className = "",
   children,
 }: {
   title: string;
   description?: string;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <details
+      className={`rounded-2xl border border-slate-200 bg-slate-50 p-4 ${className}`}
+    >
       <summary className="cursor-pointer text-sm font-semibold text-slate-800">
         {title}
       </summary>
@@ -1882,15 +1902,19 @@ function CampoToggle({
   checked,
   label,
   description,
+  className = "",
   onChange,
 }: {
   checked: boolean;
   label: string;
   description?: string;
+  className?: string;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+    <label
+      className={`flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 ${className}`}
+    >
       <input
         type="checkbox"
         checked={checked}
@@ -2872,12 +2896,14 @@ function RenderBlocoPreview({
   onInlineTextChange,
   onInlineCardChange,
   onInlineColecaoItemChange,
+  produtosDisponiveis,
 }: {
   bloco: EditorVisualBloco;
   selecionado: boolean;
   onSelect: () => void;
   onEdit: () => void;
   device: DevicePreview;
+  produtosDisponiveis: EditorVisualProduto[];
   onInlineTextChange: (blocoId: string, patch: Record<string, unknown>) => void;
   onInlineCardChange: (
     blocoId: string,
@@ -3061,8 +3087,15 @@ function RenderBlocoPreview({
     device === "MOBILE" ? larguraMidiaMobile : larguraMidiaDesktop;
   const textoImagemFullBleed = larguraMidiaAtual === "FULL_BLEED";
   const alturaBanner = getStringConfig(config, "alturaBanner") || "PADRAO";
+  const modeloBanner = getStringConfig(config, "modeloBanner") || "BANNER_EDITORIAL";
+  const larguraBanner = getStringConfig(config, "larguraBanner") || "FULL_BLEED";
   const overlayBanner = getStringConfig(config, "overlayBanner") || "LEVE";
   const corTextoBanner = getStringConfig(config, "corTextoBanner") || "CLARO";
+  const produtosFlutuantesAtivos = getBooleanConfig(
+    config,
+    "produtosFlutuantesAtivos",
+    modeloBanner === "PRODUTOS_FLUTUANTES"
+  );
   const tipoMidia = getStringConfig(config, "tipoMidia") || "IMAGEM";
   const videoDesktopUrl = getStringConfig(config, "videoDesktopUrl");
   const videoMobileUrl = getStringConfig(config, "videoMobileUrl");
@@ -3106,6 +3139,43 @@ function RenderBlocoPreview({
   const videoBannerUrl =
     isMobile && videoMobileUrl ? videoMobileUrl : videoDesktopUrl;
   const bannerTextClasses = getBannerTextClasses(corTextoBanner);
+  const produtosFlutuantesIds = getArrayConfig(config, "produtosIds").map(String);
+  const produtosFlutuantesSelecionados = produtosFlutuantesIds
+    .map((produtoId) => getProdutoResumo(produtoId, produtosDisponiveis))
+    .filter((produto): produto is EditorVisualProduto => Boolean(produto))
+    .slice(0, 3);
+  const produtosFlutuantesPreview =
+    produtosFlutuantesSelecionados.length > 0
+      ? produtosFlutuantesSelecionados
+      : [
+          {
+            id: "preview-produto-1",
+            codigoInterno: "SC001",
+            nome: "Anel Stella",
+            imagemUrl: "",
+            categoria: "Coleção",
+            categoriaIds: [],
+            categoriaNomes: [],
+          },
+          {
+            id: "preview-produto-2",
+            codigoInterno: "SC002",
+            nome: "Colar luz",
+            imagemUrl: "",
+            categoria: "Coleção",
+            categoriaIds: [],
+            categoriaNomes: [],
+          },
+          {
+            id: "preview-produto-3",
+            codigoInterno: "SC003",
+            nome: "Brinco brilho",
+            imagemUrl: "",
+            categoria: "Coleção",
+            categoriaIds: [],
+            categoriaNomes: [],
+          },
+        ];
   const mediaTextoImagemUrl =
     isMobile && imagemMobileUrl ? imagemMobileUrl : imagemDesktopUrl;
   const videoTextoImagemUrl =
@@ -3643,138 +3713,200 @@ function RenderBlocoPreview({
 
       {isBannerTipo(bloco.tipo) ? (
         <div
-          className={`relative overflow-hidden bg-slate-900 ${getBannerHeightClass(
-            alturaBanner,
-            isMobile
-          )}`}
+          className={`bg-white ${
+            larguraBanner === "CONTIDA" ? "px-4 py-5" : ""
+          }`}
         >
-          {exibirMidia ? (
-            <div className="absolute inset-0">
-              <MediaPreview
-                tipoMidia={tipoMidia}
-                imageUrl={imagemBannerUrl}
-                videoUrl={videoBannerUrl}
-                posterUrl={videoPosterUrl}
-                alt={titulo}
-                objectPosition={mediaPositionAtual}
-                videoLoop={videoLoop}
-                videoMuted={videoSom === "MUDO"}
-                placeholder="Banner sem mídia"
-              />
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
-              Mídia oculta
-            </div>
-          )}
-
-          <div className={`absolute inset-0 ${getBannerOverlayClass(overlayBanner)}`} />
-
-          {exibirTexto && (
-            <div
-              className={`absolute inset-0 flex items-center ${getBannerAlignmentClass(
-                alinhamentoBanner,
-                isMobile
-              )}`}
-            >
-              <div className={isMobile ? "max-w-sm" : "max-w-xl"}>
-                <p
-                  className={`text-xs font-semibold uppercase tracking-[0.22em] ${bannerTextClasses.eyebrow}`}
-                >
-                  Stella
-                </p>
-
-                <div
-                  className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${textAlignPreviewClass} ${
-                    isMobile ? "text-4xl" : "text-5xl"
-                  }`}
-                  style={resolveTextStyle(tituloStyle)}
-                >
-                  <RichTextInlineEditor
-                    value={tituloRichText}
-                    fallbackText={titulo}
-                    placeholder="Clique para adicionar um título"
-                    className="w-full"
-                    style={resolveTextStyle(tituloStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        tituloRichText: richText,
-                        titulo: plainText,
-                      })
-                    }
-                  />
-                </div>
-
-                {exibirSubtitulo && (
-                  <RichTextInlineEditor
-                    value={subtituloRichText}
-                    fallbackText={texto || ""}
-                    placeholder="Clique para adicionar um subtítulo"
-                    multiline
-                    className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
-                    style={resolveTextStyle(subtituloStyle)}
-                    onChange={(richText, plainText) =>
-                      onInlineTextChange(bloco.id, {
-                        subtituloRichText: richText,
-                        textoRichText: richText,
-                        texto: plainText,
-                        descricao: plainText,
-                        conteudo: plainText,
-                      })
-                    }
-                  />
-                )}
-
-                {(exibirBotaoPrimario || exibirBotaoSecundario) && (
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    {exibirBotaoPrimario && (
-                      <div
-                        className={`inline-flex px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${bannerTextClasses.button}`}
-                        style={resolveTextStyle(botaoPrimarioStyle)}
-                      >
-                        <InlineTextEditor
-                          value={textoBotao}
-                          placeholder="Botão primário"
-                          className="text-center"
-                          style={resolveTextStyle(botaoPrimarioStyle)}
-                          onChange={(value) =>
-                            onInlineTextChange(bloco.id, {
-                              textoBotao: value,
-                              botaoTexto: value,
-                            })
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {exibirBotaoSecundario && (
-                      <div
-                        className={`inline-flex border px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${
-                          corTextoBanner === "ESCURO"
-                            ? "border-slate-950 text-slate-950"
-                            : "border-white text-white"
-                        }`}
-                        style={resolveTextStyle(botaoSecundarioStyle)}
-                      >
-                        <InlineTextEditor
-                          value={textoBotaoSecundario}
-                          placeholder="Botão secundário"
-                          className="text-center"
-                          style={resolveTextStyle(botaoSecundarioStyle)}
-                          onChange={(value) =>
-                            onInlineTextChange(bloco.id, {
-                              textoBotaoSecundario: value,
-                              botaoSecundarioTexto: value,
-                            })
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+          <div
+            className={`relative overflow-hidden bg-slate-900 ${
+              larguraBanner === "CONTIDA" ? "mx-auto max-w-7xl" : ""
+            } ${getBannerHeightClass(alturaBanner, isMobile)}`}
+          >
+            {exibirMidia ? (
+              <div
+                className={
+                  modeloBanner === "IMAGEM_LATERAL" && !isMobile
+                    ? "absolute inset-y-0 right-0 w-[58%]"
+                    : "absolute inset-0"
+                }
+              >
+                <MediaPreview
+                  tipoMidia={tipoMidia}
+                  imageUrl={imagemBannerUrl}
+                  videoUrl={videoBannerUrl}
+                  posterUrl={videoPosterUrl}
+                  alt={titulo}
+                  objectPosition={mediaPositionAtual}
+                  videoLoop={videoLoop}
+                  videoMuted={videoSom === "MUDO"}
+                  placeholder="Banner sem mídia"
+                />
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-200 text-sm font-medium text-slate-500">
+                Mídia oculta
+              </div>
+            )}
+
+            {modeloBanner === "IMAGEM_LATERAL" && !isMobile ? (
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-transparent" />
+            ) : (
+              <div className={`absolute inset-0 ${getBannerOverlayClass(overlayBanner)}`} />
+            )}
+
+            {exibirTexto && (
+              <div
+                className={`absolute inset-0 z-10 flex items-center ${getBannerAlignmentClass(
+                  modeloBanner === "FAIXA_PROMOCIONAL" ? "CENTRO" : alinhamentoBanner,
+                  isMobile
+                )}`}
+              >
+                <div
+                  className={`${
+                    isMobile
+                      ? "max-w-sm"
+                      : modeloBanner === "IMAGEM_LATERAL"
+                        ? "max-w-lg"
+                        : "max-w-2xl"
+                  }`}
+                >
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-[0.22em] ${bannerTextClasses.eyebrow}`}
+                  >
+                    Stella
+                  </p>
+
+                  <div
+                    className={`mt-3 font-light tracking-tight ${bannerTextClasses.title} ${textAlignPreviewClass} ${
+                      modeloBanner === "FAIXA_PROMOCIONAL"
+                        ? isMobile
+                          ? "text-3xl"
+                          : "text-4xl"
+                        : isMobile
+                          ? "text-4xl"
+                          : modeloBanner === "HERO_TELA_CHEIA"
+                            ? "text-7xl"
+                            : "text-5xl"
+                    }`}
+                    style={resolveTextStyle(tituloStyle)}
+                  >
+                    <RichTextInlineEditor
+                      value={tituloRichText}
+                      fallbackText={titulo}
+                      placeholder="Clique para adicionar um título"
+                      className="w-full"
+                      style={resolveTextStyle(tituloStyle)}
+                      onChange={(richText, plainText) =>
+                        onInlineTextChange(bloco.id, {
+                          tituloRichText: richText,
+                          titulo: plainText,
+                        })
+                      }
+                    />
+                  </div>
+
+                  {exibirSubtitulo && (
+                    <RichTextInlineEditor
+                      value={subtituloRichText}
+                      fallbackText={texto || ""}
+                      placeholder="Clique para adicionar um subtítulo"
+                      multiline
+                      className={`mt-4 text-sm leading-6 ${bannerTextClasses.text}`}
+                      style={resolveTextStyle(subtituloStyle)}
+                      onChange={(richText, plainText) =>
+                        onInlineTextChange(bloco.id, {
+                          subtituloRichText: richText,
+                          textoRichText: richText,
+                          texto: plainText,
+                          descricao: plainText,
+                          conteudo: plainText,
+                        })
+                      }
+                    />
+                  )}
+
+                  {(exibirBotaoPrimario || exibirBotaoSecundario) && (
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      {exibirBotaoPrimario && (
+                        <div
+                          className={`inline-flex px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${bannerTextClasses.button}`}
+                          style={resolveTextStyle(botaoPrimarioStyle)}
+                        >
+                          <InlineTextEditor
+                            value={textoBotao}
+                            placeholder="Botão primário"
+                            className="text-center"
+                            style={resolveTextStyle(botaoPrimarioStyle)}
+                            onChange={(value) =>
+                              onInlineTextChange(bloco.id, {
+                                textoBotao: value,
+                                botaoTexto: value,
+                              })
+                            }
+                          />
+                        </div>
+                      )}
+
+                      {exibirBotaoSecundario && (
+                        <div
+                          className={`inline-flex border px-5 py-3 text-sm font-semibold ${buttonRadiusPreviewClass} ${
+                            corTextoBanner === "ESCURO"
+                              ? "border-slate-950 text-slate-950"
+                              : "border-white text-white"
+                          }`}
+                          style={resolveTextStyle(botaoSecundarioStyle)}
+                        >
+                          <InlineTextEditor
+                            value={textoBotaoSecundario}
+                            placeholder="Botão secundário"
+                            className="text-center"
+                            style={resolveTextStyle(botaoSecundarioStyle)}
+                            onChange={(value) =>
+                              onInlineTextChange(bloco.id, {
+                                textoBotaoSecundario: value,
+                                botaoSecundarioTexto: value,
+                              })
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {modeloBanner === "PRODUTOS_FLUTUANTES" && produtosFlutuantesAtivos && (
+              <div className="pointer-events-none absolute bottom-6 right-6 z-20 hidden w-[42%] max-w-lg grid-cols-3 gap-3 md:grid">
+                {produtosFlutuantesPreview.map((produto, index) => (
+                  <div
+                    key={produto.id}
+                    className={`overflow-hidden bg-white/92 shadow-2xl ring-1 ring-black/5 backdrop-blur ${
+                      index === 1 ? "translate-y-8" : ""
+                    }`}
+                  >
+                    <div className="aspect-[3/4] bg-slate-100">
+                      {produto.imagemUrl ? (
+                        <img
+                          src={produto.imagemUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="p-3">
+                      <p className="line-clamp-2 text-xs font-semibold text-slate-950">
+                        {produto.nome}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {produto.codigoInterno}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : bloco.tipo === "ESPACADOR" ? (
         <div className="flex h-16 items-center justify-center bg-slate-50">
@@ -5335,6 +5467,8 @@ function EditorConteudoBlocoModal({
   salvando: boolean;
 }) {
   const [buscaProdutoManual, setBuscaProdutoManual] = useState("");
+  const [abaBannerAtiva, setAbaBannerAtiva] =
+    useState<BannerEditorAba>("CONTEUDO");
 
   if (!estado) {
     return null;
@@ -5351,6 +5485,8 @@ function EditorConteudoBlocoModal({
     MODELO_BANNER_PRESETS.find(
       (preset) => preset.value === estado.modeloBanner
     ) || MODELO_BANNER_PRESETS[1];
+  const modeloBannerAceitaProdutos =
+    estado.modeloBanner === "PRODUTOS_FLUTUANTES";
   const produtosFiltradosManual = produtosDisponiveis
     .filter((produto) => {
       const termo = buscaProdutoManual.trim().toLowerCase();
@@ -5577,9 +5713,21 @@ function EditorConteudoBlocoModal({
 
                 <select
                   value={estado.modeloBanner}
-                  onChange={(event) =>
-                    onChange({ modeloBanner: event.target.value })
-                  }
+                  onChange={(event) => {
+                    const modeloBanner = event.target.value;
+
+                    onChange({
+                      modeloBanner,
+                      ...(modeloBanner === "HERO_TELA_CHEIA"
+                        ? { alturaBanner: "TELA_CHEIA" }
+                        : modeloBanner === "FAIXA_PROMOCIONAL"
+                          ? { alturaBanner: "COMPACTA" }
+                          : {}),
+                      ...(modeloBanner === "PRODUTOS_FLUTUANTES"
+                        ? { produtosFlutuantesAtivos: true }
+                        : {}),
+                    });
+                  }}
                   className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
                 >
                   {MODELO_BANNER_PRESETS.map((preset) => (
@@ -5595,7 +5743,32 @@ function EditorConteudoBlocoModal({
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-3xl bg-slate-950/5 p-1">
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
+                {ABAS_BANNER_EDITOR.map((aba) => (
+                  <button
+                    key={aba.id}
+                    type="button"
+                    onClick={() => setAbaBannerAtiva(aba.id)}
+                    className={`rounded-2xl px-3 py-2 text-xs font-semibold transition ${
+                      abaBannerAtiva === aba.id
+                        ? "bg-white text-slate-950 shadow-sm"
+                        : "text-slate-500 hover:bg-white/70"
+                    }`}
+                  >
+                    {aba.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className={
+                abaBannerAtiva === "CONTEUDO"
+                  ? "grid gap-3 md:grid-cols-2"
+                  : "hidden"
+              }
+            >
               <CampoToggle
                 checked={estado.exibirTexto}
                 label="Exibir texto"
@@ -5629,6 +5802,7 @@ function EditorConteudoBlocoModal({
             <SecaoRecolhivel
               title="Textos / conteúdo"
               description="Você também pode editar título e subtítulo diretamente no preview."
+              className={abaBannerAtiva === "CONTEUDO" ? "" : "hidden"}
             >
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
@@ -5658,7 +5832,7 @@ function EditorConteudoBlocoModal({
               </label>
             </SecaoRecolhivel>
 
-            <label>
+            <label className={abaBannerAtiva === "IMAGENS" ? "" : "hidden"}>
               <span className="mb-2 block text-sm font-medium text-slate-700">
                 Tipo de mídia
               </span>
@@ -5680,11 +5854,16 @@ function EditorConteudoBlocoModal({
               checked={estado.exibirMidia}
               label="Exibir mídia"
               description="Oculta ou mostra a imagem/vídeo do banner sem remover URLs salvas."
+              className={abaBannerAtiva === "IMAGENS" ? "" : "hidden"}
               onChange={(checked) => onChange({ exibirMidia: checked })}
             />
 
             {estado.tipoMidia === "VIDEO" ? (
-              <div className="space-y-4">
+              <div
+                className={
+                  abaBannerAtiva === "IMAGENS" ? "space-y-4" : "hidden"
+                }
+              >
                 <div className="grid gap-4 md:grid-cols-2">
                   <UploadMidiaCampo
                     label="Vídeo desktop URL"
@@ -5740,7 +5919,13 @@ function EditorConteudoBlocoModal({
                 </div>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div
+                className={
+                  abaBannerAtiva === "IMAGENS"
+                    ? "grid gap-4 md:grid-cols-2"
+                    : "hidden"
+                }
+              >
                 <UploadMidiaCampo
                   label="Imagem desktop URL"
                   value={estado.imagemDesktopUrl}
@@ -5759,19 +5944,29 @@ function EditorConteudoBlocoModal({
               </div>
             )}
 
-            <CropPositionControls
-              desktopValue={estado.mediaPositionDesktop}
-              mobileValue={estado.mediaPositionMobile}
-              onChange={onChange}
-            />
+            <div className={abaBannerAtiva === "IMAGENS" ? "" : "hidden"}>
+              <CropPositionControls
+                desktopValue={estado.mediaPositionDesktop}
+                mobileValue={estado.mediaPositionMobile}
+                onChange={onChange}
+              />
+            </div>
 
-            <ResponsiveTextAlignControls
-              desktopValue={estado.alinhamentoTextoDesktop}
-              mobileValue={estado.alinhamentoTextoMobile}
-              onChange={onChange}
-            />
+            <div className={abaBannerAtiva === "DESIGN" ? "" : "hidden"}>
+              <ResponsiveTextAlignControls
+                desktopValue={estado.alinhamentoTextoDesktop}
+                mobileValue={estado.alinhamentoTextoMobile}
+                onChange={onChange}
+              />
+            </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div
+              className={
+                abaBannerAtiva === "CONTEUDO"
+                  ? "grid gap-4 md:grid-cols-2"
+                  : "hidden"
+              }
+            >
               <ButtonRadiusControl
                 value={estado.estiloBordaBotao}
                 onChange={(value) => onChange({ estiloBordaBotao: value })}
@@ -5808,7 +6003,13 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div
+              className={
+                abaBannerAtiva === "CONTEUDO"
+                  ? "grid gap-4 md:grid-cols-2"
+                  : "hidden"
+              }
+            >
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
                   Texto do botão secundário
@@ -5840,7 +6041,13 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div
+              className={
+                abaBannerAtiva === "DESIGN"
+                  ? "grid gap-4 md:grid-cols-2"
+                  : "hidden"
+              }
+            >
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
                   Alinhamento do conteúdo
@@ -5874,6 +6081,26 @@ function EditorConteudoBlocoModal({
                   className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
                 >
                   {ALTURA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Largura
+                </span>
+
+                <select
+                  value={estado.larguraBanner}
+                  onChange={(event) =>
+                    onChange({ larguraBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LARGURA_BANNER_PRESETS.map((preset) => (
                     <option key={preset.value} value={preset.value}>
                       {preset.label}
                     </option>
@@ -5922,7 +6149,163 @@ function EditorConteudoBlocoModal({
               </label>
             </div>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+            <div
+              className={
+                abaBannerAtiva === "PRODUTOS" ? "space-y-4" : "hidden"
+              }
+            >
+              {modeloBannerAceitaProdutos ? (
+                <>
+                  <CampoToggle
+                    checked={estado.produtosFlutuantesAtivos}
+                    label="Exibir produtos flutuantes"
+                    description="Mostra cards editoriais sobre a imagem do banner."
+                    onChange={(checked) =>
+                      onChange({ produtosFlutuantesAtivos: checked })
+                    }
+                  />
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Buscar produto
+                    </span>
+                    <input
+                      value={buscaProdutoManual}
+                      onChange={(event) =>
+                        setBuscaProdutoManual(event.target.value)
+                      }
+                      placeholder="Digite nome, código ou categoria"
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Disponíveis
+                      </p>
+                      <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                        {produtosFiltradosManual.map((produto) => (
+                          <button
+                            key={produto.id}
+                            type="button"
+                            onClick={() => adicionarProdutoManual(produto.id)}
+                            className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-slate-50"
+                          >
+                            <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                              {produto.imagemUrl ? (
+                                <img
+                                  src={produto.imagemUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-slate-800">
+                                {produto.nome}
+                              </span>
+                              <span className="block truncate text-xs text-slate-400">
+                                {produto.codigoInterno} · {produto.categoria}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+
+                        {produtosFiltradosManual.length === 0 && (
+                          <p className="px-2 py-4 text-sm text-slate-500">
+                            Nenhum produto encontrado.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Selecionados
+                      </p>
+                      <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
+                        {estado.produtosSelecionadosIds.map(
+                          (produtoId, index) => {
+                            const produto = getProdutoResumo(
+                              produtoId,
+                              produtosDisponiveis
+                            );
+
+                            return (
+                              <div
+                                key={produtoId}
+                                className="flex items-center gap-2 rounded-xl border border-slate-100 px-2 py-2"
+                              >
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                                  {index + 1}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold text-slate-800">
+                                    {produto?.nome || "Produto indisponível"}
+                                  </span>
+                                  <span className="block truncate text-xs text-slate-400">
+                                    {produto?.codigoInterno || produtoId}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => moverProdutoManual(produtoId, "UP")}
+                                  disabled={index === 0}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                                  aria-label="Subir produto"
+                                >
+                                  <ArrowUp className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    moverProdutoManual(produtoId, "DOWN")
+                                  }
+                                  disabled={
+                                    index ===
+                                    estado.produtosSelecionadosIds.length - 1
+                                  }
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                                  aria-label="Descer produto"
+                                >
+                                  <ArrowDown className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removerProdutoManual(produtoId)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700"
+                                  aria-label="Remover produto"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            );
+                          }
+                        )}
+
+                        {estado.produtosSelecionadosIds.length === 0 && (
+                          <p className="px-2 py-4 text-sm text-slate-500">
+                            Selecione até 3 produtos para compor o banner.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
+                  Produtos flutuantes ficam disponíveis no modelo “Banner com
+                  produtos flutuantes”.
+                </div>
+              )}
+            </div>
+
+            <div
+              className={`rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 ${
+                abaBannerAtiva === "AVANCADO" ? "" : "hidden"
+              }`}
+            >
               Crop ainda não está ativo nesta etapa. Para vídeo, prefira MP4
               com codec H.264 para maior compatibilidade.
             </div>
@@ -8436,8 +8819,14 @@ export default function EditorVisualPaginaClient({
         "CENTRO",
       modeloBanner: getStringConfig(config, "modeloBanner") || "BANNER_EDITORIAL",
       alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
+      larguraBanner: getStringConfig(config, "larguraBanner") || "FULL_BLEED",
       overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
       corTextoBanner: getStringConfig(config, "corTextoBanner") || "CLARO",
+      produtosFlutuantesAtivos: getBooleanConfig(
+        config,
+        "produtosFlutuantesAtivos",
+        getStringConfig(config, "modeloBanner") === "PRODUTOS_FLUTUANTES"
+      ),
       tipoMidia: getStringConfig(config, "tipoMidia") || "IMAGEM",
       exibirTexto: getBooleanConfig(config, "exibirTexto", true),
       exibirSubtitulo: getBooleanConfig(config, "exibirSubtitulo", true),
@@ -8585,8 +8974,11 @@ export default function EditorVisualPaginaClient({
               modeloBanner: editando.modeloBanner,
               alinhamentoConteudo: editando.alinhamentoConteudo,
               alturaBanner: editando.alturaBanner,
+              larguraBanner: editando.larguraBanner,
               overlayBanner: editando.overlayBanner,
               corTextoBanner: editando.corTextoBanner,
+              produtosFlutuantesAtivos: editando.produtosFlutuantesAtivos,
+              produtosIds: editando.produtosSelecionadosIds,
               mediaCropDesktopX: editando.mediaCropDesktopX,
               mediaCropDesktopY: editando.mediaCropDesktopY,
               mediaCropMobileX: editando.mediaCropMobileX,
@@ -9058,6 +9450,7 @@ export default function EditorVisualPaginaClient({
                 onInlineTextChange={atualizarTextoInline}
                 onInlineCardChange={atualizarCardInline}
                 onInlineColecaoItemChange={atualizarColecaoItemInline}
+                produtosDisponiveis={produtosDisponiveis}
               />
             ))}
 
