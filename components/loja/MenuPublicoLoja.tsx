@@ -53,6 +53,34 @@ type ProdutoBuscaMenuItem = {
   }[];
 };
 
+type BuscaAutocompleteProduto = {
+  id: string;
+  codigoInterno: string;
+  nome: string;
+  categoria: string;
+  imagemUrl?: string | null;
+  href: string;
+};
+
+type BuscaAutocompleteCategoria = {
+  id: string;
+  nome: string;
+  href: string;
+};
+
+type BuscaAutocompletePagina = {
+  id: string;
+  titulo: string;
+  href: string;
+};
+
+type BuscaAutocompleteResultado = {
+  produtos: BuscaAutocompleteProduto[];
+  categorias: BuscaAutocompleteCategoria[];
+  paginas: BuscaAutocompletePagina[];
+  sugestoes: string[];
+};
+
 type MenuPublicoLojaProps = {
   menus: MenuPublicoItem[];
   categorias?: CategoriaMenuPublicoItem[];
@@ -64,13 +92,7 @@ type MenuPublicoLojaProps = {
   mostrarFavoritos?: boolean;
 };
 
-function normalizarTexto(value: string | null | undefined) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
+const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
 
 function isExternalUrl(href: string) {
   return /^https?:\/\//i.test(href);
@@ -172,12 +194,12 @@ function ProdutoSugestaoBusca({
   produto,
   onNavigate,
 }: {
-  produto: ProdutoBuscaMenuItem;
+  produto: BuscaAutocompleteProduto;
   onNavigate: () => void;
 }) {
   return (
     <Link
-      href={`/loja/produto/${produto.id}`}
+      href={produto.href}
       onClick={onNavigate}
       className="block border-b border-slate-100 px-1 py-3 last:border-b-0"
     >
@@ -190,6 +212,35 @@ function ProdutoSugestaoBusca({
       </p>
     </Link>
   );
+}
+
+function lerBuscasRecentes() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(BUSCAS_RECENTES_KEY) || "[]");
+
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => typeof item === "string").slice(0, 5)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function salvarBuscaRecente(termo: string) {
+  if (typeof window === "undefined") return;
+
+  const termoLimpo = termo.trim();
+  if (!termoLimpo) return;
+
+  const atuais = lerBuscasRecentes();
+  const proximas = [
+    termoLimpo,
+    ...atuais.filter((item) => item.toLowerCase() !== termoLimpo.toLowerCase()),
+  ].slice(0, 5);
+
+  window.localStorage.setItem(BUSCAS_RECENTES_KEY, JSON.stringify(proximas));
 }
 
 function CategoriaSubLink({
@@ -306,7 +357,6 @@ function CategoriaMobileItem({
 export default function MenuPublicoLoja({
   menus,
   categorias = [],
-  produtos = [],
   configuracaoMenuRodape,
   mostrarBusca = true,
   mostrarPerfil = true,
@@ -323,8 +373,14 @@ export default function MenuPublicoLoja({
     string[]
   >([]);
   const [busca, setBusca] = useState("");
+  const [resultadoBusca, setResultadoBusca] =
+    useState<BuscaAutocompleteResultado | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [buscasRecentes, setBuscasRecentes] = useState<string[]>([]);
   const [favoritosCount, setFavoritosCount] = useState(0);
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
+  const buscaContainerRef = useRef<HTMLDivElement | null>(null);
+  const buscaAbortRef = useRef<AbortController | null>(null);
 
   const configMenu = useMemo(
     () => normalizarLojaMenuRodapeConfig(configuracaoMenuRodape).menu,
@@ -384,7 +440,8 @@ export default function MenuPublicoLoja({
       (categoria) => categoria.id === categoriaSelecionadaId
     ) ?? null;
 
-  const termoBusca = normalizarTexto(busca);
+  const termoBusca = busca.trim();
+  const sugestoesBusca = resultadoBusca?.produtos || [];
 
   useEffect(() => {
     function atualizarContador() {
@@ -402,26 +459,76 @@ export default function MenuPublicoLoja({
     };
   }, []);
 
-  const sugestoesBusca = useMemo(() => {
-    if (!termoBusca) return [];
+  useEffect(() => {
+    setBuscasRecentes(lerBuscasRecentes());
+  }, []);
 
-    return produtos
-      .filter((produto) => {
-        const texto = normalizarTexto(
-          [
-            produto.codigoInterno,
-            produto.nome,
-            produto.categoria,
-            ...(produto.tamanhosDisponiveis || []).map(
-              (tamanho) => `tam ${tamanho.tamanhoAnel}`
-            ),
-          ].join(" ")
+  useEffect(() => {
+    if (!buscaAberta) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node | null;
+
+      if (target && buscaContainerRef.current?.contains(target)) {
+        return;
+      }
+
+      fecharBusca();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [buscaAberta]);
+
+  useEffect(() => {
+    if (!buscaAberta) return;
+
+    buscaAbortRef.current?.abort();
+
+    if (termoBusca.length < 2) {
+      setResultadoBusca(null);
+      setBuscando(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    buscaAbortRef.current = controller;
+    setBuscando(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/loja/busca?q=${encodeURIComponent(termoBusca)}&limite=6`,
+          {
+            signal: controller.signal,
+          }
         );
 
-        return texto.includes(termoBusca);
-      })
-      .slice(0, 6);
-  }, [produtos, termoBusca]);
+        if (!response.ok) {
+          throw new Error("Erro ao buscar sugestoes.");
+        }
+
+        const data = (await response.json()) as BuscaAutocompleteResultado;
+        setResultadoBusca(data);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Erro no autocomplete da loja:", error);
+        setResultadoBusca(null);
+      } finally {
+        if (!controller.signal.aborted) {
+          setBuscando(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [buscaAberta, termoBusca]);
 
   useEffect(() => {
     if (!menuAberto) return;
@@ -464,12 +571,37 @@ export default function MenuPublicoLoja({
   function fecharBusca() {
     setBuscaAberta(false);
     setBusca("");
+    setResultadoBusca(null);
+    setBuscando(false);
+    buscaAbortRef.current?.abort();
   }
 
   function abrirMenu() {
     setMenuAberto(true);
     setBuscaAberta(false);
     setBusca("");
+    setResultadoBusca(null);
+  }
+
+  function irParaResultadosBusca() {
+    const termo = busca.trim();
+
+    if (!termo) return;
+
+    salvarBuscaRecente(termo);
+    setBuscasRecentes(lerBuscasRecentes());
+    window.location.href = `/loja/busca?q=${encodeURIComponent(termo)}`;
+  }
+
+  function navegarSugestaoBusca() {
+    const termo = busca.trim();
+
+    if (termo) {
+      salvarBuscaRecente(termo);
+      setBuscasRecentes(lerBuscasRecentes());
+    }
+
+    fecharBusca();
   }
 
   function fecharMenu() {
@@ -531,7 +663,7 @@ export default function MenuPublicoLoja({
                 type="button"
                 onClick={buscaAberta ? fecharBusca : abrirBusca}
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
-                className="hidden h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] md:inline-flex"
+                className="inline-flex h-10 w-9 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
               >
                 {buscaAberta ? (
                   <X className="h-5 w-5" />
@@ -584,7 +716,10 @@ export default function MenuPublicoLoja({
         </div>
 
         {buscaAberta && (
-          <div className="absolute left-0 right-0 top-full z-50 border-t border-slate-100 bg-white px-4 py-4 shadow-2xl sm:px-6 lg:px-8">
+          <div
+            ref={buscaContainerRef}
+            className="absolute left-0 right-0 top-full z-50 border-t border-slate-100 bg-white px-4 py-4 shadow-2xl sm:px-6 lg:px-8"
+          >
             <div className="mx-auto max-w-2xl">
               <div className="flex items-center justify-between gap-3">
                 <label className="flex h-12 flex-1 items-center gap-2 border border-slate-200 bg-white px-4 transition focus-within:border-[var(--brand-blue)]">
@@ -594,6 +729,12 @@ export default function MenuPublicoLoja({
                     ref={inputBuscaRef}
                     value={busca}
                     onChange={(event) => setBusca(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        irParaResultadosBusca();
+                      }
+                    }}
                     placeholder="Buscar joias, categorias ou códigos"
                     className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
                   />
@@ -611,10 +752,33 @@ export default function MenuPublicoLoja({
 
               <div className="mt-3 max-h-[55vh] overflow-y-auto">
                 {!termoBusca ? (
+                  <>
                   <p className="px-1 py-3 text-sm font-medium text-slate-500">
                     Digite o nome, código, categoria ou tamanho do produto.
                   </p>
-                ) : sugestoesBusca.length > 0 ? (
+                  {buscasRecentes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 px-1 pb-3">
+                      {buscasRecentes.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => setBusca(item)}
+                          className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  </>
+                ) : buscando ? (
+                  <p className="px-1 py-3 text-sm font-medium text-slate-500">
+                    Buscando...
+                  </p>
+                ) : resultadoBusca &&
+                  (sugestoesBusca.length > 0 ||
+                    resultadoBusca.categorias.length > 0 ||
+                    resultadoBusca.paginas.length > 0) ? (
                   <div>
                     <p className="px-1 pb-1 text-xs font-medium uppercase tracking-[0.22em] brand-text">
                       Sugestões
@@ -624,14 +788,53 @@ export default function MenuPublicoLoja({
                       <ProdutoSugestaoBusca
                         key={produto.id}
                         produto={produto}
-                        onNavigate={fecharBusca}
+                        onNavigate={navegarSugestaoBusca}
                       />
                     ))}
+
+                    {resultadoBusca?.categorias.map((categoria) => (
+                      <Link
+                        key={categoria.id}
+                        href={categoria.href}
+                        onClick={navegarSugestaoBusca}
+                        className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
+                      >
+                        {categoria.nome}
+                      </Link>
+                    ))}
+
+                    {resultadoBusca?.paginas.map((pagina) => (
+                      <Link
+                        key={pagina.id}
+                        href={pagina.href}
+                        onClick={navegarSugestaoBusca}
+                        className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
+                      >
+                        {pagina.titulo}
+                      </Link>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={irParaResultadosBusca}
+                      className="mt-3 flex h-11 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Ver todos os resultados
+                    </button>
                   </div>
                 ) : (
-                  <p className="px-1 py-3 text-sm font-medium text-slate-500">
-                    Nenhum produto encontrado.
-                  </p>
+                  <div>
+                    <p className="px-1 py-3 text-sm font-medium text-slate-500">
+                      Nenhum produto encontrado.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={irParaResultadosBusca}
+                      className="flex h-11 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Ver busca completa
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
