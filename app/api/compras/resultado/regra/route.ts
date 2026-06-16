@@ -57,9 +57,18 @@ export async function PATCH(req: Request) {
         where: { regraId: regraAtual.id },
       });
 
+      await tx.regraDistribuicaoResultado.updateMany({
+        where: {
+          id: { not: regraAtual.id },
+          ativa: true,
+        },
+        data: { ativa: false },
+      });
+
       return tx.regraDistribuicaoResultado.update({
         where: { id: regraAtual.id },
         data: {
+          ativa: true,
           nome: texto(body.nome) || regraAtual.nome,
           percentualEmpresa,
           percentualProLabore,

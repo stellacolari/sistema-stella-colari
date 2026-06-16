@@ -240,6 +240,30 @@ function aggregateMap(items, keyFn, valueFn) {
   return [...map.values()];
 }
 
+function calcularTotalCompraEsperado(compra) {
+  const totalProdutosBase = sum(
+    compra.itens.filter((item) => item.tipoItem === "produto"),
+    (item) => item.valorTotalBase
+  );
+  const totalAdicionaisBase = sum(
+    compra.itens.filter((item) => item.tipoItem === "adicional"),
+    (item) => item.valorTotalBase
+  );
+  const descontoProdutos = totalProdutosBase * (num(compra.descontoPercentual) / 100);
+  const totalPelosItensArredondados = round(
+    sum(compra.itens, (item) => item.valorTotalFinal) + num(compra.frete)
+  );
+  const totalPelaFormula = round(
+    totalProdutosBase - descontoProdutos + totalAdicionaisBase + num(compra.frete)
+  );
+
+  return {
+    totalPelaFormula,
+    totalPelosItensArredondados,
+    diferencaItens: round(totalPelaFormula - totalPelosItensArredondados),
+  };
+}
+
 function top(items, field, limit = 10) {
   return [...items].sort((a, b) => num(b[field]) - num(a[field])).slice(0, limit);
 }
@@ -650,10 +674,19 @@ function auditPurchases(data, findings) {
   for (const compra of data.compras) {
     if (!compra.fornecedor) addFinding(findings, "ALTO", "Compras de estoque", "Compra sem fornecedor.", "Listagens e contas a pagar ficam incompletas.", [compra.codigo], "Preencher fornecedor.");
     if (compra.itens.length === 0) addFinding(findings, "CRITICO", "Compras de estoque", "Compra sem itens.", "Entrada de estoque fica sem lastro.", [compra.codigo], "Revisar compra.");
-    const itensTotal = sum(compra.itens, (item) => item.valorTotalFinal);
-    const expected = round(itensTotal + num(compra.frete));
-    if (!isClose(expected, compra.valorTotalFinal)) {
-      addFinding(findings, "ALTO", "Compras de estoque", "Total final da compra não bate com itens + frete.", `Esperado ${fmtMoney(expected)}; gravado ${fmtMoney(compra.valorTotalFinal)}.`, [compra.codigo], "Recalcular compra em ambiente controlado.");
+    const totalCompra = calcularTotalCompraEsperado(compra);
+    if (!isClose(totalCompra.totalPelaFormula, compra.valorTotalFinal)) {
+      addFinding(findings, "ALTO", "Compras de estoque", "Total final da compra nao bate com a formula oficial.", `Esperado ${fmtMoney(totalCompra.totalPelaFormula)}; gravado ${fmtMoney(compra.valorTotalFinal)}.`, [compra.codigo], "Recalcular compra em ambiente controlado.");
+    } else if (!isClose(totalCompra.totalPelosItensArredondados, compra.valorTotalFinal)) {
+      addFinding(
+        findings,
+        "INFO",
+        "Compras de estoque",
+        "Soma dos itens arredondados difere do total calculado no cabecalho.",
+        `Itens + frete ${fmtMoney(totalCompra.totalPelosItensArredondados)}; cabecalho ${fmtMoney(compra.valorTotalFinal)}; diferenca ${fmtMoney(totalCompra.diferencaItens)}.`,
+        [compra.codigo],
+        "Sem correcao automatica: cabecalho fecha pela formula oficial de desconto sobre produtos."
+      );
     }
     for (const item of compra.itens) {
       const entradas = data.movimentos.filter((mov) => mov.relacionadoA === item.id && String(mov.tipoMovimentacao || "").startsWith("ENTRADA"));

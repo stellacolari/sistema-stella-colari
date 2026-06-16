@@ -514,18 +514,43 @@ async function ensureFinancialBase(counters, summary) {
   return { contas, regra };
 }
 
+function isDistributionRuleValid(regra) {
+  const destinosAtivos = (regra.destinos || []).filter((destino) => destino.ativo !== false);
+  const totalPrincipal = round(number(regra.percentualEmpresa) + number(regra.percentualProLabore));
+  const totalDestinos = round(destinosAtivos.reduce((total, destino) => total + number(destino.percentual), 0));
+
+  return destinosAtivos.length > 0 && totalPrincipal === 100 && totalDestinos === 100;
+}
+
 async function getOrCreateDistributionRule(summary) {
-  const existing = await prisma.regraDistribuicaoResultado.findFirst({
+  const existingRules = await prisma.regraDistribuicaoResultado.findMany({
     where: { ativa: true },
     include: {
       destinos: {
         orderBy: [{ ordem: "asc" }, { nome: "asc" }],
       },
     },
-    orderBy: { criadoEm: "asc" },
+    orderBy: { criadoEm: "desc" },
   });
 
-  if (existing && existing.destinos.length > 0) return existing;
+  const existing =
+    existingRules.find((regra) => isDistributionRuleValid(regra)) ||
+    existingRules[0];
+
+  if (existing) {
+    const duplicatedIds = existingRules
+      .filter((regra) => regra.id !== existing.id)
+      .map((regra) => regra.id);
+
+    if (duplicatedIds.length > 0) {
+      await prisma.regraDistribuicaoResultado.updateMany({
+        where: { id: { in: duplicatedIds } },
+        data: { ativa: false },
+      });
+    }
+
+    return existing;
+  }
 
   const created = await prisma.regraDistribuicaoResultado.create({
     data: {

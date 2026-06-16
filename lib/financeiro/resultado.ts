@@ -218,18 +218,45 @@ export async function listarContasFinanceiras() {
   });
 }
 
+function regraDistribuicaoValida(regra: RegraComDestinos) {
+  return !validarRegraDistribuicao({
+    percentualEmpresa: numero(regra.percentualEmpresa),
+    percentualProLabore: numero(regra.percentualProLabore),
+    destinos: regra.destinos
+      .filter((destino) => destino.ativo !== false)
+      .map((destino) => ({ percentual: numero(destino.percentual) })),
+  });
+}
+
 export async function obterOuCriarRegraDistribuicaoAtiva(): Promise<RegraComDestinos> {
-  const existente = await prisma.regraDistribuicaoResultado.findFirst({
+  const regrasAtivas = await prisma.regraDistribuicaoResultado.findMany({
     where: { ativa: true },
     include: {
       destinos: {
         orderBy: [{ ordem: "asc" }, { nome: "asc" }],
       },
     },
-    orderBy: { criadoEm: "asc" },
+    orderBy: { criadoEm: "desc" },
   });
 
-  if (existente) return existente;
+  const regraOficial =
+    regrasAtivas.find((regra) => regraDistribuicaoValida(regra)) ??
+    regrasAtivas[0];
+
+  if (regraOficial) {
+    const regrasDuplicadas = regrasAtivas
+      .filter((regra) => regra.id !== regraOficial.id)
+      .map((regra) => regra.id);
+
+    if (regrasDuplicadas.length > 0) {
+      await prisma.regraDistribuicaoResultado.updateMany({
+        where: { id: { in: regrasDuplicadas } },
+        data: { ativa: false },
+      });
+    }
+
+    return regraOficial;
+  }
 
   return prisma.regraDistribuicaoResultado.create({
     data: {
