@@ -810,6 +810,7 @@ async function buscarCategoriaPrincipalObrigatoria(categoriaPrincipalId: string)
 export async function criarProduto(formData: FormData) {
   const usuario = await exigirAdmin();
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
+  const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -817,6 +818,12 @@ export async function criarProduto(formData: FormData) {
   const margemAplicada = numeroFormulario(formData.get("margemAplicada"));
   const fornecedorPadrao = String(formData.get("fornecedorPadrao") || "").trim();
   const descricaoLoja = String(formData.get("descricaoLoja") || "").trim();
+  const termosBusca = podeEditarBuscaSeo
+    ? String(formData.get("termosBusca") || "").trim()
+    : "";
+  const tagsComerciais = podeEditarBuscaSeo
+    ? String(formData.get("tagsComerciais") || "").trim()
+    : "";
   const observacoes = String(formData.get("observacoes") || "").trim();
   const galeriaProduto = lerGaleriaProduto(formData);
   const variacoesProduto = lerVariacoesProduto(formData);
@@ -900,6 +907,8 @@ export async function criarProduto(formData: FormData) {
       descontoAtivo: promocao.descontoAtivo,
       precoPromocional: promocao.precoPromocional,
       descricaoLoja: descricaoLoja || null,
+      termosBusca: termosBusca || null,
+      tagsComerciais: tagsComerciais || null,
       categoria: categoriaPrincipal.nome,
       fornecedorPadrao,
       observacoes: observacoes || null,
@@ -939,6 +948,7 @@ export async function criarProduto(formData: FormData) {
 export async function atualizarProduto(id: string, formData: FormData) {
   const usuario = await exigirAdmin();
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
+  const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -946,6 +956,12 @@ export async function atualizarProduto(id: string, formData: FormData) {
   const margemAplicada = numeroFormulario(formData.get("margemAplicada"));
   const fornecedorPadrao = String(formData.get("fornecedorPadrao") || "").trim();
   const descricaoLoja = String(formData.get("descricaoLoja") || "").trim();
+  const termosBusca = podeEditarBuscaSeo
+    ? String(formData.get("termosBusca") || "").trim()
+    : "";
+  const tagsComerciais = podeEditarBuscaSeo
+    ? String(formData.get("tagsComerciais") || "").trim()
+    : "";
   const observacoes = String(formData.get("observacoes") || "").trim();
   const galeriaProduto = lerGaleriaProduto(formData);
   const variacoesProduto = lerVariacoesProduto(formData);
@@ -1022,6 +1038,12 @@ export async function atualizarProduto(id: string, formData: FormData) {
       descontoAtivo: promocao.descontoAtivo,
       precoPromocional: promocao.precoPromocional,
       descricaoLoja: descricaoLoja || null,
+      ...(podeEditarBuscaSeo
+        ? {
+            termosBusca: termosBusca || null,
+            tagsComerciais: tagsComerciais || null,
+          }
+        : {}),
       categoria: categoriaPrincipal.nome,
       fornecedorPadrao,
       observacoes: observacoes || null,

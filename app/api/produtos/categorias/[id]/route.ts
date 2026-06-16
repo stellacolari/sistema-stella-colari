@@ -12,6 +12,8 @@ const categoriaSelect = {
   slug: true,
   categoriaMaeId: true,
   descricao: true,
+  descricaoSeo: true,
+  termosBusca: true,
   imagemUrl: true,
   exibirNoMenu: true,
   ordemMenu: true,
@@ -127,6 +129,8 @@ export async function PATCH(
 
     const nome = String(formData.get("nome") || "").trim();
     const descricao = String(formData.get("descricao") || "").trim();
+    const descricaoSeo = String(formData.get("descricaoSeo") || "").trim();
+    const termosBusca = String(formData.get("termosBusca") || "").trim();
     const imagemUrlInformada = String(formData.get("imagemUrl") || "").trim();
     const categoriaMaeIdRaw = String(
       formData.get("categoriaMaeId") || ""
@@ -190,6 +194,8 @@ export async function PATCH(
       data: {
         nome,
         descricao: descricao || null,
+        descricaoSeo: descricaoSeo || null,
+        termosBusca: termosBusca || null,
         imagemUrl: imagemUrlFinal,
         categoriaMaeId,
         exibirNoMenu: parseBoolean(formData.get("exibirNoMenu"), true),

@@ -92,6 +92,7 @@ export async function PATCH(
       usarComoTemplatePadrao?: boolean;
       seoTitle?: string | null;
       seoDescription?: string | null;
+      termosBusca?: string | null;
       publicadoEm?: Date | null;
     } = {};
 
@@ -236,6 +237,10 @@ if (typeof body.statusPublicacao !== "undefined") {
 
     if (typeof body.seoDescription !== "undefined") {
       data.seoDescription = parseStringOrNull(body.seoDescription);
+    }
+
+    if (typeof body.termosBusca !== "undefined") {
+      data.termosBusca = parseStringOrNull(body.termosBusca);
     }
 
     if (data.usarComoTemplatePadrao) {

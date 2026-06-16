@@ -29,6 +29,8 @@ model Produto {
   precoPromocional               Float?
   imagemHoverUrl                 String?
   descricaoLoja                  String?
+  termosBusca                    String?
+  tagsComerciais                 String?
   tipoProduto                    String                           @default("UNITARIO")
   familiaId                      String?
   familiaMaterial                String?
@@ -854,6 +856,7 @@ model LojaPagina {
   publicadoEm            DateTime?
   seoDescription         String?
   seoTitle               String?
+  termosBusca            String?
   statusPublicacao       String            @default("PUBLICADA")
   usarComoTemplatePadrao Boolean           @default(false)
   categoria              CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
@@ -890,6 +893,8 @@ model CategoriaProduto {
   nome                       String
   slug                       String                           @unique
   descricao                  String?
+  descricaoSeo               String?
+  termosBusca                String?
   ativo                      Boolean                          @default(true)
   ordem                      Int                              @default(0)
   categoriaMaeId             String?

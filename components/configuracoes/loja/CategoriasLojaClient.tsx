@@ -24,6 +24,8 @@ export type CategoriaLoja = {
   slug: string;
   categoriaMaeId: string | null;
   descricao?: string | null;
+  descricaoSeo?: string | null;
+  termosBusca?: string | null;
   imagemUrl?: string | null;
   exibirNoMenu?: boolean;
   ordemMenu?: number;
@@ -150,12 +152,16 @@ function filtrarArvoreCategorias(
       );
 
       const descricao = normalizarTexto(categoria.descricao);
+      const descricaoSeo = normalizarTexto(categoria.descricaoSeo);
+      const termosBusca = normalizarTexto(categoria.termosBusca);
 
       const categoriaCombina =
         normalizarTexto(categoria.nome).includes(termo) ||
         normalizarTexto(categoria.slug).includes(termo) ||
         caminho.includes(termo) ||
-        descricao.includes(termo);
+        descricao.includes(termo) ||
+        descricaoSeo.includes(termo) ||
+        termosBusca.includes(termo);
 
       if (categoriaCombina || filhosFiltrados.length > 0) {
         return {
@@ -211,6 +217,8 @@ export default function CategoriasLojaClient({
 
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
+  const [editDescricaoSeo, setEditDescricaoSeo] = useState("");
+  const [editTermosBusca, setEditTermosBusca] = useState("");
   const [editImagemUrl, setEditImagemUrl] = useState("");
   const [editImagemArquivo, setEditImagemArquivo] = useState<File | null>(null);
   const [editExibirNoMenu, setEditExibirNoMenu] = useState(true);
@@ -326,6 +334,8 @@ export default function CategoriasLojaClient({
     setCategoriaEditando(categoria);
     setEditNome(categoria.nome || "");
     setEditDescricao(categoria.descricao || "");
+    setEditDescricaoSeo(categoria.descricaoSeo || "");
+    setEditTermosBusca(categoria.termosBusca || "");
     setEditImagemUrl(categoria.imagemUrl || "");
     setEditImagemArquivo(null);
     setEditExibirNoMenu(categoria.exibirNoMenu ?? true);
@@ -407,6 +417,8 @@ export default function CategoriasLojaClient({
 
       formData.append("nome", nome);
       formData.append("descricao", editDescricao);
+      formData.append("descricaoSeo", editDescricaoSeo);
+      formData.append("termosBusca", editTermosBusca);
       formData.append("imagemUrl", editImagemUrl);
       formData.append("exibirNoMenu", String(editExibirNoMenu));
       formData.append("ordemMenu", editOrdemMenu);
@@ -966,6 +978,49 @@ export default function CategoriasLojaClient({
                   className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
                 />
               </label>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">
+                  SEO e busca
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Ajuda a busca interna e o SEO da categoria.
+                </p>
+
+                <div className="mt-4 grid gap-4">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Descrição SEO
+                    </span>
+
+                    <textarea
+                      value={editDescricaoSeo}
+                      onChange={(event) =>
+                        setEditDescricaoSeo(event.target.value)
+                      }
+                      rows={3}
+                      placeholder="Resumo da categoria para buscadores e compartilhamento."
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Termos de busca
+                    </span>
+
+                    <textarea
+                      value={editTermosBusca}
+                      onChange={(event) =>
+                        setEditTermosBusca(event.target.value)
+                      }
+                      rows={3}
+                      placeholder="presente, romântico, dia dos namorados, minimalista"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
+                    />
+                  </label>
+                </div>
+              </div>
 
               <div>
                 <span className="mb-2 block text-sm font-medium text-slate-700">

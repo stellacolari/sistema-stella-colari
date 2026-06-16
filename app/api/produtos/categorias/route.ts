@@ -37,6 +37,8 @@ const categoriaSelect = {
   slug: true,
   categoriaMaeId: true,
   descricao: true,
+  descricaoSeo: true,
+  termosBusca: true,
   imagemUrl: true,
   exibirNoMenu: true,
   ordemMenu: true,
@@ -109,6 +111,12 @@ export async function POST(req: Request) {
         categoriaMaeId,
         ativo: true,
         descricao: body.descricao ? String(body.descricao).trim() : null,
+        descricaoSeo: body.descricaoSeo
+          ? String(body.descricaoSeo).trim()
+          : null,
+        termosBusca: body.termosBusca
+          ? String(body.termosBusca).trim()
+          : null,
         imagemUrl: body.imagemUrl ? String(body.imagemUrl).trim() : null,
         exibirNoMenu:
           typeof body.exibirNoMenu === "boolean" ? body.exibirNoMenu : true,

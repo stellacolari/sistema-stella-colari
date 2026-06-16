@@ -64,6 +64,9 @@ export type EditorVisualPagina = {
   tipo: string;
   ativo: boolean;
   statusPublicacao: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  termosBusca?: string | null;
   urlPublica: string;
   categoriaId?: string | null;
   categoriaNome?: string | null;
@@ -114,6 +117,12 @@ type EditorVisualPaginaClientProps = {
   categoriasDisponiveis: EditorVisualCategoria[];
   paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
+};
+
+type DadosSeoPaginaForm = {
+  seoTitle: string;
+  seoDescription: string;
+  termosBusca: string;
 };
 
 type DevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
@@ -10963,6 +10972,128 @@ function EditorConteudoBlocoModal({
   );
 }
 
+function DadosSeoPaginaModal({
+  aberto,
+  form,
+  onChange,
+  onClose,
+  onSave,
+  salvando,
+}: {
+  aberto: boolean;
+  form: DadosSeoPaginaForm;
+  onChange: (campo: keyof DadosSeoPaginaForm, valor: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+  salvando: boolean;
+}) {
+  if (!aberto) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Dados/SEO
+            </p>
+
+            <h3 className="mt-1 text-lg font-semibold text-slate-950">
+              Dados de busca da pÃ¡gina
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={salvando}
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="max-h-[68vh] space-y-4 overflow-y-auto px-6 py-5">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              TÃ­tulo SEO
+            </span>
+
+            <input
+              value={form.seoTitle}
+              onChange={(event) => onChange("seoTitle", event.target.value)}
+              placeholder="TÃ­tulo exibido em compartilhamentos e resultados"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              DescriÃ§Ã£o SEO
+            </span>
+
+            <textarea
+              value={form.seoDescription}
+              onChange={(event) =>
+                onChange("seoDescription", event.target.value)
+              }
+              rows={3}
+              placeholder="Resumo editorial da pÃ¡gina"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Termos de busca
+            </span>
+
+            <textarea
+              value={form.termosBusca}
+              onChange={(event) => onChange("termosBusca", event.target.value)}
+              rows={4}
+              placeholder="dia dos namorados, presente romÃ¢ntico, nova coleÃ§Ã£o"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+            />
+
+            <span className="mt-2 block text-xs leading-5 text-slate-500">
+              Ajuda a busca interna a encontrar esta pÃ¡gina por campanhas,
+              ocasiÃµes e temas.
+            </span>
+          </label>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
+            Esses termos sÃ£o usados pela busca interna e organizaÃ§Ã£o
+            editorial. Eles nÃ£o criam meta keywords nem tags visÃ­veis
+            automaticamente na loja.
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={salvando}
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={salvando}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {salvando ? "Salvando..." : "Salvar Dados/SEO"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdicionarBlocoModal({
   aberto,
   onClose,
@@ -11057,6 +11188,13 @@ export default function EditorVisualPaginaClient({
   const [ordemSalvando, setOrdemSalvando] = useState(false);
   const [editando, setEditando] = useState<BlocoEditandoState>(null);
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
+  const [modalDadosSeoAberto, setModalDadosSeoAberto] = useState(false);
+  const [dadosSeoSalvando, setDadosSeoSalvando] = useState(false);
+  const [dadosSeoForm, setDadosSeoForm] = useState<DadosSeoPaginaForm>(() => ({
+    seoTitle: pagina.seoTitle || "",
+    seoDescription: pagina.seoDescription || "",
+    termosBusca: pagina.termosBusca || "",
+  }));
   const [blocosComTextoPendente, setBlocosComTextoPendente] = useState<string[]>(
     []
   );
@@ -11079,6 +11217,16 @@ export default function EditorVisualPaginaClient({
 
   function getBlocoEditorAtual(blocoId: string) {
     return blocosEditor.find((bloco) => bloco.id === blocoId) || null;
+  }
+
+  function atualizarDadosSeoForm(
+    campo: keyof DadosSeoPaginaForm,
+    valor: string
+  ) {
+    setDadosSeoForm((current) => ({
+      ...current,
+      [campo]: valor,
+    }));
   }
 
   function atualizarBlocoLocal(
@@ -11348,6 +11496,46 @@ export default function EditorVisualPaginaClient({
         current.filter((blocoId) => blocoId !== bloco.id)
       );
       setSucesso("Textos do bloco salvos.");
+    }
+  }
+
+  async function salvarDadosSeoPagina() {
+    setErro("");
+    setSucesso("");
+    setDadosSeoSalvando(true);
+
+    try {
+      const response = await fetch(`/api/configuracoes/loja/paginas/${pagina.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          seoTitle: dadosSeoForm.seoTitle.trim() || null,
+          seoDescription: dadosSeoForm.seoDescription.trim() || null,
+          termosBusca: dadosSeoForm.termosBusca.trim() || null,
+        }),
+      });
+
+      const result = await lerRespostaApi(response);
+
+      if (!response.ok) {
+        setErro(result.error || result.message || "Erro ao salvar Dados/SEO.");
+        return;
+      }
+
+      const paginaAtualizada = result.pagina || {};
+      setDadosSeoForm({
+        seoTitle: paginaAtualizada.seoTitle || "",
+        seoDescription: paginaAtualizada.seoDescription || "",
+        termosBusca: paginaAtualizada.termosBusca || "",
+      });
+      setModalDadosSeoAberto(false);
+      setSucesso("Dados/SEO da pÃ¡gina salvos.");
+    } catch {
+      setErro("Erro ao salvar Dados/SEO.");
+    } finally {
+      setDadosSeoSalvando(false);
     }
   }
 
@@ -12242,6 +12430,16 @@ export default function EditorVisualPaginaClient({
             {salvando ? "Criando..." : "Adicionar bloco"}
           </button>
 
+          <button
+            type="button"
+            onClick={() => setModalDadosSeoAberto(true)}
+            disabled={dadosSeoSalvando}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <ClipboardList className="h-4 w-4" />
+            Dados/SEO
+          </button>
+
           <div className="mt-4 space-y-2">
             {blocosOrdenados.map((bloco) => {
               const Icon = getBlocoIcon(bloco.tipo);
@@ -12541,6 +12739,15 @@ export default function EditorVisualPaginaClient({
           )}
         </aside>
       </div>
+
+      <DadosSeoPaginaModal
+        aberto={modalDadosSeoAberto}
+        form={dadosSeoForm}
+        onChange={atualizarDadosSeoForm}
+        onClose={() => setModalDadosSeoAberto(false)}
+        onSave={() => void salvarDadosSeoPagina()}
+        salvando={dadosSeoSalvando}
+      />
 
       <EditorConteudoBlocoModal
         estado={editando}

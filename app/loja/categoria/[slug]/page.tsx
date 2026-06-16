@@ -263,6 +263,7 @@ export async function generateMetadata({
     ),
     description:
       paginaBuilder?.seoDescription ||
+      resultado.categoria.descricaoSeo ||
       resultado.categoria.descricao ||
       templateBuilder?.seoDescription ||
       `Conheca os produtos de ${resultado.categoria.nome} da Stella Colari.`,

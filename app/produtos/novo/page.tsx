@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function NovoProdutoPage() {
   const usuario = await exigirAdmin();
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
+  const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const [
     categorias,
     produtosDisponiveisKit,
@@ -134,6 +135,7 @@ export default async function NovoProdutoPage() {
         modelos: embalagemModelos,
       }}
       podeEditarEmbalagem={podeEditarEmbalagem}
+      podeEditarBuscaSeo={podeEditarBuscaSeo}
       criarProdutoAction={criarProduto}
     />
   );

@@ -35,6 +35,7 @@ export type LojaPaginaBuilderItem = {
   usarComoTemplatePadrao?: boolean;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  termosBusca?: string | null;
   totalBlocos: number;
   blocosAtivos: number;
   criadoEm: string;
@@ -59,6 +60,7 @@ type FormState = {
   usarComoTemplatePadrao: boolean;
   seoTitle: string;
   seoDescription: string;
+  termosBusca: string;
 };
 
 const TIPOS_PAGINA = [
@@ -154,6 +156,7 @@ function getEstadoInicial(): FormState {
     usarComoTemplatePadrao: false,
     seoTitle: "",
     seoDescription: "",
+    termosBusca: "",
   };
 }
 
@@ -316,6 +319,7 @@ function abrirCriacao(tipo = "GERAL") {
       usarComoTemplatePadrao: Boolean(pagina.usarComoTemplatePadrao),
       seoTitle: pagina.seoTitle || "",
       seoDescription: pagina.seoDescription || "",
+      termosBusca: pagina.termosBusca || "",
     });
     setModalAberto(true);
   }
@@ -361,6 +365,7 @@ statusPublicacao: paginaEditando ? form.statusPublicacao : "RASCUNHO",
           : false,
       seoTitle: form.seoTitle.trim() || null,
       seoDescription: form.seoDescription.trim() || null,
+      termosBusca: form.termosBusca.trim() || null,
     };
 
     const response = await fetch(
@@ -1236,6 +1241,27 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
                       placeholder="Resumo da página para buscadores"
                       className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
                     />
+                  </label>
+
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Termos de busca
+                    </span>
+
+                    <textarea
+                      value={form.termosBusca}
+                      onChange={(event) =>
+                        atualizarForm("termosBusca", event.target.value)
+                      }
+                      rows={3}
+                      placeholder="presente, romântico, dia dos namorados, campanha"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
+                    />
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Ajuda a busca interna e a organização editorial, sem
+                      criar tags visíveis ao cliente.
+                    </p>
                   </label>
                 </div>
               </div>

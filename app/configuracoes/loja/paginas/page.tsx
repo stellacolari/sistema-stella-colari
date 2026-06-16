@@ -117,6 +117,7 @@ export default async function PaginasLojaPage() {
     usarComoTemplatePadrao: pagina.usarComoTemplatePadrao,
     seoTitle: pagina.seoTitle,
     seoDescription: pagina.seoDescription,
+    termosBusca: pagina.termosBusca,
     totalBlocos: pagina.blocos.length,
     blocosAtivos: pagina.blocos.filter((bloco) => bloco.ativo).length,
     criadoEm: pagina.criadoEm.toISOString(),

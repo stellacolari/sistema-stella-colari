@@ -265,6 +265,9 @@ async function buscarProdutosBuscaRaw() {
               id: true,
               nome: true,
               slug: true,
+              descricao: true,
+              descricaoSeo: true,
+              termosBusca: true,
             },
           },
         },
@@ -328,6 +331,8 @@ async function buscarCategoriasBuscaRaw() {
       nome: true,
       slug: true,
       descricao: true,
+      descricaoSeo: true,
+      termosBusca: true,
       imagemUrl: true,
     },
   });
@@ -350,6 +355,7 @@ async function buscarPaginasBuscaRaw() {
       slug: true,
       tipo: true,
       seoDescription: true,
+      termosBusca: true,
     },
   });
 }
@@ -360,6 +366,8 @@ function montarTextoProduto(produto: ProdutoBuscaRaw) {
     produto.codigoInterno,
     produto.categoria,
     produto.descricaoLoja,
+    produto.termosBusca,
+    produto.tagsComerciais,
     produto.familiaMaterial,
     produto.familiaCorJoia,
     produto.familia?.nome,
@@ -367,6 +375,9 @@ function montarTextoProduto(produto: ProdutoBuscaRaw) {
     ...produto.categoriasProduto.flatMap((item) => [
       item.categoria.nome,
       item.categoria.slug,
+      item.categoria.descricao,
+      item.categoria.descricaoSeo,
+      item.categoria.termosBusca,
     ]),
     ...produto.variacoes.flatMap((variacao) => [
       variacao.nome,
@@ -402,6 +413,17 @@ function scoreProduto({
     produto.categoriasProduto.map((item) => item.categoria.nome).join(" ")
   );
   const descricao = montarTextoIndexavel(produto.descricaoLoja);
+  const termosComerciais = montarTextoIndexavel(
+    [produto.termosBusca, produto.tagsComerciais].join(" ")
+  );
+  const termosCategorias = montarTextoIndexavel(
+    produto.categoriasProduto
+      .flatMap((item) => [
+        item.categoria.termosBusca,
+        item.categoria.descricaoSeo,
+      ])
+      .join(" ")
+  );
   const textoCompleto = montarTextoIndexavel(montarTextoProduto(produto));
 
   let score = 0;
@@ -412,6 +434,8 @@ function scoreProduto({
   score += scoreTextoCampo(categoriaPrincipal, tokens, 34);
   score += scoreTextoCampo(categorias, tokens, 34);
   score += scoreTextoCampo(codigo, tokens, 30);
+  score += scoreTextoCampo(termosComerciais, tokens, 30);
+  score += scoreTextoCampo(termosCategorias, tokens, 24);
   score += scoreTextoCampo(descricao, tokens, 16);
   score += scoreTextoCampo(textoCompleto, tokens, 8);
 
@@ -506,13 +530,17 @@ function scoreCategoria(
   const nome = montarTextoIndexavel(categoria.nome);
   const slug = montarTextoIndexavel(categoria.slug);
   const descricao = montarTextoIndexavel(categoria.descricao);
-  const texto = [nome, slug, descricao].join(" ");
+  const descricaoSeo = montarTextoIndexavel(categoria.descricaoSeo);
+  const termosBusca = montarTextoIndexavel(categoria.termosBusca);
+  const texto = [nome, slug, descricao, descricaoSeo, termosBusca].join(" ");
   let score = 0;
 
   if (nome === termoNormalizado || slug === termoNormalizado) score += 150;
   if (nome.startsWith(termoNormalizado) && termoNormalizado) score += 95;
   score += scoreTextoCampo(nome, tokens, 35);
   score += scoreTextoCampo(slug, tokens, 24);
+  score += scoreTextoCampo(termosBusca, tokens, 28);
+  score += scoreTextoCampo(descricaoSeo, tokens, 18);
   score += scoreTextoCampo(descricao, tokens, 12);
   if (textoContemTodosTokens(texto, tokens)) score += 30;
 
@@ -527,13 +555,15 @@ function scorePagina(
   const titulo = montarTextoIndexavel(pagina.titulo);
   const slug = montarTextoIndexavel(pagina.slug);
   const descricao = montarTextoIndexavel(pagina.seoDescription);
-  const texto = [titulo, slug, descricao].join(" ");
+  const termosBusca = montarTextoIndexavel(pagina.termosBusca);
+  const texto = [titulo, slug, descricao, termosBusca].join(" ");
   let score = 0;
 
   if (titulo === termoNormalizado || slug === termoNormalizado) score += 140;
   if (titulo.startsWith(termoNormalizado) && termoNormalizado) score += 90;
   score += scoreTextoCampo(titulo, tokens, 32);
   score += scoreTextoCampo(slug, tokens, 22);
+  score += scoreTextoCampo(termosBusca, tokens, 26);
   score += scoreTextoCampo(descricao, tokens, 10);
   if (textoContemTodosTokens(texto, tokens)) score += 25;
 
@@ -642,7 +672,7 @@ export async function buscarLojaInteligente({
       id: categoria.id,
       nome: categoria.nome,
       slug: categoria.slug,
-      descricao: categoria.descricao,
+      descricao: categoria.descricaoSeo || categoria.descricao,
       imagemUrl: categoria.imagemUrl,
       href: `/loja/categoria/${categoria.slug}`,
       relevancia,
@@ -674,7 +704,9 @@ export async function buscarLojaInteligente({
     produtos,
     categorias,
     paginas,
-    sugestoes: Array.from(new Set([...sugestoesCategorias, ...SUGESTOES_FIXAS])).slice(0, 8),
+    sugestoes: Array.from(
+      new Set([...sugestoesCategorias, ...SUGESTOES_FIXAS])
+    ).slice(0, 8),
     filtrosDetectados,
     termoNormalizado: tokens.join(" "),
   };

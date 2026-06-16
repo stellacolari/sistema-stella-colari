@@ -53,6 +53,7 @@ type NovoProdutoClientProps = {
   regrasAdicionais: RegraAdicionalProduto[];
   embalagemOptions?: EmbalagemProdutoOptions;
   podeEditarEmbalagem?: boolean;
+  podeEditarBuscaSeo?: boolean;
   criarProdutoAction: (formData: FormData) => void | Promise<void>;
 };
 
@@ -212,6 +213,7 @@ export default function NovoProdutoClient({
   regrasAdicionais,
   embalagemOptions = { classes: [], modelos: [] },
   podeEditarEmbalagem = false,
+  podeEditarBuscaSeo = false,
   criarProdutoAction,
 }: NovoProdutoClientProps) {
   const [custoBase, setCustoBase] = useState("");
@@ -701,6 +703,38 @@ function validarFormularioAntesDeEnviar(
               </Field>
             </div>
           </AccordionSection>
+
+          {podeEditarBuscaSeo && (
+            <AccordionSection
+              title="Busca e SEO"
+              description="Termos internos para busca inteligente, sem alterar o nome exibido ao cliente."
+            >
+              <div className="grid gap-4">
+                <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                  Use palavras que o cliente pode pesquisar, mesmo que não
+                  estejam no nome do produto.
+                </p>
+
+                <Field label="Termos de busca">
+                  <textarea
+                    name="termosBusca"
+                    rows={3}
+                    placeholder="presente, romântico, dia dos namorados, delicado"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </Field>
+
+                <Field label="Tags comerciais">
+                  <textarea
+                    name="tagsComerciais"
+                    rows={3}
+                    placeholder="minimalista, festa, luxo, nova coleção"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-500"
+                  />
+                </Field>
+              </div>
+            </AccordionSection>
+          )}
 
           <AccordionSection
             title="Variações internas do produto"

@@ -7,6 +7,8 @@ export type CategoriaLojaOption = {
   slug: string;
   categoriaMaeId: string | null;
   descricao?: string | null;
+  descricaoSeo?: string | null;
+  termosBusca?: string | null;
   imagemUrl?: string | null;
   exibirNoMenu?: boolean;
   ordemMenu?: number;
@@ -140,6 +142,8 @@ export async function buscarCategoriasMenuPublico(): Promise<
       slug: true,
       categoriaMaeId: true,
       descricao: true,
+      descricaoSeo: true,
+      termosBusca: true,
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,
@@ -172,6 +176,8 @@ export async function buscarCategoriasAtivasComCaminho(): Promise<
       slug: true,
       categoriaMaeId: true,
       descricao: true,
+      descricaoSeo: true,
+      termosBusca: true,
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,
@@ -185,6 +191,8 @@ export async function buscarCategoriasAtivasComCaminho(): Promise<
     slug: categoria.slug,
     categoriaMaeId: categoria.categoriaMaeId,
     descricao: categoria.descricao,
+    descricaoSeo: categoria.descricaoSeo,
+    termosBusca: categoria.termosBusca,
     imagemUrl: categoria.imagemUrl,
     exibirNoMenu: categoria.exibirNoMenu,
     ordemMenu: categoria.ordemMenu,
@@ -203,6 +211,8 @@ export async function buscarCategoriaPublicaPorSlug(slug: string) {
       slug: true,
       categoriaMaeId: true,
       descricao: true,
+      descricaoSeo: true,
+      termosBusca: true,
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,

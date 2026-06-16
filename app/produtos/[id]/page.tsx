@@ -14,6 +14,7 @@ export default async function EditarProdutoPage({
   const { id } = await params;
   const usuario = await exigirAdmin();
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
+  const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
 
   const [
     produto,
@@ -248,6 +249,8 @@ export default async function EditarProdutoPage({
         ? Number(produto.precoPromocional)
         : null,
     descricaoLoja: produto.descricaoLoja || "",
+    termosBusca: produto.termosBusca || "",
+    tagsComerciais: produto.tagsComerciais || "",
     linkCompra: produto.linkCompra || "",
     observacoes: produto.observacoes || "",
     tipoProduto: produto.tipoProduto,
@@ -297,6 +300,7 @@ export default async function EditarProdutoPage({
         modelos: embalagemModelos,
       }}
       podeEditarEmbalagem={podeEditarEmbalagem}
+      podeEditarBuscaSeo={podeEditarBuscaSeo}
       atualizarProdutoAction={actionAtualizar}
     />
   );

@@ -198,6 +198,7 @@ export async function POST(req: Request) {
         usarComoTemplatePadrao,
         seoTitle: parseStringOrNull(body.seoTitle),
         seoDescription: parseStringOrNull(body.seoDescription),
+        termosBusca: parseStringOrNull(body.termosBusca),
       },
       include: {
         categoria: {
