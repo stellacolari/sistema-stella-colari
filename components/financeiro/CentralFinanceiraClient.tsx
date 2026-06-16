@@ -21,7 +21,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { FinanceiroHistoricoItem } from "@/components/financeiro/ResultadoDistribuicaoClient";
-import type { DiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
+import type { DiagnosticoFinanceiro } from "@/lib/financeiro/inteligencia-gerencial";
 
 export type CentralConta = {
   id: string;
@@ -592,6 +592,20 @@ export default function CentralFinanceiraClient({
               label="Pro-labore pendente"
               value={moeda(diagnostico.proLabore.pendente)}
             />
+            <div className="rounded-2xl bg-slate-50 px-3 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Saldo por conta
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {contas.slice(0, 4).map((conta) => (
+                  <LinhaResumo
+                    key={conta.id}
+                    label={conta.nome}
+                    value={moeda(conta.saldoAtual)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -607,12 +621,24 @@ export default function CentralFinanceiraClient({
         <InteligenciaCard
           titulo="Pro-labore seguro"
           valor={moeda(diagnostico.proLabore.sugerido)}
-          detalhe={`Pago: ${moeda(diagnostico.proLabore.pago)}. Pendente: ${moeda(
+          detalhe={`Aprovado: ${moeda(diagnostico.proLabore.aprovado)}. Pago: ${moeda(
+            diagnostico.proLabore.pago
+          )}. Pendente: ${moeda(
             diagnostico.proLabore.pendente
           )}.`}
           recomendacao={diagnostico.proLabore.recomendacao}
           icon={<ShieldCheck className="h-5 w-5" />}
-        />
+        >
+          <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-700">
+            <span className="font-semibold text-slate-950">Por socio: </span>
+            {moeda(diagnostico.proLabore.valorPorSocio)}
+          </div>
+          {diagnostico.proLabore.avisoRendaPrincipal && (
+            <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold leading-5 text-amber-800">
+              {diagnostico.proLabore.avisoRendaPrincipal}
+            </p>
+          )}
+        </InteligenciaCard>
         <InteligenciaCard
           titulo="Reinvestimento recomendado"
           valor={diagnostico.status === "SAUDAVEL" ? "Seletivo" : "Cautela"}
@@ -629,7 +655,42 @@ export default function CentralFinanceiraClient({
           detalhe={`${diagnostico.estoque.produtosZerados} zerado(s), ${diagnostico.estoque.produtosBaixo} baixo(s), ${diagnostico.estoque.produtosParados} parado(s).`}
           recomendacao={diagnostico.estoque.recomendacao}
           icon={<Activity className="h-5 w-5" />}
-        />
+        >
+          {diagnostico.estoque.topProdutos.length > 0 && (
+            <div className="mt-3 space-y-1.5 rounded-2xl bg-slate-50 px-3 py-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Campeoes recentes
+              </p>
+              {diagnostico.estoque.topProdutos.slice(0, 3).map((produto) => (
+                <div
+                  key={produto.codigo}
+                  className="flex items-center justify-between gap-3 text-xs text-slate-600"
+                >
+                  <span className="truncate font-semibold text-slate-700">
+                    {produto.nome}
+                  </span>
+                  <span>{produto.vendidas} un.</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/compras/reposicao"
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Ver reposicao
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              href="/estoque"
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Ver estoque
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </InteligenciaCard>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1009,12 +1070,14 @@ function InteligenciaCard({
   detalhe,
   recomendacao,
   icon,
+  children,
 }: {
   titulo: string;
   valor: string;
   detalhe: string;
   recomendacao: string;
   icon: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1029,6 +1092,7 @@ function InteligenciaCard({
       <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-700">
         {recomendacao}
       </p>
+      {children}
     </div>
   );
 }

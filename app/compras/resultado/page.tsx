@@ -10,7 +10,7 @@ import {
   obterOuCriarRegraDistribuicaoAtiva,
   periodoFinanceiro,
 } from "@/lib/financeiro/resultado";
-import { montarDiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
+import { montarInteligenciaGerencial } from "@/lib/financeiro/inteligencia-gerencial";
 import ResultadoDistribuicaoClient, {
   type FinanceiroApuracao,
   type FinanceiroHistoricoItem,
@@ -233,7 +233,7 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
     ),
     (conta) => conta.saldoAtual
   );
-  const diagnostico = await montarDiagnosticoFinanceiro({
+  const diagnostico = await montarInteligenciaGerencial({
     mes,
     ano,
     resultado,

@@ -18,7 +18,7 @@ import {
   Target,
   WalletCards,
 } from "lucide-react";
-import type { DiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
+import type { DiagnosticoFinanceiro } from "@/lib/financeiro/inteligencia-gerencial";
 
 export type FinanceiroContaOption = {
   id: string;

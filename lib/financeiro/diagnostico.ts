@@ -18,13 +18,24 @@ export type DiagnosticoAlerta = {
 };
 
 export type DiagnosticoIndicadores = {
+  receitaRecebida: number;
+  lucroApuravel: number;
+  margemBruta: number;
+  margemLiquida: number;
+  caixaGerencial: number;
   margemBrutaPct: number;
   margemLiquidaPct: number;
   gastosOperacionaisPct: number;
   marketingPct: number;
+  marketingPercentualReceita: number;
+  gastosOperacionaisPercentual: number;
   runwayMeses: number;
+  comprasEstoquePendentes: number;
   comprasEstoquePct: number;
   proLaborePendente: number;
+  proLaboreAprovadoPendente: number;
+  produtosZerados: number;
+  produtosEstoqueBaixo: number;
   estoqueBaixo: number;
   estoqueZerado: number;
 };
@@ -61,8 +72,11 @@ export type DiagnosticoPrevisao = {
 };
 
 export type DiagnosticoFinanceiro = {
+  statusGeral: StatusSaudeFinanceira;
   status: StatusSaudeFinanceira;
+  scoreSaude: number;
   score: number;
+  diagnosticoExecutivo: string;
   frase: string;
   indicadores: DiagnosticoIndicadores;
   alertas: DiagnosticoAlerta[];
@@ -79,10 +93,13 @@ export type DiagnosticoFinanceiro = {
   };
   proLabore: {
     sugerido: number;
+    valorPorSocio: number;
     aprovado: number;
     pago: number;
     pendente: number;
     seguro: boolean;
+    baixoParaRendaPrincipal: boolean;
+    avisoRendaPrincipal: string | null;
     recomendacao: string;
   };
   reinvestimento: {
@@ -438,6 +455,8 @@ export async function montarDiagnosticoFinanceiro(
   const comprasEstoquePct = percentual(params.resultado.comprasEstoqueCaixa, comprasBase);
   const proLaborePendente = params.proLaboreAprovadoPendente;
   const proLaborePago = params.proLaborePagoMes;
+  const proLaborePorSocio = arredondar(params.resultado.proLaboreSugerido / 2);
+  const proLaboreBaixoParaRendaPrincipal = proLaborePorSocio > 0 && proLaborePorSocio < 2500;
   const proLaboreSeguro =
     proLaborePago <= Math.max(0, lucro) &&
     proLaborePendente <= Math.max(0, params.saldoGerencial - params.resultado.gastosOperacionais);
@@ -688,7 +707,7 @@ export async function montarDiagnosticoFinanceiro(
     baseReceita,
     gastosRecorrentes: gastosRecorrentesBase,
     pendencias,
-    texto: "Estimativa gerencial baseada na media recente, gastos recorrentes e pendencias cadastradas.",
+    texto: "Previsao gerencial baseada em historico e lancamentos cadastrados.",
     cenarios: [
       montarCenario("Conservador", 0.85),
       montarCenario("Realista", 1),
@@ -701,17 +720,31 @@ export async function montarDiagnosticoFinanceiro(
     params.saldoGerencial - params.comprasPendentesTotal - proLaborePendente > 0;
 
   return {
+    statusGeral: status,
     status,
+    scoreSaude: score,
     score,
+    diagnosticoExecutivo: frase,
     frase,
     indicadores: {
+      receitaRecebida: receita,
+      lucroApuravel: lucro,
+      margemBruta: margemBrutaPct,
+      margemLiquida: margemLiquidaPct,
+      caixaGerencial: params.saldoGerencial,
       margemBrutaPct,
       margemLiquidaPct,
       gastosOperacionaisPct,
       marketingPct,
+      marketingPercentualReceita: marketingPct,
+      gastosOperacionaisPercentual: gastosOperacionaisPct,
       runwayMeses,
+      comprasEstoquePendentes: params.comprasPendentesTotal,
       comprasEstoquePct,
       proLaborePendente,
+      proLaboreAprovadoPendente: proLaborePendente,
+      produtosZerados: estoque.produtosZerados,
+      produtosEstoqueBaixo: estoque.produtosBaixo,
       estoqueBaixo: estoque.produtosBaixo,
       estoqueZerado: estoque.produtosZerados,
     },
@@ -726,10 +759,15 @@ export async function montarDiagnosticoFinanceiro(
     },
     proLabore: {
       sugerido: params.resultado.proLaboreSugerido,
+      valorPorSocio: proLaborePorSocio,
       aprovado: proLaborePendente,
       pago: proLaborePago,
       pendente: proLaborePendente,
       seguro: proLaboreSeguro,
+      baixoParaRendaPrincipal: proLaboreBaixoParaRendaPrincipal,
+      avisoRendaPrincipal: proLaboreBaixoParaRendaPrincipal
+        ? "O pro-labore atual e saudavel como retirada inicial, mas ainda nao sustenta renda principal para duas pessoas."
+        : null,
       recomendacao: proLaboreRecomendacao,
     },
     reinvestimento,
