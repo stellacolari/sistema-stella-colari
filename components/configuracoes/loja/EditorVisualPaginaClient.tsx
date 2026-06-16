@@ -50,6 +50,10 @@ import {
   RICH_TEXT_WEIGHT_PRESETS,
   getRichTextPresetCss,
 } from "@/components/loja/paginas/richTextPresets";
+import BannerRenderer, {
+  normalizeBannerModelo,
+  type BannerDevicePreview,
+} from "@/components/loja/paginas/blocos/BannerRenderer";
 
 export type EditorVisualPagina = {
   id: string;
@@ -280,6 +284,25 @@ type BlocoEditandoState = {
   larguraBanner: string;
   overlayBanner: string;
   corTextoBanner: string;
+  alinhamentoVertical: string;
+  margemSeguraX: number;
+  margemSeguraY: number;
+  larguraTextoPercentual: number;
+  fonteTituloDesktop: number;
+  fonteTituloMobile: number;
+  lineHeightTitulo: number;
+  letterSpacingTitulo: number;
+  mediaZoomDesktop: number;
+  mediaZoomMobile: number;
+  imagemFrenteDesktopUrl: string;
+  imagemFrenteMobileUrl: string;
+  imagemFrenteAlt: string;
+  imagemFrenteX: number;
+  imagemFrenteY: number;
+  imagemFrenteLarguraDesktop: number;
+  imagemFrenteLarguraMobile: number;
+  estiloCtaBanner: string;
+  ctaNovaAba: boolean;
   produtosFlutuantesAtivos: boolean;
   tipoMidia: string;
   exibirTexto: boolean;
@@ -305,6 +328,17 @@ type BlocoEditandoState = {
 } | null;
 
 type MediaKind = "IMAGEM" | "VIDEO";
+
+type BannerStudioElement =
+  | "MODELO"
+  | "TITULO"
+  | "SUBTITULO"
+  | "CTA"
+  | "MIDIA"
+  | "IMAGEM_FRENTE"
+  | "DESIGN"
+  | "PRODUTOS"
+  | "AVANCADO";
 
 const COR_FUNDO_PRESETS = [
   { value: "BRANCO", label: "Branco" },
@@ -368,6 +402,7 @@ const ALINHAMENTO_BANNER_PRESETS = [
 ];
 
 const ALTURA_BANNER_PRESETS = [
+  { value: "AUTO_CONTEUDO", label: "Auto pelo conteúdo" },
   { value: "COMPACTA", label: "Compacta" },
   { value: "PADRAO", label: "Padrão" },
   { value: "TELA_CHEIA", label: "Tela cheia" },
@@ -390,6 +425,18 @@ const COR_TEXTO_BANNER_PRESETS = [
   { value: "ESCURO", label: "Escuro" },
 ];
 
+const ALINHAMENTO_VERTICAL_BANNER_PRESETS = [
+  { value: "TOPO", label: "Topo" },
+  { value: "CENTRO", label: "Centro" },
+  { value: "BASE", label: "Base" },
+];
+
+const ESTILO_CTA_BANNER_PRESETS = [
+  { value: "PREENCHIDO", label: "Preenchido" },
+  { value: "CONTORNO", label: "Contorno" },
+  { value: "LINK", label: "Texto/link" },
+];
+
 const TIPO_MIDIA_BANNER_PRESETS = [
   { value: "IMAGEM", label: "Imagem" },
   { value: "VIDEO", label: "Vídeo" },
@@ -397,34 +444,53 @@ const TIPO_MIDIA_BANNER_PRESETS = [
 
 const MODELO_BANNER_PRESETS = [
   {
-    value: "HERO_TELA_CHEIA",
-    label: "Hero tela cheia",
-    medidas: "Desktop 1920x900 px · mobile 1080x1350 px",
+    value: "HERO_PRINCIPAL",
+    label: "Hero principal",
+    descricao: "Banner principal da home ou de uma campanha.",
+    uso: "Home, lançamentos e campanhas fortes.",
+    medidas: "Desktop 1920 x 900 px · mobile 1080 x 1400 px",
+    preview: "HERO",
   },
   {
-    value: "BANNER_EDITORIAL",
-    label: "Banner editorial",
-    medidas: "Desktop 1920x640 px · mobile 1080x1350 px",
+    value: "BANNER_CLASSICO",
+    label: "Banner clássico",
+    descricao: "Imagem ampla com texto e botão, simples e versátil.",
+    uso: "Campanhas secundárias e chamadas gerais.",
+    medidas: "Desktop 1600 x 700 px · mobile 1080 x 1200 px",
+    preview: "CLASSICO",
+  },
+  {
+    value: "EDITORIAL_IMAGEM",
+    label: "Editorial com imagem",
+    descricao: "Texto grande com imagem forte em composição editorial.",
+    uso: "Lookbook, coleção premium e narrativa visual.",
+    medidas: "Desktop 1600 x 900 px · mobile 1080 x 1350 px",
+    preview: "EDITORIAL",
+  },
+  {
+    value: "CAMADAS_PARALLAX",
+    label: "Camadas / Parallax visual",
+    descricao: "Fundo, texto grande e imagem frontal com profundidade.",
+    uso: "Campanhas com still, modelo ou produto destacado.",
+    medidas:
+      "Fundo desktop 1920 x 1000 px · frente PNG/WebP transparente · mobile 1080 x 1400 px",
+    preview: "CAMADAS",
   },
   {
     value: "CATEGORIA",
     label: "Banner de categoria",
-    medidas: "Desktop 1920x520 px · mobile 1080x1200 px",
-  },
-  {
-    value: "IMAGEM_LATERAL",
-    label: "Banner com imagem lateral sangrando",
-    medidas: "Desktop 1600x720 px · mobile 1080x1350 px",
-  },
-  {
-    value: "PRODUTOS_FLUTUANTES",
-    label: "Banner com produtos flutuantes",
-    medidas: "Desktop 1920x760 px · mobile 1080x1350 px",
+    descricao: "Destaque visual para uma categoria da loja.",
+    uso: "Páginas de categoria e chamadas para coleção.",
+    medidas: "Desktop 1600 x 700 px · mobile 1080 x 1200 px",
+    preview: "CATEGORIA",
   },
   {
     value: "FAIXA_PROMOCIONAL",
     label: "Faixa promocional",
-    medidas: "Desktop 1920x320 px · mobile 1080x560 px",
+    descricao: "Faixa baixa para uma mensagem rápida.",
+    uso: "Promoções, avisos e chamadas curtas.",
+    medidas: "Desktop 1920 x 320 px · mobile 1080 x 420 px",
+    preview: "FAIXA",
   },
 ];
 
@@ -3712,8 +3778,80 @@ function RenderBlocoPreview({
       </div>
 
       {isBannerTipo(bloco.tipo) ? (
+        <>
+          <BannerRenderer
+            bloco={bloco}
+            produtos={toBannerProdutosPublicos(produtosDisponiveis)}
+            device={device}
+            modo="editor"
+            onElementSelect={() => onSelect()}
+            titleSlot={({ className, style }) => (
+              <RichTextInlineEditor
+                value={tituloRichText}
+                fallbackText={titulo}
+                placeholder="Clique para adicionar um título"
+                multiline
+                className={className}
+                style={style}
+                onChange={(richText, plainText) =>
+                  onInlineTextChange(bloco.id, {
+                    tituloRichText: richText,
+                    titulo: plainText,
+                  })
+                }
+              />
+            )}
+            subtitleSlot={({ className, style }) => (
+              <RichTextInlineEditor
+                value={subtituloRichText}
+                fallbackText={texto || ""}
+                placeholder="Clique para adicionar um subtítulo"
+                multiline
+                className={className}
+                style={style}
+                onChange={(richText, plainText) =>
+                  onInlineTextChange(bloco.id, {
+                    subtituloRichText: richText,
+                    textoRichText: richText,
+                    texto: plainText,
+                    descricao: plainText,
+                    conteudo: plainText,
+                  })
+                }
+              />
+            )}
+            primaryCtaSlot={({ className, style }) => (
+              <InlineTextEditor
+                value={textoBotao}
+                placeholder="Botão primário"
+                className={className}
+                style={style}
+                onChange={(value) =>
+                  onInlineTextChange(bloco.id, {
+                    textoBotao: value,
+                    botaoTexto: value,
+                  })
+                }
+              />
+            )}
+            secondaryCtaSlot={({ className, style }) => (
+              <InlineTextEditor
+                value={textoBotaoSecundario}
+                placeholder="Botão secundário"
+                className={className}
+                style={style}
+                onChange={(value) =>
+                  onInlineTextChange(bloco.id, {
+                    textoBotaoSecundario: value,
+                    botaoSecundarioTexto: value,
+                  })
+                }
+              />
+            )}
+          />
+
         <div
-          className={`bg-white ${
+          className={`hidden bg-white ${
             larguraBanner === "CONTIDA" ? "px-4 py-5" : ""
           }`}
         >
@@ -3908,6 +4046,7 @@ function RenderBlocoPreview({
             )}
           </div>
         </div>
+        </>
       ) : bloco.tipo === "ESPACADOR" ? (
         <div className="flex h-16 items-center justify-center bg-slate-50">
           <div className="h-px w-24 bg-slate-200" />
@@ -5447,6 +5586,1106 @@ function ColecoesCategoriasModalFields({
   );
 }
 
+function toBannerProdutosPublicos(produtos: EditorVisualProduto[]) {
+  return produtos.map((produto) => ({
+    ...produto,
+    imagemUrl: produto.imagemUrl || null,
+    imagemHoverUrl: null,
+    categoriaSlugs: [],
+    precoVenda: 0,
+    descontoAtivo: false,
+    precoPromocional: null,
+    estoqueTotal: 0,
+    vendidosTotal: 0,
+    criadoEm: "",
+    tamanhosDisponiveis: [],
+  }));
+}
+
+function getBannerPreviewBloco(estado: NonNullable<BlocoEditandoState>) {
+  const configAtual = getConfigObject(estado.bloco.configJson);
+
+  return {
+    ...estado.bloco,
+    titulo: estado.nomeInterno || estado.bloco.titulo,
+    configJson: {
+      ...configAtual,
+      titulo: estado.titulo,
+      texto: estado.texto,
+      descricao: estado.texto,
+      conteudo: estado.texto,
+      tipoMidia: estado.tipoMidia,
+      exibirMidia: estado.exibirMidia,
+      exibirTexto: estado.exibirTexto,
+      exibirSubtitulo: estado.exibirSubtitulo,
+      exibirBotaoPrimario: estado.exibirBotaoPrimario,
+      exibirBotaoSecundario: estado.exibirBotaoSecundario,
+      textoBotao: estado.textoBotao,
+      botaoTexto: estado.textoBotao,
+      linkBotao: estado.linkBotao,
+      botaoLink: estado.linkBotao,
+      linkUrl: estado.linkBotao,
+      textoBotaoSecundario: estado.textoBotaoSecundario,
+      botaoSecundarioTexto: estado.textoBotaoSecundario,
+      linkBotaoSecundario: estado.linkBotaoSecundario,
+      botaoSecundarioLink: estado.linkBotaoSecundario,
+      imagemDesktopUrl: estado.imagemDesktopUrl,
+      imagemDesktop: estado.imagemDesktopUrl,
+      imagemMobileUrl: estado.imagemMobileUrl,
+      imagemMobile: estado.imagemMobileUrl,
+      imagemUrl: estado.imagemDesktopUrl,
+      videoDesktopUrl: estado.videoDesktopUrl,
+      videoMobileUrl: estado.videoMobileUrl,
+      videoPosterUrl: estado.videoPosterUrl,
+      videoLoop: estado.videoLoop,
+      videoSom: estado.videoSom,
+      modeloBanner: estado.modeloBanner,
+      alinhamentoConteudo: estado.alinhamentoConteudo,
+      alinhamentoTextoDesktop: estado.alinhamentoTextoDesktop,
+      alinhamentoTextoMobile: estado.alinhamentoTextoMobile,
+      alinhamentoVertical: estado.alinhamentoVertical,
+      alturaBanner: estado.alturaBanner,
+      larguraBanner: estado.larguraBanner,
+      overlayBanner: estado.overlayBanner,
+      corTextoBanner: estado.corTextoBanner,
+      margemSeguraX: estado.margemSeguraX,
+      margemSeguraY: estado.margemSeguraY,
+      larguraTextoPercentual: estado.larguraTextoPercentual,
+      fonteTituloDesktop: estado.fonteTituloDesktop,
+      fonteTituloMobile: estado.fonteTituloMobile,
+      lineHeightTitulo: estado.lineHeightTitulo,
+      letterSpacingTitulo: estado.letterSpacingTitulo,
+      mediaCropDesktopX: estado.mediaCropDesktopX,
+      mediaCropDesktopY: estado.mediaCropDesktopY,
+      mediaCropMobileX: estado.mediaCropMobileX,
+      mediaCropMobileY: estado.mediaCropMobileY,
+      mediaPositionDesktop: estado.mediaPositionDesktop,
+      mediaPositionMobile: estado.mediaPositionMobile,
+      mediaZoomDesktop: estado.mediaZoomDesktop,
+      mediaZoomMobile: estado.mediaZoomMobile,
+      imagemFrenteDesktopUrl: estado.imagemFrenteDesktopUrl,
+      imagemFrenteMobileUrl: estado.imagemFrenteMobileUrl,
+      imagemFrenteAlt: estado.imagemFrenteAlt,
+      imagemFrenteX: estado.imagemFrenteX,
+      imagemFrenteY: estado.imagemFrenteY,
+      imagemFrenteLarguraDesktop: estado.imagemFrenteLarguraDesktop,
+      imagemFrenteLarguraMobile: estado.imagemFrenteLarguraMobile,
+      estiloCtaBanner: estado.estiloCtaBanner,
+      ctaNovaAba: estado.ctaNovaAba,
+      estiloBordaBotao: estado.estiloBordaBotao,
+      produtosFlutuantesAtivos: estado.produtosFlutuantesAtivos,
+      produtosIds: estado.produtosSelecionadosIds,
+      tituloStyle: estado.tituloStyle,
+      subtituloStyle: estado.subtituloStyle,
+      botaoPrimarioStyle: estado.botaoPrimarioStyle,
+      botaoSecundarioStyle: estado.botaoSecundarioStyle,
+    },
+  };
+}
+
+function getBannerModeloPatch(modeloBanner: string) {
+  if (modeloBanner === "HERO_PRINCIPAL") {
+    return {
+      modeloBanner,
+      alturaBanner: "TELA_CHEIA",
+      larguraTextoPercentual: 62,
+      fonteTituloDesktop: 92,
+      fonteTituloMobile: 54,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+    };
+  }
+
+  if (modeloBanner === "EDITORIAL_IMAGEM") {
+    return {
+      modeloBanner,
+      alturaBanner: "AUTO_CONTEUDO",
+      larguraTextoPercentual: 62,
+      fonteTituloDesktop: 86,
+      fonteTituloMobile: 48,
+      margemSeguraX: 8,
+      margemSeguraY: 10,
+      overlayBanner: "GRADIENTE",
+    };
+  }
+
+  if (modeloBanner === "CAMADAS_PARALLAX") {
+    return {
+      modeloBanner,
+      alturaBanner: "PADRAO",
+      larguraTextoPercentual: 86,
+      fonteTituloDesktop: 104,
+      fonteTituloMobile: 58,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+      overlayBanner: "GRADIENTE",
+      produtosFlutuantesAtivos: true,
+    };
+  }
+
+  if (modeloBanner === "CATEGORIA") {
+    return {
+      modeloBanner,
+      alturaBanner: "PADRAO",
+      larguraTextoPercentual: 70,
+      fonteTituloDesktop: 72,
+      fonteTituloMobile: 46,
+      margemSeguraX: 8,
+      margemSeguraY: 8,
+    };
+  }
+
+  if (modeloBanner === "FAIXA_PROMOCIONAL") {
+    return {
+      modeloBanner,
+      alturaBanner: "COMPACTA",
+      larguraTextoPercentual: 92,
+      fonteTituloDesktop: 52,
+      fonteTituloMobile: 34,
+      margemSeguraX: 8,
+      margemSeguraY: 6,
+      alinhamentoConteudo: "CENTRO",
+      alinhamentoTextoDesktop: "CENTRO",
+      alinhamentoTextoMobile: "CENTRO",
+    };
+  }
+
+  return {
+    modeloBanner,
+    alturaBanner: "PADRAO",
+    larguraTextoPercentual: 58,
+    fonteTituloDesktop: 68,
+    fonteTituloMobile: 42,
+    margemSeguraX: 8,
+    margemSeguraY: 8,
+  };
+}
+
+function BannerModeloMiniatura({ tipo }: { tipo: string }) {
+  if (tipo === "CAMADAS") {
+    return (
+      <div className="relative h-full overflow-hidden rounded-xl bg-slate-900">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-900 to-slate-950" />
+        <div className="absolute left-3 top-4 h-3 w-24 rounded-full bg-white/80" />
+        <div className="absolute left-3 top-9 h-2 w-16 rounded-full bg-white/45" />
+        <div className="absolute bottom-3 right-4 h-20 w-14 rounded-t-full bg-white/85 shadow-2xl" />
+      </div>
+    );
+  }
+
+  if (tipo === "EDITORIAL") {
+    return (
+      <div className="grid h-full grid-cols-[0.55fr_0.45fr] overflow-hidden rounded-xl bg-slate-950">
+        <div className="flex flex-col justify-center gap-2 p-3">
+          <span className="h-3 w-24 rounded-full bg-white/85" />
+          <span className="h-2 w-16 rounded-full bg-white/40" />
+          <span className="mt-2 h-5 w-14 rounded-full bg-white" />
+        </div>
+        <div className="bg-gradient-to-br from-slate-200 to-slate-500" />
+      </div>
+    );
+  }
+
+  if (tipo === "FAIXA") {
+    return (
+      <div className="flex h-full items-center justify-center rounded-xl bg-slate-950 px-5">
+        <span className="h-3 w-28 rounded-full bg-white/90" />
+      </div>
+    );
+  }
+
+  if (tipo === "HERO") {
+    return (
+      <div className="relative h-full overflow-hidden rounded-xl bg-slate-900">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-500 to-slate-950" />
+        <div className="absolute left-1/2 top-1/2 h-4 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90" />
+        <div className="absolute left-1/2 top-[60%] h-2 w-16 -translate-x-1/2 rounded-full bg-white/50" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full overflow-hidden rounded-xl bg-slate-900">
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 to-slate-400" />
+      <div className="absolute left-3 top-5 h-3 w-24 rounded-full bg-white/90" />
+      <div className="absolute left-3 top-10 h-2 w-16 rounded-full bg-white/50" />
+      <div className="absolute left-3 bottom-4 h-4 w-12 rounded-full bg-white" />
+    </div>
+  );
+}
+
+function RangeControl({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix = "",
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label>
+      <span className="mb-2 flex items-center justify-between text-sm font-medium text-slate-700">
+        {label}
+        <span className="text-xs text-slate-500">
+          {value}
+          {suffix}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full accent-slate-950"
+      />
+    </label>
+  );
+}
+
+function BannerStudioEditor({
+  estado,
+  produtosDisponiveis,
+  buscaProdutoManual,
+  produtosFiltradosManual,
+  selectedElement,
+  device,
+  onChange,
+  onSelectedElementChange,
+  onDeviceChange,
+  onBuscaProdutoManualChange,
+  adicionarProdutoManual,
+  removerProdutoManual,
+  moverProdutoManual,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  produtosDisponiveis: EditorVisualProduto[];
+  buscaProdutoManual: string;
+  produtosFiltradosManual: EditorVisualProduto[];
+  selectedElement: BannerStudioElement;
+  device: BannerDevicePreview;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+  onSelectedElementChange: (element: BannerStudioElement) => void;
+  onDeviceChange: (device: BannerDevicePreview) => void;
+  onBuscaProdutoManualChange: (value: string) => void;
+  adicionarProdutoManual: (produtoId: string) => void;
+  removerProdutoManual: (produtoId: string) => void;
+  moverProdutoManual: (produtoId: string, direction: "UP" | "DOWN") => void;
+}) {
+  const configAtual = getConfigObject(estado.bloco.configJson);
+  const previewBloco = getBannerPreviewBloco(estado);
+  const modeloNormalizado = normalizeBannerModelo(estado.modeloBanner);
+  const modeloBannerSelecionado =
+    MODELO_BANNER_PRESETS.find((preset) => preset.value === modeloNormalizado) ||
+    MODELO_BANNER_PRESETS[1];
+
+  function atualizarConfigInterno(patch: Record<string, unknown>) {
+    onChange({
+      bloco: {
+        ...estado.bloco,
+        configJson: {
+          ...getConfigObject(estado.bloco.configJson),
+          ...patch,
+        },
+      },
+    });
+  }
+
+  const titleSlot = ({
+    className,
+    style,
+  }: {
+    className: string;
+    style: CSSProperties;
+  }) => (
+    <RichTextInlineEditor
+      value={getRichTextConfig(configAtual, "tituloRichText")}
+      fallbackText={estado.titulo}
+      placeholder="Clique para editar o título"
+      multiline
+      className={className}
+      style={style}
+      onChange={(richText, plainText) => {
+        atualizarConfigInterno({ tituloRichText: richText });
+        onChange({ titulo: plainText });
+      }}
+    />
+  );
+  const subtitleSlot = ({
+    className,
+    style,
+  }: {
+    className: string;
+    style: CSSProperties;
+  }) => (
+    <RichTextInlineEditor
+      value={
+        getRichTextConfig(configAtual, "subtituloRichText") ||
+        getRichTextConfig(configAtual, "textoRichText")
+      }
+      fallbackText={estado.texto}
+      placeholder="Clique para editar o subtítulo"
+      multiline
+      className={className}
+      style={style}
+      onChange={(richText, plainText) => {
+        atualizarConfigInterno({
+          subtituloRichText: richText,
+          textoRichText: richText,
+        });
+        onChange({ texto: plainText });
+      }}
+    />
+  );
+  const primaryCtaSlot = ({
+    className,
+    style,
+  }: {
+    className: string;
+    style: CSSProperties;
+  }) => (
+    <InlineTextEditor
+      value={estado.textoBotao}
+      placeholder="CTA"
+      className={className}
+      style={style}
+      onChange={(value) => onChange({ textoBotao: value })}
+    />
+  );
+  const secondaryCtaSlot = ({
+    className,
+    style,
+  }: {
+    className: string;
+    style: CSSProperties;
+  }) => (
+    <InlineTextEditor
+      value={estado.textoBotaoSecundario}
+      placeholder="CTA secundário"
+      className={className}
+      style={style}
+      onChange={(value) => onChange({ textoBotaoSecundario: value })}
+    />
+  );
+
+  return (
+    <div className="grid min-h-[620px] gap-5 px-6 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="space-y-5">
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">
+                Escolher modelo
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Escolha pelo visual. Modelos antigos são mapeados automaticamente.
+              </p>
+            </div>
+            <p className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+              {modeloBannerSelecionado.medidas}
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {MODELO_BANNER_PRESETS.map((preset) => {
+              const selecionado = modeloNormalizado === preset.value;
+
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(getBannerModeloPatch(preset.value));
+                    onSelectedElementChange("MODELO");
+                  }}
+                  className={`rounded-2xl border bg-white p-3 text-left transition ${
+                    selecionado
+                      ? "border-indigo-400 shadow-sm ring-2 ring-indigo-100"
+                      : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                  }`}
+                >
+                  <div className="h-28">
+                    <BannerModeloMiniatura tipo={preset.preview} />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-950">
+                    {preset.label}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {preset.descricao}
+                  </p>
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {preset.uso}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">
+                Preview editável
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Clique no texto, CTA ou imagem para editar vendo o resultado real.
+              </p>
+            </div>
+            <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+              {(["DESKTOP", "MOBILE"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onDeviceChange(item)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                    device === item
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {item === "DESKTOP" ? "Desktop" : "Mobile"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-100 p-4">
+            <div
+              className={`mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 ${
+                device === "MOBILE" ? "max-w-[390px]" : "max-w-none"
+              }`}
+            >
+              <BannerRenderer
+                bloco={previewBloco}
+                produtos={toBannerProdutosPublicos(produtosDisponiveis)}
+                device={device}
+                modo="editor"
+                selectedElement={selectedElement}
+                onElementSelect={onSelectedElementChange}
+                titleSlot={titleSlot}
+                subtitleSlot={subtitleSlot}
+                primaryCtaSlot={primaryCtaSlot}
+                secondaryCtaSlot={secondaryCtaSlot}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Elemento selecionado
+        </p>
+        <h3 className="mt-1 text-lg font-semibold text-slate-950">
+          {selectedElement === "MIDIA"
+            ? "Imagem / crop"
+            : selectedElement === "IMAGEM_FRENTE"
+              ? "Imagem de frente"
+              : selectedElement === "CTA"
+                ? "CTA"
+                : selectedElement === "DESIGN"
+                  ? "Design"
+                  : selectedElement === "PRODUTOS"
+                    ? "Produtos"
+                    : selectedElement === "AVANCADO"
+                      ? "Avançado"
+                      : selectedElement === "SUBTITULO"
+                        ? "Subtítulo"
+                        : selectedElement === "TITULO"
+                          ? "Título"
+                          : "Modelo"}
+        </h3>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            ["MODELO", "Modelo"],
+            ["MIDIA", "Imagem"],
+            ["TITULO", "Texto"],
+            ["CTA", "CTA"],
+            ["DESIGN", "Design"],
+            ["IMAGEM_FRENTE", "Frente"],
+            ["PRODUTOS", "Produtos"],
+            ["AVANCADO", "Avançado"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelectedElementChange(id as BannerStudioElement)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                selectedElement === id
+                  ? "bg-slate-950 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {selectedElement === "MODELO" ? (
+            <>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Nome interno
+                </span>
+                <input
+                  value={estado.nomeInterno}
+                  onChange={(event) =>
+                    onChange({ nomeInterno: event.target.value })
+                  }
+                  placeholder="Ex: Banner principal"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                <p className="font-semibold text-slate-800">
+                  {modeloBannerSelecionado.label}
+                </p>
+                <p className="mt-1">{modeloBannerSelecionado.descricao}</p>
+                <p className="mt-2 text-xs font-semibold text-slate-500">
+                  {modeloBannerSelecionado.medidas}
+                </p>
+              </div>
+            </>
+          ) : null}
+
+          {selectedElement === "TITULO" || selectedElement === "SUBTITULO" ? (
+            <>
+              <CampoToggle
+                checked={estado.exibirTexto}
+                label="Exibir texto"
+                onChange={(checked) => onChange({ exibirTexto: checked })}
+              />
+              <CampoToggle
+                checked={estado.exibirSubtitulo}
+                label="Exibir subtítulo"
+                onChange={(checked) => onChange({ exibirSubtitulo: checked })}
+              />
+              <RangeControl
+                label="Fonte desktop"
+                value={estado.fonteTituloDesktop}
+                min={24}
+                max={140}
+                suffix="px"
+                onChange={(value) => onChange({ fonteTituloDesktop: value })}
+              />
+              <RangeControl
+                label="Fonte mobile"
+                value={estado.fonteTituloMobile}
+                min={24}
+                max={96}
+                suffix="px"
+                onChange={(value) => onChange({ fonteTituloMobile: value })}
+              />
+              <RangeControl
+                label="Line-height"
+                value={estado.lineHeightTitulo}
+                min={0.8}
+                max={1.4}
+                step={0.01}
+                onChange={(value) => onChange({ lineHeightTitulo: value })}
+              />
+              <RangeControl
+                label="Letter spacing"
+                value={estado.letterSpacingTitulo}
+                min={-2}
+                max={8}
+                step={0.5}
+                suffix="px"
+                onChange={(value) => onChange({ letterSpacingTitulo: value })}
+              />
+              <RangeControl
+                label="Largura do texto"
+                value={estado.larguraTextoPercentual}
+                min={30}
+                max={100}
+                suffix="%"
+                onChange={(value) => onChange({ larguraTextoPercentual: value })}
+              />
+            </>
+          ) : null}
+
+          {selectedElement === "CTA" ? (
+            <>
+              <CampoToggle
+                checked={estado.exibirBotaoPrimario}
+                label="Exibir CTA principal"
+                onChange={(checked) =>
+                  onChange({ exibirBotaoPrimario: checked })
+                }
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Texto do CTA
+                </span>
+                <input
+                  value={estado.textoBotao}
+                  onChange={(event) => onChange({ textoBotao: event.target.value })}
+                  placeholder="Ex: Comprar agora"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Link do CTA
+                </span>
+                <input
+                  value={estado.linkBotao}
+                  onChange={(event) => onChange({ linkBotao: event.target.value })}
+                  placeholder="/loja/descontos"
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Estilo do CTA
+                </span>
+                <select
+                  value={estado.estiloCtaBanner}
+                  onChange={(event) =>
+                    onChange({ estiloCtaBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ESTILO_CTA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <CampoToggle
+                checked={estado.ctaNovaAba}
+                label="Abrir em nova aba"
+                onChange={(checked) => onChange({ ctaNovaAba: checked })}
+              />
+              <ButtonRadiusControl
+                value={estado.estiloBordaBotao}
+                onChange={(value) => onChange({ estiloBordaBotao: value })}
+              />
+            </>
+          ) : null}
+
+          {selectedElement === "MIDIA" ? (
+            <>
+              <CampoToggle
+                checked={estado.exibirMidia}
+                label="Exibir mídia"
+                onChange={(checked) => onChange({ exibirMidia: checked })}
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Tipo de mídia
+                </span>
+                <select
+                  value={estado.tipoMidia}
+                  onChange={(event) => onChange({ tipoMidia: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {estado.tipoMidia === "VIDEO" ? (
+                <>
+                  <UploadMidiaCampo
+                    label="Vídeo desktop"
+                    value={estado.videoDesktopUrl}
+                    tipoMidia="VIDEO"
+                    onChange={(url) => onChange({ videoDesktopUrl: url })}
+                    orientacao="Cole uma URL ou envie MP4/WebM."
+                  />
+                  <UploadMidiaCampo
+                    label="Vídeo mobile"
+                    value={estado.videoMobileUrl}
+                    tipoMidia="VIDEO"
+                    onChange={(url) => onChange({ videoMobileUrl: url })}
+                    orientacao="Opcional. Quando vazio usa o desktop."
+                  />
+                </>
+              ) : (
+                <>
+                  <UploadMidiaCampo
+                    label="Imagem desktop"
+                    value={estado.imagemDesktopUrl}
+                    tipoMidia="IMAGEM"
+                    onChange={(url) => onChange({ imagemDesktopUrl: url })}
+                    orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
+                  />
+                  <UploadMidiaCampo
+                    label="Imagem mobile"
+                    value={estado.imagemMobileUrl}
+                    tipoMidia="IMAGEM"
+                    onChange={(url) => onChange({ imagemMobileUrl: url })}
+                    orientacao="Opcional. Quando vazio usa o desktop."
+                  />
+                </>
+              )}
+              <CropPositionControls
+                desktopValue={estado.mediaPositionDesktop}
+                mobileValue={estado.mediaPositionMobile}
+                onChange={onChange}
+              />
+              <RangeControl
+                label="Zoom desktop"
+                value={estado.mediaZoomDesktop}
+                min={80}
+                max={180}
+                suffix="%"
+                onChange={(value) => onChange({ mediaZoomDesktop: value })}
+              />
+              <RangeControl
+                label="Zoom mobile"
+                value={estado.mediaZoomMobile}
+                min={80}
+                max={180}
+                suffix="%"
+                onChange={(value) => onChange({ mediaZoomMobile: value })}
+              />
+            </>
+          ) : null}
+
+          {selectedElement === "IMAGEM_FRENTE" ? (
+            <>
+              <UploadMidiaCampo
+                label="Imagem frontal desktop"
+                value={estado.imagemFrenteDesktopUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ imagemFrenteDesktopUrl: url })}
+                orientacao="PNG/WebP com fundo transparente funciona melhor."
+              />
+              <UploadMidiaCampo
+                label="Imagem frontal mobile"
+                value={estado.imagemFrenteMobileUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ imagemFrenteMobileUrl: url })}
+                orientacao="Opcional. Quando vazio usa a imagem frontal desktop."
+              />
+              <RangeControl
+                label="Posição horizontal"
+                value={estado.imagemFrenteX}
+                min={0}
+                max={100}
+                suffix="%"
+                onChange={(value) => onChange({ imagemFrenteX: value })}
+              />
+              <RangeControl
+                label="Posição vertical"
+                value={estado.imagemFrenteY}
+                min={0}
+                max={100}
+                suffix="%"
+                onChange={(value) => onChange({ imagemFrenteY: value })}
+              />
+              <RangeControl
+                label="Largura desktop"
+                value={estado.imagemFrenteLarguraDesktop}
+                min={12}
+                max={80}
+                suffix="%"
+                onChange={(value) =>
+                  onChange({ imagemFrenteLarguraDesktop: value })
+                }
+              />
+              <RangeControl
+                label="Largura mobile"
+                value={estado.imagemFrenteLarguraMobile}
+                min={12}
+                max={80}
+                suffix="%"
+                onChange={(value) =>
+                  onChange({ imagemFrenteLarguraMobile: value })
+                }
+              />
+            </>
+          ) : null}
+
+          {selectedElement === "DESIGN" ? (
+            <>
+              <ResponsiveTextAlignControls
+                desktopValue={estado.alinhamentoTextoDesktop}
+                mobileValue={estado.alinhamentoTextoMobile}
+                onChange={onChange}
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Alinhamento horizontal
+                </span>
+                <select
+                  value={estado.alinhamentoConteudo}
+                  onChange={(event) =>
+                    onChange({ alinhamentoConteudo: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALINHAMENTO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Altura
+                </span>
+                <select
+                  value={estado.alturaBanner}
+                  onChange={(event) => onChange({ alturaBanner: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALTURA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Alinhamento vertical
+                </span>
+                <select
+                  value={estado.alinhamentoVertical}
+                  onChange={(event) =>
+                    onChange({ alinhamentoVertical: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {ALINHAMENTO_VERTICAL_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Largura do bloco
+                </span>
+                <select
+                  value={estado.larguraBanner}
+                  onChange={(event) => onChange({ larguraBanner: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {LARGURA_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Overlay
+                </span>
+                <select
+                  value={estado.overlayBanner}
+                  onChange={(event) => onChange({ overlayBanner: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {OVERLAY_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Cor do texto
+                </span>
+                <select
+                  value={estado.corTextoBanner}
+                  onChange={(event) =>
+                    onChange({ corTextoBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {COR_TEXTO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <RangeControl
+                label="Margem segura lateral"
+                value={estado.margemSeguraX}
+                min={0}
+                max={18}
+                suffix="%"
+                onChange={(value) => onChange({ margemSeguraX: value })}
+              />
+              <RangeControl
+                label="Margem segura topo/base"
+                value={estado.margemSeguraY}
+                min={0}
+                max={18}
+                suffix="%"
+                onChange={(value) => onChange({ margemSeguraY: value })}
+              />
+            </>
+          ) : null}
+
+          {selectedElement === "PRODUTOS" ? (
+            <>
+              <CampoToggle
+                checked={estado.produtosFlutuantesAtivos}
+                label="Usar produtos na composição"
+                description="No modelo de camadas, o primeiro produto pode virar imagem frontal quando não houver imagem de frente."
+                onChange={(checked) =>
+                  onChange({ produtosFlutuantesAtivos: checked })
+                }
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Buscar produto
+                </span>
+                <input
+                  value={buscaProdutoManual}
+                  onChange={(event) =>
+                    onBuscaProdutoManualChange(event.target.value)
+                  }
+                  placeholder="Digite nome, código ou categoria"
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                />
+              </label>
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                {produtosFiltradosManual.map((produto) => (
+                  <button
+                    key={produto.id}
+                    type="button"
+                    onClick={() => adicionarProdutoManual(produto.id)}
+                    className="flex w-full items-center gap-3 rounded-xl bg-white px-2 py-2 text-left transition hover:bg-slate-100"
+                  >
+                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                      {produto.imagemUrl ? (
+                        <img
+                          src={produto.imagemUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-slate-800">
+                        {produto.nome}
+                      </span>
+                      <span className="block truncate text-xs text-slate-400">
+                        {produto.codigoInterno}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {estado.produtosSelecionadosIds.map((produtoId, index) => {
+                  const produto = getProdutoResumo(produtoId, produtosDisponiveis);
+
+                  return (
+                    <div
+                      key={produtoId}
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 px-2 py-2"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-slate-800">
+                          {produto?.nome || "Produto indisponível"}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => moverProdutoManual(produtoId, "UP")}
+                        disabled={index === 0}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                        aria-label="Subir produto"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moverProdutoManual(produtoId, "DOWN")}
+                        disabled={index === estado.produtosSelecionadosIds.length - 1}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 disabled:opacity-40"
+                        aria-label="Descer produto"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removerProdutoManual(produtoId)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-700"
+                        aria-label="Remover produto"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+
+          {selectedElement === "AVANCADO" ? (
+            <>
+              <CampoToggle
+                checked={estado.videoLoop}
+                label="Repetir vídeo em loop"
+                onChange={(checked) => onChange({ videoLoop: checked })}
+              />
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Som do vídeo
+                </span>
+                <select
+                  value={estado.videoSom}
+                  onChange={(event) => onChange({ videoSom: event.target.value })}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {VIDEO_SOM_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <UploadMidiaCampo
+                label="Poster do vídeo"
+                value={estado.videoPosterUrl}
+                tipoMidia="IMAGEM"
+                onChange={(url) => onChange({ videoPosterUrl: url })}
+                orientacao="Imagem exibida enquanto o vídeo carrega."
+              />
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-500">
+                Banner continua salvo dentro do bloco. Não há página separada de
+                assets e as imagens ficam no próprio configJson do bloco.
+              </div>
+            </>
+          ) : null}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function EditorConteudoBlocoModal({
   estado,
   pagina,
@@ -5469,6 +6708,10 @@ function EditorConteudoBlocoModal({
   const [buscaProdutoManual, setBuscaProdutoManual] = useState("");
   const [abaBannerAtiva, setAbaBannerAtiva] =
     useState<BannerEditorAba>("CONTEUDO");
+  const [bannerStudioElement, setBannerStudioElement] =
+    useState<BannerStudioElement>("MODELO");
+  const [bannerStudioDevice, setBannerStudioDevice] =
+    useState<BannerDevicePreview>("DESKTOP");
 
   if (!estado) {
     return null;
@@ -5689,7 +6932,24 @@ function EditorConteudoBlocoModal({
         </div>
 
         {isBanner ? (
-          <div className="space-y-5 px-6 py-5">
+          <>
+            <BannerStudioEditor
+              estado={estado}
+              produtosDisponiveis={produtosDisponiveis}
+              buscaProdutoManual={buscaProdutoManual}
+              produtosFiltradosManual={produtosFiltradosManual}
+              selectedElement={bannerStudioElement}
+              device={bannerStudioDevice}
+              onChange={onChange}
+              onSelectedElementChange={setBannerStudioElement}
+              onDeviceChange={setBannerStudioDevice}
+              onBuscaProdutoManualChange={setBuscaProdutoManual}
+              adicionarProdutoManual={adicionarProdutoManual}
+              removerProdutoManual={removerProdutoManual}
+              moverProdutoManual={moverProdutoManual}
+            />
+
+          <div className="hidden">
             <label>
               <span className="mb-2 block text-sm font-medium text-slate-700">
                 Nome interno
@@ -6310,6 +7570,7 @@ function EditorConteudoBlocoModal({
               com codec H.264 para maior compatibilidade.
             </div>
           </div>
+          </>
         ) : isTextoImagem ? (
           <div className="space-y-5 px-6 py-5">
             <label>
@@ -8817,15 +10078,47 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "alinhamento") ||
         getStringConfig(config, "alinhamentoConteudo") ||
         "CENTRO",
-      modeloBanner: getStringConfig(config, "modeloBanner") || "BANNER_EDITORIAL",
+      modeloBanner: normalizeBannerModelo(getStringConfig(config, "modeloBanner")),
       alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
       larguraBanner: getStringConfig(config, "larguraBanner") || "FULL_BLEED",
       overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
       corTextoBanner: getStringConfig(config, "corTextoBanner") || "CLARO",
+      alinhamentoVertical: getStringConfig(config, "alinhamentoVertical") || "CENTRO",
+      margemSeguraX: getNumberConfig(config, "margemSeguraX", 8),
+      margemSeguraY: getNumberConfig(config, "margemSeguraY", 8),
+      larguraTextoPercentual: getNumberConfig(config, "larguraTextoPercentual", 58),
+      fonteTituloDesktop: getNumberConfig(config, "fonteTituloDesktop", 68),
+      fonteTituloMobile: getNumberConfig(config, "fonteTituloMobile", 42),
+      lineHeightTitulo: getNumberConfig(config, "lineHeightTitulo", 0.98),
+      letterSpacingTitulo: getNumberConfig(config, "letterSpacingTitulo", 0),
+      mediaZoomDesktop: getNumberConfig(config, "mediaZoomDesktop", 100),
+      mediaZoomMobile: getNumberConfig(config, "mediaZoomMobile", 100),
+      imagemFrenteDesktopUrl:
+        getStringConfig(config, "imagemFrenteDesktopUrl") ||
+        getStringConfig(config, "imagemFrontalDesktopUrl"),
+      imagemFrenteMobileUrl:
+        getStringConfig(config, "imagemFrenteMobileUrl") ||
+        getStringConfig(config, "imagemFrontalMobileUrl"),
+      imagemFrenteAlt: getStringConfig(config, "imagemFrenteAlt"),
+      imagemFrenteX: getNumberConfig(config, "imagemFrenteX", 74),
+      imagemFrenteY: getNumberConfig(config, "imagemFrenteY", 56),
+      imagemFrenteLarguraDesktop: getNumberConfig(
+        config,
+        "imagemFrenteLarguraDesktop",
+        34
+      ),
+      imagemFrenteLarguraMobile: getNumberConfig(
+        config,
+        "imagemFrenteLarguraMobile",
+        56
+      ),
+      estiloCtaBanner: getStringConfig(config, "estiloCtaBanner") || "PREENCHIDO",
+      ctaNovaAba: getBooleanConfig(config, "ctaNovaAba", false),
       produtosFlutuantesAtivos: getBooleanConfig(
         config,
         "produtosFlutuantesAtivos",
-        getStringConfig(config, "modeloBanner") === "PRODUTOS_FLUTUANTES"
+        normalizeBannerModelo(getStringConfig(config, "modeloBanner")) ===
+          "CAMADAS_PARALLAX"
       ),
       tipoMidia: getStringConfig(config, "tipoMidia") || "IMAGEM",
       exibirTexto: getBooleanConfig(config, "exibirTexto", true),
@@ -8977,6 +10270,25 @@ export default function EditorVisualPaginaClient({
               larguraBanner: editando.larguraBanner,
               overlayBanner: editando.overlayBanner,
               corTextoBanner: editando.corTextoBanner,
+              alinhamentoVertical: editando.alinhamentoVertical,
+              margemSeguraX: editando.margemSeguraX,
+              margemSeguraY: editando.margemSeguraY,
+              larguraTextoPercentual: editando.larguraTextoPercentual,
+              fonteTituloDesktop: editando.fonteTituloDesktop,
+              fonteTituloMobile: editando.fonteTituloMobile,
+              lineHeightTitulo: editando.lineHeightTitulo,
+              letterSpacingTitulo: editando.letterSpacingTitulo,
+              mediaZoomDesktop: editando.mediaZoomDesktop,
+              mediaZoomMobile: editando.mediaZoomMobile,
+              imagemFrenteDesktopUrl: editando.imagemFrenteDesktopUrl,
+              imagemFrenteMobileUrl: editando.imagemFrenteMobileUrl,
+              imagemFrenteAlt: editando.imagemFrenteAlt,
+              imagemFrenteX: editando.imagemFrenteX,
+              imagemFrenteY: editando.imagemFrenteY,
+              imagemFrenteLarguraDesktop: editando.imagemFrenteLarguraDesktop,
+              imagemFrenteLarguraMobile: editando.imagemFrenteLarguraMobile,
+              estiloCtaBanner: editando.estiloCtaBanner,
+              ctaNovaAba: editando.ctaNovaAba,
               produtosFlutuantesAtivos: editando.produtosFlutuantesAtivos,
               produtosIds: editando.produtosSelecionadosIds,
               mediaCropDesktopX: editando.mediaCropDesktopX,
