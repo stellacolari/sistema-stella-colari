@@ -59,6 +59,9 @@ export type EditorVisualPagina = {
   ativo: boolean;
   statusPublicacao: string;
   urlPublica: string;
+  categoriaId?: string | null;
+  categoriaNome?: string | null;
+  categoriaSlug?: string | null;
 };
 
 export type EditorVisualBloco = {
@@ -272,6 +275,7 @@ type BlocoEditandoState = {
   alinhamentoConteudo: string;
   alinhamentoTextoDesktop: string;
   alinhamentoTextoMobile: string;
+  modeloBanner: string;
   alturaBanner: string;
   overlayBanner: string;
   corTextoBanner: string;
@@ -381,6 +385,44 @@ const COR_TEXTO_BANNER_PRESETS = [
 const TIPO_MIDIA_BANNER_PRESETS = [
   { value: "IMAGEM", label: "Imagem" },
   { value: "VIDEO", label: "Vídeo" },
+];
+
+const MODELO_BANNER_PRESETS = [
+  {
+    value: "HERO_TELA_CHEIA",
+    label: "Hero tela cheia",
+    medidas: "Desktop 1920x900 px · mobile 1080x1350 px",
+  },
+  {
+    value: "BANNER_EDITORIAL",
+    label: "Banner editorial",
+    medidas: "Desktop 1920x640 px · mobile 1080x1350 px",
+  },
+  {
+    value: "TEXTO_GRANDE",
+    label: "Banner com texto grande",
+    medidas: "Desktop 1920x720 px · mobile 1080x1350 px",
+  },
+  {
+    value: "CATEGORIA",
+    label: "Banner de categoria",
+    medidas: "Desktop 1920x520 px · mobile 1080x1200 px",
+  },
+  {
+    value: "IMAGEM_LATERAL",
+    label: "Banner com imagem lateral",
+    medidas: "Desktop 1600x720 px · mobile 1080x1350 px",
+  },
+  {
+    value: "PRODUTOS_FLUTUANTES",
+    label: "Banner com produtos flutuantes",
+    medidas: "Desktop 1920x760 px · mobile 1080x1350 px",
+  },
+  {
+    value: "FAIXA_PROMOCIONAL",
+    label: "Faixa promocional",
+    medidas: "Desktop 1920x320 px · mobile 1080x560 px",
+  },
 ];
 
 const VIDEO_SOM_PRESETS = [
@@ -5275,6 +5317,7 @@ function ColecoesCategoriasModalFields({
 
 function EditorConteudoBlocoModal({
   estado,
+  pagina,
   categoriasDisponiveis,
   produtosDisponiveis,
   onChange,
@@ -5283,6 +5326,7 @@ function EditorConteudoBlocoModal({
   salvando,
 }: {
   estado: BlocoEditandoState;
+  pagina: EditorVisualPagina;
   categoriasDisponiveis: EditorVisualCategoria[];
   produtosDisponiveis: EditorVisualProduto[];
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
@@ -5303,6 +5347,10 @@ function EditorConteudoBlocoModal({
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
+  const modeloBannerSelecionado =
+    MODELO_BANNER_PRESETS.find(
+      (preset) => preset.value === estado.modeloBanner
+    ) || MODELO_BANNER_PRESETS[1];
   const produtosFiltradosManual = produtosDisponiveis
     .filter((produto) => {
       const termo = buscaProdutoManual.trim().toLowerCase();
@@ -5520,6 +5568,32 @@ function EditorConteudoBlocoModal({
                 className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
               />
             </label>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Modelo do banner
+                </span>
+
+                <select
+                  value={estado.modeloBanner}
+                  onChange={(event) =>
+                    onChange({ modeloBanner: event.target.value })
+                  }
+                  className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  {MODELO_BANNER_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <p className="mt-3 text-xs font-medium text-slate-500">
+                Medidas recomendadas: {modeloBannerSelecionado.medidas}
+              </p>
+            </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <CampoToggle
@@ -6506,6 +6580,15 @@ function EditorConteudoBlocoModal({
             </SecaoRecolhivel>
 
             <div className="grid gap-4 md:grid-cols-2">
+              {pagina.tipo === "CATEGORIA" && pagina.categoriaNome && (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-800 md:col-span-2">
+                  Categoria fixa: este editor está vinculado a{" "}
+                  <strong>{pagina.categoriaNome}</strong>. A seleção manual e a
+                  renderização pública usam somente produtos desta categoria e
+                  de suas subcategorias.
+                </div>
+              )}
+
               <label>
                 <span className="mb-2 block text-sm font-medium text-slate-700">
                   Fonte/origem dos produtos
@@ -8351,6 +8434,7 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "alinhamento") ||
         getStringConfig(config, "alinhamentoConteudo") ||
         "CENTRO",
+      modeloBanner: getStringConfig(config, "modeloBanner") || "BANNER_EDITORIAL",
       alturaBanner: getStringConfig(config, "alturaBanner") || "PADRAO",
       overlayBanner: getStringConfig(config, "overlayBanner") || "LEVE",
       corTextoBanner: getStringConfig(config, "corTextoBanner") || "CLARO",
@@ -8498,6 +8582,7 @@ export default function EditorVisualPaginaClient({
             botaoSecundarioTexto: editando.textoBotaoSecundario,
             linkBotaoSecundario: editando.linkBotaoSecundario,
             botaoSecundarioLink: editando.linkBotaoSecundario,
+              modeloBanner: editando.modeloBanner,
               alinhamentoConteudo: editando.alinhamentoConteudo,
               alturaBanner: editando.alturaBanner,
               overlayBanner: editando.overlayBanner,
@@ -9118,8 +9203,9 @@ export default function EditorVisualPaginaClient({
                 </p>
 
                 <p className="mt-2 text-sm text-slate-600">
-                  {categoriasDisponiveis.length} categorias carregadas para uso
-                  em blocos de produtos, categorias e campanhas.
+                  {pagina.tipo === "CATEGORIA" && pagina.categoriaNome
+                    ? `Esta página está vinculada a ${pagina.categoriaNome}; produtos disponíveis no editor já estão limitados a essa categoria.`
+                    : `${categoriasDisponiveis.length} categorias carregadas para uso em blocos de produtos, categorias e campanhas.`}
                 </p>
               </div>
             </div>
@@ -9142,6 +9228,7 @@ export default function EditorVisualPaginaClient({
 
       <EditorConteudoBlocoModal
         estado={editando}
+        pagina={pagina}
         categoriasDisponiveis={categoriasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
         onChange={atualizarEdicao}

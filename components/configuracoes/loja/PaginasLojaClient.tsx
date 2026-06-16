@@ -76,7 +76,7 @@ const TIPOS_PAGINA = [
   },
   {
     value: "CATEGORIA",
-    label: "Categoria",
+    label: "Página de categoria",
     description: "Página personalizada vinculada a uma categoria.",
     icon: FolderTree,
   },
@@ -209,7 +209,8 @@ const [publicandoId, setPublicandoId] = useState<string | null>(null);
   const paginasFiltradas = useMemo(() => {
     const termo = normalizarTexto(busca);
 
-    return paginas.filter((pagina) => {
+    return paginas
+      .filter((pagina) => {
       const combinaBusca =
         !termo ||
         normalizarTexto(pagina.titulo).includes(termo) ||
@@ -224,8 +225,30 @@ const [publicandoId, setPublicandoId] = useState<string | null>(null);
         statusFiltro === "TODOS" || status === statusFiltro;
 
       return combinaBusca && combinaTipo && combinaStatus;
-    });
+    })
+      .sort((a, b) => {
+        const ordemTipo = (pagina: LojaPaginaBuilderItem) => {
+          if (pagina.tipo === "HOME" || pagina.slug === "home") return 0;
+          if (pagina.tipo === "CATEGORIA") return 1;
+          if (pagina.tipo === "TEMPLATE_CATEGORIA") return 2;
+          return 3;
+        };
+
+        const ordemA = ordemTipo(a);
+        const ordemB = ordemTipo(b);
+
+        if (ordemA !== ordemB) return ordemA - ordemB;
+
+        return a.titulo.localeCompare(b.titulo);
+      });
   }, [paginas, busca, tipoFiltro, statusFiltro]);
+
+  const paginaHome = useMemo(
+    () =>
+      paginas.find((pagina) => pagina.tipo === "HOME" || pagina.slug === "home") ||
+      null,
+    [paginas]
+  );
 
   const estatisticas = useMemo(() => {
     return {
@@ -237,6 +260,9 @@ const [publicandoId, setPublicandoId] = useState<string | null>(null);
         .length,
       templates: paginas.filter(
         (pagina) => pagina.tipo === "TEMPLATE_CATEGORIA"
+      ).length,
+      comuns: paginas.filter((pagina) =>
+        ["GERAL", "LANDING", "CAMPANHA"].includes(pagina.tipo)
       ).length,
     };
   }, [paginas]);
@@ -598,6 +624,60 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
         </div>
       )}
 
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            Página inicial
+          </p>
+
+          <h2 className="mt-2 text-lg font-semibold text-slate-950">
+            Home
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            A Home é a página especial do builder. Edite os banners, chamadas e
+            vitrines da página inicial pela linha Home abaixo.
+          </p>
+
+          {paginaHome && (
+            <p className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-xs font-semibold text-slate-600 ring-1 ring-indigo-100">
+              {paginaHome.statusPublicacao || "RASCUNHO"} ·{" "}
+              {paginaHome.blocosAtivos} blocos ativos
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Páginas comuns
+          </p>
+
+          <p className="mt-2 text-3xl font-semibold text-slate-950">
+            {estatisticas.comuns}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Conteúdos públicos, landing pages e campanhas criados no editor
+            visual.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Páginas de categoria
+          </p>
+
+          <p className="mt-2 text-3xl font-semibold text-slate-950">
+            {estatisticas.categorias}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Layouts personalizados vinculados a categorias. Sem página
+            personalizada, a categoria usa a listagem padrão.
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -619,7 +699,7 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Categorias
+            Páginas de categoria
           </p>
           <p className="mt-2 text-3xl font-semibold text-slate-950">
             {estatisticas.categorias}
@@ -644,8 +724,8 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
             </h2>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Crie páginas por tipo e vincule páginas específicas às categorias
-              quando precisar de controle total.
+              Home, páginas comuns, landing pages e páginas de categoria vivem
+              aqui. Banners e imagens são blocos dentro do editor visual.
             </p>
           </div>
 
@@ -665,7 +745,7 @@ async function tirarPaginaDoAr(pagina: LojaPaginaBuilderItem) {
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               <FolderTree className="h-4 w-4" />
-              Categoria
+              Página de categoria
             </button>
 
             <button

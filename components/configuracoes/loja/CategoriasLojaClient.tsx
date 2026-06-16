@@ -9,6 +9,7 @@ import {
   Folder,
   FolderOpen,
   ImageIcon,
+  LayoutTemplate,
   Pencil,
   Plus,
   Save,
@@ -26,6 +27,9 @@ export type CategoriaLoja = {
   imagemUrl?: string | null;
   exibirNoMenu?: boolean;
   ordemMenu?: number;
+  paginaBuilderId?: string | null;
+  paginaBuilderAtiva?: boolean;
+  paginaBuilderStatus?: string | null;
 };
 
 type CategoriaTreeItem = CategoriaLoja & {
@@ -218,6 +222,9 @@ export default function CategoriasLojaClient({
     useState<CategoriaParaExcluir>(null);
 
   const [excluindo, setExcluindo] = useState(false);
+  const [criandoPaginaCategoriaId, setCriandoPaginaCategoriaId] = useState<
+    string | null
+  >(null);
 
   const categoriasOrdenadas = useMemo(
     () => ordenarCategorias(categorias),
@@ -485,6 +492,49 @@ export default function CategoriasLojaClient({
     }
   }
 
+  async function abrirOuCriarPaginaCategoria(categoria: CategoriaLoja) {
+    limparMensagens();
+
+    if (categoria.paginaBuilderId) {
+      window.location.href = `/configuracoes/loja/paginas/${categoria.paginaBuilderId}/editor`;
+      return;
+    }
+
+    setCriandoPaginaCategoriaId(categoria.id);
+
+    try {
+      const response = await fetch("/api/configuracoes/loja/paginas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          titulo: `Categoria: ${categoria.nome}`,
+          tipo: "CATEGORIA",
+          categoriaId: categoria.id,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErro(data.error || "Erro ao criar página personalizada da categoria.");
+        return;
+      }
+
+      if (data.pagina?.id) {
+        window.location.href = `/configuracoes/loja/paginas/${data.pagina.id}/editor`;
+        return;
+      }
+
+      setErro("Página criada, mas o editor não foi localizado.");
+    } catch {
+      setErro("Erro ao criar página personalizada da categoria.");
+    } finally {
+      setCriandoPaginaCategoriaId(null);
+    }
+  }
+
   function renderCategoria(categoria: CategoriaTreeItem, nivel = 0) {
     const aberta = categoriaEstaAberta(categoria.id);
     const temFilhos = categoria.filhos.length > 0;
@@ -569,6 +619,17 @@ export default function CategoriasLojaClient({
               <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-400">
                 Ordem {categoria.ordemMenu ?? 0}
               </span>
+
+              {categoria.paginaBuilderId ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                  <LayoutTemplate className="h-3 w-3" />
+                  Página personalizada
+                </span>
+              ) : (
+                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                  Layout padrão
+                </span>
+              )}
             </div>
 
             <p className="mt-1 text-xs leading-5 text-slate-400">{caminho}</p>
@@ -581,6 +642,21 @@ export default function CategoriasLojaClient({
           </div>
 
           <div className="flex items-start gap-2">
+            <button
+              type="button"
+              onClick={() => abrirOuCriarPaginaCategoria(categoria)}
+              disabled={criandoPaginaCategoriaId === categoria.id}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label={`Criar ou editar página da categoria ${categoria.nome}`}
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              {categoria.paginaBuilderId
+                ? "Editar página"
+                : criandoPaginaCategoriaId === categoria.id
+                ? "Criando..."
+                : "Criar página"}
+            </button>
+
             <button
               type="button"
               onClick={() => abrirEdicao(categoria)}

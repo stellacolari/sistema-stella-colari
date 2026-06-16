@@ -23,8 +23,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/home")) {
     return {
       eyebrow: "Loja online",
-      title: "Aparencia da home",
-      description: "Home padrao, fallback visual e secoes da vitrine.",
+      title: "Home no editor visual",
+      description: "A pagina inicial fica dentro de Paginas da loja.",
       showLojaButton: true,
     };
   }
@@ -32,8 +32,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes/loja/banners-menu")) {
     return {
       eyebrow: "Loja online",
-      title: "Banners e menu",
-      description: "Banners globais e navegacao principal da loja publica.",
+      title: "Menu e Rodape",
+      description: "Navegacao global, links e referencias do rodape.",
       showLojaButton: true,
     };
   }
@@ -105,7 +105,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Loja online",
       title: "Loja Online",
-      description: "Central da loja, vitrine, paginas, frete e campanhas.",
+      description: "Central de paginas, categorias, menu, frete e campanhas.",
       showLojaButton: true,
     };
   }

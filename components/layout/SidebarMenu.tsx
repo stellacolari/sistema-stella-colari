@@ -163,7 +163,7 @@ const menuSections: MenuSection[] = [
         href: "/configuracoes/loja",
         label: "Loja Online",
         icon: Store,
-        description: "Vitrine, campanhas e canais",
+        description: "Paginas, categorias e navegacao",
         tone: "site",
         exact: true,
         activePrefixes: [

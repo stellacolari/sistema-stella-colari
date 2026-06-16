@@ -102,6 +102,7 @@ function getConfigPadrao(tipo: string) {
       exibirSubtitulo: true,
       exibirBotaoPrimario: true,
       exibirBotaoSecundario: false,
+      modeloBanner: "BANNER_EDITORIAL",
       imagemDesktop: "",
       imagemDesktopUrl: "",
       imagemMobile: "",
@@ -203,6 +204,7 @@ function getConfigPadrao(tipo: string) {
       mostrarFiltros: false,
       filtros: {
         categoria: false,
+        tamanho: false,
         preco: false,
         desconto: false,
         disponibilidade: false,

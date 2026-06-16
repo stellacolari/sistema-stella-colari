@@ -86,7 +86,8 @@ export type LojaBuilderCategoriaAtual = {
 
 type FiltrosGrade = {
   categoria: string;
-  preco: string;
+  tamanho: string;
+  ordenacao: string;
   desconto: string;
   disponibilidade: string;
 };
@@ -257,6 +258,16 @@ function aplicarFiltrosGrade(
     );
   }
 
+  if (filtros.tamanho) {
+    resultado = resultado.filter((produto) =>
+      produto.tamanhosDisponiveis?.some(
+        (tamanho) =>
+          tamanho.tamanhoAnel === filtros.tamanho &&
+          Number(tamanho.quantidadeAtual || 0) > 0,
+      ),
+    );
+  }
+
   if (filtros.desconto === "COM_DESCONTO") {
     resultado = resultado.filter(produtoTemDesconto);
   }
@@ -273,15 +284,29 @@ function aplicarFiltrosGrade(
     resultado = resultado.filter((produto) => produto.estoqueTotal <= 0);
   }
 
-  if (filtros.preco === "MENOR_PRECO") {
+  if (filtros.ordenacao === "MENOR_PRECO") {
     resultado = resultado.sort(
       (a, b) => precoFinalProduto(a) - precoFinalProduto(b),
     );
   }
 
-  if (filtros.preco === "MAIOR_PRECO") {
+  if (filtros.ordenacao === "MAIOR_PRECO") {
     resultado = resultado.sort(
       (a, b) => precoFinalProduto(b) - precoFinalProduto(a),
+    );
+  }
+
+  if (filtros.ordenacao === "AZ") {
+    resultado = resultado.sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  if (filtros.ordenacao === "ZA") {
+    resultado = resultado.sort((a, b) => b.nome.localeCompare(a.nome));
+  }
+
+  if (filtros.ordenacao === "MAIS_RECENTES") {
+    resultado = resultado.sort(
+      (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime(),
     );
   }
 
@@ -980,9 +1005,19 @@ function FiltrosProdutosGrade({
   const categorias = Array.from(
     new Set(produtos.map((produto) => produto.categoria).filter(Boolean)),
   ).sort((a, b) => a.localeCompare(b));
+  const tamanhos = Array.from(
+    new Set(
+      produtos.flatMap((produto) =>
+        (produto.tamanhosDisponiveis || [])
+          .filter((tamanho) => Number(tamanho.quantidadeAtual || 0) > 0)
+          .map((tamanho) => tamanho.tamanhoAnel),
+      ),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
 
   if (
     !filtrosAtivos.categoria &&
+    !filtrosAtivos.tamanho &&
     !filtrosAtivos.preco &&
     !filtrosAtivos.desconto &&
     !filtrosAtivos.disponibilidade
@@ -1014,20 +1049,44 @@ function FiltrosProdutosGrade({
           </select>
         )}
 
-        {Boolean(filtrosAtivos.preco) && (
+        {Boolean(filtrosAtivos.tamanho) && tamanhos.length > 0 && (
           <select
-            value={filtros.preco}
+            value={filtros.tamanho}
             onChange={(event) =>
               setFiltros((current) => ({
                 ...current,
-                preco: event.target.value,
+                tamanho: event.target.value,
               }))
             }
             className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
           >
-            <option value="">Ordenar preço</option>
-            <option value="MENOR_PRECO">Menor preço</option>
-            <option value="MAIOR_PRECO">Maior preço</option>
+            <option value="">Todos os tamanhos</option>
+
+            {tamanhos.map((tamanho) => (
+              <option key={tamanho} value={tamanho}>
+                {tamanho}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {Boolean(filtrosAtivos.preco) && (
+          <select
+            value={filtros.ordenacao}
+            onChange={(event) =>
+              setFiltros((current) => ({
+                ...current,
+                ordenacao: event.target.value,
+              }))
+            }
+            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+          >
+            <option value="">Ordenar</option>
+            <option value="MAIS_RECENTES">Mais recentes</option>
+            <option value="MENOR_PRECO">Preço: menor para maior</option>
+            <option value="MAIOR_PRECO">Preço: maior para menor</option>
+            <option value="AZ">A-Z</option>
+            <option value="ZA">Z-A</option>
           </select>
         )}
 
@@ -1251,7 +1310,8 @@ function ProdutosGrade({
   const [quantidadeVisivel, setQuantidadeVisivel] = useState(itensPorPagina);
   const [filtros, setFiltros] = useState<FiltrosGrade>({
     categoria: "",
-    preco: "",
+    tamanho: "",
+    ordenacao: "",
     desconto: "",
     disponibilidade: "",
   });

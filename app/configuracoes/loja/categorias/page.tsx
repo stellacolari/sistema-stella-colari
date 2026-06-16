@@ -28,16 +28,51 @@ export default async function CategoriasLojaPage() {
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,
+      paginasBuilder: {
+        where: {
+          tipo: "CATEGORIA",
+          statusPublicacao: {
+            not: "ARQUIVADA",
+          },
+        },
+        select: {
+          id: true,
+          ativo: true,
+          statusPublicacao: true,
+        },
+        orderBy: {
+          atualizadoEm: "desc",
+        },
+        take: 1,
+      },
     },
+  });
+
+  const categoriasClient = categorias.map((categoria) => {
+    const paginaBuilder = categoria.paginasBuilder[0] || null;
+
+    return {
+      id: categoria.id,
+      nome: categoria.nome,
+      slug: categoria.slug,
+      categoriaMaeId: categoria.categoriaMaeId,
+      descricao: categoria.descricao,
+      imagemUrl: categoria.imagemUrl,
+      exibirNoMenu: categoria.exibirNoMenu,
+      ordemMenu: categoria.ordemMenu,
+      paginaBuilderId: paginaBuilder?.id || null,
+      paginaBuilderAtiva: paginaBuilder?.ativo || false,
+      paginaBuilderStatus: paginaBuilder?.statusPublicacao || null,
+    };
   });
 
 return (
   <main className="space-y-6">
     <LojaConfigHeader
       title="Categorias da loja"
-      description="Organize categorias, subcategorias, imagens, descrições e exibição no menu público."
+      description="Organize taxonomia, hierarquia, imagens, menu público e páginas personalizadas de categoria."
     />
 
-    <CategoriasLojaClient categoriasIniciais={categorias} />
+    <CategoriasLojaClient categoriasIniciais={categoriasClient} />
   </main>
 )}

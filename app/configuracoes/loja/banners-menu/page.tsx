@@ -5,7 +5,7 @@ import ConfiguracoesLojaClient from "@/components/configuracoes/loja/Configuraco
 import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
 
 export const metadata: Metadata = {
-  title: "Banners e menu | Plataforma Stella Colari",
+  title: "Menu e Rodapé | Plataforma Stella Colari",
 };
 
 export const dynamic = "force-dynamic";
@@ -37,8 +37,31 @@ function montarCaminhoCategoria(
   return partes.join(" > ");
 }
 
+function getUrlPublicaPagina(pagina: {
+  slug: string;
+  tipo: string;
+  categoria?: {
+    slug: string;
+  } | null;
+}) {
+  if (pagina.tipo === "HOME" || pagina.slug === "home") {
+    return "/loja";
+  }
+
+  if (pagina.tipo === "CATEGORIA" && pagina.categoria?.slug) {
+    return `/loja/categoria/${pagina.categoria.slug}`;
+  }
+
+  if (pagina.tipo === "TEMPLATE_CATEGORIA") {
+    return "";
+  }
+
+  return `/loja/p/${pagina.slug}`;
+}
+
 export default async function BannersMenuLojaPage() {
-  const [produtosRaw, categoriasRaw, bannersRaw, menusRaw] = await Promise.all([
+  const [produtosRaw, categoriasRaw, bannersRaw, menusRaw, paginasRaw] =
+    await Promise.all([
     prisma.produto.findMany({
       select: {
         id: true,
@@ -73,6 +96,26 @@ export default async function BannersMenuLojaPage() {
 
     prisma.menuLoja.findMany({
       orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+    }),
+
+    prisma.lojaPagina.findMany({
+      where: {
+        statusPublicacao: {
+          not: "ARQUIVADA",
+        },
+      },
+      select: {
+        id: true,
+        titulo: true,
+        slug: true,
+        tipo: true,
+        categoria: {
+          select: {
+            slug: true,
+          },
+        },
+      },
+      orderBy: [{ tipo: "asc" }, { titulo: "asc" }],
     }),
   ]);
 
@@ -142,11 +185,20 @@ export default async function BannersMenuLojaPage() {
     atualizadoEm: menu.atualizadoEm.toISOString(),
   }));
 
+  const paginasBuilder = paginasRaw
+    .map((pagina) => ({
+      id: pagina.id,
+      titulo: pagina.titulo,
+      tipo: pagina.tipo,
+      urlPublica: getUrlPublicaPagina(pagina),
+    }))
+    .filter((pagina) => pagina.urlPublica);
+
   return (
     <main className="space-y-6">
       <LojaConfigHeader
-        title="Banners e menu da loja"
-        description="Configure banners desktop/mobile e a navegação principal da loja pública. Esta subárea não edita páginas; páginas públicas ficam em Páginas da loja."
+        title="Menu e Rodapé"
+        description="Configure navegação global, links, categorias do menu e referências usadas no rodapé. Banners visuais ficam como blocos dentro das páginas do builder."
         actions={
           <Link
             href="/configuracoes/loja"
@@ -161,6 +213,7 @@ export default async function BannersMenuLojaPage() {
         produtos={produtos}
         categorias={categoriasLegadas}
         categoriasNovas={categorias}
+        paginasBuilder={paginasBuilder}
         banners={banners}
         menus={menus}
       />

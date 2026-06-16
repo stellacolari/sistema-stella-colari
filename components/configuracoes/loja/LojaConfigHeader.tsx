@@ -8,10 +8,9 @@ import {
   ClipboardList,
   Eye,
   FolderKanban,
-  Home,
   LayoutTemplate,
+  Menu,
   PackageCheck,
-  SlidersHorizontal,
   Sparkles,
   Store,
   Tag,
@@ -32,14 +31,9 @@ const tabs = [
     exact: true,
   },
   {
-    href: "/configuracoes/loja/home",
-    label: "Aparência",
-    icon: Home,
-  },
-  {
     href: "/configuracoes/loja/banners-menu",
-    label: "Banners/Menu",
-    icon: SlidersHorizontal,
+    label: "Menu e Rodapé",
+    icon: Menu,
   },
   {
     href: "/configuracoes/loja/paginas",

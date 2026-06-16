@@ -18,9 +18,12 @@ import {
   type BlocoPublicoProps,
 } from "@/components/loja/paginas/blocos/utils";
 
-function getHeightClass(altura: string) {
+function getHeightClass(altura: string, modelo: string) {
   if (altura === "COMPACTA") return "min-h-[360px] md:min-h-[420px]";
   if (altura === "TELA_CHEIA") return "min-h-[calc(100vh-80px)]";
+  if (modelo === "HERO_TELA_CHEIA") return "min-h-[calc(100vh-80px)]";
+  if (modelo === "FAIXA_PROMOCIONAL") return "min-h-[260px] md:min-h-[320px]";
+  if (modelo === "CATEGORIA") return "min-h-[360px] md:min-h-[520px]";
 
   return "min-h-[460px] md:min-h-[580px]";
 }
@@ -85,6 +88,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
     "linkBotaoSecundario",
     "botaoSecundarioLink",
   ]);
+  const modelo = getString(config, "modeloBanner", "BANNER_EDITORIAL");
   const altura = getString(config, "alturaBanner", "PADRAO");
   const alinhamento = getString(config, "alinhamentoConteudo", "ESQUERDA");
   const alinhamentoTextoDesktop = getString(
@@ -128,7 +132,7 @@ export default function BannerPublico({ bloco }: BlocoPublicoProps) {
   }
 
   return (
-    <section className={`relative overflow-hidden bg-slate-950 ${getHeightClass(altura)}`}>
+    <section className={`relative overflow-hidden bg-slate-950 ${getHeightClass(altura, modelo)}`}>
       <div className="absolute inset-0">
         <PublicMediaRenderer
           tipoMidia={tipoMidia}

@@ -7,8 +7,8 @@ import {
   ClipboardList,
   Eye,
   FolderKanban,
-  Home,
   LayoutTemplate,
+  Menu,
   PackageCheck,
   Sparkles,
 } from "lucide-react";
@@ -172,24 +172,18 @@ function InfoCard({
 
 export default async function LojaOnlineCentralPage() {
   const [
-    bannersAtivos,
     menusAtivos,
     categoriasTotal,
     categoriasSemImagem,
     paginasPublicadas,
     paginasNaoPublicadas,
+    paginasCategoria,
     formulariosNovos,
     cuponsAtivos,
     cashbackConfig,
     freteConfig,
     modelosEmbalagem,
   ] = await Promise.all([
-    prisma.bannerLoja.count({
-      where: {
-        ativo: true,
-      },
-    }),
-
     prisma.menuLoja.count({
       where: {
         ativo: true,
@@ -219,6 +213,15 @@ export default async function LojaOnlineCentralPage() {
     prisma.lojaPagina.count({
       where: {
         OR: [{ ativo: false }, { statusPublicacao: { not: "PUBLICADA" } }],
+      },
+    }),
+
+    prisma.lojaPagina.count({
+      where: {
+        tipo: "CATEGORIA",
+        statusPublicacao: {
+          not: "ARQUIVADA",
+        },
       },
     }),
 
@@ -302,7 +305,7 @@ export default async function LojaOnlineCentralPage() {
         <MetricCard
           label="Páginas"
           value={paginasPublicadas}
-          helper={`${paginasNaoPublicadas} rascunho/inativas`}
+          helper={`${paginasNaoPublicadas} rascunho/inativas · ${paginasCategoria} de categoria`}
           tone="site"
         />
 
@@ -330,51 +333,46 @@ export default async function LojaOnlineCentralPage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <InfoCard
-          title="Aparência da loja"
-          description="Use esta área para a Home padrão/fallback, chamadas visuais e acesso a banners/menu."
+          title="Home dentro de Páginas"
+          description="A página inicial é uma página especial do editor visual e fica junto das outras páginas públicas."
         />
         <InfoCard
-          title="Páginas da loja"
-          description="Use páginas para criar conteúdos públicos no editor visual, como landing pages e templates."
+          title="Banners são blocos"
+          description="Banners, imagens e CTAs visuais são configurados nos blocos das páginas, não em uma área solta."
         />
         <InfoCard
-          title="Banners e menu"
-          description="Use banners/menu para navegação principal e destaques globais da loja pública."
+          title="Categorias com builder"
+          description="Categorias continuam como taxonomia; quando precisarem de layout próprio, ganham uma página vinculada."
         />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <CentralCard
-          title="Aparência da loja"
-          description="Configure home, banners, chamadas visuais e navegação principal."
-          icon={Home}
-          metric={`${bannersAtivos} / ${menusAtivos}`}
-          metricLabel="banners ativos / links ativos"
+          title="Páginas"
+          description="Edite Home, páginas comuns, landing pages e páginas de categoria pelo editor visual."
+          icon={LayoutTemplate}
+          metric={`${paginasPublicadas}`}
+          metricLabel={`${paginasCategoria} páginas de categoria`}
           tone="site"
           actions={[
             {
-              href: "/configuracoes/loja/home",
-              label: "Editar aparência",
+              href: "/configuracoes/loja/paginas",
+              label: "Gerenciar páginas",
               primary: true,
-            },
-            {
-              href: "/configuracoes/loja/banners-menu",
-              label: "Gerenciar banners/menu",
             },
           ]}
         />
 
         <CentralCard
-          title="Páginas da loja"
-          description="Crie e edite páginas públicas pelo editor visual."
-          icon={LayoutTemplate}
-          metric={`${paginasPublicadas}`}
-          metricLabel="páginas publicadas"
-          tone="site"
+          title="Menu e Rodapé"
+          description="Configure navegação global, links, categorias do menu e referências usadas no rodapé."
+          icon={Menu}
+          metric={`${menusAtivos}`}
+          metricLabel="links ativos no menu"
           actions={[
             {
-              href: "/configuracoes/loja/paginas",
-              label: "Ver páginas",
+              href: "/configuracoes/loja/banners-menu",
+              label: "Editar menu e rodapé",
               primary: true,
             },
           ]}
@@ -382,7 +380,7 @@ export default async function LojaOnlineCentralPage() {
 
         <CentralCard
           title="Categorias"
-          description="Gerencie categorias visíveis na loja."
+          description="Gerencie taxonomia, hierarquia e vínculo com páginas personalizadas do builder."
           icon={FolderKanban}
           metric={`${categoriasTotal}`}
           metricLabel="categorias ativas"

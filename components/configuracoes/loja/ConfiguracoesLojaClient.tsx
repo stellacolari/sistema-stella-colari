@@ -63,12 +63,20 @@ export type ProdutoMenuItem = {
   status: string;
 };
 
+export type PaginaBuilderMenuItem = {
+  id: string;
+  titulo: string;
+  tipo: string;
+  urlPublica: string;
+};
+
 type ConfiguracoesLojaClientProps = {
   produtos?: ProdutoMenuItem[];
   banners: BannerLojaItem[];
   menus: MenuLojaItem[];
   categorias: string[];
   categoriasNovas?: CategoriaNovaItem[];
+  paginasBuilder?: PaginaBuilderMenuItem[];
 };
 
 type ApiResult = {
@@ -338,6 +346,7 @@ export default function ConfiguracoesLojaClient({
   menus,
   categorias,
   categoriasNovas = [],
+  paginasBuilder = [],
 }: ConfiguracoesLojaClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -365,7 +374,7 @@ export default function ConfiguracoesLojaClient({
 
   const menusOrdenadosInicial = useMemo(() => ordenarPorOrdem(menus), [menus]);
 
-  const [abaAtiva, setAbaAtiva] = useState<AbaLoja>("BANNERS");
+  const [abaAtiva, setAbaAtiva] = useState<AbaLoja>("MENU");
 
   const [bannersOrdenados, setBannersOrdenados] = useState<BannerLojaItem[]>(
     bannersOrdenadosInicial
@@ -692,7 +701,9 @@ export default function ConfiguracoesLojaClient({
           tipo: menuTipo,
           linkUrl: menuLinkUrl.trim(),
           categoria: menuCategoria.trim(),
-          paginaEspecial: menuPaginaEspecial,
+          paginaEspecial: menuPaginaEspecial.startsWith("BUILDER:")
+            ? ""
+            : menuPaginaEspecial,
           categoriasSelecionadas: menuCategoriasSelecionadas,
           destaque: menuDestaque,
           corDestaque: menuCorDestaque,
@@ -867,28 +878,16 @@ export default function ConfiguracoesLojaClient({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-950">
-              Configuração visual da loja
+              Menu e Rodapé
             </p>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
-              Organize banners desktop/mobile e os links do menu público em uma
-              tela mais guiada.
+              Organize a navegação global da loja. Banners visuais novos devem
+              ser criados como blocos dentro das páginas do editor visual.
             </p>
           </div>
 
           <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
-            <button
-              type="button"
-              onClick={() => setAbaAtiva("BANNERS")}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                abaAtiva === "BANNERS"
-                  ? "bg-slate-950 text-white"
-                  : "text-slate-600 hover:bg-white"
-              }`}
-            >
-              Banners
-            </button>
-
             <button
               type="button"
               onClick={() => setAbaAtiva("MENU")}
@@ -899,6 +898,18 @@ export default function ConfiguracoesLojaClient({
               }`}
             >
               Menu público
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAbaAtiva("BANNERS")}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                abaAtiva === "BANNERS"
+                  ? "bg-slate-950 text-white"
+                  : "text-slate-600 hover:bg-white"
+              }`}
+            >
+              Banners legados
             </button>
           </div>
         </div>
@@ -918,6 +929,12 @@ export default function ConfiguracoesLojaClient({
 
       {abaAtiva === "BANNERS" && (
         <section className="grid gap-6 xl:grid-cols-[420px_1fr]">
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800 xl:col-span-2">
+            Banners cadastrados aqui são compatibilidade do layout antigo da
+            Home. Para construir visualmente Home, categorias ou landing pages,
+            use o bloco Banner dentro de Páginas.
+          </div>
+
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5 text-slate-400" />
@@ -1260,12 +1277,33 @@ export default function ConfiguracoesLojaClient({
                       setMenuNome((current) => current || "Categorias");
                       setMenuLinkUrl("/loja");
                     }
+
+                    if (value.startsWith("BUILDER:")) {
+                      const paginaId = value.replace("BUILDER:", "");
+                      const pagina = paginasBuilder.find(
+                        (item) => item.id === paginaId
+                      );
+
+                      if (pagina) {
+                        setMenuNome((current) => current || pagina.titulo);
+                        setMenuLinkUrl(pagina.urlPublica);
+                      }
+                    }
                   }}
                   className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
                 >
                   <option value="">Selecione</option>
                   <option value="DESCONTOS">Descontos</option>
                   <option value="TODAS_CATEGORIAS">Todas as categorias</option>
+                  {paginasBuilder.length > 0 && (
+                    <optgroup label="Páginas do builder">
+                      {paginasBuilder.map((pagina) => (
+                        <option key={pagina.id} value={`BUILDER:${pagina.id}`}>
+                          {pagina.titulo} · {pagina.tipo}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               )}
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -52,21 +53,58 @@ function montarCaminhoCategoria(
 function getUrlPublicaPagina(pagina: {
   slug: string;
   tipo: string;
+  categoria?: {
+    slug: string;
+  } | null;
 }) {
   if (pagina.slug === "home" || pagina.tipo === "HOME") {
     return "/loja";
   }
 
+  if (pagina.tipo === "CATEGORIA" && pagina.categoria?.slug) {
+    return `/loja/categoria/${pagina.categoria.slug}`;
+  }
+
   return `/loja/p/${pagina.slug}`;
+}
+
+function coletarIdsCategoriaComFilhas(
+  categoriaId: string,
+  categorias: {
+    id: string;
+    categoriaMaeId: string | null;
+  }[]
+) {
+  const ids = new Set([categoriaId]);
+
+  function visitar(idPai: string) {
+    categorias.forEach((categoria) => {
+      if (categoria.categoriaMaeId === idPai) {
+        ids.add(categoria.id);
+        visitar(categoria.id);
+      }
+    });
+  }
+
+  visitar(categoriaId);
+
+  return Array.from(ids);
 }
 
 export default async function EditorVisualPaginaPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [paginaRaw, categoriasRaw, produtosRaw] = await Promise.all([
+  const [paginaRaw, categoriasRaw] = await Promise.all([
     prisma.lojaPagina.findUnique({
       where: { id },
       include: {
+        categoria: {
+          select: {
+            id: true,
+            nome: true,
+            slug: true,
+          },
+        },
         blocos: {
           orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
         },
@@ -85,42 +123,54 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
       },
       orderBy: [{ ordem: "asc" }, { nome: "asc" }],
     }),
-
-    prisma.produto.findMany({
-      where: {
-        ativo: true,
-        status: {
-          not: "NA_LIXEIRA",
-        },
-      },
-      select: {
-        id: true,
-        codigoInterno: true,
-        nome: true,
-        imagemUrl: true,
-        categoria: true,
-        categoriasProduto: {
-          select: {
-            categoria: {
-              select: {
-                id: true,
-                nome: true,
-                slug: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        nome: "asc",
-      },
-      take: 240,
-    }),
   ]);
 
   if (!paginaRaw) {
     notFound();
   }
+
+  const produtosWhere: Prisma.ProdutoWhereInput = {
+    ativo: true,
+    status: {
+      not: "NA_LIXEIRA",
+    },
+  };
+
+  if (paginaRaw.tipo === "CATEGORIA" && paginaRaw.categoriaId) {
+    produtosWhere.categoriasProduto = {
+      some: {
+        categoriaId: {
+          in: coletarIdsCategoriaComFilhas(paginaRaw.categoriaId, categoriasRaw),
+        },
+      },
+    };
+  }
+
+  const produtosRaw = await prisma.produto.findMany({
+    where: produtosWhere,
+    select: {
+      id: true,
+      codigoInterno: true,
+      nome: true,
+      imagemUrl: true,
+      categoria: true,
+      categoriasProduto: {
+        select: {
+          categoria: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      nome: "asc",
+    },
+    take: 240,
+  });
 
   const pagina: EditorVisualPagina = {
     id: paginaRaw.id,
@@ -130,6 +180,9 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
     ativo: paginaRaw.ativo,
     statusPublicacao: paginaRaw.statusPublicacao,
     urlPublica: getUrlPublicaPagina(paginaRaw),
+    categoriaId: paginaRaw.categoria?.id || null,
+    categoriaNome: paginaRaw.categoria?.nome || null,
+    categoriaSlug: paginaRaw.categoria?.slug || null,
   };
 
   const blocos: EditorVisualBloco[] = paginaRaw.blocos.map((bloco) => ({
@@ -217,6 +270,12 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
               <span className="rounded-full bg-indigo-50 px-3 py-1 font-semibold text-indigo-700">
                 {pagina.statusPublicacao}
               </span>
+
+              {pagina.categoriaNome && (
+                <span className="rounded-full bg-violet-50 px-3 py-1 font-semibold text-violet-700">
+                  Categoria: {pagina.categoriaNome}
+                </span>
+              )}
             </div>
           </div>
 
