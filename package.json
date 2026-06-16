@@ -12,7 +12,8 @@
     "db:criar-admin": "node scripts/criar-admin.mjs",
     "simular:operacao": "node scripts/simular-operacao-2-meses.mjs",
     "auditar:simulacao": "node scripts/auditar-operacao-simulada.mjs",
-    "consultoria:financeira": "node scripts/consultoria-financeira-stella.mjs"
+    "consultoria:financeira": "node scripts/consultoria-financeira-stella.mjs",
+    "metricas:produtos": "node scripts/gerar-metricas-produtos.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

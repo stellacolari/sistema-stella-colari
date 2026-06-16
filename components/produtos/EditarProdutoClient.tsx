@@ -81,8 +81,69 @@ type ProdutoEdicao = {
   embalagem: EmbalagemProdutoInicial;
 };
 
+type ProdutoCicloInteligencia = {
+  produtoId: string;
+  variacaoId: string | null;
+  tamanhoAnel: string;
+  origemTipo: string | null;
+  origemId: string | null;
+  dataInicio: string;
+  dataFim: string | null;
+  quantidadeInicial: number;
+  quantidadeEntrada: number;
+  quantidadeVendida: number;
+  quantidadeAtual: number;
+  custoMedio: number;
+  precoMedioVenda: number;
+  receitaGerada: number;
+  margemEstimada: number;
+  sellThrough: number;
+  diasAtePrimeiraVenda: number | null;
+  diasAteEsgotar: number | null;
+  status: string;
+};
+
+type ProdutoResumoInteligencia = {
+  produtoId: string;
+  tamanhoAnel: string;
+  periodoTipo: string;
+  periodoInicio: string;
+  periodoFim: string;
+  vendasQuantidade: number;
+  receita: number;
+  custoEstimado: number;
+  margemEstimada: number;
+  estoqueInicial: number;
+  estoqueFinal: number;
+  entradas: number;
+  saidas: number;
+  sellThroughPeriodo: number;
+  sellThroughAcumulado: number;
+  giroEstimado: number;
+  scoreValidacao: number;
+  statusComercial: string;
+  recomendacao: string;
+  dadosJson: unknown;
+};
+
+type ProdutoInteligencia = {
+  resumo: ProdutoResumoInteligencia | null;
+  ciclos: ProdutoCicloInteligencia[];
+  recomendacao: {
+    recomendacao: string;
+    statusComercial: string;
+    confianca: number;
+    motivo: string;
+    sugestaoQuantidade: number;
+    cicloAtual: ProdutoCicloInteligencia | null;
+    sellThrough: number;
+    scoreValidacao: number;
+  };
+};
+
 type EditarProdutoClientProps = {
   produto: ProdutoEdicao;
+  inteligenciaProduto?: ProdutoInteligencia;
   categorias: CategoriaProduto[];
   produtosDisponiveisKit: ProdutoDisponivelKit[];
   regrasAdicionais: RegraAdicionalProduto[];
@@ -142,6 +203,35 @@ function percentual(valor: number) {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format((valor || 0) / 100);
+}
+
+function percentualDireto(valor: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format((valor || 0) / 100);
+}
+
+function numeroCurto(valor: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+  }).format(valor || 0);
+}
+
+function dataCurta(value: string | null) {
+  if (!value) return "-";
+  const data = new Date(value);
+  if (Number.isNaN(data.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+  }).format(data);
+}
+
+function labelInteligencia(value: string | null | undefined) {
+  const texto = String(value || "-").replaceAll("_", " ").toLowerCase();
+  return texto.replace(/(^|\s)\S/g, (letra) => letra.toUpperCase());
 }
 
 function Field({
@@ -249,6 +339,7 @@ function AccordionSection({
 
 export default function EditarProdutoClient({
   produto,
+  inteligenciaProduto,
   categorias,
   produtosDisponiveisKit,
   regrasAdicionais,
@@ -908,6 +999,122 @@ export default function EditarProdutoClient({
                   No salvamento, o custo do kit é recalculado pelos componentes.
                   Esta prévia usa o campo de custo informado na tela.
                 </p>
+              </div>
+            )}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Inteligencia do produto"
+            description="Leitura historica por ciclo, estoque e venda."
+            defaultOpen
+          >
+            {inteligenciaProduto?.resumo ? (
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <InfoCard
+                    label="Status comercial"
+                    value={labelInteligencia(
+                      inteligenciaProduto.resumo.statusComercial
+                    )}
+                    description={`Score ${numeroCurto(
+                      inteligenciaProduto.resumo.scoreValidacao
+                    )}/100`}
+                    destaque
+                  />
+
+                  <InfoCard
+                    label="Recomendacao"
+                    value={labelInteligencia(
+                      inteligenciaProduto.recomendacao.recomendacao
+                    )}
+                    description={`${numeroCurto(
+                      inteligenciaProduto.recomendacao.confianca
+                    )}% de confianca`}
+                  />
+
+                  <InfoCard
+                    label="Sell-through"
+                    value={percentualDireto(
+                      inteligenciaProduto.resumo.sellThroughAcumulado
+                    )}
+                    description={`${inteligenciaProduto.resumo.vendasQuantidade} venda(s) no periodo`}
+                  />
+
+                  <InfoCard
+                    label="Estoque atual"
+                    value={`${inteligenciaProduto.resumo.estoqueFinal} un.`}
+                    description={`Giro estimado ${numeroCurto(
+                      inteligenciaProduto.resumo.giroEstimado
+                    )}/mes`}
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Decisao de reposicao
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    {inteligenciaProduto.recomendacao.motivo}
+                  </p>
+                  <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Sugestao: {inteligenciaProduto.recomendacao.sugestaoQuantidade} un.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-3 text-sm font-semibold text-slate-900">
+                    Historico de ciclos
+                  </p>
+
+                  <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+                    {inteligenciaProduto.ciclos.length === 0 ? (
+                      <p className="px-4 py-4 text-sm text-slate-500">
+                        Ainda nao ha movimentos suficientes para separar ciclos.
+                      </p>
+                    ) : (
+                      inteligenciaProduto.ciclos
+                        .slice()
+                        .reverse()
+                        .slice(0, 5)
+                        .map((ciclo, index) => (
+                          <div
+                            key={`${ciclo.tamanhoAnel}-${ciclo.dataInicio}-${index}`}
+                            className="px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {ciclo.tamanhoAnel === "UNICO"
+                                  ? "Ciclo unico"
+                                  : `Tam. ${ciclo.tamanhoAnel}`}
+                              </p>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                {labelInteligencia(ciclo.status)}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {dataCurta(ciclo.dataInicio)} ate {dataCurta(ciclo.dataFim)}
+                            </p>
+
+                            <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                              <span>
+                                Venda: {ciclo.quantidadeVendida}/
+                                {ciclo.quantidadeInicial + ciclo.quantidadeEntrada} un.
+                              </span>
+                              <span>
+                                Sell-through: {percentualDireto(ciclo.sellThrough)}
+                              </span>
+                              <span>Margem: {moeda(ciclo.margemEstimada)}</span>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                Ainda nao ha historico suficiente para classificar este produto.
               </div>
             )}
           </AccordionSection>

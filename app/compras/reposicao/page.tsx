@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { gerarRecomendacaoReposicao } from "@/lib/produtos/metricas-produto";
 import ReposicaoComprasClient, {
   type ReposicaoCompraItem,
 } from "@/components/compras/ReposicaoComprasClient";
@@ -63,12 +64,26 @@ export default async function ReposicaoComprasPage() {
     }),
   ]);
 
-  const itensProdutos: ReposicaoCompraItem[] = estoqueProdutosRaw
-    .filter((estoque) => estoque.quantidadeAtual <= ESTOQUE_MINIMO_PADRAO)
-    .map((estoque) => ({
+  const estoqueProdutosReposicao = estoqueProdutosRaw.filter(
+    (estoque) => estoque.quantidadeAtual <= ESTOQUE_MINIMO_PADRAO
+  );
+  const inteligenciaProdutos = await Promise.all(
+    estoqueProdutosReposicao.map((estoque) =>
+      gerarRecomendacaoReposicao(estoque.produto.id, {
+        tamanhoAnel: estoque.tamanhoAnel,
+      })
+    )
+  );
+
+  const itensProdutos: ReposicaoCompraItem[] = estoqueProdutosReposicao.map(
+    (estoque, index) => {
+      const inteligencia = inteligenciaProdutos[index];
+      const cicloAtual = inteligencia?.cicloAtual;
+
+      return {
       id: `produto-${estoque.id}`,
       cadastroId: estoque.produto.id,
-      tipo: "produto",
+        tipo: "produto" as const,
       codigo: estoque.produto.codigoInterno,
       nome: estoque.produto.nome,
       detalhe:
@@ -85,7 +100,19 @@ export default async function ReposicaoComprasPage() {
       ),
       linkCompra: estoque.produto.linkCompra,
       tamanhoAnel: estoque.tamanhoAnel,
-    }));
+      statusComercial: inteligencia?.statusComercial,
+      recomendacaoReposicao: inteligencia?.recomendacao,
+      confiancaReposicao: inteligencia?.confianca,
+      cicloAtual: cicloAtual
+        ? `${cicloAtual.quantidadeVendida}/${
+            cicloAtual.quantidadeInicial + cicloAtual.quantidadeEntrada
+          }`
+        : null,
+      sellThrough: inteligencia?.sellThrough,
+      acaoSugerida: inteligencia?.motivo,
+      };
+    }
+  );
 
   const itensAdicionais: ReposicaoCompraItem[] = estoqueAdicionaisRaw
     .filter((estoque) => estoque.quantidadeAtual <= ESTOQUE_MINIMO_PADRAO)

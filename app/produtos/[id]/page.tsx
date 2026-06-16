@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { atualizarProduto } from "../actions";
 import EditarProdutoClient from "@/components/produtos/EditarProdutoClient";
 import { exigirAdmin } from "@/lib/auth/admin";
+import { obterInteligenciaProduto } from "@/lib/produtos/metricas-produto";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function EditarProdutoPage({
     regrasAdicionais,
     embalagemClasses,
     embalagemModelos,
+    inteligenciaProduto,
   ] =
     await Promise.all([
       prisma.produto.findUnique({
@@ -162,6 +164,8 @@ export default async function EditarProdutoPage({
         },
         orderBy: [{ tipo: "asc" }, { prioridade: "desc" }, { nomeInterno: "asc" }],
       }),
+
+      obterInteligenciaProduto(id),
     ]);
 
   if (!produto) {
@@ -284,9 +288,39 @@ export default async function EditarProdutoPage({
     },
   };
 
+  const inteligenciaProdutoSerializada = {
+    resumo: inteligenciaProduto.resumo
+      ? {
+          ...inteligenciaProduto.resumo,
+          periodoInicio:
+            inteligenciaProduto.resumo.periodoInicio.toISOString(),
+          periodoFim: inteligenciaProduto.resumo.periodoFim.toISOString(),
+        }
+      : null,
+    ciclos: inteligenciaProduto.ciclos.map((ciclo) => ({
+      ...ciclo,
+      dataInicio: ciclo.dataInicio.toISOString(),
+      dataFim: ciclo.dataFim ? ciclo.dataFim.toISOString() : null,
+    })),
+    recomendacao: {
+      ...inteligenciaProduto.recomendacao,
+      cicloAtual: inteligenciaProduto.recomendacao.cicloAtual
+        ? {
+            ...inteligenciaProduto.recomendacao.cicloAtual,
+            dataInicio:
+              inteligenciaProduto.recomendacao.cicloAtual.dataInicio.toISOString(),
+            dataFim: inteligenciaProduto.recomendacao.cicloAtual.dataFim
+              ? inteligenciaProduto.recomendacao.cicloAtual.dataFim.toISOString()
+              : null,
+          }
+        : null,
+    },
+  };
+
   return (
     <EditarProdutoClient
       produto={produtoSerializado}
+      inteligenciaProduto={inteligenciaProdutoSerializada}
       categorias={categorias}
       produtosDisponiveisKit={produtosKitSerializados}
       regrasAdicionais={regrasAdicionaisSerializadas}

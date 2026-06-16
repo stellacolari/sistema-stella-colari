@@ -18,6 +18,12 @@ export type ReposicaoCompraItem = {
   sugestaoCompra: number;
   linkCompra: string | null;
   tamanhoAnel: string | null;
+  statusComercial?: string | null;
+  recomendacaoReposicao?: string | null;
+  confiancaReposicao?: number | null;
+  cicloAtual?: string | null;
+  sellThrough?: number | null;
+  acaoSugerida?: string | null;
 };
 
 type Props = {
@@ -43,6 +49,25 @@ function labelTipo(tipo: ReposicaoCompraItem["tipo"]) {
   if (tipo === "produto") return "Produto / medida";
   if (tipo === "embalagem") return "Embalagem";
   return "Item adicional";
+}
+
+function labelInteligencia(value: string | null | undefined) {
+  const texto = String(value || "-").replaceAll("_", " ").toLowerCase();
+  return texto.replace(/(^|\s)\S/g, (letra) => letra.toUpperCase());
+}
+
+function numeroCurto(value: number | null | undefined) {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
+}
+
+function percentualDireto(value: number | null | undefined) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0) / 100);
 }
 
 function situacao(item: ReposicaoCompraItem) {
@@ -119,6 +144,9 @@ export default function ReposicaoComprasClient({ itens }: Props) {
           item.nome,
           item.detalhe,
           item.fornecedorPadrao,
+          item.statusComercial,
+          item.recomendacaoReposicao,
+          item.acaoSugerida,
           labelTipo(item.tipo),
         ].join(" ")
       ).includes(termo);
@@ -248,12 +276,14 @@ export default function ReposicaoComprasClient({ itens }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full min-w-[1120px] text-left text-sm">
+        <table className="w-full min-w-[1360px] text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-5 py-4 font-semibold">Item</th>
               <th className="px-5 py-4 font-semibold">Tipo</th>
               <th className="px-5 py-4 font-semibold">Estoque atual</th>
+              <th className="px-5 py-4 font-semibold">Inteligencia</th>
+              <th className="px-5 py-4 font-semibold">Ciclo</th>
               <th className="px-5 py-4 font-semibold">Mínimo</th>
               <th className="px-5 py-4 font-semibold">Ideal</th>
               <th className="px-5 py-4 font-semibold">Sugestão</th>
@@ -264,7 +294,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
           <tbody className="divide-y divide-slate-100">
             {itensFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
+                <td colSpan={10} className="px-5 py-10 text-center text-slate-500">
                   Nenhum item de reposição encontrado para os filtros atuais.
                 </td>
               </tr>
@@ -291,6 +321,47 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                       >
                         {item.estoqueAtual} un. · {status.label}
                       </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      {item.statusComercial ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                            {labelInteligencia(item.statusComercial)}
+                          </span>
+                          <p className="text-xs font-semibold text-slate-900">
+                            {labelInteligencia(item.recomendacaoReposicao)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Confianca {numeroCurto(item.confiancaReposicao)}%
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Sem leitura comercial
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      {item.tipo === "produto" ? (
+                        <div className="max-w-[220px] space-y-1 text-xs text-slate-600">
+                          <p>
+                            Ciclo atual:{" "}
+                            <span className="font-semibold text-slate-900">
+                              {item.cicloAtual || "-"}
+                            </span>
+                          </p>
+                          <p>Sell-through: {percentualDireto(item.sellThrough)}</p>
+                          {item.acaoSugerida && (
+                            <p className="leading-5 text-slate-500">
+                              {item.acaoSugerida}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Controle operacional
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4">{item.estoqueMinimo} un.</td>
                     <td className="px-5 py-4">{item.estoqueIdeal} un.</td>

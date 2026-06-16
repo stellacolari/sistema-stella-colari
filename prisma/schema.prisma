@@ -63,6 +63,8 @@ model Produto {
   componentesDoKit               ProdutoKitComponente[]           @relation("KitProduto")
   variacoes                      ProdutoVariacao[]
   vendasItens                    VendaItem[]
+  ciclosEstoque                  ProdutoCicloEstoque[]
+  metricasSnapshots              ProdutoMetricaSnapshot[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -165,6 +167,8 @@ model ProdutoVariacao {
   atualizadoEm DateTime               @updatedAt
   produto      Produto                @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   opcoes       ProdutoVariacaoOpcao[]
+  ciclosEstoque     ProdutoCicloEstoque[]
+  metricasSnapshots ProdutoMetricaSnapshot[]
 
   @@index([produtoId])
   @@index([ativo])
@@ -626,6 +630,76 @@ model EstoqueProduto {
   @@unique([produtoId, tamanhoAnel])
   @@index([produtoId])
   @@index([tamanhoAnel])
+}
+
+model ProdutoCicloEstoque {
+  id                   String           @id @default(cuid())
+  produtoId            String
+  variacaoId           String?
+  tamanhoAnel          String           @default("UNICO")
+  origemTipo           String?
+  origemId             String?
+  dataInicio           DateTime
+  dataFim              DateTime?
+  quantidadeInicial    Int              @default(0)
+  quantidadeEntrada    Int              @default(0)
+  quantidadeVendida    Int              @default(0)
+  quantidadeAtual      Int              @default(0)
+  custoMedio           Float            @default(0)
+  precoMedioVenda      Float            @default(0)
+  receitaGerada        Float            @default(0)
+  margemEstimada       Float            @default(0)
+  sellThrough          Float            @default(0)
+  diasAtePrimeiraVenda Int?
+  diasAteEsgotar       Int?
+  status               String           @default("ABERTO")
+  criadoEm             DateTime         @default(now())
+  atualizadoEm         DateTime         @updatedAt
+  produto              Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  variacao             ProdutoVariacao? @relation(fields: [variacaoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([variacaoId])
+  @@index([tamanhoAnel])
+  @@index([status])
+  @@index([dataInicio])
+  @@index([dataFim])
+}
+
+model ProdutoMetricaSnapshot {
+  id                   String           @id @default(cuid())
+  produtoId            String
+  variacaoId           String?
+  tamanhoAnel          String           @default("UNICO")
+  periodoTipo          String
+  periodoInicio        DateTime
+  periodoFim           DateTime
+  vendasQuantidade     Int              @default(0)
+  receita              Float            @default(0)
+  custoEstimado        Float            @default(0)
+  margemEstimada       Float            @default(0)
+  estoqueInicial       Int              @default(0)
+  estoqueFinal         Int              @default(0)
+  entradas             Int              @default(0)
+  saidas               Int              @default(0)
+  sellThroughPeriodo   Float            @default(0)
+  sellThroughAcumulado Float            @default(0)
+  giroEstimado         Float            @default(0)
+  scoreValidacao       Float            @default(0)
+  statusComercial      String           @default("NAO_TESTADO")
+  recomendacao         String?
+  dadosJson            Json?
+  criadoEm             DateTime         @default(now())
+  produto              Produto          @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  variacao             ProdutoVariacao? @relation(fields: [variacaoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([variacaoId])
+  @@index([tamanhoAnel])
+  @@index([periodoTipo])
+  @@index([periodoInicio])
+  @@index([periodoFim])
+  @@index([statusComercial])
 }
 
 model EstoqueAdicional {

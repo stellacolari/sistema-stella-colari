@@ -38,6 +38,9 @@ export type DiagnosticoIndicadores = {
   produtosEstoqueBaixo: number;
   estoqueBaixo: number;
   estoqueZerado: number;
+  produtosCampeoesProvaveis: number;
+  produtosRiscoRuptura: number;
+  produtosEstoqueParadoHistorico: number;
 };
 
 export type DiagnosticoProdutoGiro = {
@@ -53,6 +56,10 @@ export type DiagnosticoEstoque = {
   produtosZerados: number;
   produtosBaixo: number;
   produtosParados: number;
+  produtosCampeoesProvaveis: number;
+  produtosRiscoRuptura: number;
+  produtosEstoqueParadoHistorico: number;
+  produtosReposicaoConfirmada: number;
   topProdutos: DiagnosticoProdutoGiro[];
   recomendacao: string;
 };
@@ -149,6 +156,10 @@ type ResumoEstoqueCalculado = {
   produtosZerados: number;
   produtosBaixo: number;
   produtosParados: number;
+  produtosCampeoesProvaveis: number;
+  produtosRiscoRuptura: number;
+  produtosEstoqueParadoHistorico: number;
+  produtosReposicaoConfirmada: number;
   topProdutos: DiagnosticoProdutoGiro[];
 };
 
@@ -244,7 +255,7 @@ async function calcularGastosRecorrentes() {
 async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEstoqueCalculado> {
   const periodo = periodoFinanceiro(mes, ano);
   const inicioHistorico = new Date(ano, mes - 7, 1);
-  const [produtos, vendaItens, pedidoItens] = await Promise.all([
+  const [produtos, vendaItens, pedidoItens, metricasProduto] = await Promise.all([
     prisma.produto.findMany({
       where: {
         ativo: true,
@@ -284,6 +295,22 @@ async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEst
             lt: periodo.fimExclusivo,
           },
         },
+      },
+    }),
+    prisma.produtoMetricaSnapshot.findMany({
+      where: {
+        periodoTipo: "ATUAL",
+      },
+      select: {
+        produtoId: true,
+        tamanhoAnel: true,
+        statusComercial: true,
+        recomendacao: true,
+        scoreValidacao: true,
+        criadoEm: true,
+      },
+      orderBy: {
+        criadoEm: "desc",
       },
     }),
   ]);
@@ -362,11 +389,38 @@ async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEst
   const topProdutos = [...vendasPorCodigo.values()]
     .sort((a, b) => b.vendidas - a.vendidas || b.receita - a.receita)
     .slice(0, 5);
+  const metricaAtualPorProduto = new Map<string, (typeof metricasProduto)[number]>();
+
+  metricasProduto.forEach((metrica) => {
+    const atual = metricaAtualPorProduto.get(metrica.produtoId);
+
+    if (!atual || (atual.tamanhoAnel !== "TODOS" && metrica.tamanhoAnel === "TODOS")) {
+      metricaAtualPorProduto.set(metrica.produtoId, metrica);
+    }
+  });
+
+  const metricasAtuais = [...metricaAtualPorProduto.values()];
+  const produtosCampeoesProvaveis = metricasAtuais.filter((metrica) =>
+    ["CAMPEAO_PROVAVEL", "REPOSICAO_CONFIRMADA"].includes(metrica.statusComercial)
+  ).length;
+  const produtosRiscoRuptura = metricasAtuais.filter(
+    (metrica) => metrica.statusComercial === "RISCO_RUPTURA"
+  ).length;
+  const produtosEstoqueParadoHistorico = metricasAtuais.filter(
+    (metrica) => metrica.statusComercial === "ESTOQUE_PARADO"
+  ).length;
+  const produtosReposicaoConfirmada = metricasAtuais.filter(
+    (metrica) => metrica.statusComercial === "REPOSICAO_CONFIRMADA"
+  ).length;
 
   return {
     produtosZerados,
     produtosBaixo,
     produtosParados,
+    produtosCampeoesProvaveis,
+    produtosRiscoRuptura,
+    produtosEstoqueParadoHistorico,
+    produtosReposicaoConfirmada,
     topProdutos,
   };
 }
@@ -588,6 +642,18 @@ export async function montarDiagnosticoFinanceiro(
     });
   }
 
+  if (estoque.produtosRiscoRuptura > 0) {
+    criarAlerta(alertas, {
+      tipo: "PRODUTO_RISCO_RUPTURA",
+      severidade: "RISCO",
+      titulo: "Produtos com risco de ruptura",
+      texto: `${estoque.produtosRiscoRuptura} produto(s) tem venda historica e estoque critico.`,
+      recomendacao: "Priorizar reposicao seletiva antes de ampliar trafego pago.",
+      acaoLabel: "Ver reposicao",
+      href: "/compras/reposicao",
+    });
+  }
+
   if (estoque.produtosZerados > 0 || estoque.produtosBaixo > 0) {
     criarAlerta(alertas, {
       tipo: "ESTOQUE_BAIXO",
@@ -635,6 +701,7 @@ export async function montarDiagnosticoFinanceiro(
           (runwayMeses < 1 ? 24 : runwayMeses < 2 ? 12 : runwayMeses < 3 ? 5 : 0) -
           (params.comprasPendentesQuantidade > 0 ? 4 : 0) -
           (proLaboreSeguro ? 0 : 8) -
+          (estoque.produtosRiscoRuptura > 0 ? 6 : 0) -
           (estoque.produtosZerados > 0 ? 5 : 0) -
           (estoque.produtosBaixo > 0 ? 3 : 0)
       );
@@ -653,14 +720,37 @@ export async function montarDiagnosticoFinanceiro(
   const proLaboreRecomendacao = proLaboreSeguro
     ? "Pro-labore pode seguir limitado ao lucro apuravel e apos aprovacao."
     : "Reduzir ou adiar retirada ate preservar reserva e caixa.";
-  const estoqueRecomendacao =
-    estoque.produtosZerados > 0 || estoque.produtosBaixo > 0
-      ? "Priorize reposicao dos produtos campeoes com estoque baixo."
-      : estoque.produtosParados > 0
-        ? "Criar campanha para itens parados antes de recomprar variedade."
-        : "Estoque sem alerta critico; manter reposicao seletiva.";
+  const estoqueRecomendacao = (() => {
+    if (estoque.produtosRiscoRuptura > 0) {
+      return `Ha ${estoque.produtosRiscoRuptura} produto(s) com risco de ruptura. Repor seletivamente antes de investir em trafego.`;
+    }
+
+    if (estoque.produtosReposicaoConfirmada > 0) {
+      return "Produtos com reposicao confirmada podem receber lote medio antes de ampliar marketing.";
+    }
+
+    if (estoque.produtosCampeoesProvaveis > 0) {
+      return "Repor pequeno os campeoes provaveis antes de comprar variedade nova.";
+    }
+
+    if (estoque.produtosZerados > 0 || estoque.produtosBaixo > 0) {
+      return "Priorize reposicao dos produtos campeoes com estoque baixo.";
+    }
+
+    if (estoque.produtosEstoqueParadoHistorico > 0 || estoque.produtosParados > 0) {
+      return "Criar campanha para itens parados antes de recomprar variedade.";
+    }
+
+    return "Estoque sem alerta critico; manter reposicao seletiva.";
+  })();
   const reinvestimento = {
     recomendacoes: [
+      ...(estoque.produtosRiscoRuptura > 0
+        ? ["Repor produtos com risco de ruptura antes de aumentar trafego pago."]
+        : []),
+      ...(estoque.produtosEstoqueParadoHistorico > 0
+        ? ["Girar produtos parados antes de recomprar modelos sem validacao."]
+        : []),
       ...(estoque.produtosZerados > 0 || estoque.produtosBaixo > 0
         ? ["Repor campeoes com estoque baixo antes de aumentar trafego pago."]
         : []),
@@ -747,6 +837,9 @@ export async function montarDiagnosticoFinanceiro(
       produtosEstoqueBaixo: estoque.produtosBaixo,
       estoqueBaixo: estoque.produtosBaixo,
       estoqueZerado: estoque.produtosZerados,
+      produtosCampeoesProvaveis: estoque.produtosCampeoesProvaveis,
+      produtosRiscoRuptura: estoque.produtosRiscoRuptura,
+      produtosEstoqueParadoHistorico: estoque.produtosEstoqueParadoHistorico,
     },
     alertas,
     recomendacoes,
