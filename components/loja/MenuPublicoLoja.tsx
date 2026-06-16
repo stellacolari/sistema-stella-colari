@@ -11,6 +11,11 @@ import {
 } from "./favoritos";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import { normalizarLojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import {
+  registrarBuscaSemResultado,
+  registrarCategoriaClicada,
+  registrarCliqueResultadoBusca,
+} from "@/lib/loja/eventos-client";
 
 const LOGO_URL = "/logo-stella.png";
 const CONTATO_URL = "/loja/quem-somos";
@@ -79,6 +84,14 @@ type BuscaAutocompleteResultado = {
   categorias: BuscaAutocompleteCategoria[];
   paginas: BuscaAutocompletePagina[];
   sugestoes: string[];
+};
+
+type BuscaAutocompleteClick = {
+  tipoResultado: "produto" | "categoria" | "pagina";
+  produtoId?: string;
+  categoriaId?: string;
+  paginaId?: string;
+  metadata?: Record<string, unknown>;
 };
 
 type MenuPublicoLojaProps = {
@@ -252,11 +265,24 @@ function CategoriaSubLink({
   nivel?: number;
   onNavigate: () => void;
 }) {
+  function handleClick() {
+    registrarCategoriaClicada({
+      categoriaId: categoria.id,
+      origem: "menu_publico",
+      metadata: {
+        nome: categoria.nome,
+        slug: categoria.slug,
+        nivel,
+      },
+    });
+    onNavigate();
+  }
+
   return (
     <div>
       <Link
         href={`/loja/categoria/${categoria.slug}`}
-        onClick={onNavigate}
+        onClick={handleClick}
         className="group flex items-center justify-between gap-3 py-2.5 text-left transition"
         style={{
           paddingLeft: `${nivel * 18}px`,
@@ -306,12 +332,24 @@ function CategoriaMobileItem({
 }) {
   const temFilhos = categoria.filhos.length > 0;
 
+  function handleClick() {
+    registrarCategoriaClicada({
+      categoriaId: categoria.id,
+      origem: "menu_publico_mobile",
+      metadata: {
+        nome: categoria.nome,
+        slug: categoria.slug,
+      },
+    });
+    onNavigate();
+  }
+
   return (
     <div className="border-b border-slate-100 last:border-b-0">
       <div className="flex items-center justify-between gap-3">
         <Link
           href={`/loja/categoria/${categoria.slug}`}
-          onClick={onNavigate}
+          onClick={handleClick}
           className="min-w-0 flex-1 py-4 text-base font-medium tracking-tight text-slate-950"
         >
           {categoria.nome}
@@ -513,6 +551,20 @@ export default function MenuPublicoLoja({
 
         const data = (await response.json()) as BuscaAutocompleteResultado;
         setResultadoBusca(data);
+
+        if (
+          data.produtos.length === 0 &&
+          data.categorias.length === 0 &&
+          data.paginas.length === 0
+        ) {
+          registrarBuscaSemResultado({
+            termoBusca,
+            origem: "autocomplete",
+            metadata: {
+              limite: 6,
+            },
+          });
+        }
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error("Erro no autocomplete da loja:", error);
@@ -593,12 +645,24 @@ export default function MenuPublicoLoja({
     window.location.href = `/loja/busca?q=${encodeURIComponent(termo)}`;
   }
 
-  function navegarSugestaoBusca() {
+  function navegarSugestaoBusca(evento?: BuscaAutocompleteClick) {
     const termo = busca.trim();
 
     if (termo) {
       salvarBuscaRecente(termo);
       setBuscasRecentes(lerBuscasRecentes());
+
+      if (evento) {
+        registrarCliqueResultadoBusca({
+          termoBusca: termo,
+          tipoResultado: evento.tipoResultado,
+          produtoId: evento.produtoId,
+          categoriaId: evento.categoriaId,
+          paginaId: evento.paginaId,
+          origem: "autocomplete",
+          metadata: evento.metadata,
+        });
+      }
     }
 
     fecharBusca();
@@ -622,6 +686,23 @@ export default function MenuPublicoLoja({
 
       return [...atuais, categoriaId];
     });
+  }
+
+  function navegarCategoriaMenu(
+    categoria: CategoriaMenuNivelada | CategoriaMenuComFilhos,
+    origem: string,
+    nivel?: number
+  ) {
+    registrarCategoriaClicada({
+      categoriaId: categoria.id,
+      origem,
+      metadata: {
+        nome: categoria.nome,
+        slug: categoria.slug,
+        nivel,
+      },
+    });
+    fecharMenu();
   }
 
   return (
@@ -784,30 +865,60 @@ export default function MenuPublicoLoja({
                       Sugestões
                     </p>
 
-                    {sugestoesBusca.map((produto) => (
+                    {sugestoesBusca.map((produto, index) => (
                       <ProdutoSugestaoBusca
                         key={produto.id}
                         produto={produto}
-                        onNavigate={navegarSugestaoBusca}
+                        onNavigate={() =>
+                          navegarSugestaoBusca({
+                            tipoResultado: "produto",
+                            produtoId: produto.id,
+                            metadata: {
+                              nome: produto.nome,
+                              href: produto.href,
+                              posicao: index + 1,
+                            },
+                          })
+                        }
                       />
                     ))}
 
-                    {resultadoBusca?.categorias.map((categoria) => (
+                    {resultadoBusca?.categorias.map((categoria, index) => (
                       <Link
                         key={categoria.id}
                         href={categoria.href}
-                        onClick={navegarSugestaoBusca}
+                        onClick={() =>
+                          navegarSugestaoBusca({
+                            tipoResultado: "categoria",
+                            categoriaId: categoria.id,
+                            metadata: {
+                              nome: categoria.nome,
+                              href: categoria.href,
+                              posicao: index + 1,
+                            },
+                          })
+                        }
                         className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
                       >
                         {categoria.nome}
                       </Link>
                     ))}
 
-                    {resultadoBusca?.paginas.map((pagina) => (
+                    {resultadoBusca?.paginas.map((pagina, index) => (
                       <Link
                         key={pagina.id}
                         href={pagina.href}
-                        onClick={navegarSugestaoBusca}
+                        onClick={() =>
+                          navegarSugestaoBusca({
+                            tipoResultado: "pagina",
+                            paginaId: pagina.id,
+                            metadata: {
+                              titulo: pagina.titulo,
+                              href: pagina.href,
+                              posicao: index + 1,
+                            },
+                          })
+                        }
                         className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
                       >
                         {pagina.titulo}
@@ -931,7 +1042,13 @@ export default function MenuPublicoLoja({
                             <Link
                               key={categoria.id}
                               href={`/loja/categoria/${categoria.slug}`}
-                              onClick={fecharMenu}
+                              onClick={() =>
+                                navegarCategoriaMenu(
+                                  categoria,
+                                  "menu_publico_mobile_simples",
+                                  categoria.nivel
+                                )
+                              }
                               className="block py-3 text-base font-medium tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
                               style={{
                                 paddingLeft: `${categoria.nivel * 16}px`,
@@ -965,7 +1082,13 @@ export default function MenuPublicoLoja({
                             <Link
                               key={categoria.id}
                               href={`/loja/categoria/${categoria.slug}`}
-                              onClick={fecharMenu}
+                              onClick={() =>
+                                navegarCategoriaMenu(
+                                  categoria,
+                                  "menu_publico_desktop_simples",
+                                  categoria.nivel
+                                )
+                              }
                               className={`block text-left font-light leading-tight tracking-tight transition hover:text-[var(--brand-blue)] ${
                                 categoria.nivel === 0
                                   ? "text-[18px] text-slate-950"
@@ -1094,7 +1217,12 @@ export default function MenuPublicoLoja({
                   <div className="px-10 pt-8">
                     <Link
                       href={`/loja/categoria/${categoriaSelecionada.slug}`}
-                      onClick={fecharMenu}
+                      onClick={() =>
+                        navegarCategoriaMenu(
+                          categoriaSelecionada,
+                          "menu_publico_dropdown_destaque"
+                        )
+                      }
                       className="text-[24px] font-medium tracking-tight text-slate-950 transition hover:text-[var(--brand-blue)]"
                     >
                       {categoriaSelecionada.nome}

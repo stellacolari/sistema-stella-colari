@@ -4,6 +4,7 @@ import {
   BarChart3,
   Boxes,
   CreditCard,
+  MousePointerClick,
   Package,
   Plus,
   RefreshCcw,
@@ -141,7 +142,7 @@ export default async function ComprasPage() {
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-4">
         <HubCard
           icon={ShoppingCart}
           title="Compras de estoque"
@@ -168,6 +169,14 @@ export default async function ComprasPage() {
           description="Veja produtos, embalagens e insumos que precisam ser recomprados."
           primaryLabel="Ver reposição"
           primaryHref="/compras/reposicao"
+        />
+
+        <HubCard
+          icon={MousePointerClick}
+          title="Intencao comercial"
+          description="Acompanhe sinais anonimos da loja: busca, favoritos, carrinho, banners e checkout."
+          primaryLabel="Ver intencao"
+          primaryHref="/compras/intencao"
         />
       </section>
 

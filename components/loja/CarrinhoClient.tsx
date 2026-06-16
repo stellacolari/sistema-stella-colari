@@ -12,6 +12,10 @@ import {
 import { useMemo, useState, type ComponentProps } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
+import {
+  registrarCheckoutIniciado,
+  registrarEventoCarrinho,
+} from "@/lib/loja/eventos-client";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 
@@ -380,7 +384,25 @@ export default function CarrinhoClient({
   }
 
   function removerItem(itemKey: string) {
+    const itemRemovido = itens.find((item) => getItemKey(item) === itemKey);
+
     atualizarItens(itens.filter((item) => getItemKey(item) !== itemKey));
+
+    if (itemRemovido) {
+      registrarEventoCarrinho({
+        tipo: "PRODUTO_REMOVIDO_CARRINHO",
+        produtoId: itemRemovido.produtoId,
+        origem: "carrinho",
+        metadata: {
+          nome: itemRemovido.nome,
+          codigoInterno: itemRemovido.codigoInterno,
+          categoria: itemRemovido.categoria,
+          quantidade: itemRemovido.quantidade,
+          tamanho: itemRemovido.tamanhoAnel,
+          valorItem: getTotalItem(itemRemovido),
+        },
+      });
+    }
   }
 
   function limparCarrinho() {
@@ -389,6 +411,22 @@ export default function CarrinhoClient({
     if (!confirmado) {
       return;
     }
+
+    itens.forEach((item) => {
+      registrarEventoCarrinho({
+        tipo: "PRODUTO_REMOVIDO_CARRINHO",
+        produtoId: item.produtoId,
+        origem: "limpar_carrinho",
+        metadata: {
+          nome: item.nome,
+          codigoInterno: item.codigoInterno,
+          categoria: item.categoria,
+          quantidade: item.quantidade,
+          tamanho: item.tamanhoAnel,
+          valorItem: getTotalItem(item),
+        },
+      });
+    });
 
     atualizarItens([]);
   }
@@ -785,6 +823,16 @@ export default function CarrinhoClient({
 
               <Link
                 href="/loja/checkout"
+                onClick={() =>
+                  registrarCheckoutIniciado({
+                    origem: "carrinho",
+                    metadata: {
+                      itensDistintos: itens.length,
+                      quantidadeItens: quantidadeTotal,
+                      subtotal,
+                    },
+                  })
+                }
                 className={`mt-5 flex w-full items-center justify-center px-4 py-3 text-sm font-medium text-white transition ${
                   possuiItemSemEstoque
                     ? "pointer-events-none bg-slate-300"

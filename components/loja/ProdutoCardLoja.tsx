@@ -15,6 +15,10 @@ import {
   FAVORITOS_UPDATED_EVENT,
   produtoEstaFavorito,
 } from "./favoritos";
+import {
+  registrarCliqueResultadoBusca,
+  registrarFavoritoProduto,
+} from "@/lib/loja/eventos-client";
 
 export type ProdutoCardLojaItem = {
   id: string;
@@ -36,6 +40,12 @@ type ProdutoCardLojaProps = {
   href?: string;
   modoPreview?: boolean;
   revealDelayMs?: number;
+  trackingOrigem?: string;
+  trackingMetadata?: Record<string, unknown>;
+  trackingResultadoBusca?: {
+    termoBusca: string;
+    posicao?: number;
+  };
 };
 
 type TouchPreviewSubscriber = (activeCardId: string | null) => void;
@@ -235,6 +245,9 @@ export default function ProdutoCardLoja({
   href,
   modoPreview = false,
   revealDelayMs = 0,
+  trackingOrigem,
+  trackingMetadata,
+  trackingResultadoBusca,
 }: ProdutoCardLojaProps) {
   const [favorito, setFavorito] = useState(false);
   const [touchPreview, setTouchPreview] = useState(false);
@@ -330,6 +343,15 @@ export default function ProdutoCardLoja({
 
     const proximo = alternarFavoritoId(produto.id);
     setFavorito(proximo);
+    registrarFavoritoProduto({
+      produtoId: produto.id,
+      favorito: proximo,
+      origem: trackingOrigem,
+      metadata: {
+        nome: produto.nome,
+        ...trackingMetadata,
+      },
+    });
   }
 
   function limparTimerReset() {
@@ -421,13 +443,27 @@ export default function ProdutoCardLoja({
   }
 
   function handleLinkClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (!suppressClickRef.current) {
+    if (suppressClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      limparInteracaoTouch();
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-    limparInteracaoTouch();
+    if (trackingResultadoBusca) {
+      registrarCliqueResultadoBusca({
+        termoBusca: trackingResultadoBusca.termoBusca,
+        tipoResultado: "produto",
+        produtoId: produto.id,
+        origem: trackingOrigem || "busca",
+        metadata: {
+          nome: produto.nome,
+          posicao: trackingResultadoBusca.posicao,
+          href: produtoHref,
+          ...trackingMetadata,
+        },
+      });
+    }
   }
 
   const semEstoque = produto.estoqueTotal <= 0;

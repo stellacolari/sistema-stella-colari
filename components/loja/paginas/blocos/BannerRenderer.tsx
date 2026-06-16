@@ -22,6 +22,7 @@ import {
   type BlocoPublico,
   type ProdutoPublico,
 } from "@/components/loja/paginas/blocos/utils";
+import { registrarCliqueBannerCta } from "@/lib/loja/eventos-client";
 
 export type BannerDevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
 
@@ -546,11 +547,13 @@ function renderCtaLink({
   children,
   className,
   novaAba,
+  onClick,
 }: {
   href: string;
   children: ReactNode;
   className: string;
   novaAba: boolean;
+  onClick?: () => void;
 }) {
   if (!href) {
     return <span className={className}>{children}</span>;
@@ -561,7 +564,7 @@ function renderCtaLink({
     novaAba || isExternal ? { target: "_blank", rel: "noreferrer" } : {};
 
   return (
-    <Link href={href} className={className} {...targetProps}>
+    <Link href={href} className={className} onClick={onClick} {...targetProps}>
       {children}
     </Link>
   );
@@ -1240,6 +1243,18 @@ export default function BannerRenderer({
                   novaAba: ctaNovaAba,
                   className: primaryCtaClass,
                   children: primaryCtaContent,
+                  onClick: isEditor
+                    ? undefined
+                    : () =>
+                        registrarCliqueBannerCta({
+                          blocoId: bloco.id,
+                          metadata: {
+                            modelo,
+                            tipoCta: "primario",
+                            label: textoBotao,
+                            href: linkBotao,
+                          },
+                        }),
                 })
               : null}
 
@@ -1249,6 +1264,18 @@ export default function BannerRenderer({
                   novaAba: ctaNovaAba,
                   className: secondaryCtaClass,
                   children: secondaryCtaContent,
+                  onClick: isEditor
+                    ? undefined
+                    : () =>
+                        registrarCliqueBannerCta({
+                          blocoId: bloco.id,
+                          metadata: {
+                            modelo,
+                            tipoCta: "secundario",
+                            label: textoBotaoSecundario,
+                            href: linkBotaoSecundario,
+                          },
+                        }),
                 })
               : null}
           </div>

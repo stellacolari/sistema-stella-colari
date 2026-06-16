@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -24,6 +24,11 @@ import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import ImageBox from "@/components/ui/ImageBox";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import {
+  registrarCheckoutIniciado,
+  registrarEventoCarrinho,
+  registrarProdutoVisualizado,
+} from "@/lib/loja/eventos-client";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 const CASHBACK_PERCENTUAL = 0.05;
@@ -549,6 +554,14 @@ export default function ProdutoLojaClient({
   const router = useRouter();
   const thumbsRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    registrarProdutoVisualizado(produto.id, {
+      nome: produto.nome,
+      codigoInterno: produto.codigoInterno,
+      categoria: produto.categoria,
+    });
+  }, [produto.categoria, produto.codigoInterno, produto.id, produto.nome]);
+
   const opcoesAdicionais = useMemo(
     () => produto.opcoesAdicionais || [],
     [produto.opcoesAdicionais],
@@ -1018,8 +1031,33 @@ export default function ProdutoLojaClient({
     }
 
     salvarCarrinho(novoCarrinho);
+    registrarEventoCarrinho({
+      tipo: "PRODUTO_ADICIONADO_CARRINHO",
+      produtoId: produto.id,
+      origem: comprarAgora ? "comprar_agora" : "pagina_produto",
+      metadata: {
+        nome: produto.nome,
+        codigoInterno: produto.codigoInterno,
+        categoria: produto.categoria,
+        quantidade,
+        tamanho: tamanhoAnel,
+        temOpcaoAdicional: Boolean(opcaoAdicionalSelecionada),
+        temEmbalagemPresente: Boolean(embalagemPresenteSelecionada),
+        valorItem: totalComAdicional,
+      },
+    });
 
     if (comprarAgora) {
+      registrarCheckoutIniciado({
+        origem: "comprar_agora",
+        metadata: {
+          itensDistintos: novoCarrinho.length,
+          quantidadeItens: novoCarrinho.reduce(
+            (total, item) => total + item.quantidade,
+            0
+          ),
+        },
+      });
       router.push("/loja/checkout");
       return;
     }

@@ -65,6 +65,7 @@ model Produto {
   vendasItens                    VendaItem[]
   ciclosEstoque                  ProdutoCicloEstoque[]
   metricasSnapshots              ProdutoMetricaSnapshot[]
+  eventosComerciais              EventoComercial[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -389,6 +390,7 @@ model Cliente {
   cashbackMovimentacoes ClienteCashbackMovimentacao[]
   pedidosOnline         PedidoOnline[]
   vendas                Venda[]
+  eventosComerciais     EventoComercial[]
 }
 
 model Compra {
@@ -702,6 +704,41 @@ model ProdutoMetricaSnapshot {
   @@index([statusComercial])
 }
 
+model EventoComercial {
+  id           String            @id @default(cuid())
+  tipo         String
+  produtoId    String?
+  categoriaId  String?
+  paginaId     String?
+  blocoId      String?
+  clienteId    String?
+  pedidoId     String?
+  termoBusca   String?
+  origem       String?
+  sessionId    String?
+  metadataJson Json?
+  criadoEm     DateTime          @default(now())
+  produto      Produto?          @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria    CategoriaProduto? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  pagina       LojaPagina?       @relation(fields: [paginaId], references: [id], onDelete: SetNull)
+  bloco        LojaPaginaBloco?  @relation(fields: [blocoId], references: [id], onDelete: SetNull)
+  cliente      Cliente?          @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  pedido       PedidoOnline?     @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([tipo])
+  @@index([produtoId])
+  @@index([categoriaId])
+  @@index([paginaId])
+  @@index([blocoId])
+  @@index([clienteId])
+  @@index([pedidoId])
+  @@index([sessionId])
+  @@index([termoBusca])
+  @@index([criadoEm])
+  @@index([tipo, criadoEm])
+  @@index([sessionId, criadoEm])
+}
+
 model EstoqueAdicional {
   id              String        @id @default(cuid())
   itemAdicionalId String        @unique
@@ -927,6 +964,7 @@ model PedidoOnline {
   itens                      PedidoOnlineItem[]
   adicionais                 PedidoOnlineItemAdicional[]
   statusHistorico            PedidoStatusHistorico[]
+  eventosComerciais          EventoComercial[]
 
   @@index([clienteId])
   @@index([codigo])
@@ -1074,6 +1112,7 @@ model LojaPagina {
   usarComoTemplatePadrao Boolean           @default(false)
   categoria              CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
   blocos                 LojaPaginaBloco[]
+  eventosComerciais      EventoComercial[]
 
   @@index([slug])
   @@index([tipo])
@@ -1094,6 +1133,7 @@ model LojaPaginaBloco {
   criadoEm     DateTime   @default(now())
   atualizadoEm DateTime   @updatedAt
   pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
+  eventosComerciais EventoComercial[]
 
   @@index([paginaId])
   @@index([ordem])
@@ -1122,6 +1162,7 @@ model CategoriaProduto {
   paginasBuilder             LojaPagina[]                     @relation("LojaPaginaCategoria")
   embalagensCompatibilidades EmbalagemModeloCompatibilidade[]
   produtos                   ProdutoCategoria[]
+  eventosComerciais          EventoComercial[]
 
   @@index([categoriaMaeId])
   @@index([slug])

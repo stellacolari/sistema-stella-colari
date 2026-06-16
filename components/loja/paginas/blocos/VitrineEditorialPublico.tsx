@@ -10,6 +10,7 @@ import {
   getString,
   type BlocoPublicoProps,
 } from "@/components/loja/paginas/blocos/utils";
+import { registrarCliqueVitrineEditorial } from "@/lib/loja/eventos-client";
 
 type VitrineDevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
 
@@ -236,11 +237,13 @@ function CardWrapper({
   abrirNovaAba,
   modo,
   children,
+  onClick,
 }: {
   href: string;
   abrirNovaAba: boolean;
   modo: "publico" | "editor";
   children: ReactNode;
+  onClick?: () => void;
 }) {
   if (!href || modo === "editor") {
     return <div className="block h-full">{children}</div>;
@@ -252,6 +255,7 @@ function CardWrapper({
         href={href}
         target={abrirNovaAba ? "_blank" : undefined}
         rel={abrirNovaAba ? "noreferrer" : undefined}
+        onClick={onClick}
         className="block h-full"
       >
         {children}
@@ -263,6 +267,7 @@ function CardWrapper({
     <Link
       href={href}
       target={abrirNovaAba ? "_blank" : undefined}
+      onClick={onClick}
       className="block h-full"
     >
       {children}
@@ -378,6 +383,21 @@ export default function VitrineEditorialPublico({
                 href={href}
                 abrirNovaAba={item.abrirNovaAba}
                 modo={modo}
+                onClick={() =>
+                  registrarCliqueVitrineEditorial({
+                    blocoId: bloco.id,
+                    categoriaId: itemResolvido.categoriaId || categoriaFallback?.id,
+                    paginaId: itemResolvido.paginaId,
+                    metadata: {
+                      itemId: itemResolvido.id,
+                      label,
+                      tipoLink: itemResolvido.tipoLink,
+                      href,
+                      posicao: index + 1,
+                      textoBotao: itemResolvido.textoBotao,
+                    },
+                  })
+                }
               >
                 <div
                   className={`w-full overflow-hidden bg-slate-100 ${aspectClass}`}

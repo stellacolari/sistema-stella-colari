@@ -10,6 +10,11 @@ import type {
   BuscaLojaPagina,
   BuscaLojaProduto,
 } from "@/lib/loja/busca";
+import {
+  registrarBuscaRealizada,
+  registrarBuscaSemResultado,
+  registrarCliqueResultadoBusca,
+} from "@/lib/loja/eventos-client";
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
 
@@ -192,6 +197,40 @@ export default function BuscaLojaClient({
 
   const temResultados =
     produtos.length > 0 || categorias.length > 0 || paginas.length > 0;
+
+  useEffect(() => {
+    const termoLimpo = termoInicial.trim();
+
+    if (!termoLimpo) return;
+
+    const metadata = {
+      produtos: produtos.length,
+      categorias: categorias.length,
+      paginas: paginas.length,
+      filtros: filtrosDetectados,
+    };
+
+    registrarBuscaRealizada({
+      termoBusca: termoLimpo,
+      origem: "pagina_busca",
+      metadata,
+    });
+
+    if (!temResultados) {
+      registrarBuscaSemResultado({
+        termoBusca: termoLimpo,
+        origem: "pagina_busca",
+        metadata,
+      });
+    }
+  }, [
+    categorias.length,
+    filtrosDetectados,
+    paginas.length,
+    produtos.length,
+    temResultados,
+    termoInicial,
+  ]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -384,6 +423,14 @@ export default function BuscaLojaClient({
                     key={produto.id}
                     produto={produto}
                     revealDelayMs={index * 50}
+                    trackingOrigem="pagina_busca"
+                    trackingResultadoBusca={{
+                      termoBusca: termoInicial,
+                      posicao: index + 1,
+                    }}
+                    trackingMetadata={{
+                      relevancia: produto.relevancia,
+                    }}
                   />
                 ))}
               </div>
@@ -410,10 +457,24 @@ export default function BuscaLojaClient({
                   Categorias encontradas
                 </h2>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {categorias.map((categoria) => (
+                  {categorias.map((categoria, index) => (
                     <Link
                       key={categoria.id}
                       href={categoria.href}
+                      onClick={() =>
+                        registrarCliqueResultadoBusca({
+                          termoBusca: termoInicial,
+                          tipoResultado: "categoria",
+                          categoriaId: categoria.id,
+                          origem: "pagina_busca",
+                          metadata: {
+                            nome: categoria.nome,
+                            href: categoria.href,
+                            posicao: index + 1,
+                            relevancia: categoria.relevancia,
+                          },
+                        })
+                      }
                       className="border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-blue)]"
                     >
                       <p className="font-semibold text-slate-950">{categoria.nome}</p>
@@ -434,10 +495,24 @@ export default function BuscaLojaClient({
                   Paginas encontradas
                 </h2>
                 <div className="mt-4 grid gap-3">
-                  {paginas.map((pagina) => (
+                  {paginas.map((pagina, index) => (
                     <Link
                       key={pagina.id}
                       href={pagina.href}
+                      onClick={() =>
+                        registrarCliqueResultadoBusca({
+                          termoBusca: termoInicial,
+                          tipoResultado: "pagina",
+                          paginaId: pagina.id,
+                          origem: "pagina_busca",
+                          metadata: {
+                            titulo: pagina.titulo,
+                            href: pagina.href,
+                            posicao: index + 1,
+                            relevancia: pagina.relevancia,
+                          },
+                        })
+                      }
                       className="border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-blue)]"
                     >
                       <p className="font-semibold text-slate-950">{pagina.titulo}</p>

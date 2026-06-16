@@ -16,11 +16,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
 } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
+import { registrarCheckoutIniciado } from "@/lib/loja/eventos-client";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 
@@ -384,6 +386,7 @@ export default function CheckoutClient({
   clienteLogado,
 }: CheckoutClientProps) {
   const [itens] = useState<CarrinhoItem[]>(() => lerCarrinho());
+  const checkoutRegistradoRef = useRef(false);
 
   const [modoCheckout, setModoCheckout] = useState<ModoCheckout>(
     clienteLogado ? "COM_CADASTRO" : "SEM_CADASTRO"
@@ -588,6 +591,22 @@ export default function CheckoutClient({
 
   const possuiAdicionais = subtotalAdicionais > 0;
   const possuiEmbalagensPresente = subtotalEmbalagensPresente > 0;
+
+  useEffect(() => {
+    if (checkoutRegistradoRef.current || itens.length === 0) {
+      return;
+    }
+
+    checkoutRegistradoRef.current = true;
+    registrarCheckoutIniciado({
+      origem: "pagina_checkout",
+      metadata: {
+        itensDistintos: itens.length,
+        quantidadeItens: quantidadeTotal,
+        subtotal: subtotalBruto,
+      },
+    });
+  }, [itens.length, quantidadeTotal, subtotalBruto]);
 
 function atualizarCampo(campo: keyof typeof form, valor: string) {
   setErroCep("");
