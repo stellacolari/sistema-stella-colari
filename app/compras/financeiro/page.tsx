@@ -8,6 +8,7 @@ import {
   montarCentralFinanceira,
   periodoFinanceiro,
 } from "@/lib/financeiro/resultado";
+import { montarDiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
 import CentralFinanceiraClient, {
   type CentralAlerta,
   type CentralCompraPendente,
@@ -38,6 +39,10 @@ function numero(value: string | undefined, fallback: number) {
 
 function mesLabel(mes: number, ano: number) {
   return `${String(mes).padStart(2, "0")}/${String(ano).slice(-2)}`;
+}
+
+function somaValores<T>(items: T[], selector: (item: T) => number) {
+  return items.reduce((total, item) => total + selector(item), 0);
 }
 
 async function montarHistorico(mes: number, ano: number) {
@@ -139,6 +144,49 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
     montarHistorico(mes, ano),
     buscarGastosPorCategoria(mes, ano),
   ]);
+  const periodo = periodoFinanceiro(mes, ano);
+  const gastosVencidos = somaValores(
+    central.lancamentosPendentes.filter(
+      (lancamento) => lancamento.statusPagamento === "VENCIDO"
+    ),
+    (lancamento) => Number(lancamento.valorReal)
+  );
+  const comprasPendentesTotal = somaValores(
+    central.comprasPendentes,
+    (compra) => Number(compra.valorTotalFinal)
+  );
+  const proLaborePagoMes = somaValores(
+    central.movimentos.filter(
+      (movimento) =>
+        movimento.status === "PAGA" &&
+        movimento.categoria === "PRO_LABORE" &&
+        (movimento.dataEfetiva || movimento.pagoEm || movimento.criadoEm) >= periodo.inicio &&
+        (movimento.dataEfetiva || movimento.pagoEm || movimento.criadoEm) < periodo.fimExclusivo
+    ),
+    (movimento) => Number(movimento.valor)
+  );
+  const reservaAtual = somaValores(
+    central.contas.filter((conta) =>
+      `${conta.tipo} ${conta.nome}`.toLowerCase().includes("reserva")
+    ),
+    (conta) => conta.saldoAtual
+  );
+  const diagnostico = await montarDiagnosticoFinanceiro({
+    mes,
+    ano,
+    resultado: central.resultado,
+    saldoGerencial: central.saldoGerencial,
+    entradasMes: central.entradasMes,
+    saidasMes: central.saidasMes,
+    gastosPendentes: central.previsao.gastosPendentes,
+    gastosVencidos,
+    comprasPendentesTotal,
+    comprasPendentesQuantidade: central.comprasPendentes.length,
+    proLaboreAprovadoPendente: central.previsao.proLaborePendente,
+    proLaborePagoMes,
+    reservaAtual,
+    historico,
+  });
 
   return (
     <CentralFinanceiraClient
@@ -235,6 +283,7 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
       )}
       historico={historico}
       gastosPorCategoria={gastosPorCategoria}
+      diagnostico={diagnostico}
     />
   );
 }

@@ -6,9 +6,11 @@ import {
   calcularResultadoMensal,
   listarContasFinanceiras,
   mesAnoAtual,
+  montarCentralFinanceira,
   obterOuCriarRegraDistribuicaoAtiva,
   periodoFinanceiro,
 } from "@/lib/financeiro/resultado";
+import { montarDiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
 import ResultadoDistribuicaoClient, {
   type FinanceiroApuracao,
   type FinanceiroHistoricoItem,
@@ -35,6 +37,10 @@ function numero(value: string | undefined, fallback: number) {
 
 function mesLabel(mes: number, ano: number) {
   return `${String(mes).padStart(2, "0")}/${String(ano).slice(-2)}`;
+}
+
+function somaValores<T>(items: T[], selector: (item: T) => number) {
+  return items.reduce((total, item) => total + selector(item), 0);
 }
 
 function serializarResultado(
@@ -182,7 +188,15 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const mes = numero(params.mes, atual.mes);
   const ano = numero(params.ano, atual.ano);
-  const [regra, resultado, apuracaoAtual, historicoApuracoes, contas, historico] =
+  const [
+    regra,
+    resultado,
+    apuracaoAtual,
+    historicoApuracoes,
+    contas,
+    historico,
+    central,
+  ] =
     await Promise.all([
       obterOuCriarRegraDistribuicaoAtiva(),
       calcularResultadoMensal(mes, ano),
@@ -190,7 +204,51 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
       buscarHistoricoApuracoes(),
       listarContasFinanceiras(),
       montarHistorico(mes, ano),
+      montarCentralFinanceira(mes, ano),
     ]);
+  const periodo = periodoFinanceiro(mes, ano);
+  const gastosVencidos = somaValores(
+    central.lancamentosPendentes.filter(
+      (lancamento) => lancamento.statusPagamento === "VENCIDO"
+    ),
+    (lancamento) => Number(lancamento.valorReal)
+  );
+  const comprasPendentesTotal = somaValores(
+    central.comprasPendentes,
+    (compra) => Number(compra.valorTotalFinal)
+  );
+  const proLaborePagoMes = somaValores(
+    central.movimentos.filter(
+      (movimento) =>
+        movimento.status === "PAGA" &&
+        movimento.categoria === "PRO_LABORE" &&
+        (movimento.dataEfetiva || movimento.pagoEm || movimento.criadoEm) >= periodo.inicio &&
+        (movimento.dataEfetiva || movimento.pagoEm || movimento.criadoEm) < periodo.fimExclusivo
+    ),
+    (movimento) => Number(movimento.valor)
+  );
+  const reservaAtual = somaValores(
+    central.contas.filter((conta) =>
+      `${conta.tipo} ${conta.nome}`.toLowerCase().includes("reserva")
+    ),
+    (conta) => conta.saldoAtual
+  );
+  const diagnostico = await montarDiagnosticoFinanceiro({
+    mes,
+    ano,
+    resultado,
+    saldoGerencial: central.saldoGerencial,
+    entradasMes: central.entradasMes,
+    saidasMes: central.saidasMes,
+    gastosPendentes: central.previsao.gastosPendentes,
+    gastosVencidos,
+    comprasPendentesTotal,
+    comprasPendentesQuantidade: central.comprasPendentes.length,
+    proLaboreAprovadoPendente: central.previsao.proLaborePendente,
+    proLaborePagoMes,
+    reservaAtual,
+    historico,
+  });
 
   return (
     <ResultadoDistribuicaoClient
@@ -220,6 +278,7 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
       apuracaoAtual={apuracaoAtual ? serializarApuracao(apuracaoAtual) : null}
       historicoApuracoes={historicoApuracoes.map(serializarApuracao)}
       historico={historico}
+      diagnostico={diagnostico}
     />
   );
 }

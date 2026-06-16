@@ -5,17 +5,23 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BanknoteArrowDown,
   BanknoteArrowUp,
   Boxes,
   CheckCircle2,
+  Megaphone,
   Plus,
   RefreshCcw,
+  ShieldCheck,
+  Target,
+  TrendingUp,
   WalletCards,
 } from "lucide-react";
 import type { FinanceiroHistoricoItem } from "@/components/financeiro/ResultadoDistribuicaoClient";
+import type { DiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
 
 export type CentralConta = {
   id: string;
@@ -109,6 +115,7 @@ type Props = {
     categoria: string;
     total: number;
   }[];
+  diagnostico: DiagnosticoFinanceiro;
 };
 
 function moeda(valor: number) {
@@ -116,6 +123,12 @@ function moeda(valor: number) {
     style: "currency",
     currency: "BRL",
   }).format(valor);
+}
+
+function percentual(valor: number) {
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2,
+  }).format(valor)}%`;
 }
 
 function dataCurta(value: string | null) {
@@ -141,6 +154,33 @@ function MovimentoValor({ tipo, valor }: { tipo: string; valor: number }) {
       {moeda(valor)}
     </span>
   );
+}
+
+function statusLabel(status: string) {
+  if (status === "SAUDAVEL") return "Saudavel";
+  if (status === "ATENCAO") return "Atencao";
+  if (status === "RISCO") return "Risco";
+  return "Critico";
+}
+
+function statusClasses(status: string) {
+  if (status === "SAUDAVEL") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "ATENCAO") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (status === "RISCO") return "border-orange-200 bg-orange-50 text-orange-800";
+  return "border-red-200 bg-red-50 text-red-800";
+}
+
+function semaforoClasses(cor: string) {
+  if (cor === "VERDE") return "bg-emerald-500";
+  if (cor === "AMARELO") return "bg-amber-500";
+  return "bg-red-500";
+}
+
+function severidadeClasses(severidade: string) {
+  if (severidade === "CRITICO") return "border-red-200 bg-red-50 text-red-800";
+  if (severidade === "RISCO") return "border-orange-200 bg-orange-50 text-orange-800";
+  if (severidade === "ATENCAO") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 function Chart({
@@ -263,6 +303,7 @@ export default function CentralFinanceiraClient({
   alertas,
   historico,
   gastosPorCategoria,
+  diagnostico,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -461,6 +502,206 @@ export default function CentralFinanceiraClient({
           )}
         </div>
       )}
+
+      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Saude financeira
+                </h2>
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasses(
+                    diagnostico.status
+                  )}`}
+                >
+                  {statusLabel(diagnostico.status)}
+                </span>
+              </div>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                {diagnostico.frase}
+              </p>
+            </div>
+            <div className="min-w-28 rounded-3xl bg-slate-950 px-4 py-3 text-center text-white">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Score
+              </p>
+              <p className="mt-1 text-3xl font-black">{diagnostico.score}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {diagnostico.alertas.slice(0, 3).map((alerta) => (
+              <div
+                key={alerta.tipo}
+                className={`rounded-2xl border px-4 py-3 ${severidadeClasses(
+                  alerta.severidade
+                )}`}
+              >
+                <p className="text-sm font-bold">{alerta.titulo}</p>
+                <p className="mt-1 text-sm leading-5">{alerta.texto}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {diagnostico.recomendacoes.slice(0, 3).map((recomendacao) => (
+              <div
+                key={recomendacao}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Recomendacao
+                </p>
+                <p className="mt-1 text-sm leading-5 text-slate-700">
+                  {recomendacao}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Semaforo de caixa
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {diagnostico.semaforoCaixa.texto}
+              </p>
+            </div>
+            <span
+              className={`mt-1 h-4 w-4 rounded-full ${semaforoClasses(
+                diagnostico.semaforoCaixa.cor
+              )}`}
+            />
+          </div>
+          <div className="mt-5 grid gap-3 text-sm">
+            <LinhaResumo label="Caixa gerencial" value={moeda(saldoGerencial)} />
+            <LinhaResumo label="Runway" value={`${diagnostico.indicadores.runwayMeses} meses`} />
+            <LinhaResumo label="Entradas do mes" value={moeda(entradasMes)} />
+            <LinhaResumo label="Saidas do mes" value={moeda(saidasMes)} />
+            <LinhaResumo label="Gastos pendentes" value={moeda(previsao.gastosPendentes)} />
+            <LinhaResumo
+              label="Compras pendentes"
+              value={`${comprasPendentes.length} item(ns)`}
+            />
+            <LinhaResumo
+              label="Pro-labore pendente"
+              value={moeda(diagnostico.proLabore.pendente)}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <InteligenciaCard
+          titulo="Marketing inteligente"
+          valor={`${percentual(diagnostico.marketing.percentual)}`}
+          detalhe={`${moeda(diagnostico.marketing.valor)} pagos. Faixa inicial: ${diagnostico.marketing.faixaIdeal}.`}
+          recomendacao={diagnostico.marketing.recomendacao}
+          icon={<Megaphone className="h-5 w-5" />}
+        />
+        <InteligenciaCard
+          titulo="Pro-labore seguro"
+          valor={moeda(diagnostico.proLabore.sugerido)}
+          detalhe={`Pago: ${moeda(diagnostico.proLabore.pago)}. Pendente: ${moeda(
+            diagnostico.proLabore.pendente
+          )}.`}
+          recomendacao={diagnostico.proLabore.recomendacao}
+          icon={<ShieldCheck className="h-5 w-5" />}
+        />
+        <InteligenciaCard
+          titulo="Reinvestimento recomendado"
+          valor={diagnostico.status === "SAUDAVEL" ? "Seletivo" : "Cautela"}
+          detalhe={diagnostico.reinvestimento.recomendacoes[0] || "Manter caixa e margem sob controle."}
+          recomendacao={
+            diagnostico.reinvestimento.recomendacoes[1] ||
+            "Priorize categorias vencedoras e reserva."
+          }
+          icon={<Target className="h-5 w-5" />}
+        />
+        <InteligenciaCard
+          titulo="Estoque e giro"
+          valor={`${diagnostico.estoque.produtosZerados}/${diagnostico.estoque.produtosBaixo}`}
+          detalhe={`${diagnostico.estoque.produtosZerados} zerado(s), ${diagnostico.estoque.produtosBaixo} baixo(s), ${diagnostico.estoque.produtosParados} parado(s).`}
+          recomendacao={diagnostico.estoque.recomendacao}
+          icon={<Activity className="h-5 w-5" />}
+        />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">
+            Previsao do proximo mes
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {diagnostico.previsao.texto}
+          </p>
+          <div className="mt-4 grid gap-3">
+            {diagnostico.previsao.cenarios.map((cenario) => (
+              <div
+                key={cenario.nome}
+                className="rounded-2xl border border-slate-200 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-slate-950">
+                    {cenario.nome}
+                  </p>
+                  <TrendingUp className="h-4 w-4 text-slate-400" />
+                </div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                  <span>Receita: {moeda(cenario.receita)}</span>
+                  <span>Caixa proj.: {moeda(cenario.caixaProjetado)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">
+            Alertas inteligentes
+          </h2>
+          <div className="mt-4 grid gap-3">
+            {diagnostico.alertas.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Nenhum alerta gerencial relevante.
+              </p>
+            ) : (
+              diagnostico.alertas.map((alerta) => (
+                <div
+                  key={alerta.tipo}
+                  className={`rounded-2xl border px-4 py-3 ${severidadeClasses(
+                    alerta.severidade
+                  )}`}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold">{alerta.titulo}</p>
+                      <p className="mt-1 text-sm leading-5">{alerta.texto}</p>
+                      <p className="mt-2 text-sm leading-5 font-semibold">
+                        {alerta.recomendacao}
+                      </p>
+                    </div>
+                    {alerta.href && alerta.acaoLabel && (
+                      <Link
+                        href={alerta.href}
+                        className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-slate-800 ring-1 ring-current/10 transition hover:bg-white"
+                      >
+                        {alerta.acaoLabel}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card
@@ -749,6 +990,45 @@ function PendenciasCard({
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function LinhaResumo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-right font-bold text-slate-950">{value}</span>
+    </div>
+  );
+}
+
+function InteligenciaCard({
+  titulo,
+  valor,
+  detalhe,
+  recomendacao,
+  icon,
+}: {
+  titulo: string;
+  valor: string;
+  detalhe: string;
+  recomendacao: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-500">{titulo}</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{valor}</p>
+        </div>
+        <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">{icon}</div>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-500">{detalhe}</p>
+      <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-700">
+        {recomendacao}
+      </p>
     </div>
   );
 }

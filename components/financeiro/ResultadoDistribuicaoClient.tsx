@@ -10,11 +10,15 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Edit3,
+  Gauge,
+  Lightbulb,
   LockKeyhole,
   PiggyBank,
   Save,
+  Target,
   WalletCards,
 } from "lucide-react";
+import type { DiagnosticoFinanceiro } from "@/lib/financeiro/diagnostico";
 
 export type FinanceiroContaOption = {
   id: string;
@@ -135,6 +139,7 @@ type Props = {
   apuracaoAtual: FinanceiroApuracao | null;
   historicoApuracoes: FinanceiroApuracao[];
   historico: FinanceiroHistoricoItem[];
+  diagnostico: DiagnosticoFinanceiro;
 };
 
 const DESTINOS_PRO_LABORE = ["PRO_LABORE_SOCIO_1", "PRO_LABORE_SOCIO_2"];
@@ -167,6 +172,20 @@ function getStatusClass(status: string) {
   if (status === "APROVADO") return "border-blue-200 bg-blue-50 text-blue-700";
   if (status === "CANCELADO") return "border-slate-200 bg-slate-100 text-slate-500";
   return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function statusLabel(status: string) {
+  if (status === "SAUDAVEL") return "Saudavel";
+  if (status === "ATENCAO") return "Atencao";
+  if (status === "RISCO") return "Risco";
+  return "Critico";
+}
+
+function statusDiagnosticoClass(status: string) {
+  if (status === "SAUDAVEL") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "ATENCAO") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (status === "RISCO") return "border-orange-200 bg-orange-50 text-orange-800";
+  return "border-red-200 bg-red-50 text-red-800";
 }
 
 function isProLabore(tipo: string) {
@@ -278,6 +297,7 @@ export default function ResultadoDistribuicaoClient({
   apuracaoAtual,
   historicoApuracoes,
   historico,
+  diagnostico,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -473,6 +493,95 @@ export default function ResultadoDistribuicaoClient({
           detalhe="50% do lucro apuravel, dividido em duas partes iguais."
           icon={<CheckCircle2 className="h-5 w-5" />}
         />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-950">
+                  Leitura gerencial do mes
+                </h2>
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-bold ${statusDiagnosticoClass(
+                    diagnostico.status
+                  )}`}
+                >
+                  {statusLabel(diagnostico.status)}
+                </span>
+              </div>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                {diagnostico.leituraResultado.texto}
+              </p>
+            </div>
+            <div className="min-w-24 rounded-3xl bg-slate-950 px-4 py-3 text-center text-white">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Score
+              </p>
+              <p className="mt-1 text-3xl font-black">{diagnostico.score}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <ResumoGerencial
+              label="Rentabilidade"
+              value={diagnostico.leituraResultado.rentavel ? "Rentavel" : "Nao rentavel"}
+              detail={`Margem liquida: ${percentual(
+                diagnostico.indicadores.margemLiquidaPct
+              )}`}
+            />
+            <ResumoGerencial
+              label="Margem bruta"
+              value={percentual(diagnostico.indicadores.margemBrutaPct)}
+              detail="Alvo saudavel: 55%+"
+            />
+            <ResumoGerencial
+              label="Distribuicao 50/50"
+              value={
+                diagnostico.leituraResultado.distribuicaoSegura
+                  ? "Segura"
+                  : "Cautela"
+              }
+              detail="Considera caixa, pendencias e pro-labore."
+            />
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                <PiggyBank className="h-4 w-4 text-slate-500" />
+                Pro-labore
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {diagnostico.leituraResultado.recomendacaoProLabore}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                <Target className="h-4 w-4 text-slate-500" />
+                Empresa e reinvestimento
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {diagnostico.leituraResultado.recomendacaoEmpresa}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-slate-500" />
+            <h2 className="text-lg font-semibold text-slate-950">
+              Roadmap financeiro
+            </h2>
+          </div>
+          <div className="mt-4 space-y-3">
+            <RoadmapMes titulo="Mes 1" itens={diagnostico.roadmap.mes1} />
+            <RoadmapMes titulo="Mes 2" itens={diagnostico.roadmap.mes2} />
+            <RoadmapMes titulo="Mes 3" itens={diagnostico.roadmap.mes3} />
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
@@ -814,5 +923,41 @@ function NumeroRegra({
         className="h-11 w-full rounded-2xl border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
       />
     </label>
+  );
+}
+
+function ResumoGerencial({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-sm leading-5 text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function RoadmapMes({ titulo, itens }: { titulo: string; itens: string[] }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+        <Lightbulb className="h-4 w-4 text-slate-500" />
+        {titulo}
+      </div>
+      <ul className="mt-2 space-y-1.5 text-sm leading-5 text-slate-600">
+        {itens.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

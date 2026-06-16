@@ -974,7 +974,14 @@ export async function calcularSaldosContas() {
 
 export async function montarCentralFinanceira(mesInput: number, anoInput: number) {
   const periodo = periodoFinanceiro(mesInput, anoInput);
-  const [contas, movimentos, resultado, lancamentosPendentes, apuracoes] =
+  const [
+    contas,
+    movimentos,
+    resultado,
+    lancamentosPendentes,
+    apuracoes,
+    movimentosCompraEstoquePagos,
+  ] =
     await Promise.all([
       calcularSaldosContas(),
       prisma.movimentacaoCaixa.findMany({
@@ -1005,6 +1012,18 @@ export async function montarCentralFinanceira(mesInput: number, anoInput: number
         take: 12,
         include: {
           destinos: true,
+        },
+      }),
+      prisma.movimentacaoCaixa.findMany({
+        where: {
+          status: "PAGA",
+          OR: [
+            { categoria: "COMPRA_ESTOQUE" },
+            { origemTipo: { contains: "COMPRA_ESTOQUE" } },
+          ],
+        },
+        select: {
+          origemId: true,
         },
       }),
     ]);
@@ -1041,8 +1060,7 @@ export async function montarCentralFinanceira(mesInput: number, anoInput: number
       }))
   );
   const movimentosCompraIds = new Set(
-    movimentos
-      .filter((movimento) => movimento.origemTipo === "COMPRA_ESTOQUE")
+    movimentosCompraEstoquePagos
       .map((movimento) => movimento.origemId)
       .filter(Boolean)
   );
