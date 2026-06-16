@@ -4,6 +4,17 @@ const prisma = new PrismaClient();
 const MS_DIA = 24 * 60 * 60 * 1000;
 const TAMANHO_TODOS = "TODOS";
 const CONFIRMACAO = "GERAR_METRICAS_PRODUTO";
+const TIPOS_INTENCAO_PRODUTO = [
+  "PRODUTO_VISUALIZADO",
+  "PRODUTO_FAVORITADO",
+  "PRODUTO_DESFAVORITADO",
+  "PRODUTO_ADICIONADO_CARRINHO",
+  "PRODUTO_REMOVIDO_CARRINHO",
+  "BUSCA_RESULTADO_CLICADO",
+  "VITRINE_EDITORIAL_CLICADA",
+  "BANNER_CTA_CLICADO",
+  "CHECKOUT_INICIADO",
+];
 
 function numero(value) {
   const parsed = Number(value ?? 0);
@@ -22,6 +33,89 @@ function round(value, casas = 2) {
 function pct(parte, total) {
   if (total <= 0) return 0;
   return Math.min(100, round((numero(parte) / numero(total)) * 100, 2));
+}
+
+function pctLimitado(value) {
+  return Math.max(0, Math.min(100, round(value, 1)));
+}
+
+function somarIntencao(contagem) {
+  return (
+    inteiro(contagem.visualizacoes) +
+    inteiro(contagem.favoritos) +
+    inteiro(contagem.desfavoritos) +
+    inteiro(contagem.adicoesCarrinho) +
+    inteiro(contagem.remocoesCarrinho) +
+    inteiro(contagem.cliquesBusca) +
+    inteiro(contagem.cliquesVitrine) +
+    inteiro(contagem.cliquesBanner) +
+    inteiro(contagem.checkoutsIniciados)
+  );
+}
+
+function montarIntencaoAgregada(contagem = {}, vendasQuantidade = 0, estoqueFinal = 0) {
+  const base = {
+    visualizacoes: inteiro(contagem.visualizacoes),
+    favoritos: inteiro(contagem.favoritos),
+    desfavoritos: inteiro(contagem.desfavoritos),
+    adicoesCarrinho: inteiro(contagem.adicoesCarrinho),
+    remocoesCarrinho: inteiro(contagem.remocoesCarrinho),
+    cliquesBusca: inteiro(contagem.cliquesBusca),
+    cliquesVitrine: inteiro(contagem.cliquesVitrine),
+    cliquesBanner: inteiro(contagem.cliquesBanner),
+    checkoutsIniciados: inteiro(contagem.checkoutsIniciados),
+  };
+  const eventosTotal = somarIntencao(base);
+  const taxaFavorito = pct(base.favoritos, base.visualizacoes);
+  const taxaCarrinho = pct(base.adicoesCarrinho, base.visualizacoes);
+  const taxaConversao = pct(vendasQuantidade, base.visualizacoes);
+  const scoreInteresse = pctLimitado(
+    base.visualizacoes * 0.6 +
+      base.cliquesBusca * 2.5 +
+      base.favoritos * 4 +
+      base.adicoesCarrinho * 6 +
+      base.cliquesVitrine * 2 +
+      base.cliquesBanner * 2.5 +
+      base.checkoutsIniciados * 8 -
+      base.desfavoritos * 2 -
+      base.remocoesCarrinho * 2,
+  );
+  const scoreConversao =
+    base.visualizacoes > 0
+      ? pctLimitado(taxaConversao * 4 + Math.min(25, vendasQuantidade * 8))
+      : vendasQuantidade > 0
+        ? 70
+        : 0;
+  const amostra = eventosTotal + vendasQuantidade * 3;
+  const confiancaAnalise = amostra >= 24 ? "ALTA" : amostra >= 7 ? "MEDIA" : "BAIXA";
+  const intencaoForte = scoreInteresse >= 30 || base.adicoesCarrinho >= 2 || base.favoritos >= 3;
+  const poucaExposicao = base.visualizacoes < 5 && eventosTotal < 5 && scoreInteresse < 10;
+  let interpretacao =
+    "Produto em observacao. Use venda, estoque e sinais de intencao antes de decidir reposicao.";
+
+  if (vendasQuantidade === 0 && poucaExposicao) {
+    interpretacao = "Produto pouco testado. Aumente exposicao antes de concluir que nao vende.";
+  } else if (vendasQuantidade === 0 && intencaoForte) {
+    interpretacao =
+      "Produto com interesse, mas baixa conversao. Revise preco, fotos, descricao ou condicao.";
+  } else if (estoqueFinal <= 1 && (vendasQuantidade > 0 || intencaoForte)) {
+    interpretacao =
+      "Produto promissor com estoque baixo. Considere reposicao pequena antes de aumentar trafego.";
+  } else if (vendasQuantidade > 0 && scoreInteresse >= 20) {
+    interpretacao = "Produto validado por venda e reforcado por sinais de interesse.";
+  }
+
+  return {
+    ...base,
+    eventosTotal,
+    taxaFavorito,
+    taxaCarrinho,
+    taxaConversao,
+    scoreInteresse,
+    scoreConversao,
+    confiancaAnalise,
+    interpretacao,
+  };
 }
 
 function normalizarTexto(value) {
@@ -264,6 +358,38 @@ async function carregarMovimentos(produto) {
   });
 }
 
+async function carregarIntencaoProduto(produtoId, periodo) {
+  const eventos = await prisma.eventoComercial.groupBy({
+    by: ["tipo"],
+    where: {
+      produtoId,
+      criadoEm: {
+        gte: periodo.periodoInicio,
+        lte: periodo.periodoFim,
+      },
+      tipo: {
+        in: TIPOS_INTENCAO_PRODUTO,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+  const porTipo = new Map(eventos.map((evento) => [evento.tipo, evento._count._all]));
+
+  return {
+    visualizacoes: porTipo.get("PRODUTO_VISUALIZADO") || 0,
+    favoritos: porTipo.get("PRODUTO_FAVORITADO") || 0,
+    desfavoritos: porTipo.get("PRODUTO_DESFAVORITADO") || 0,
+    adicoesCarrinho: porTipo.get("PRODUTO_ADICIONADO_CARRINHO") || 0,
+    remocoesCarrinho: porTipo.get("PRODUTO_REMOVIDO_CARRINHO") || 0,
+    cliquesBusca: porTipo.get("BUSCA_RESULTADO_CLICADO") || 0,
+    cliquesVitrine: porTipo.get("VITRINE_EDITORIAL_CLICADA") || 0,
+    cliquesBanner: porTipo.get("BANNER_CTA_CLICADO") || 0,
+    checkoutsIniciados: porTipo.get("CHECKOUT_INICIADO") || 0,
+  };
+}
+
 async function reconstruirCiclosProduto(produto) {
   const movimentos = await carregarMovimentos(produto);
   const grupos = agruparMovimentos(movimentos);
@@ -282,23 +408,66 @@ async function reconstruirCiclosProduto(produto) {
   return { ciclos, movimentos };
 }
 
-function classificarSnapshot({ estoqueFinal, vendasQuantidade, sellThroughAcumulado, sellThroughPeriodo, diasSemVenda, ciclos }) {
+function classificarSnapshot({
+  estoqueFinal,
+  vendasQuantidade,
+  sellThroughAcumulado,
+  sellThroughPeriodo,
+  diasSemVenda,
+  ciclos,
+  margemEstimada,
+  intencao,
+}) {
   const cicloAtual = [...ciclos].reverse().find((ciclo) => ciclo.status === "ABERTO" || ciclo.status === "AJUSTADO");
   const ciclosRapidos = ciclos.filter(
     (ciclo) => ciclo.quantidadeVendida >= 2 && ciclo.sellThrough >= 95 && (ciclo.diasAteEsgotar ?? 999) <= 15,
   ).length;
+  const intencaoForte = intencao.scoreInteresse >= 30 || intencao.adicoesCarrinho >= 2 || intencao.favoritos >= 3;
+  const intencaoRelevante =
+    intencao.scoreInteresse >= 18 ||
+    intencao.adicoesCarrinho >= 1 ||
+    intencao.favoritos >= 2 ||
+    intencao.cliquesBusca >= 3;
+  const poucaExposicao = intencao.visualizacoes < 5 && intencao.eventosTotal < 5 && intencao.scoreInteresse < 10;
 
-  if (estoqueFinal <= 1 && (vendasQuantidade > 0 || ciclosRapidos > 0)) return "RISCO_RUPTURA";
+  if (estoqueFinal <= 1 && (vendasQuantidade > 0 || ciclosRapidos > 0 || intencaoForte)) return "RISCO_RUPTURA";
   if (ciclosRapidos >= 1 && ciclos.length >= 2 && vendasQuantidade > 0) return "REPOSICAO_CONFIRMADA";
-  if (ciclosRapidos >= 1 || sellThroughAcumulado >= 80) return "CAMPEAO_PROVAVEL";
-  if (vendasQuantidade > 0 || sellThroughPeriodo >= 35) return "PROMISSOR";
-  if (estoqueFinal > 0 && vendasQuantidade === 0 && (diasSemVenda ?? 0) >= 60) return "ESTOQUE_PARADO";
+  if (
+    ciclosRapidos >= 1 ||
+    (sellThroughAcumulado >= 80 && (vendasQuantidade > 0 || intencaoRelevante)) ||
+    (vendasQuantidade >= 2 && intencaoForte && margemEstimada >= 0)
+  ) {
+    return "CAMPEAO_PROVAVEL";
+  }
+  if (vendasQuantidade === 0 && poucaExposicao) return "NAO_TESTADO";
+  if (vendasQuantidade === 0 && intencaoForte) {
+    return (diasSemVenda ?? 0) >= 30 ? "TRAVADO" : "INTERESSE_SEM_CONVERSAO";
+  }
+  if (vendasQuantidade > 0 || sellThroughPeriodo >= 35 || intencaoRelevante) return "PROMISSOR";
+  if (
+    estoqueFinal > 0 &&
+    vendasQuantidade === 0 &&
+    intencao.visualizacoes >= 10 &&
+    intencao.scoreInteresse < 12 &&
+    (diasSemVenda ?? 0) >= 60
+  ) {
+    return "ESTOQUE_PARADO";
+  }
   if (estoqueFinal > 0 && cicloAtual && cicloAtual.quantidadeVendida === 0 && (diasSemVenda ?? 0) >= 45) return "TRAVADO";
-  if (estoqueFinal > 0 && diasSemVenda !== null && diasSemVenda >= 45) return "NAO_RECOMPRAR_AINDA";
+  if (estoqueFinal > 0 && diasSemVenda !== null && diasSemVenda >= 45 && intencao.eventosTotal >= 5) return "NAO_RECOMPRAR_AINDA";
   return "NAO_TESTADO";
 }
 
-function scoreSnapshot({ vendasQuantidade, sellThroughAcumulado, sellThroughPeriodo, giroEstimado, margemEstimada, estoqueFinal, ciclos }) {
+function scoreSnapshot({
+  vendasQuantidade,
+  sellThroughAcumulado,
+  sellThroughPeriodo,
+  giroEstimado,
+  margemEstimada,
+  estoqueFinal,
+  ciclos,
+  intencao,
+}) {
   const cicloAtual = ciclos.at(-1);
   const ciclosRapidos = ciclos.filter(
     (ciclo) => ciclo.quantidadeVendida >= 2 && ciclo.sellThrough >= 95 && (ciclo.diasAteEsgotar ?? 999) <= 15,
@@ -309,26 +478,42 @@ function scoreSnapshot({ vendasQuantidade, sellThroughAcumulado, sellThroughPeri
   score += Math.min(16, giroEstimado * 4);
   score += Math.min(12, vendasQuantidade * 4);
   score += ciclosRapidos * 12;
+  score += Math.min(18, intencao.scoreInteresse * 0.18);
+  score += Math.min(8, intencao.scoreConversao * 0.08);
   if (margemEstimada < 0) score -= 18;
-  if (estoqueFinal <= 1 && vendasQuantidade > 0) score += 8;
+  if (estoqueFinal <= 1 && (vendasQuantidade > 0 || intencao.scoreInteresse >= 30)) score += 8;
   if (cicloAtual && cicloAtual.quantidadeVendida === 0 && cicloAtual.quantidadeAtual > 0) score -= 8;
+  if (vendasQuantidade === 0 && intencao.scoreInteresse >= 30) score = Math.min(score, 68);
   return Math.max(0, Math.min(100, round(score, 1)));
 }
 
-function recomendar({ statusComercial, scoreValidacao, margemEstimada, cicloAtual, estoqueFinal }) {
+function recomendar({ statusComercial, scoreValidacao, margemEstimada, cicloAtual, estoqueFinal, vendasQuantidade, ciclos, intencao }) {
+  const ciclosRapidos = ciclos.filter(
+    (ciclo) => ciclo.quantidadeVendida >= 2 && ciclo.sellThrough >= 95 && (ciclo.diasAteEsgotar ?? 999) <= 15,
+  ).length;
+  const intencaoForte = intencao.scoreInteresse >= 30 || intencao.adicoesCarrinho >= 2 || intencao.favoritos >= 3;
+  const intencaoRelevante = intencao.scoreInteresse >= 18 || intencao.adicoesCarrinho >= 1 || intencao.favoritos >= 2;
+
   if (statusComercial === "ESTOQUE_PARADO") return "LIQUIDAR_COM_CUIDADO";
-  if (statusComercial === "TRAVADO") return "EXPOR_MAIS";
+  if (statusComercial === "TRAVADO" || statusComercial === "INTERESSE_SEM_CONVERSAO") return "REVISAR_OFERTA";
+  if (statusComercial === "NAO_TESTADO") return "EXPOR_MAIS";
   if (statusComercial === "NAO_RECOMPRAR_AINDA") return "NAO_REPOR";
   if (margemEstimada < 0 && scoreValidacao < 55) return "OBSERVAR";
-  if (statusComercial === "REPOSICAO_CONFIRMADA") return scoreValidacao >= 85 ? "REPOR_LOTE_GRANDE" : "REPOR_LOTE_MEDIO";
-  if (statusComercial === "RISCO_RUPTURA") return scoreValidacao >= 75 ? "REPOR_LOTE_MEDIO" : "REPOR_PEQUENO";
-  if (statusComercial === "CAMPEAO_PROVAVEL") return "REPOR_PEQUENO";
-  if (statusComercial === "PROMISSOR") return "OBSERVAR";
+  if (statusComercial === "REPOSICAO_CONFIRMADA") return scoreValidacao >= 85 && ciclosRapidos >= 2 ? "REPOR_LOTE_GRANDE" : "REPOR_LOTE_MEDIO";
+  if (statusComercial === "RISCO_RUPTURA") {
+    return scoreValidacao >= 75 && vendasQuantidade >= 2 && intencaoRelevante ? "REPOR_LOTE_MEDIO" : "REPOR_PEQUENO";
+  }
+  if (statusComercial === "CAMPEAO_PROVAVEL") return vendasQuantidade >= 2 && intencaoForte ? "REPOR_LOTE_MEDIO" : "REPOR_PEQUENO";
+  if (statusComercial === "PROMISSOR") {
+    if (estoqueFinal <= 1 && (vendasQuantidade > 0 || intencaoForte)) return "REPOR_PEQUENO";
+    if (vendasQuantidade >= 1 && intencaoRelevante) return "REPOR_PEQUENO";
+    return "OBSERVAR";
+  }
   if (!cicloAtual || cicloAtual.quantidadeVendida === 0) return "EXPOR_MAIS";
   return estoqueFinal <= 1 ? "OBSERVAR" : "NAO_REPOR";
 }
 
-function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, estoqueFinal }) {
+function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, estoqueFinal, intencaoContagem }) {
   const movimentosPeriodo = movimentos.filter((mov) => mov.criadoEm >= periodo.periodoInicio && mov.criadoEm <= periodo.periodoFim);
   const vendas = movimentosPeriodo.filter((mov) => tipoMovimento(mov) === "SAIDA");
   const entradas = movimentosPeriodo.filter((mov) => ["ENTRADA", "ESTORNO_VENDA"].includes(tipoMovimento(mov)));
@@ -348,6 +533,7 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
   const giroEstimado = round((vendasQuantidade / diasPeriodo) * 30, 2);
   const ultimaVenda = vendas.at(-1)?.criadoEm || null;
   const diasSemVenda = ultimaVenda ? diasEntre(ultimaVenda, periodo.periodoFim) : diasPeriodo;
+  const intencao = montarIntencaoAgregada(intencaoContagem, vendasQuantidade, estoqueFinal);
   const scoreValidacao = scoreSnapshot({
     vendasQuantidade,
     sellThroughAcumulado,
@@ -356,6 +542,7 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
     margemEstimada,
     estoqueFinal,
     ciclos,
+    intencao,
   });
   const statusComercial = classificarSnapshot({
     estoqueFinal,
@@ -364,6 +551,8 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
     sellThroughPeriodo,
     diasSemVenda,
     ciclos,
+    margemEstimada,
+    intencao,
   });
   const cicloAtual = [...ciclos].reverse().find((ciclo) => ciclo.status === "ABERTO" || ciclo.status === "AJUSTADO") || ciclos.at(-1) || null;
   const recomendacao = recomendar({
@@ -372,6 +561,9 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
     margemEstimada,
     cicloAtual,
     estoqueFinal,
+    vendasQuantidade,
+    ciclos,
+    intencao,
   });
 
   return {
@@ -400,6 +592,13 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
       diasPeriodo,
       diasSemVenda,
       ultimaVendaEm: ultimaVenda?.toISOString() || null,
+      intencaoComercial: {
+        ...intencao,
+        vendasQuantidade,
+        estoqueFinal,
+        periodoInicio: periodo.periodoInicio.toISOString(),
+        periodoFim: periodo.periodoFim.toISOString(),
+      },
       cicloAtual: cicloAtual
         ? {
             status: cicloAtual.status,
@@ -412,7 +611,7 @@ function montarSnapshot({ produto, tamanhoAnel, periodo, movimentos, ciclos, est
   };
 }
 
-function snapshotsProduto(produto, periodo, ciclos, movimentos) {
+function snapshotsProduto(produto, periodo, ciclos, movimentos, intencaoContagem) {
   const grupos = agruparMovimentos(movimentos);
   const estoquePorTamanho = new Map(
     produto.estoque.map((item) => [normalizarTamanho(item.tamanhoAnel), inteiro(item.quantidadeAtual)]),
@@ -431,6 +630,7 @@ function snapshotsProduto(produto, periodo, ciclos, movimentos) {
       movimentos: grupos.get(tamanhoAnel) || [],
       ciclos: ciclos.filter((ciclo) => ciclo.tamanhoAnel === tamanhoAnel),
       estoqueFinal,
+      intencaoContagem,
     }),
   );
 
@@ -443,6 +643,7 @@ function snapshotsProduto(produto, periodo, ciclos, movimentos) {
         movimentos,
         ciclos,
         estoqueFinal: [...estoquePorTamanho.values()].reduce((total, item) => total + item, 0),
+        intencaoContagem,
       }),
     );
   }
@@ -452,7 +653,8 @@ function snapshotsProduto(produto, periodo, ciclos, movimentos) {
 
 async function salvarProduto(produto, periodo, reconstruirCiclos) {
   const { ciclos, movimentos } = await reconstruirCiclosProduto(produto);
-  const snapshots = snapshotsProduto(produto, periodo, ciclos, movimentos);
+  const intencaoContagem = await carregarIntencaoProduto(produto.id, periodo);
+  const snapshots = snapshotsProduto(produto, periodo, ciclos, movimentos, intencaoContagem);
 
   if (reconstruirCiclos) {
     await prisma.produtoCicloEstoque.deleteMany({ where: { produtoId: produto.id } });
@@ -513,6 +715,13 @@ async function main() {
     produtos: 0,
     ciclos: 0,
     snapshots: 0,
+    produtosComEventos: 0,
+    visualizacoes: 0,
+    favoritos: 0,
+    carrinhos: 0,
+    interesseSemConversao: 0,
+    naoTestados: 0,
+    riscoRuptura: 0,
     status: new Map(),
     recomendacoes: new Map(),
   };
@@ -531,6 +740,16 @@ async function main() {
       if (snapshot.tamanhoAnel !== TAMANHO_TODOS && snapshots.some((item) => item.tamanhoAnel === TAMANHO_TODOS)) {
         continue;
       }
+      const intencao = snapshot.dadosJson?.intencaoComercial || {};
+      if ((intencao.eventosTotal || 0) > 0) resumo.produtosComEventos += 1;
+      resumo.visualizacoes += inteiro(intencao.visualizacoes);
+      resumo.favoritos += inteiro(intencao.favoritos);
+      resumo.carrinhos += inteiro(intencao.adicoesCarrinho);
+      if (snapshot.statusComercial === "INTERESSE_SEM_CONVERSAO" || snapshot.statusComercial === "TRAVADO") {
+        resumo.interesseSemConversao += 1;
+      }
+      if (snapshot.statusComercial === "NAO_TESTADO") resumo.naoTestados += 1;
+      if (snapshot.statusComercial === "RISCO_RUPTURA") resumo.riscoRuptura += 1;
       resumo.status.set(snapshot.statusComercial, (resumo.status.get(snapshot.statusComercial) || 0) + 1);
       resumo.recomendacoes.set(snapshot.recomendacao, (resumo.recomendacoes.get(snapshot.recomendacao) || 0) + 1);
     }
@@ -540,6 +759,13 @@ async function main() {
   console.log(`- Produtos processados: ${resumo.produtos}`);
   console.log(`- Ciclos ${reconstruirCiclos ? "persistidos" : "calculados"}: ${resumo.ciclos}`);
   console.log(`- Snapshots persistidos: ${resumo.snapshots}`);
+  console.log(`- Produtos com eventos: ${resumo.produtosComEventos}`);
+  console.log(`- Total de visualizacoes: ${resumo.visualizacoes}`);
+  console.log(`- Total de favoritos: ${resumo.favoritos}`);
+  console.log(`- Total de carrinhos: ${resumo.carrinhos}`);
+  console.log(`- Produtos com interesse sem conversao: ${resumo.interesseSemConversao}`);
+  console.log(`- Produtos nao testados: ${resumo.naoTestados}`);
+  console.log(`- Produtos em risco de ruptura: ${resumo.riscoRuptura}`);
   console.log("- Status comerciais:");
   for (const [status, total] of [...resumo.status.entries()].sort()) {
     console.log(`  ${status}: ${total}`);

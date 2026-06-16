@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { periodoFinanceiro, type ResultadoMensalCalculado } from "@/lib/financeiro/resultado";
+import { extrairIntencaoSnapshot } from "@/lib/produtos/metricas-produto";
 
 export type StatusSaudeFinanceira = "SAUDAVEL" | "ATENCAO" | "RISCO" | "CRITICO";
 
@@ -41,6 +42,9 @@ export type DiagnosticoIndicadores = {
   produtosCampeoesProvaveis: number;
   produtosRiscoRuptura: number;
   produtosEstoqueParadoHistorico: number;
+  produtosInteresseSemConversao: number;
+  produtosPoucoTestados: number;
+  produtosAltoInteresseEstoqueBaixo: number;
 };
 
 export type DiagnosticoProdutoGiro = {
@@ -60,6 +64,9 @@ export type DiagnosticoEstoque = {
   produtosRiscoRuptura: number;
   produtosEstoqueParadoHistorico: number;
   produtosReposicaoConfirmada: number;
+  produtosInteresseSemConversao: number;
+  produtosPoucoTestados: number;
+  produtosAltoInteresseEstoqueBaixo: number;
   topProdutos: DiagnosticoProdutoGiro[];
   recomendacao: string;
 };
@@ -160,6 +167,9 @@ type ResumoEstoqueCalculado = {
   produtosRiscoRuptura: number;
   produtosEstoqueParadoHistorico: number;
   produtosReposicaoConfirmada: number;
+  produtosInteresseSemConversao: number;
+  produtosPoucoTestados: number;
+  produtosAltoInteresseEstoqueBaixo: number;
   topProdutos: DiagnosticoProdutoGiro[];
 };
 
@@ -307,6 +317,9 @@ async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEst
         statusComercial: true,
         recomendacao: true,
         scoreValidacao: true,
+        vendasQuantidade: true,
+        estoqueFinal: true,
+        dadosJson: true,
         criadoEm: true,
       },
       orderBy: {
@@ -412,6 +425,26 @@ async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEst
   const produtosReposicaoConfirmada = metricasAtuais.filter(
     (metrica) => metrica.statusComercial === "REPOSICAO_CONFIRMADA"
   ).length;
+  const metricasComIntencao = metricasAtuais.map((metrica) => ({
+    metrica,
+    intencao: extrairIntencaoSnapshot(metrica.dadosJson),
+  }));
+  const produtosInteresseSemConversao = metricasAtuais.filter((metrica) =>
+    ["INTERESSE_SEM_CONVERSAO", "TRAVADO"].includes(metrica.statusComercial)
+  ).length;
+  const produtosPoucoTestados = metricasComIntencao.filter(
+    ({ metrica, intencao }) =>
+      metrica.statusComercial === "NAO_TESTADO" &&
+      metrica.vendasQuantidade <= 0 &&
+      intencao.visualizacoes < 5
+  ).length;
+  const produtosAltoInteresseEstoqueBaixo = metricasComIntencao.filter(
+    ({ metrica, intencao }) =>
+      metrica.estoqueFinal <= 1 &&
+      (intencao.scoreInteresse >= 30 ||
+        intencao.adicoesCarrinho >= 2 ||
+        intencao.favoritos >= 3)
+  ).length;
 
   return {
     produtosZerados,
@@ -421,6 +454,9 @@ async function calcularEstoqueEGiro(mes: number, ano: number): Promise<ResumoEst
     produtosRiscoRuptura,
     produtosEstoqueParadoHistorico,
     produtosReposicaoConfirmada,
+    produtosInteresseSemConversao,
+    produtosPoucoTestados,
+    produtosAltoInteresseEstoqueBaixo,
     topProdutos,
   };
 }
@@ -654,6 +690,42 @@ export async function montarDiagnosticoFinanceiro(
     });
   }
 
+  if (estoque.produtosAltoInteresseEstoqueBaixo > 0) {
+    criarAlerta(alertas, {
+      tipo: "ALTO_INTERESSE_ESTOQUE_BAIXO",
+      severidade: "RISCO",
+      titulo: "Alto interesse com estoque baixo",
+      texto: `${estoque.produtosAltoInteresseEstoqueBaixo} produto(s) tem interesse forte e estoque baixo.`,
+      recomendacao: "Repor seletivamente antes de aumentar trafego ou campanha.",
+      acaoLabel: "Ver reposicao",
+      href: "/compras/reposicao",
+    });
+  }
+
+  if (estoque.produtosInteresseSemConversao > 0) {
+    criarAlerta(alertas, {
+      tipo: "INTERESSE_SEM_CONVERSAO",
+      severidade: "ATENCAO",
+      titulo: "Interesse sem conversao",
+      texto: `${estoque.produtosInteresseSemConversao} produto(s) despertam interesse, mas vendem pouco ou nada.`,
+      recomendacao: "Revisar oferta, preco, fotos, descricao ou condicao antes de comprar mais.",
+      acaoLabel: "Ver intencao",
+      href: "/compras/intencao",
+    });
+  }
+
+  if (estoque.produtosPoucoTestados >= 5) {
+    criarAlerta(alertas, {
+      tipo: "PRODUTOS_POUCO_TESTADOS",
+      severidade: "INFO",
+      titulo: "Produtos pouco testados",
+      texto: `${estoque.produtosPoucoTestados} produto(s) ainda tem pouca exposicao e baixa amostra.`,
+      recomendacao: "Priorizar exposicao organica e vitrines antes de novas compras.",
+      acaoLabel: "Ver intencao",
+      href: "/compras/intencao",
+    });
+  }
+
   if (estoque.produtosZerados > 0 || estoque.produtosBaixo > 0) {
     criarAlerta(alertas, {
       tipo: "ESTOQUE_BAIXO",
@@ -702,6 +774,8 @@ export async function montarDiagnosticoFinanceiro(
           (params.comprasPendentesQuantidade > 0 ? 4 : 0) -
           (proLaboreSeguro ? 0 : 8) -
           (estoque.produtosRiscoRuptura > 0 ? 6 : 0) -
+          (estoque.produtosAltoInteresseEstoqueBaixo > 0 ? 5 : 0) -
+          (estoque.produtosInteresseSemConversao > 0 ? 3 : 0) -
           (estoque.produtosZerados > 0 ? 5 : 0) -
           (estoque.produtosBaixo > 0 ? 3 : 0)
       );
@@ -721,8 +795,20 @@ export async function montarDiagnosticoFinanceiro(
     ? "Pro-labore pode seguir limitado ao lucro apuravel e apos aprovacao."
     : "Reduzir ou adiar retirada ate preservar reserva e caixa.";
   const estoqueRecomendacao = (() => {
+    if (estoque.produtosAltoInteresseEstoqueBaixo > 0) {
+      return `Ha ${estoque.produtosAltoInteresseEstoqueBaixo} produto(s) com alto interesse e estoque baixo. Reponha antes de aumentar trafego.`;
+    }
+
     if (estoque.produtosRiscoRuptura > 0) {
       return `Ha ${estoque.produtosRiscoRuptura} produto(s) com risco de ruptura. Repor seletivamente antes de investir em trafego.`;
+    }
+
+    if (estoque.produtosInteresseSemConversao > 0) {
+      return "Ha produtos com interesse sem conversao. Revise oferta antes de comprar mais.";
+    }
+
+    if (estoque.produtosPoucoTestados >= 5) {
+      return "Muitos produtos ainda nao foram testados. Priorize exposicao organica e vitrines antes de novas compras.";
     }
 
     if (estoque.produtosReposicaoConfirmada > 0) {
@@ -745,6 +831,15 @@ export async function montarDiagnosticoFinanceiro(
   })();
   const reinvestimento = {
     recomendacoes: [
+      ...(estoque.produtosAltoInteresseEstoqueBaixo > 0
+        ? ["Repor produtos com alto interesse e estoque baixo antes de aumentar trafego."]
+        : []),
+      ...(estoque.produtosInteresseSemConversao > 0
+        ? ["Revisar oferta dos produtos com interesse sem conversao antes de recomprar."]
+        : []),
+      ...(estoque.produtosPoucoTestados >= 5
+        ? ["Dar vitrine organica aos produtos pouco testados antes de comprar variedade nova."]
+        : []),
       ...(estoque.produtosRiscoRuptura > 0
         ? ["Repor produtos com risco de ruptura antes de aumentar trafego pago."]
         : []),
@@ -840,6 +935,10 @@ export async function montarDiagnosticoFinanceiro(
       produtosCampeoesProvaveis: estoque.produtosCampeoesProvaveis,
       produtosRiscoRuptura: estoque.produtosRiscoRuptura,
       produtosEstoqueParadoHistorico: estoque.produtosEstoqueParadoHistorico,
+      produtosInteresseSemConversao: estoque.produtosInteresseSemConversao,
+      produtosPoucoTestados: estoque.produtosPoucoTestados,
+      produtosAltoInteresseEstoqueBaixo:
+        estoque.produtosAltoInteresseEstoqueBaixo,
     },
     alertas,
     recomendacoes,

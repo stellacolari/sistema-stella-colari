@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -153,6 +154,11 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
             produtos={dados.produtosTravados}
             empty="Nenhum gargalo forte de produto no periodo."
           />
+          <ListaProdutos
+            title="Pouco testados"
+            produtos={dados.produtosPoucoTestados}
+            empty="Nenhum produto pouco testado nos snapshots atuais."
+          />
         </div>
       </section>
 
@@ -271,17 +277,44 @@ function ProdutoLinha({ produto }: { produto: IntencaoProduto }) {
             value={inteiro(produto.adicoesCarrinho)}
           />
           <MiniMetric label="Views" value={inteiro(produto.visualizacoes)} />
-          <MiniMetric label="Vendas" value={inteiro(produto.vendasQuantidade)} />
+          <MiniMetric label="Conv." value={`${produto.taxaConversao}%`} />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500">
           <span>{produto.taxaFavorito}% favoritou</span>
           <span>{produto.taxaCarrinho}% carrinho</span>
           <span>{produto.taxaConversao}% conversao</span>
+          <span>{produto.confiancaAnalise.toLowerCase()} confianca</span>
           <span>{moeda(produto.receita)} em vendas</span>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <AcaoLink href={`/loja/produto/${produto.produtoId}`}>Ver produto</AcaoLink>
+          <AcaoLink href={`/produtos/${produto.produtoId}`}>Editar produto</AcaoLink>
+          <AcaoLink href="/compras/reposicao">Ver reposicao</AcaoLink>
+          <AcaoLink href={`/loja/busca?q=${encodeURIComponent(produto.nome)}`}>
+            Ver busca
+          </AcaoLink>
         </div>
       </div>
     </article>
+  );
+}
+
+function AcaoLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-8 items-center rounded-2xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -318,18 +351,30 @@ function ListaProdutos({
       <div className="mt-4 space-y-3">
         {produtos.length > 0 ? (
           produtos.map((produto) => (
-            <Link
+            <div
               key={produto.produtoId}
-              href={`/produtos/${produto.produtoId}`}
-              className="block rounded-2xl border border-slate-200 p-3 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 p-3"
             >
               <p className="line-clamp-2 text-sm font-semibold text-slate-950">
                 {produto.nome}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Score {inteiro(produto.score)} - {produto.diagnostico}
+                Score {inteiro(produto.scoreInteresse)} - {produto.diagnostico}
               </p>
-            </Link>
+              <p className="mt-1 text-xs text-slate-500">
+                {inteiro(produto.visualizacoes)} views - {inteiro(produto.favoritos)} fav. -{" "}
+                {inteiro(produto.adicoesCarrinho)} carrinho
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <AcaoLink href={`/loja/produto/${produto.produtoId}`}>
+                  Ver produto
+                </AcaoLink>
+                <AcaoLink href="/compras/reposicao">Ver reposicao</AcaoLink>
+                <AcaoLink href={`/produtos/${produto.produtoId}`}>
+                  Editar produto
+                </AcaoLink>
+              </div>
+            </div>
           ))
         ) : (
           <EmptyState text={empty} />
@@ -356,13 +401,14 @@ function ListaBusca({
       <div className="mt-4 space-y-2">
         {items.length > 0 ? (
           items.map((item) => (
-            <div
+            <Link
               key={item.termo}
+              href={`/loja/busca?q=${encodeURIComponent(item.termo)}`}
               className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-3 py-2 text-sm"
             >
               <span className="font-semibold text-slate-800">{item.termo}</span>
               <span className="text-slate-400">{inteiro(item.quantidade)}</span>
-            </div>
+            </Link>
           ))
         ) : (
           <EmptyState text={empty} />
@@ -397,7 +443,12 @@ function ListaConteudos({ items }: { items: IntencaoConteudo[] }) {
                 <span className="text-slate-400">{inteiro(item.quantidade)}</span>
               </div>
               {item.href ? (
-                <p className="mt-2 truncate text-xs text-slate-400">{item.href}</p>
+                <a
+                  href={item.href}
+                  className="mt-2 block truncate text-xs font-semibold text-slate-500 hover:text-slate-900"
+                >
+                  {item.href}
+                </a>
               ) : null}
             </div>
           ))

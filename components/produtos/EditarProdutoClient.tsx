@@ -141,6 +141,18 @@ type ProdutoInteligencia = {
   };
 };
 
+type IntencaoProdutoResumo = {
+  visualizacoes: number;
+  favoritos: number;
+  adicoesCarrinho: number;
+  taxaFavorito: number;
+  taxaCarrinho: number;
+  taxaConversao: number;
+  scoreInteresse: number;
+  confiancaAnalise: string;
+  interpretacao: string;
+};
+
 type EditarProdutoClientProps = {
   produto: ProdutoEdicao;
   inteligenciaProduto?: ProdutoInteligencia;
@@ -232,6 +244,42 @@ function dataCurta(value: string | null) {
 function labelInteligencia(value: string | null | undefined) {
   const texto = String(value || "-").replaceAll("_", " ").toLowerCase();
   return texto.replace(/(^|\s)\S/g, (letra) => letra.toUpperCase());
+}
+
+function objetoJson(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function numeroJson(value: unknown) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function textoJson(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function extrairIntencaoProduto(
+  dadosJson: unknown
+): IntencaoProdutoResumo {
+  const dados = objetoJson(dadosJson);
+  const intencao = objetoJson(dados.intencaoComercial);
+
+  return {
+    visualizacoes: numeroJson(intencao.visualizacoes),
+    favoritos: numeroJson(intencao.favoritos),
+    adicoesCarrinho: numeroJson(intencao.adicoesCarrinho),
+    taxaFavorito: numeroJson(intencao.taxaFavorito),
+    taxaCarrinho: numeroJson(intencao.taxaCarrinho),
+    taxaConversao: numeroJson(intencao.taxaConversao),
+    scoreInteresse: numeroJson(intencao.scoreInteresse),
+    confiancaAnalise: textoJson(intencao.confiancaAnalise) || "BAIXA",
+    interpretacao:
+      textoJson(intencao.interpretacao) ||
+      "Produto sem sinais de intencao no periodo. Exponha mais antes de concluir desempenho.",
+  };
 }
 
 function Field({
@@ -370,6 +418,9 @@ export default function EditarProdutoClient({
   const [produtoEhKit, setProdutoEhKit] = useState(
     produto.tipoProduto === "KIT"
   );
+  const intencaoProduto = inteligenciaProduto?.resumo
+    ? extrairIntencaoProduto(inteligenciaProduto.resumo.dadosJson)
+    : null;
 
   const regrasAdicionaisCategoria = useMemo(() => {
     if (!categoriaPrincipal?.nome) {
@@ -1048,6 +1099,65 @@ export default function EditarProdutoClient({
                     )}/mes`}
                   />
                 </div>
+
+                {intencaoProduto ? (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <InfoCard
+                        label="Visualizacoes"
+                        value={numeroCurto(intencaoProduto.visualizacoes)}
+                        description="Exposicao do produto na loja."
+                      />
+
+                      <InfoCard
+                        label="Favoritos"
+                        value={numeroCurto(intencaoProduto.favoritos)}
+                        description={`${percentualDireto(
+                          intencaoProduto.taxaFavorito
+                        )} das visualizacoes`}
+                      />
+
+                      <InfoCard
+                        label="Carrinho"
+                        value={numeroCurto(intencaoProduto.adicoesCarrinho)}
+                        description={`${percentualDireto(
+                          intencaoProduto.taxaCarrinho
+                        )} das visualizacoes`}
+                      />
+
+                      <InfoCard
+                        label="Conversao"
+                        value={percentualDireto(intencaoProduto.taxaConversao)}
+                        description="Venda sobre visualizacoes."
+                      />
+
+                      <InfoCard
+                        label="Score de interesse"
+                        value={`${numeroCurto(
+                          intencaoProduto.scoreInteresse
+                        )}/100`}
+                        description="Desejo gerado por views, busca, favoritos e carrinho."
+                      />
+
+                      <InfoCard
+                        label="Confianca"
+                        value={labelInteligencia(
+                          intencaoProduto.confiancaAnalise
+                        )}
+                        description="Forca da amostra de eventos."
+                      />
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Leitura de intencao
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        {intencaoProduto.interpretacao}
+                      </p>
+                    </div>
+                  </>
+                ) : null}
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <p className="text-sm font-semibold text-slate-900">

@@ -7,6 +7,7 @@ export const STATUS_COMERCIAL_PRODUTO = [
   "CAMPEAO_PROVAVEL",
   "PROMISSOR",
   "NAO_TESTADO",
+  "INTERESSE_SEM_CONVERSAO",
   "TRAVADO",
   "RISCO_RUPTURA",
   "ESTOQUE_PARADO",
@@ -17,6 +18,7 @@ export const STATUS_COMERCIAL_PRODUTO = [
 export const RECOMENDACOES_REPOSICAO_PRODUTO = [
   "NAO_REPOR",
   "EXPOR_MAIS",
+  "REVISAR_OFERTA",
   "OBSERVAR",
   "REPOR_PEQUENO",
   "REPOR_LOTE_MEDIO",
@@ -82,6 +84,31 @@ export type ProdutoSnapshotCalculado = {
   dadosJson: Prisma.InputJsonValue;
 };
 
+export type ConfiancaAnaliseIntencao = "BAIXA" | "MEDIA" | "ALTA";
+
+export type ProdutoIntencaoContagem = {
+  visualizacoes: number;
+  favoritos: number;
+  desfavoritos: number;
+  adicoesCarrinho: number;
+  remocoesCarrinho: number;
+  cliquesBusca: number;
+  cliquesVitrine: number;
+  cliquesBanner: number;
+  checkoutsIniciados: number;
+};
+
+export type ProdutoIntencaoAgregada = ProdutoIntencaoContagem & {
+  eventosTotal: number;
+  taxaFavorito: number;
+  taxaCarrinho: number;
+  taxaConversao: number;
+  scoreInteresse: number;
+  scoreConversao: number;
+  confiancaAnalise: ConfiancaAnaliseIntencao;
+  interpretacao: string;
+};
+
 export type RecomendacaoReposicaoCalculada = {
   recomendacao: RecomendacaoReposicaoProduto;
   statusComercial: StatusComercialProduto;
@@ -91,6 +118,7 @@ export type RecomendacaoReposicaoCalculada = {
   cicloAtual: ProdutoCicloCalculado | null;
   sellThrough: number;
   scoreValidacao: number;
+  intencao: ProdutoIntencaoAgregada;
 };
 
 export type InteligenciaProduto = {
@@ -144,6 +172,38 @@ type TipoMovimentoNormalizado =
 const MS_DIA = 24 * 60 * 60 * 1000;
 const TAMANHO_TODOS = "TODOS";
 const PERIODO_ATUAL_PADRAO = "ATUAL";
+const TIPOS_INTENCAO_PRODUTO = [
+  "PRODUTO_VISUALIZADO",
+  "PRODUTO_FAVORITADO",
+  "PRODUTO_DESFAVORITADO",
+  "PRODUTO_ADICIONADO_CARRINHO",
+  "PRODUTO_REMOVIDO_CARRINHO",
+  "BUSCA_RESULTADO_CLICADO",
+  "VITRINE_EDITORIAL_CLICADA",
+  "BANNER_CTA_CLICADO",
+  "CHECKOUT_INICIADO",
+] as const;
+
+export const INTENCAO_PRODUTO_VAZIA = {
+  visualizacoes: 0,
+  favoritos: 0,
+  desfavoritos: 0,
+  adicoesCarrinho: 0,
+  remocoesCarrinho: 0,
+  cliquesBusca: 0,
+  cliquesVitrine: 0,
+  cliquesBanner: 0,
+  checkoutsIniciados: 0,
+  eventosTotal: 0,
+  taxaFavorito: 0,
+  taxaCarrinho: 0,
+  taxaConversao: 0,
+  scoreInteresse: 0,
+  scoreConversao: 0,
+  confiancaAnalise: "BAIXA",
+  interpretacao:
+    "Produto sem sinais de intencao no periodo. Exponha mais antes de concluir desempenho.",
+} as const satisfies ProdutoIntencaoAgregada;
 
 function numero(value: unknown) {
   const parsed = Number(value ?? 0);
@@ -162,6 +222,134 @@ function arredondar(value: number, casas = 2) {
 function percentual(parte: number, total: number) {
   if (total <= 0) return 0;
   return Math.min(100, arredondar((numero(parte) / numero(total)) * 100, 2));
+}
+
+function limitarPercentual(value: number) {
+  return Math.max(0, Math.min(100, arredondar(value, 1)));
+}
+
+function intencaoVazia(): ProdutoIntencaoAgregada {
+  return { ...INTENCAO_PRODUTO_VAZIA };
+}
+
+function somarIntencao(contagem: ProdutoIntencaoContagem) {
+  return (
+    inteiro(contagem.visualizacoes) +
+    inteiro(contagem.favoritos) +
+    inteiro(contagem.desfavoritos) +
+    inteiro(contagem.adicoesCarrinho) +
+    inteiro(contagem.remocoesCarrinho) +
+    inteiro(contagem.cliquesBusca) +
+    inteiro(contagem.cliquesVitrine) +
+    inteiro(contagem.cliquesBanner) +
+    inteiro(contagem.checkoutsIniciados)
+  );
+}
+
+export function montarIntencaoAgregada(
+  contagem: Partial<ProdutoIntencaoContagem> | null | undefined,
+  vendasQuantidade: number,
+  estoqueFinal: number
+): ProdutoIntencaoAgregada {
+  const base: ProdutoIntencaoContagem = {
+    visualizacoes: inteiro(contagem?.visualizacoes),
+    favoritos: inteiro(contagem?.favoritos),
+    desfavoritos: inteiro(contagem?.desfavoritos),
+    adicoesCarrinho: inteiro(contagem?.adicoesCarrinho),
+    remocoesCarrinho: inteiro(contagem?.remocoesCarrinho),
+    cliquesBusca: inteiro(contagem?.cliquesBusca),
+    cliquesVitrine: inteiro(contagem?.cliquesVitrine),
+    cliquesBanner: inteiro(contagem?.cliquesBanner),
+    checkoutsIniciados: inteiro(contagem?.checkoutsIniciados),
+  };
+  const eventosTotal = somarIntencao(base);
+  const taxaFavorito = percentual(base.favoritos, base.visualizacoes);
+  const taxaCarrinho = percentual(base.adicoesCarrinho, base.visualizacoes);
+  const taxaConversao = percentual(vendasQuantidade, base.visualizacoes);
+  const scoreInteresse = limitarPercentual(
+    base.visualizacoes * 0.6 +
+      base.cliquesBusca * 2.5 +
+      base.favoritos * 4 +
+      base.adicoesCarrinho * 6 +
+      base.cliquesVitrine * 2 +
+      base.cliquesBanner * 2.5 +
+      base.checkoutsIniciados * 8 -
+      base.desfavoritos * 2 -
+      base.remocoesCarrinho * 2
+  );
+  const scoreConversao =
+    base.visualizacoes > 0
+      ? limitarPercentual(taxaConversao * 4 + Math.min(25, vendasQuantidade * 8))
+      : vendasQuantidade > 0
+        ? 70
+        : 0;
+  const amostra = eventosTotal + vendasQuantidade * 3;
+  const confiancaAnalise: ConfiancaAnaliseIntencao =
+    amostra >= 24 ? "ALTA" : amostra >= 7 ? "MEDIA" : "BAIXA";
+  const intencaoForte =
+    scoreInteresse >= 30 || base.adicoesCarrinho >= 2 || base.favoritos >= 3;
+  const poucaExposicao =
+    base.visualizacoes < 5 && eventosTotal < 5 && scoreInteresse < 10;
+
+  let interpretacao =
+    "Produto em observacao. Use venda, estoque e sinais de intencao antes de decidir reposicao.";
+
+  if (vendasQuantidade === 0 && poucaExposicao) {
+    interpretacao =
+      "Produto pouco testado. Aumente exposicao antes de concluir que nao vende.";
+  } else if (vendasQuantidade === 0 && intencaoForte) {
+    interpretacao =
+      "Produto com interesse, mas baixa conversao. Revise preco, fotos, descricao ou condicao.";
+  } else if (estoqueFinal <= 1 && (vendasQuantidade > 0 || intencaoForte)) {
+    interpretacao =
+      "Produto promissor com estoque baixo. Considere reposicao pequena antes de aumentar trafego.";
+  } else if (vendasQuantidade > 0 && scoreInteresse >= 20) {
+    interpretacao =
+      "Produto validado por venda e reforcado por sinais de interesse.";
+  }
+
+  return {
+    ...base,
+    eventosTotal,
+    taxaFavorito,
+    taxaCarrinho,
+    taxaConversao,
+    scoreInteresse,
+    scoreConversao,
+    confiancaAnalise,
+    interpretacao,
+  };
+}
+
+function jsonRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function extrairIntencaoSnapshot(
+  dadosJson: unknown
+): ProdutoIntencaoAgregada {
+  const dados = jsonRecord(dadosJson);
+  const intencao = jsonRecord(dados?.intencaoComercial);
+
+  if (!intencao) return intencaoVazia();
+
+  return montarIntencaoAgregada(
+    {
+      visualizacoes: numero(intencao.visualizacoes),
+      favoritos: numero(intencao.favoritos),
+      desfavoritos: numero(intencao.desfavoritos),
+      adicoesCarrinho: numero(intencao.adicoesCarrinho),
+      remocoesCarrinho: numero(intencao.remocoesCarrinho),
+      cliquesBusca: numero(intencao.cliquesBusca),
+      cliquesVitrine: numero(intencao.cliquesVitrine),
+      cliquesBanner: numero(intencao.cliquesBanner),
+      checkoutsIniciados: numero(intencao.checkoutsIniciados),
+    },
+    numero(intencao.vendasQuantidade),
+    numero(intencao.estoqueFinal)
+  );
 }
 
 function normalizarTexto(value: unknown) {
@@ -353,6 +541,44 @@ async function carregarMovimentosProduto(produto: ProdutoBase) {
     },
     orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
+}
+
+async function carregarIntencaoProduto(
+  produtoId: string,
+  periodo: ReturnType<typeof periodoPadrao>
+): Promise<ProdutoIntencaoContagem> {
+  const eventos = await prisma.eventoComercial.groupBy({
+    by: ["tipo"],
+    where: {
+      produtoId,
+      criadoEm: {
+        gte: periodo.periodoInicio,
+        lte: periodo.periodoFim,
+      },
+      tipo: {
+        in: [...TIPOS_INTENCAO_PRODUTO],
+      },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  const porTipo = new Map(
+    eventos.map((evento) => [evento.tipo, evento._count._all])
+  );
+
+  return {
+    visualizacoes: porTipo.get("PRODUTO_VISUALIZADO") || 0,
+    favoritos: porTipo.get("PRODUTO_FAVORITADO") || 0,
+    desfavoritos: porTipo.get("PRODUTO_DESFAVORITADO") || 0,
+    adicoesCarrinho: porTipo.get("PRODUTO_ADICIONADO_CARRINHO") || 0,
+    remocoesCarrinho: porTipo.get("PRODUTO_REMOVIDO_CARRINHO") || 0,
+    cliquesBusca: porTipo.get("BUSCA_RESULTADO_CLICADO") || 0,
+    cliquesVitrine: porTipo.get("VITRINE_EDITORIAL_CLICADA") || 0,
+    cliquesBanner: porTipo.get("BANNER_CTA_CLICADO") || 0,
+    checkoutsIniciados: porTipo.get("CHECKOUT_INICIADO") || 0,
+  };
 }
 
 function agruparMovimentosPorTamanho(movimentos: MovimentoProduto[]) {
@@ -586,6 +812,7 @@ function classificarSnapshot(params: {
   diasSemVenda: number | null;
   ciclos: ProdutoCicloCalculado[];
   margemEstimada: number;
+  intencao: ProdutoIntencaoAgregada;
 }): StatusComercialProduto {
   const cicloAtual = params.ciclos
     .filter((ciclo) => ciclo.status === "ABERTO" || ciclo.status === "AJUSTADO")
@@ -596,10 +823,23 @@ function classificarSnapshot(params: {
       ciclo.sellThrough >= 95 &&
       (ciclo.diasAteEsgotar ?? 999) <= 15
   ).length;
+  const intencaoForte =
+    params.intencao.scoreInteresse >= 30 ||
+    params.intencao.adicoesCarrinho >= 2 ||
+    params.intencao.favoritos >= 3;
+  const intencaoRelevante =
+    params.intencao.scoreInteresse >= 18 ||
+    params.intencao.adicoesCarrinho >= 1 ||
+    params.intencao.favoritos >= 2 ||
+    params.intencao.cliquesBusca >= 3;
+  const poucaExposicao =
+    params.intencao.visualizacoes < 5 &&
+    params.intencao.eventosTotal < 5 &&
+    params.intencao.scoreInteresse < 10;
 
   if (
     params.estoqueFinal <= 1 &&
-    (params.vendasQuantidade > 0 || ciclosEsgotadosRapidos > 0)
+    (params.vendasQuantidade > 0 || ciclosEsgotadosRapidos > 0 || intencaoForte)
   ) {
     return "RISCO_RUPTURA";
   }
@@ -608,17 +848,36 @@ function classificarSnapshot(params: {
     return "REPOSICAO_CONFIRMADA";
   }
 
-  if (ciclosEsgotadosRapidos >= 1 || params.sellThroughAcumulado >= 80) {
+  if (
+    ciclosEsgotadosRapidos >= 1 ||
+    (params.sellThroughAcumulado >= 80 &&
+      (params.vendasQuantidade > 0 || intencaoRelevante)) ||
+    (params.vendasQuantidade >= 2 && intencaoForte && params.margemEstimada >= 0)
+  ) {
     return "CAMPEAO_PROVAVEL";
   }
 
-  if (params.vendasQuantidade > 0 || params.sellThroughPeriodo >= 35) {
+  if (params.vendasQuantidade === 0 && poucaExposicao) {
+    return "NAO_TESTADO";
+  }
+
+  if (params.vendasQuantidade === 0 && intencaoForte) {
+    return (params.diasSemVenda ?? 0) >= 30 ? "TRAVADO" : "INTERESSE_SEM_CONVERSAO";
+  }
+
+  if (
+    params.vendasQuantidade > 0 ||
+    params.sellThroughPeriodo >= 35 ||
+    intencaoRelevante
+  ) {
     return "PROMISSOR";
   }
 
   if (
     params.estoqueFinal > 0 &&
     params.vendasQuantidade === 0 &&
+    params.intencao.visualizacoes >= 10 &&
+    params.intencao.scoreInteresse < 12 &&
     (params.diasSemVenda ?? 0) >= 60
   ) {
     return "ESTOQUE_PARADO";
@@ -634,7 +893,12 @@ function classificarSnapshot(params: {
     return "TRAVADO";
   }
 
-  if (params.estoqueFinal > 0 && params.diasSemVenda !== null && params.diasSemVenda >= 45) {
+  if (
+    params.estoqueFinal > 0 &&
+    params.diasSemVenda !== null &&
+    params.diasSemVenda >= 45 &&
+    params.intencao.eventosTotal >= 5
+  ) {
     return "NAO_RECOMPRAR_AINDA";
   }
 
@@ -644,26 +908,70 @@ function classificarSnapshot(params: {
 function recomendarReposicao(params: {
   statusComercial: StatusComercialProduto;
   estoqueFinal: number;
+  vendasQuantidade: number;
   scoreValidacao: number;
   margemEstimada: number;
   cicloAtual: ProdutoCicloCalculado | null;
   ciclos: ProdutoCicloCalculado[];
+  intencao: ProdutoIntencaoAgregada;
 }): RecomendacaoReposicaoProduto {
+  const ciclosRapidos = params.ciclos.filter(
+    (ciclo) =>
+      ciclo.quantidadeVendida >= 2 &&
+      ciclo.sellThrough >= 95 &&
+      (ciclo.diasAteEsgotar ?? 999) <= 15
+  ).length;
+  const intencaoForte =
+    params.intencao.scoreInteresse >= 30 ||
+    params.intencao.adicoesCarrinho >= 2 ||
+    params.intencao.favoritos >= 3;
+  const intencaoRelevante =
+    params.intencao.scoreInteresse >= 18 ||
+    params.intencao.adicoesCarrinho >= 1 ||
+    params.intencao.favoritos >= 2;
+
   if (params.statusComercial === "ESTOQUE_PARADO") return "LIQUIDAR_COM_CUIDADO";
-  if (params.statusComercial === "TRAVADO") return "EXPOR_MAIS";
+  if (
+    params.statusComercial === "TRAVADO" ||
+    params.statusComercial === "INTERESSE_SEM_CONVERSAO"
+  ) {
+    return "REVISAR_OFERTA";
+  }
+  if (params.statusComercial === "NAO_TESTADO") return "EXPOR_MAIS";
   if (params.statusComercial === "NAO_RECOMPRAR_AINDA") return "NAO_REPOR";
   if (params.margemEstimada < 0 && params.scoreValidacao < 55) return "OBSERVAR";
 
   if (params.statusComercial === "REPOSICAO_CONFIRMADA") {
-    return params.scoreValidacao >= 85 ? "REPOR_LOTE_GRANDE" : "REPOR_LOTE_MEDIO";
+    return params.scoreValidacao >= 85 && ciclosRapidos >= 2
+      ? "REPOR_LOTE_GRANDE"
+      : "REPOR_LOTE_MEDIO";
   }
 
   if (params.statusComercial === "RISCO_RUPTURA") {
-    return params.scoreValidacao >= 75 ? "REPOR_LOTE_MEDIO" : "REPOR_PEQUENO";
+    return params.scoreValidacao >= 75 &&
+      params.vendasQuantidade >= 2 &&
+      intencaoRelevante
+      ? "REPOR_LOTE_MEDIO"
+      : "REPOR_PEQUENO";
   }
 
-  if (params.statusComercial === "CAMPEAO_PROVAVEL") return "REPOR_PEQUENO";
-  if (params.statusComercial === "PROMISSOR") return "OBSERVAR";
+  if (params.statusComercial === "CAMPEAO_PROVAVEL") {
+    return params.vendasQuantidade >= 2 && intencaoForte
+      ? "REPOR_LOTE_MEDIO"
+      : "REPOR_PEQUENO";
+  }
+
+  if (params.statusComercial === "PROMISSOR") {
+    if (params.estoqueFinal <= 1 && (params.vendasQuantidade > 0 || intencaoForte)) {
+      return "REPOR_PEQUENO";
+    }
+
+    if (params.vendasQuantidade >= 1 && intencaoRelevante) {
+      return "REPOR_PEQUENO";
+    }
+
+    return "OBSERVAR";
+  }
 
   if (!params.cicloAtual || params.cicloAtual.quantidadeVendida === 0) {
     return "EXPOR_MAIS";
@@ -680,6 +988,7 @@ function calcularScore(params: {
   margemEstimada: number;
   estoqueFinal: number;
   ciclos: ProdutoCicloCalculado[];
+  intencao: ProdutoIntencaoAgregada;
 }) {
   const cicloAtual = params.ciclos.at(-1);
   const ciclosRapidos = params.ciclos.filter(
@@ -695,11 +1004,21 @@ function calcularScore(params: {
   score += Math.min(16, params.giroEstimado * 4);
   score += Math.min(12, params.vendasQuantidade * 4);
   score += ciclosRapidos * 12;
+  score += Math.min(18, params.intencao.scoreInteresse * 0.18);
+  score += Math.min(8, params.intencao.scoreConversao * 0.08);
 
   if (params.margemEstimada < 0) score -= 18;
-  if (params.estoqueFinal <= 1 && params.vendasQuantidade > 0) score += 8;
+  if (
+    params.estoqueFinal <= 1 &&
+    (params.vendasQuantidade > 0 || params.intencao.scoreInteresse >= 30)
+  ) {
+    score += 8;
+  }
   if (cicloAtual && cicloAtual.quantidadeVendida === 0 && cicloAtual.quantidadeAtual > 0) {
     score -= 8;
+  }
+  if (params.vendasQuantidade === 0 && params.intencao.scoreInteresse >= 30) {
+    score = Math.min(score, 68);
   }
 
   return Math.max(0, Math.min(100, arredondar(score, 1)));
@@ -712,6 +1031,7 @@ function montarSnapshot(params: {
   movimentos: MovimentoProduto[];
   ciclos: ProdutoCicloCalculado[];
   estoqueFinal: number;
+  intencaoContagem: ProdutoIntencaoContagem;
 }) {
   const movimentosPeriodo = params.movimentos.filter(
     (movimento) =>
@@ -749,6 +1069,11 @@ function montarSnapshot(params: {
   const giroEstimado = arredondar((vendasQuantidade / diasPeriodo) * 30, 2);
   const ultimaVenda = vendas.at(-1)?.criadoEm || null;
   const diasSemVenda = ultimaVenda ? diasEntre(ultimaVenda, params.periodo.periodoFim) : diasPeriodo;
+  const intencao = montarIntencaoAgregada(
+    params.intencaoContagem,
+    vendasQuantidade,
+    params.estoqueFinal
+  );
   const scoreValidacao = calcularScore({
     vendasQuantidade,
     sellThroughAcumulado,
@@ -757,6 +1082,7 @@ function montarSnapshot(params: {
     margemEstimada,
     estoqueFinal: params.estoqueFinal,
     ciclos: params.ciclos,
+    intencao,
   });
   const statusComercial = classificarSnapshot({
     estoqueFinal: params.estoqueFinal,
@@ -766,6 +1092,7 @@ function montarSnapshot(params: {
     diasSemVenda,
     ciclos: params.ciclos,
     margemEstimada,
+    intencao,
   });
   const cicloAtual =
     params.ciclos.findLast((ciclo) => ciclo.status === "ABERTO" || ciclo.status === "AJUSTADO") ||
@@ -774,10 +1101,12 @@ function montarSnapshot(params: {
   const recomendacao = recomendarReposicao({
     statusComercial,
     estoqueFinal: params.estoqueFinal,
+    vendasQuantidade,
     scoreValidacao,
     margemEstimada,
     cicloAtual,
     ciclos: params.ciclos,
+    intencao,
   });
 
   return {
@@ -806,6 +1135,13 @@ function montarSnapshot(params: {
       diasPeriodo,
       diasSemVenda,
       ultimaVendaEm: ultimaVenda?.toISOString() || null,
+      intencaoComercial: {
+        ...intencao,
+        vendasQuantidade,
+        estoqueFinal: params.estoqueFinal,
+        periodoInicio: params.periodo.periodoInicio.toISOString(),
+        periodoFim: params.periodo.periodoFim.toISOString(),
+      },
       cicloAtual: cicloAtual
         ? {
             status: cicloAtual.status,
@@ -829,6 +1165,7 @@ export async function calcularSnapshotsProduto(
   const grupos = agruparMovimentosPorTamanho(movimentos);
   const ciclos = await reconstruirCiclosProduto(produtoId);
   const periodoFinal = periodoPadrao(periodo);
+  const intencaoContagem = await carregarIntencaoProduto(produtoId, periodoFinal);
   const estoquePorTamanho = new Map(
     produto.estoque.map((item) => [
       normalizarTamanhoProduto(item.tamanhoAnel),
@@ -851,6 +1188,7 @@ export async function calcularSnapshotsProduto(
         movimentos: grupos.get(tamanhoAnel) || [],
         ciclos: ciclos.filter((ciclo) => ciclo.tamanhoAnel === tamanhoAnel),
         estoqueFinal,
+        intencaoContagem,
       })
   );
 
@@ -868,6 +1206,7 @@ export async function calcularSnapshotsProduto(
       (total, quantidade) => total + quantidade,
       0
     ),
+    intencaoContagem,
   });
 
   return [snapshotTodos, ...snapshotsPorTamanho];
@@ -895,10 +1234,15 @@ export async function classificarProduto(produtoId: string) {
   return snapshot?.statusComercial || "NAO_TESTADO";
 }
 
-function motivoRecomendacao(recomendacao: RecomendacaoReposicaoProduto) {
+function motivoRecomendacao(
+  recomendacao: RecomendacaoReposicaoProduto,
+  intencao: ProdutoIntencaoAgregada
+) {
   const motivos: Record<RecomendacaoReposicaoProduto, string> = {
     NAO_REPOR: "Historico ainda nao justifica nova compra.",
     EXPOR_MAIS: "Produto precisa de mais exposicao antes de decidir lote.",
+    REVISAR_OFERTA:
+      "Produto tem sinal de interesse sem conversao suficiente; revisar preco, fotos, descricao, frete ou oferta antes de recomprar.",
     OBSERVAR: "Produto tem sinal inicial, mas ainda pede leitura cautelosa.",
     REPOR_PEQUENO: "Venda validou o primeiro ciclo; recomprar pequeno.",
     REPOR_LOTE_MEDIO: "Reposicao anterior voltou a vender; lote medio e defensavel.",
@@ -906,13 +1250,16 @@ function motivoRecomendacao(recomendacao: RecomendacaoReposicaoProduto) {
     LIQUIDAR_COM_CUIDADO: "Produto parado; melhor girar estoque antes de recomprar.",
   };
 
-  return motivos[recomendacao];
+  if (intencao.eventosTotal <= 0) return motivos[recomendacao];
+
+  return `${motivos[recomendacao]} Sinais do periodo: ${intencao.visualizacoes} views, ${intencao.favoritos} favorito(s), ${intencao.adicoesCarrinho} carrinho(s), ${intencao.taxaConversao}% conversao. ${intencao.interpretacao}`;
 }
 
 function sugestaoQuantidade(recomendacao: RecomendacaoReposicaoProduto) {
   const sugestoes: Record<RecomendacaoReposicaoProduto, number> = {
     NAO_REPOR: 0,
     EXPOR_MAIS: 0,
+    REVISAR_OFERTA: 0,
     OBSERVAR: 1,
     REPOR_PEQUENO: 2,
     REPOR_LOTE_MEDIO: 5,
@@ -948,6 +1295,9 @@ export async function gerarRecomendacaoReposicao(
     ciclosFiltrados.at(-1) ||
     null;
   const recomendacao = snapshot?.recomendacao || "EXPOR_MAIS";
+  const intencao = snapshot
+    ? extrairIntencaoSnapshot(snapshot.dadosJson)
+    : intencaoVazia();
   const confianca = snapshot
     ? Math.max(20, Math.min(100, arredondar(snapshot.scoreValidacao, 1)))
     : 20;
@@ -956,11 +1306,12 @@ export async function gerarRecomendacaoReposicao(
     recomendacao,
     statusComercial: snapshot?.statusComercial || "NAO_TESTADO",
     confianca,
-    motivo: motivoRecomendacao(recomendacao),
+    motivo: motivoRecomendacao(recomendacao, intencao),
     sugestaoQuantidade: sugestaoQuantidade(recomendacao),
     cicloAtual,
     sellThrough: snapshot?.sellThroughAcumulado || cicloAtual?.sellThrough || 0,
     scoreValidacao: snapshot?.scoreValidacao || 0,
+    intencao,
   };
 }
 

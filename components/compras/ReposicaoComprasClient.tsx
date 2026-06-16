@@ -24,6 +24,12 @@ export type ReposicaoCompraItem = {
   cicloAtual?: string | null;
   sellThrough?: number | null;
   acaoSugerida?: string | null;
+  visualizacoesIntencao?: number | null;
+  favoritosIntencao?: number | null;
+  carrinhosIntencao?: number | null;
+  scoreInteresse?: number | null;
+  taxaConversao?: number | null;
+  confiancaAnalise?: string | null;
 };
 
 type Props = {
@@ -147,6 +153,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
           item.statusComercial,
           item.recomendacaoReposicao,
           item.acaoSugerida,
+          item.confiancaAnalise,
           labelTipo(item.tipo),
         ].join(" ")
       ).includes(termo);
@@ -333,6 +340,18 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                           </p>
                           <p className="text-xs text-slate-500">
                             Confianca {numeroCurto(item.confiancaReposicao)}%
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Interesse {numeroCurto(item.scoreInteresse)}/100 -{" "}
+                            {labelInteligencia(item.confiancaAnalise)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {numeroCurto(item.visualizacoesIntencao)} views -{" "}
+                            {numeroCurto(item.favoritosIntencao)} fav. -{" "}
+                            {numeroCurto(item.carrinhosIntencao)} carrinho
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Conversao {percentualDireto(item.taxaConversao)}
                           </p>
                         </div>
                       ) : (

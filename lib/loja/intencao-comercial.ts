@@ -1,6 +1,11 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import {
+  extrairIntencaoSnapshot,
+  montarIntencaoAgregada,
+  type ConfiancaAnaliseIntencao,
+} from "@/lib/produtos/metricas-produto";
 
 type EventoComercialLeve = {
   tipo: string;
@@ -30,12 +35,18 @@ export type IntencaoProduto = {
   adicoesCarrinho: number;
   remocoesCarrinho: number;
   cliquesBusca: number;
+  cliquesVitrine: number;
+  cliquesBanner: number;
+  checkoutsIniciados: number;
   vendasQuantidade: number;
   receita: number;
   score: number;
+  scoreInteresse: number;
+  scoreConversao: number;
   taxaFavorito: number;
   taxaCarrinho: number;
   taxaConversao: number;
+  confiancaAnalise: ConfiancaAnaliseIntencao;
   diagnostico: string;
 };
 
@@ -84,6 +95,7 @@ export type IntencaoComercialDashboard = {
   produtos: IntencaoProduto[];
   produtosPromissores: IntencaoProduto[];
   produtosTravados: IntencaoProduto[];
+  produtosPoucoTestados: IntencaoProduto[];
   buscasFrequentes: IntencaoBusca[];
   buscasSemResultado: IntencaoBusca[];
   conteudosClicados: IntencaoConteudo[];
@@ -98,6 +110,9 @@ type ProdutoAccumulator = {
   adicoesCarrinho: number;
   remocoesCarrinho: number;
   cliquesBusca: number;
+  cliquesVitrine: number;
+  cliquesBanner: number;
+  checkoutsIniciados: number;
 };
 
 function incrementar(map: Map<string, number>, key: string | null | undefined) {
@@ -129,21 +144,16 @@ function metadataString(value: unknown, key: string) {
   return typeof item === "string" ? item : "";
 }
 
-function percentual(parte: number, total: number) {
-  if (total <= 0) return 0;
-
-  return Math.round((parte / total) * 1000) / 10;
-}
-
 function diagnosticoProduto(produto: {
   vendasQuantidade: number;
   visualizacoes: number;
   favoritos: number;
   adicoesCarrinho: number;
   remocoesCarrinho: number;
-  score: number;
+  scoreInteresse: number;
+  taxaConversao: number;
 }) {
-  if (produto.vendasQuantidade > 0 && produto.score >= 8) {
+  if (produto.vendasQuantidade > 0 && produto.scoreInteresse >= 20) {
     return "Validado por venda";
   }
 
@@ -159,21 +169,19 @@ function diagnosticoProduto(produto: {
     return "Muita vitrine, pouco desejo";
   }
 
-  if (produto.score >= 6 && produto.vendasQuantidade === 0) {
+  if (
+    produto.scoreInteresse >= 30 &&
+    produto.vendasQuantidade === 0 &&
+    produto.taxaConversao <= 0
+  ) {
+    return "Interesse sem conversao";
+  }
+
+  if (produto.scoreInteresse >= 18 && produto.vendasQuantidade === 0) {
     return "Promissor";
   }
 
   return "Observacao";
-}
-
-function scoreProduto(acc: ProdutoAccumulator) {
-  return (
-    acc.visualizacoes +
-    acc.cliquesBusca * 2 +
-    acc.favoritos * 3 +
-    acc.adicoesCarrinho * 5 -
-    acc.remocoesCarrinho * 2
-  );
 }
 
 function somarVendas(
@@ -259,6 +267,9 @@ export async function montarIntencaoComercial({
         adicoesCarrinho: 0,
         remocoesCarrinho: 0,
         cliquesBusca: 0,
+        cliquesVitrine: 0,
+        cliquesBanner: 0,
+        checkoutsIniciados: 0,
       } satisfies ProdutoAccumulator);
 
     produtosMap.set(produtoId, atual);
@@ -317,6 +328,12 @@ export async function montarIntencaoComercial({
       evento.tipo === "BANNER_CTA_CLICADO"
     ) {
       resumo.cliquesConteudo += 1;
+      if (produto && evento.tipo === "VITRINE_EDITORIAL_CLICADA") {
+        produto.cliquesVitrine += 1;
+      }
+      if (produto && evento.tipo === "BANNER_CTA_CLICADO") {
+        produto.cliquesBanner += 1;
+      }
       const label =
         metadataString(evento.metadataJson, "label") ||
         metadataString(evento.metadataJson, "titulo") ||
@@ -342,6 +359,7 @@ export async function montarIntencaoComercial({
 
     if (evento.tipo === "CHECKOUT_INICIADO") {
       resumo.checkoutsIniciados += 1;
+      if (produto) produto.checkoutsIniciados += 1;
     }
 
     if (evento.tipo === "CATEGORIA_CLICADA") {
@@ -457,14 +475,19 @@ export async function montarIntencaoComercial({
         quantidade: 0,
         receita: 0,
       };
-      const score = Math.max(scoreProduto(acc), 0);
+      const estoqueTotal = produto.estoque.reduce(
+        (total, estoque) => total + Number(estoque.quantidadeAtual || 0),
+        0
+      );
+      const intencao = montarIntencaoAgregada(acc, vendas.quantidade, estoqueTotal);
       const itemBase = {
         vendasQuantidade: vendas.quantidade,
         visualizacoes: acc.visualizacoes,
         favoritos: acc.favoritos,
         adicoesCarrinho: acc.adicoesCarrinho,
         remocoesCarrinho: acc.remocoesCarrinho,
-        score,
+        scoreInteresse: intencao.scoreInteresse,
+        taxaConversao: intencao.taxaConversao,
       };
 
       return {
@@ -479,28 +502,131 @@ export async function montarIntencaoComercial({
             ? null
             : Number(produto.precoPromocional || 0),
         descontoAtivo: produto.descontoAtivo,
-        estoqueTotal: produto.estoque.reduce(
-          (total, estoque) => total + Number(estoque.quantidadeAtual || 0),
-          0
-        ),
+        estoqueTotal,
         visualizacoes: acc.visualizacoes,
         favoritos: acc.favoritos,
         desfavoritos: acc.desfavoritos,
         adicoesCarrinho: acc.adicoesCarrinho,
         remocoesCarrinho: acc.remocoesCarrinho,
         cliquesBusca: acc.cliquesBusca,
+        cliquesVitrine: acc.cliquesVitrine,
+        cliquesBanner: acc.cliquesBanner,
+        checkoutsIniciados: acc.checkoutsIniciados,
         vendasQuantidade: vendas.quantidade,
         receita: vendas.receita,
-        score,
-        taxaFavorito: percentual(acc.favoritos, acc.visualizacoes),
-        taxaCarrinho: percentual(acc.adicoesCarrinho, acc.visualizacoes),
-        taxaConversao: percentual(vendas.quantidade, acc.visualizacoes),
+        score: intencao.scoreInteresse,
+        scoreInteresse: intencao.scoreInteresse,
+        scoreConversao: intencao.scoreConversao,
+        taxaFavorito: intencao.taxaFavorito,
+        taxaCarrinho: intencao.taxaCarrinho,
+        taxaConversao: intencao.taxaConversao,
+        confiancaAnalise: intencao.confiancaAnalise,
         diagnostico: diagnosticoProduto(itemBase),
       };
     })
     .filter((produto): produto is IntencaoProduto => Boolean(produto))
     .sort((a, b) => b.score - a.score || b.visualizacoes - a.visualizacoes)
     .slice(0, 40);
+
+  const metricasPoucoTestadasRaw = await prisma.produtoMetricaSnapshot.findMany({
+    where: {
+      periodoTipo: "ATUAL",
+      statusComercial: "NAO_TESTADO",
+      produto: {
+        ativo: true,
+        status: {
+          not: "NA_LIXEIRA",
+        },
+      },
+    },
+    select: {
+      produtoId: true,
+      tamanhoAnel: true,
+      vendasQuantidade: true,
+      receita: true,
+      dadosJson: true,
+      criadoEm: true,
+      produto: {
+        select: {
+          id: true,
+          codigoInterno: true,
+          nome: true,
+          categoria: true,
+          imagemUrl: true,
+          precoVenda: true,
+          precoPromocional: true,
+          descontoAtivo: true,
+          estoque: {
+            select: {
+              quantidadeAtual: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      criadoEm: "desc",
+    },
+    take: 80,
+  });
+  const metricaPoucoTestadaPorProduto = new Map<
+    string,
+    (typeof metricasPoucoTestadasRaw)[number]
+  >();
+
+  metricasPoucoTestadasRaw.forEach((metrica) => {
+    const atual = metricaPoucoTestadaPorProduto.get(metrica.produtoId);
+
+    if (!atual || (atual.tamanhoAnel !== "TODOS" && metrica.tamanhoAnel === "TODOS")) {
+      metricaPoucoTestadaPorProduto.set(metrica.produtoId, metrica);
+    }
+  });
+
+  const produtosPoucoTestados = Array.from(metricaPoucoTestadaPorProduto.values())
+    .map((metrica): IntencaoProduto => {
+      const produto = metrica.produto;
+      const estoqueTotal = produto.estoque.reduce(
+        (total, estoque) => total + Number(estoque.quantidadeAtual || 0),
+        0
+      );
+      const intencao = extrairIntencaoSnapshot(metrica.dadosJson);
+
+      return {
+        produtoId: produto.id,
+        nome: produto.nome,
+        codigoInterno: produto.codigoInterno,
+        categoria: produto.categoria,
+        imagemUrl: produto.imagemUrl,
+        precoVenda: Number(produto.precoVenda || 0),
+        precoPromocional:
+          produto.precoPromocional === null
+            ? null
+            : Number(produto.precoPromocional || 0),
+        descontoAtivo: produto.descontoAtivo,
+        estoqueTotal,
+        visualizacoes: intencao.visualizacoes,
+        favoritos: intencao.favoritos,
+        desfavoritos: intencao.desfavoritos,
+        adicoesCarrinho: intencao.adicoesCarrinho,
+        remocoesCarrinho: intencao.remocoesCarrinho,
+        cliquesBusca: intencao.cliquesBusca,
+        cliquesVitrine: intencao.cliquesVitrine,
+        cliquesBanner: intencao.cliquesBanner,
+        checkoutsIniciados: intencao.checkoutsIniciados,
+        vendasQuantidade: Number(metrica.vendasQuantidade || 0),
+        receita: Number(metrica.receita || 0),
+        score: intencao.scoreInteresse,
+        scoreInteresse: intencao.scoreInteresse,
+        scoreConversao: intencao.scoreConversao,
+        taxaFavorito: intencao.taxaFavorito,
+        taxaCarrinho: intencao.taxaCarrinho,
+        taxaConversao: intencao.taxaConversao,
+        confiancaAnalise: intencao.confiancaAnalise,
+        diagnostico: "Pouco testado",
+      };
+    })
+    .sort((a, b) => a.visualizacoes - b.visualizacoes || a.nome.localeCompare(b.nome))
+    .slice(0, 8);
 
   const categoriaIds = Array.from(categoriasMap.keys());
   const categoriasRaw = categoriaIds.length
@@ -530,15 +656,18 @@ export async function montarIntencaoComercial({
     resumo,
     produtos,
     produtosPromissores: produtos
-      .filter((produto) => produto.vendasQuantidade === 0 && produto.score >= 6)
+      .filter((produto) => produto.vendasQuantidade === 0 && produto.scoreInteresse >= 18)
       .slice(0, 8),
     produtosTravados: produtos
       .filter(
         (produto) =>
           produto.vendasQuantidade === 0 &&
-          (produto.adicoesCarrinho >= 2 || produto.favoritos >= 3)
+          (produto.scoreInteresse >= 30 ||
+            produto.adicoesCarrinho >= 2 ||
+            produto.favoritos >= 3)
       )
       .slice(0, 8),
+    produtosPoucoTestados,
     buscasFrequentes: topMap(buscasMap, 12),
     buscasSemResultado: topMap(buscasSemResultadoMap, 12),
     conteudosClicados: Array.from(conteudosMap.values())

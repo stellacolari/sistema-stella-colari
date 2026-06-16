@@ -110,6 +110,12 @@ export default async function ReposicaoComprasPage() {
         : null,
       sellThrough: inteligencia?.sellThrough,
       acaoSugerida: inteligencia?.motivo,
+      visualizacoesIntencao: inteligencia?.intencao.visualizacoes,
+      favoritosIntencao: inteligencia?.intencao.favoritos,
+      carrinhosIntencao: inteligencia?.intencao.adicoesCarrinho,
+      scoreInteresse: inteligencia?.intencao.scoreInteresse,
+      taxaConversao: inteligencia?.intencao.taxaConversao,
+      confiancaAnalise: inteligencia?.intencao.confiancaAnalise,
       };
     }
   );
