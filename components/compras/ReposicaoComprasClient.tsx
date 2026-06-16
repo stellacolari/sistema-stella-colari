@@ -30,6 +30,16 @@ export type ReposicaoCompraItem = {
   scoreInteresse?: number | null;
   taxaConversao?: number | null;
   confiancaAnalise?: string | null;
+  faseEmpresa?: string | null;
+  faseEmpresaLabel?: string | null;
+  loteDecisao?: string | null;
+  loteGrandeLiberado?: boolean | null;
+  loteSugestao?: string | null;
+  loteSugestaoQuantidade?: number | null;
+  loteMotivo?: string | null;
+  loteConfianca?: string | null;
+  margemAcao?: string | null;
+  margemRecomendacao?: string | null;
 };
 
 type Props = {
@@ -88,6 +98,12 @@ function situacao(item: ReposicaoCompraItem) {
     label: "Repor",
     className: "border-amber-200 bg-amber-50 text-amber-700",
   };
+}
+
+function decisaoClasses(value: string | null | undefined) {
+  if (value === "LIBERADO") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (value === "CAUTELA") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-rose-200 bg-rose-50 text-rose-700";
 }
 
 function compraHref(item: ReposicaoCompraItem) {
@@ -154,6 +170,11 @@ export default function ReposicaoComprasClient({ itens }: Props) {
           item.recomendacaoReposicao,
           item.acaoSugerida,
           item.confiancaAnalise,
+          item.faseEmpresaLabel,
+          item.loteDecisao,
+          item.loteSugestao,
+          item.loteMotivo,
+          item.margemRecomendacao,
           labelTipo(item.tipo),
         ].join(" ")
       ).includes(termo);
@@ -283,7 +304,7 @@ export default function ReposicaoComprasClient({ itens }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full min-w-[1360px] text-left text-sm">
+        <table className="w-full min-w-[1520px] text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-5 py-4 font-semibold">Item</th>
@@ -353,6 +374,24 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                           <p className="text-xs text-slate-500">
                             Conversao {percentualDireto(item.taxaConversao)}
                           </p>
+                          {item.loteDecisao && (
+                            <div className="pt-1">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${decisaoClasses(
+                                  item.loteDecisao
+                                )}`}
+                              >
+                                Lote grande:{" "}
+                                {item.loteGrandeLiberado
+                                  ? "liberado"
+                                  : labelInteligencia(item.loteDecisao)}
+                              </span>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {item.faseEmpresaLabel} -{" "}
+                                {labelInteligencia(item.loteConfianca)}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-slate-400">
@@ -373,6 +412,27 @@ export default function ReposicaoComprasClient({ itens }: Props) {
                           {item.acaoSugerida && (
                             <p className="leading-5 text-slate-500">
                               {item.acaoSugerida}
+                            </p>
+                          )}
+                          {item.loteMotivo && (
+                            <p className="leading-5 font-semibold text-slate-700">
+                              {item.loteMotivo}
+                            </p>
+                          )}
+                          {item.loteSugestao && (
+                            <p className="text-slate-500">
+                              Sugestao adaptativa:{" "}
+                              <span className="font-semibold text-slate-900">
+                                {labelInteligencia(item.loteSugestao)}
+                              </span>
+                              {item.loteSugestaoQuantidade
+                                ? ` (${item.loteSugestaoQuantidade} un.)`
+                                : ""}
+                            </p>
+                          )}
+                          {item.margemRecomendacao && (
+                            <p className="leading-5 text-slate-500">
+                              {item.margemRecomendacao}
                             </p>
                           )}
                         </div>

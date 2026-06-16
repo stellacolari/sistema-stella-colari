@@ -490,7 +490,7 @@ export default function ResultadoDistribuicaoClient({
         <Card
           titulo="Pro-labore sugerido"
           valor={moeda(resultado.proLaboreSugerido)}
-          detalhe="50% do lucro apuravel, dividido em duas partes iguais."
+          detalhe={`Regra atual; faixa adaptativa da fase: ${diagnostico.adaptativa.metas.proLabore.label}.`}
           icon={<CheckCircle2 className="h-5 w-5" />}
         />
       </section>
@@ -534,7 +534,7 @@ export default function ResultadoDistribuicaoClient({
             <ResumoGerencial
               label="Margem bruta"
               value={percentual(diagnostico.indicadores.margemBrutaPct)}
-              detail="Alvo saudavel: 55%+"
+              detail={diagnostico.adaptativa.margemDesconto.recomendacao}
             />
             <ResumoGerencial
               label="Distribuicao 50/50"
@@ -565,6 +565,40 @@ export default function ResultadoDistribuicaoClient({
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 {diagnostico.leituraResultado.recomendacaoEmpresa}
               </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-950">
+              <Lightbulb className="h-4 w-4 text-slate-500" />
+              Balanca adaptativa
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Fase {diagnostico.adaptativa.faseLabel}, confianca{" "}
+              {diagnostico.adaptativa.confiancaAnalise}.{" "}
+              {diagnostico.adaptativa.distribuicao.leitura}
+            </p>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-4">
+              <ResumoGerencial
+                label="Caixa"
+                value={percentual(diagnostico.adaptativa.distribuicao.caixa)}
+                detail="Sugestao gerencial"
+              />
+              <ResumoGerencial
+                label="Reserva"
+                value={percentual(diagnostico.adaptativa.distribuicao.reserva)}
+                detail="Sugestao gerencial"
+              />
+              <ResumoGerencial
+                label="Reposicao"
+                value={percentual(diagnostico.adaptativa.distribuicao.reposicao)}
+                detail="Sugestao gerencial"
+              />
+              <ResumoGerencial
+                label="Marketing"
+                value={percentual(diagnostico.adaptativa.distribuicao.marketing)}
+                detail="Sugestao gerencial"
+              />
             </div>
           </div>
         </div>

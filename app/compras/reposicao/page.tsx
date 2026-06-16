@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  avaliarCompraLoteProduto,
+  montarInteligenciaAdaptativaAtual,
+} from "@/lib/financeiro/inteligencia-adaptativa";
 import { gerarRecomendacaoReposicao } from "@/lib/produtos/metricas-produto";
 import ReposicaoComprasClient, {
   type ReposicaoCompraItem,
@@ -10,7 +14,7 @@ const ESTOQUE_MINIMO_PADRAO = 5;
 const ESTOQUE_IDEAL_PADRAO = 10;
 
 export default async function ReposicaoComprasPage() {
-  const [estoqueProdutosRaw, estoqueAdicionaisRaw] = await Promise.all([
+  const [estoqueProdutosRaw, estoqueAdicionaisRaw, contextoAdaptativo] = await Promise.all([
     prisma.estoqueProduto.findMany({
       where: {
         produto: {
@@ -29,6 +33,10 @@ export default async function ReposicaoComprasPage() {
             categoria: true,
             fornecedorPadrao: true,
             linkCompra: true,
+            custoBase: true,
+            precoVenda: true,
+            descontoAtivo: true,
+            precoPromocional: true,
           },
         },
       },
@@ -62,6 +70,7 @@ export default async function ReposicaoComprasPage() {
         },
       },
     }),
+    montarInteligenciaAdaptativaAtual(),
   ]);
 
   const estoqueProdutosReposicao = estoqueProdutosRaw.filter(
@@ -79,6 +88,33 @@ export default async function ReposicaoComprasPage() {
     (estoque, index) => {
       const inteligencia = inteligenciaProdutos[index];
       const cicloAtual = inteligencia?.cicloAtual;
+      const precoAtivo =
+        estoque.produto.descontoAtivo && estoque.produto.precoPromocional
+          ? estoque.produto.precoPromocional
+          : estoque.produto.precoVenda;
+      const margemEstimadaPct =
+        precoAtivo > 0
+          ? Math.round(
+              ((precoAtivo - estoque.produto.custoBase) / precoAtivo) * 10000
+            ) / 100
+          : 0;
+      const decisaoLote = inteligencia
+        ? avaliarCompraLoteProduto({
+            fase: contextoAdaptativo.fase,
+            confiancaAnalise: contextoAdaptativo.confiancaAnalise,
+            caixaDisponivel: contextoAdaptativo.caixaDisponivel,
+            statusComercial: inteligencia.statusComercial,
+            recomendacaoReposicao: inteligencia.recomendacao,
+            confiancaReposicao: inteligencia.confianca,
+            vendasQuantidade: cicloAtual?.quantidadeVendida,
+            estoqueAtual: estoque.quantidadeAtual,
+            sugestaoQuantidade: inteligencia.sugestaoQuantidade,
+            custoUnitario: estoque.custoMedio || estoque.produto.custoBase,
+            margemEstimadaPct,
+            cicloAtual,
+            intencao: inteligencia.intencao,
+          })
+        : null;
 
       return {
       id: `produto-${estoque.id}`,
@@ -116,6 +152,16 @@ export default async function ReposicaoComprasPage() {
       scoreInteresse: inteligencia?.intencao.scoreInteresse,
       taxaConversao: inteligencia?.intencao.taxaConversao,
       confiancaAnalise: inteligencia?.intencao.confiancaAnalise,
+      faseEmpresa: contextoAdaptativo.fase,
+      faseEmpresaLabel: contextoAdaptativo.faseLabel,
+      loteDecisao: decisaoLote?.decisao,
+      loteGrandeLiberado: decisaoLote?.loteGrandeLiberado,
+      loteSugestao: decisaoLote?.sugestao,
+      loteSugestaoQuantidade: decisaoLote?.sugestaoQuantidade,
+      loteMotivo: decisaoLote?.motivo,
+      loteConfianca: decisaoLote?.confianca,
+      margemAcao: decisaoLote?.margem.acao,
+      margemRecomendacao: decisaoLote?.margem.recomendacao,
       };
     }
   );

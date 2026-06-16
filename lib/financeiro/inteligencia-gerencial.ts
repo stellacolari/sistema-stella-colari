@@ -18,3 +18,11 @@ export type {
   SeveridadeDiagnostico,
   StatusSaudeFinanceira,
 } from "@/lib/financeiro/diagnostico";
+
+export type {
+  ConfiancaAnaliseGerencial,
+  DecisaoLoteProduto,
+  DecisaoLoteProdutoStatus,
+  FaseEmpresa,
+  InteligenciaAdaptativaGerencial,
+} from "@/lib/financeiro/inteligencia-adaptativa";

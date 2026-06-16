@@ -2,6 +2,10 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { periodoFinanceiro, type ResultadoMensalCalculado } from "@/lib/financeiro/resultado";
+import {
+  montarInteligenciaAdaptativa,
+  type InteligenciaAdaptativaGerencial,
+} from "@/lib/financeiro/inteligencia-adaptativa";
 import { extrairIntencaoSnapshot } from "@/lib/produtos/metricas-produto";
 
 export type StatusSaudeFinanceira = "SAUDAVEL" | "ATENCAO" | "RISCO" | "CRITICO";
@@ -95,6 +99,7 @@ export type DiagnosticoFinanceiro = {
   indicadores: DiagnosticoIndicadores;
   alertas: DiagnosticoAlerta[];
   recomendacoes: string[];
+  adaptativa: InteligenciaAdaptativaGerencial;
   semaforoCaixa: {
     cor: "VERDE" | "AMARELO" | "VERMELHO";
     texto: string;
@@ -550,6 +555,29 @@ export async function montarDiagnosticoFinanceiro(
   const proLaboreSeguro =
     proLaborePago <= Math.max(0, lucro) &&
     proLaborePendente <= Math.max(0, params.saldoGerencial - params.resultado.gastosOperacionais);
+  const adaptativa = await montarInteligenciaAdaptativa({
+    mes: params.mes,
+    ano: params.ano,
+    receitaRecebida: receita,
+    lucroApuravel: lucro,
+    margemBrutaPct,
+    margemLiquidaPct,
+    gastosOperacionaisPct,
+    marketingPct,
+    runwayMeses,
+    saldoGerencial: params.saldoGerencial,
+    entradasMes: params.entradasMes,
+    saidasMes: params.saidasMes,
+    gastosPendentes: params.gastosPendentes,
+    gastosVencidos: params.gastosVencidos,
+    comprasPendentesTotal: params.comprasPendentesTotal,
+    comprasPendentesQuantidade: params.comprasPendentesQuantidade,
+    proLaborePendente,
+    proLaborePagoMes: proLaborePago,
+    reservaAtual: params.reservaAtual,
+    historico: params.historico,
+    estoque,
+  });
   const alertas: DiagnosticoAlerta[] = [];
 
   if (params.saldoGerencial < 0) {
@@ -581,8 +609,8 @@ export async function montarDiagnosticoFinanceiro(
       tipo: "MARGEM_BAIXA",
       severidade: "ATENCAO",
       titulo: "Margem baixa",
-      texto: `Margem bruta em ${margemBrutaPct}%, abaixo do alvo de 55%.`,
-      recomendacao: "Revisar precificacao dos itens de maior giro.",
+      texto: `Margem bruta em ${margemBrutaPct}%, abaixo da faixa confortavel para a fase atual.`,
+      recomendacao: adaptativa.margemDesconto.recomendacao,
       acaoLabel: "Ver produtos",
       href: "/produtos",
     });
@@ -594,7 +622,7 @@ export async function montarDiagnosticoFinanceiro(
       severidade: "RISCO",
       titulo: "Gastos excessivos",
       texto: `Gastos operacionais em ${gastosOperacionaisPct}% da receita.`,
-      recomendacao: "Cortar ou adiar gastos externos ate voltar abaixo de 30%.",
+      recomendacao: "Cortar ou adiar gastos externos ate voltar a uma faixa compativel com caixa e fase.",
       acaoLabel: "Ver gastos",
       href: "/compras/gastos",
     });
@@ -604,29 +632,29 @@ export async function montarDiagnosticoFinanceiro(
       severidade: "ATENCAO",
       titulo: "Gastos altos",
       texto: `Gastos operacionais em ${gastosOperacionaisPct}% da receita.`,
-      recomendacao: "Segurar novas despesas ate a receita crescer.",
+      recomendacao: "Segurar novas despesas ate receita, caixa e confianca justificarem aumento.",
       acaoLabel: "Ver gastos",
       href: "/compras/gastos",
     });
   }
 
-  if (marketingPct > 15) {
+  if (marketingPct > adaptativa.metas.marketingPago.maximo + 5) {
     criarAlerta(alertas, {
       tipo: "MARKETING_ALTO",
       severidade: "ATENCAO",
       titulo: "Marketing pago alto",
       texto: `Marketing pago em ${marketingPct}% da receita.`,
-      recomendacao: "Reduzir ou pausar trafego ate ficar entre 8% e 10%, salvo ROAS comprovado.",
+      recomendacao: adaptativa.metas.marketingPago.recomendacao,
       acaoLabel: "Ver gastos",
       href: "/compras/gastos",
     });
-  } else if (marketingPct > 10) {
+  } else if (marketingPct > adaptativa.metas.marketingPago.maximo) {
     criarAlerta(alertas, {
       tipo: "MARKETING_ATENCAO",
       severidade: "ATENCAO",
       titulo: "Marketing acima da faixa inicial",
       texto: `Marketing pago em ${marketingPct}% da receita.`,
-      recomendacao: "Manter teto claro para trafego e priorizar campanhas organicas.",
+      recomendacao: adaptativa.metas.marketingPago.recomendacao,
       acaoLabel: "Ver gastos",
       href: "/compras/gastos",
     });
@@ -726,6 +754,18 @@ export async function montarDiagnosticoFinanceiro(
     });
   }
 
+  if (adaptativa.confiancaAnalise === "BAIXA") {
+    criarAlerta(alertas, {
+      tipo: "CONFIANCA_ANALISE_BAIXA",
+      severidade: "INFO",
+      titulo: "Amostra ainda baixa",
+      texto: adaptativa.leituraDados,
+      recomendacao: "Tratar metas como hipoteses e priorizar exposicao/medicao antes de grandes compras.",
+      acaoLabel: "Ver intencao",
+      href: "/compras/intencao",
+    });
+  }
+
   if (estoque.produtosZerados > 0 || estoque.produtosBaixo > 0) {
     criarAlerta(alertas, {
       tipo: "ESTOQUE_BAIXO",
@@ -786,15 +826,21 @@ export async function montarDiagnosticoFinanceiro(
     texto: `Caixa cobre aproximadamente ${runwayMeses} mes(es) de gastos atuais.`,
   } as const;
   const marketingRecomendacao =
-    marketingPct > 15
-      ? "Reduzir ou pausar trafego pago ate ficar entre 8% e 10%, salvo ROAS comprovado."
-      : marketingPct > 10
-        ? "Segurar novos testes pagos e priorizar campanhas organicas."
-        : "Marketing pago dentro da faixa inicial recomendada.";
+    marketingPct > adaptativa.metas.marketingPago.maximo
+      ? `${adaptativa.metas.marketingPago.recomendacao} Faixa da fase: ${adaptativa.metas.marketingPago.label}.`
+      : `Marketing pago compativel com a fase ${adaptativa.faseLabel}; manter teto em ${adaptativa.metas.marketingPago.label}.`;
   const proLaboreRecomendacao = proLaboreSeguro
-    ? "Pro-labore pode seguir limitado ao lucro apuravel e apos aprovacao."
-    : "Reduzir ou adiar retirada ate preservar reserva e caixa.";
+    ? `${adaptativa.metas.proLabore.recomendacao} Faixa da fase: ${adaptativa.metas.proLabore.label} do lucro.`
+    : adaptativa.metas.proLabore.recomendacao;
   const estoqueRecomendacao = (() => {
+    if (adaptativa.fase === "PRESSAO_CAIXA" || adaptativa.fase === "CRISE_DEFESA") {
+      return "Caixa em defesa: lote grande bloqueado; comprar apenas reposicao pequena e comprovada.";
+    }
+
+    if (adaptativa.fase === "ESTOQUE_TRAVADO") {
+      return "Estoque travado: girar modelos atuais e revisar oferta antes de recomprar variedade.";
+    }
+
     if (estoque.produtosAltoInteresseEstoqueBaixo > 0) {
       return `Ha ${estoque.produtosAltoInteresseEstoqueBaixo} produto(s) com alto interesse e estoque baixo. Reponha antes de aumentar trafego.`;
     }
@@ -850,7 +896,10 @@ export async function montarDiagnosticoFinanceiro(
         ? ["Repor campeoes com estoque baixo antes de aumentar trafego pago."]
         : []),
       ...(runwayMeses < 3 ? ["Direcionar parte da empresa para reserva."] : []),
-      ...(marketingPct > 10 ? ["Segurar marketing pago e reforcar campanhas organicas."] : []),
+      ...(marketingPct > adaptativa.metas.marketingPago.maximo
+        ? [adaptativa.metas.marketingPago.recomendacao]
+        : []),
+      ...adaptativa.acoesPrioritarias.slice(0, 2),
       ...(status === "SAUDAVEL" && runwayMeses >= 3
         ? ["Separar verba controlada para categorias vencedoras."]
         : []),
@@ -860,6 +909,7 @@ export async function montarDiagnosticoFinanceiro(
     marketingRecomendacao,
     proLaboreRecomendacao,
     estoqueRecomendacao,
+    ...adaptativa.acoesPrioritarias.slice(0, 2),
     ...(reinvestimento.recomendacoes.length > 0
       ? [reinvestimento.recomendacoes[0]]
       : ["Manter gastos sob controle e acompanhar margem semanalmente."]),
@@ -942,11 +992,12 @@ export async function montarDiagnosticoFinanceiro(
     },
     alertas,
     recomendacoes,
+    adaptativa,
     semaforoCaixa,
     marketing: {
       valor: marketingPago,
       percentual: marketingPct,
-      faixaIdeal: "8% a 10%",
+      faixaIdeal: adaptativa.metas.marketingPago.label,
       recomendacao: marketingRecomendacao,
     },
     proLabore: {
@@ -972,12 +1023,12 @@ export async function montarDiagnosticoFinanceiro(
       rentavel: lucro > 0,
       distribuicaoSegura,
       texto: distribuicaoSegura
-        ? "A distribuicao 50/50 e segura neste mes se as compras pendentes forem consideradas no caixa."
-        : "A distribuicao pede cautela ate caixa, pendencias e pro-labore ficarem confortaveis.",
+        ? `A distribuicao e defensavel neste mes, mas deve respeitar a fase ${adaptativa.faseLabel}.`
+        : `A distribuicao pede cautela na fase ${adaptativa.faseLabel} ate caixa, pendencias e pro-labore ficarem confortaveis.`,
       recomendacaoProLabore: proLaboreRecomendacao,
       recomendacaoEmpresa:
         status === "SAUDAVEL"
-          ? "Preservar reserva e reinvestir de forma seletiva nos campeoes."
+          ? adaptativa.distribuicao.leitura
           : "Priorizar reserva e reduzir novas saidas ate estabilizar indicadores.",
     },
     roadmap: montarRoadmap(status),

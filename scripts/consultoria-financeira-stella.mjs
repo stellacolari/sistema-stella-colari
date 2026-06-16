@@ -825,7 +825,250 @@ function buildDiagnosis(current, history, context, inventory) {
   };
 }
 
-function buildRecommendations(current, history, context, inventory, diagnosis) {
+const ADAPTIVE_PHASE_LABELS = {
+  PRE_OPERACAO: "Pre-operacao",
+  VALIDACAO_INICIAL: "Validacao inicial",
+  PRIMEIRA_TRACAO: "Primeira tracao",
+  GIRO_COMPROVADO: "Giro comprovado",
+  CRESCIMENTO_SAUDAVEL: "Crescimento saudavel",
+  ESCALA: "Escala",
+  PRESSAO_CAIXA: "Pressao de caixa",
+  CRISE_DEFESA: "Crise / defesa",
+  ESTOQUE_TRAVADO: "Estoque travado",
+};
+
+function adaptiveRange(min, max, recommendation) {
+  return { min, max, label: `${min}% a ${max}%`, recommendation };
+}
+
+function buildAdaptiveTargets(phase, confidence, current, diagnosis) {
+  const marketingByPhase = {
+    PRE_OPERACAO: [0, 2],
+    VALIDACAO_INICIAL: [0, 4],
+    PRIMEIRA_TRACAO: [3, 7],
+    GIRO_COMPROVADO: [5, 9],
+    CRESCIMENTO_SAUDAVEL: [6, 10],
+    ESCALA: [8, 12],
+    PRESSAO_CAIXA: [0, 3],
+    CRISE_DEFESA: [0, 1],
+    ESTOQUE_TRAVADO: [0, 4],
+  };
+  const proLaboreByPhase = {
+    PRE_OPERACAO: [0, 0],
+    VALIDACAO_INICIAL: [0, 10],
+    PRIMEIRA_TRACAO: [10, 25],
+    GIRO_COMPROVADO: [20, 35],
+    CRESCIMENTO_SAUDAVEL: [25, 40],
+    ESCALA: [30, 45],
+    PRESSAO_CAIXA: [0, 15],
+    CRISE_DEFESA: [0, 5],
+    ESTOQUE_TRAVADO: [0, 20],
+  };
+  const stockByPhase = {
+    PRE_OPERACAO: [0, 5],
+    VALIDACAO_INICIAL: [5, 20],
+    PRIMEIRA_TRACAO: [15, 35],
+    GIRO_COMPROVADO: [25, 45],
+    CRESCIMENTO_SAUDAVEL: [25, 40],
+    ESCALA: [30, 45],
+    PRESSAO_CAIXA: [0, 15],
+    CRISE_DEFESA: [0, 5],
+    ESTOQUE_TRAVADO: [0, 15],
+  };
+  const reserveByPhase = {
+    PRE_OPERACAO: [40, 70],
+    VALIDACAO_INICIAL: [30, 55],
+    PRIMEIRA_TRACAO: [20, 40],
+    GIRO_COMPROVADO: [15, 30],
+    CRESCIMENTO_SAUDAVEL: [10, 25],
+    ESCALA: [10, 20],
+    PRESSAO_CAIXA: [45, 75],
+    CRISE_DEFESA: [60, 90],
+    ESTOQUE_TRAVADO: [35, 60],
+  };
+  const marketing = marketingByPhase[phase];
+  const proLabore = proLaboreByPhase[phase];
+  const stock = stockByPhase[phase];
+  const reserve = reserveByPhase[phase];
+  const marketingMax = confidence === "BAIXA" ? Math.min(marketing[1], 4) : marketing[1];
+  const stockMax = confidence === "BAIXA" ? Math.min(stock[1], 20) : stock[1];
+
+  return {
+    marketing: adaptiveRange(
+      marketing[0],
+      marketingMax,
+      current.marketingReceitaPct > marketingMax
+        ? "Reduzir marketing pago ate a fase validar margem, produto e conversao."
+        : "Manter pago pequeno e ligado a produto com margem e sinal real."
+    ),
+    reserve: adaptiveRange(
+      reserve[0],
+      reserve[1],
+      diagnosis.runwayMonths < 2
+        ? "Priorizar caixa e reserva antes de compras, marketing ou retirada."
+        : "Preservar reserva antes de acelerar compras e campanhas."
+    ),
+    proLabore: adaptiveRange(
+      proLabore[0],
+      proLabore[1],
+      current.lucroApuravel <= 0 || diagnosis.runwayMonths < 1.5
+        ? "Pro-labore deve ficar travado ou simbolico ate caixa e lucro voltarem."
+        : "Retirada segura so dentro do lucro realizado e depois da reserva."
+    ),
+    stock: adaptiveRange(
+      stock[0],
+      stockMax,
+      "Comprar apenas com sinal de venda, ciclo ou intencao suficiente; lote grande so com repeticao."
+    ),
+  };
+}
+
+function adaptiveDistribution(phase) {
+  const values = {
+    PRE_OPERACAO: [40, 25, 5, 5, 20, 0, 5, "Preservar caixa e gerar exposicao antes de apostar em lote."],
+    VALIDACAO_INICIAL: [30, 25, 15, 5, 15, 5, 5, "Validar produto e oferta com compras pequenas e campanhas organicas."],
+    PRIMEIRA_TRACAO: [20, 20, 25, 8, 14, 10, 3, "Repor pequenos campeoes e proteger margem enquanto a tracao se repete."],
+    GIRO_COMPROVADO: [15, 15, 35, 8, 12, 12, 3, "Caixa pode seguir para reposicao seletiva de itens comprovados."],
+    CRESCIMENTO_SAUDAVEL: [12, 13, 32, 10, 12, 18, 3, "Aumentar reinvestimento sem perder reserva e margem."],
+    ESCALA: [10, 10, 35, 12, 10, 20, 3, "Escalar com caixa protegido, reposicao recorrente e marketing medido."],
+    PRESSAO_CAIXA: [45, 25, 10, 3, 10, 5, 2, "Reduzir apostas e preservar liquidez ate aliviar pendencias."],
+    CRISE_DEFESA: [60, 25, 3, 0, 7, 0, 5, "Defesa de caixa: suspender saidas nao essenciais e vender estoque."],
+    ESTOQUE_TRAVADO: [35, 20, 5, 5, 10, 10, 15, "Girar estoque atual antes de recomprar modelos sem validacao."],
+  }[phase];
+
+  return {
+    caixa: values[0],
+    reserva: values[1],
+    reposicao: values[2],
+    marketing: values[3],
+    reinvestimento: values[4],
+    proLabore: values[5],
+    descontosCampanhas: values[6],
+    leitura: values[7],
+  };
+}
+
+function buildAdaptiveIntelligence(current, history, context, inventory, diagnosis, args) {
+  const vendasReaisTotal = sum(history, (month) => month.unidadesVendidas);
+  const produtosVendidos = inventory.produtosResumo.filter((produto) => produto.unidadesVendidas6m > 0).length;
+  const percentualProdutosTestados = inventory.produtosAtivos ? percent(produtosVendidos, inventory.produtosAtivos) : 0;
+  const produtosTravadosPct = inventory.produtosAtivos ? inventory.parados.length / inventory.produtosAtivos : 0;
+  const eventosIntencao = 0;
+  const positiveRevenueMonths = history.filter((month) => month.receitaRecebida > 0).length;
+  const positiveProfitMonths = history.filter((month) => month.lucroApuravel > 0).length;
+  const hasSimulationScope = Boolean(args.simulacao);
+  let confidenceScore = 0;
+
+  if (vendasReaisTotal >= 40) confidenceScore += 35;
+  else if (vendasReaisTotal >= 15) confidenceScore += 28;
+  else if (vendasReaisTotal >= 5) confidenceScore += 18;
+  else if (vendasReaisTotal > 0) confidenceScore += 8;
+
+  if (history.length >= 6) confidenceScore += 18;
+  else if (history.length >= 3) confidenceScore += 10;
+  if (percentualProdutosTestados >= 70) confidenceScore += 18;
+  else if (percentualProdutosTestados >= 45) confidenceScore += 12;
+  else if (percentualProdutosTestados >= 25) confidenceScore += 6;
+  if (positiveRevenueMonths >= 3) confidenceScore += 6;
+  if (positiveProfitMonths >= 2) confidenceScore += 5;
+  if (hasSimulationScope) confidenceScore -= vendasReaisTotal < 10 ? 18 : 8;
+  if (vendasReaisTotal === 0) confidenceScore = Math.min(confidenceScore, 32);
+  if (inventory.produtosAtivos > 0 && percentualProdutosTestados < 25) confidenceScore = Math.min(confidenceScore, 45);
+
+  confidenceScore = Math.max(0, Math.min(100, Math.round(confidenceScore)));
+  const confidence = confidenceScore >= 70 ? "ALTA" : confidenceScore >= 45 ? "MEDIA" : "BAIXA";
+  let phase = "GIRO_COMPROVADO";
+  const reasons = [];
+  const pendencias = context.gastosPendentes + context.gastosVencidos + context.proLaboreAprovadoPendente;
+
+  if (context.saldoGerencial < 0 || (current.lucroApuravel < 0 && diagnosis.runwayMonths < 1) || (context.gastosVencidos > 0 && diagnosis.runwayMonths < 1)) {
+    phase = "CRISE_DEFESA";
+    reasons.push("Caixa, lucro ou vencidos exigem defesa imediata.");
+  } else if (diagnosis.runwayMonths < 1.5 || pendencias > Math.max(context.saldoGerencial * 0.8, current.receitaRecebida * 0.5)) {
+    phase = "PRESSAO_CAIXA";
+    reasons.push("Caixa livre e pendencias reduzem margem para novas apostas.");
+  } else if (produtosTravadosPct >= 0.35 && current.unidadesVendidas <= 3 && confidence !== "BAIXA") {
+    phase = "ESTOQUE_TRAVADO";
+    reasons.push("Muitos produtos ativos seguem parados apesar de alguma leitura comercial.");
+  } else if (vendasReaisTotal <= 0) {
+    phase = "PRE_OPERACAO";
+    reasons.push("Ainda nao ha venda real suficiente para tratar metas como comprovadas.");
+  } else if (vendasReaisTotal < 10 || percentualProdutosTestados < 30 || confidence === "BAIXA") {
+    phase = "VALIDACAO_INICIAL";
+    reasons.push("Ha vendas ou sinais iniciais, mas a amostra ainda e curta.");
+  } else if (vendasReaisTotal < 25 || positiveRevenueMonths < 2) {
+    phase = "PRIMEIRA_TRACAO";
+    reasons.push("A operacao ja tracionou, mas ainda precisa repetir ciclos vencedores.");
+  } else if (vendasReaisTotal >= 80 && positiveProfitMonths >= 4 && diagnosis.runwayMonths >= 3 && current.gastosReceitaPct <= 28) {
+    phase = "ESCALA";
+    reasons.push("Venda, lucro e caixa sustentam leitura de escala.");
+  } else if (positiveProfitMonths >= 3 && diagnosis.runwayMonths >= 2.5 && current.margemBrutaPct >= 55 && current.gastosReceitaPct <= 32) {
+    phase = "CRESCIMENTO_SAUDAVEL";
+    reasons.push("Historico recente mostra caixa, margem e lucro em conjunto.");
+  } else {
+    reasons.push("Ha giro real e produtos com reposicao mais defensavel, mas ainda seletiva.");
+  }
+
+  const targets = buildAdaptiveTargets(phase, confidence, current, diagnosis);
+  const distribution = adaptiveDistribution(phase);
+  const risks = [];
+  const actions = [];
+
+  if (confidence === "BAIXA") {
+    risks.push("Amostra baixa: conclusoes devem virar testes, nao metas rigidas.");
+    actions.push("Expor produtos pouco testados antes de comprar lote ou cortar margem.");
+  }
+  if (hasSimulationScope) {
+    risks.push("Escopo de simulacao: nao escalar decisao como se fosse historico real.");
+  }
+  if (diagnosis.runwayMonths < 2) {
+    risks.push("Runway curto limita compra de estoque, marketing pago e pro-labore.");
+    actions.push("Priorizar recebimentos, reserva e reducao de saidas recorrentes.");
+  }
+  if (inventory.parados.length > 0) {
+    actions.push("Criar campanhas para girar estoque parado antes de recomprar variedade.");
+  }
+  if (inventory.estoqueBaixo.length > 0 || inventory.produtosZerados.length > 0) {
+    actions.push("Repor pequeno apenas produtos com venda ou ciclo comprovado.");
+  }
+  if (["PRESSAO_CAIXA", "CRISE_DEFESA"].includes(phase)) {
+    actions.unshift("Congelar lote grande, marketing novo e retirada extra ate caixa estabilizar.");
+  }
+
+  const marginDiscount = current.margemBrutaPct > 0 && current.margemBrutaPct < 50
+    ? "Proteger margem e revisar precificacao/custo antes de desconto amplo."
+    : inventory.parados.length > 0
+      ? "Usar desconto controlado apenas para estoque parado, sem contaminar campeoes."
+      : "Manter margem nos campeoes e testar desconto apenas por produto, canal e periodo.";
+
+  return {
+    phase,
+    phaseLabel: ADAPTIVE_PHASE_LABELS[phase],
+    confidence,
+    confidenceScore,
+    reasons,
+    data: {
+      vendasReaisTotal,
+      produtosAtivos: inventory.produtosAtivos,
+      produtosTestados: produtosVendidos,
+      percentualProdutosTestados,
+      estoqueTotal: inventory.estoqueTotal,
+      produtosParados: inventory.parados.length,
+      eventosIntencao,
+      escopoSimulado: hasSimulationScope,
+    },
+    targets,
+    distribution,
+    marginDiscount,
+    risks: risks.length ? risks : ["Nenhum risco adaptativo critico alem do acompanhamento normal."],
+    actions: [...new Set(actions)].slice(0, 6),
+    dataReading: hasSimulationScope
+      ? "Relatorio em escopo de simulacao; separar validacao real antes de escalar compras e retiradas."
+      : "Relatorio sobre a base completa disponivel; trate ausencia de amostra como baixa confianca.",
+  };
+}
+
+function buildRecommendations(current, history, context, inventory, diagnosis, adaptive) {
   const recommendations = [];
   const strengths = [];
   const weaknesses = [];
@@ -836,7 +1079,7 @@ function buildRecommendations(current, history, context, inventory, diagnosis) {
   else weaknesses.push(`Lucro apuravel negativo de ${fmtMoney(current.lucroApuravel)} no mes.`);
 
   if (current.margemBrutaPct >= 55) strengths.push(`Margem bruta estimada saudavel em ${fmtPercent(current.margemBrutaPct)}.`);
-  else weaknesses.push(`Margem bruta abaixo do alvo de 55%, hoje em ${fmtPercent(current.margemBrutaPct)}.`);
+  else weaknesses.push(`Margem bruta abaixo da faixa confortavel para a fase, hoje em ${fmtPercent(current.margemBrutaPct)}.`);
 
   if (current.gastosReceitaPct <= 30) strengths.push(`Gastos operacionais em ${fmtPercent(current.gastosReceitaPct)} da receita, dentro do limite gerencial.`);
   else weaknesses.push(`Gastos operacionais em ${fmtPercent(current.gastosReceitaPct)} da receita, acima do limite recomendado.`);
@@ -850,7 +1093,7 @@ function buildRecommendations(current, history, context, inventory, diagnosis) {
   if (context.proLaboreAprovadoPendente > 0) risks.push(`Ha ${fmtMoney(context.proLaboreAprovadoPendente)} de pro-labore aprovado pendente de caixa.`);
 
   if (current.margemBrutaPct < 60) {
-    recommendations.push("Revisar preco dos itens de maior giro e recomprar somente SKUs com margem bruta acima de 55% a 60%.");
+    recommendations.push(adaptive.marginDiscount);
   } else {
     recommendations.push("Manter politica de preco atual nos campeoes e testar leve aumento em produtos com demanda recorrente.");
   }
@@ -861,10 +1104,10 @@ function buildRecommendations(current, history, context, inventory, diagnosis) {
     recommendations.push("Preservar teto de gastos operacionais de 30% da receita e aprovar excecoes apenas com retorno esperado claro.");
   }
 
-  if (current.marketingReceitaPct > 10) {
-    recommendations.push("Reduzir ou pausar trafego pago ate o marketing ficar abaixo de 8% a 10% da receita recebida.");
-  } else if (current.marketingReceitaPct < 3 && current.margemBrutaPct >= 55 && current.lucroApuravel > 0) {
-    recommendations.push("Testar trafego pago pequeno apenas em produtos campeoes, mantendo teto inicial de 5% da receita.");
+  if (current.marketingReceitaPct > adaptive.targets.marketing.max) {
+    recommendations.push(`${adaptive.targets.marketing.recommendation} Faixa da fase: ${adaptive.targets.marketing.label}.`);
+  } else if (current.marketingReceitaPct < adaptive.targets.marketing.min && current.margemBrutaPct >= 55 && current.lucroApuravel > 0) {
+    recommendations.push(`Testar trafego pago pequeno apenas em produtos campeoes, respeitando ${adaptive.targets.marketing.label} da receita.`);
   } else {
     recommendations.push("Manter marketing organico como base e usar pago so onde houver produto campeao, margem e conversao validada.");
   }
@@ -876,24 +1119,24 @@ function buildRecommendations(current, history, context, inventory, diagnosis) {
   }
 
   if (diagnosis.runwayMonths < 2) {
-    recommendations.push("Direcionar parte do lucro da empresa para reserva antes de ampliar retirada de pro-labore.");
+    recommendations.push(adaptive.targets.reserve.recommendation);
   } else {
-    recommendations.push("Manter reserva equivalente a pelo menos 2 meses de gastos antes de acelerar investimentos.");
+    recommendations.push(`Reserva adaptativa da fase: ${adaptive.targets.reserve.label} do lucro/caixa livre antes de acelerar.`);
   }
 
   if (!diagnosis.proLaboreSeguro) {
-    recommendations.push("Reduzir ou adiar pro-labore no mes ate que lucro e caixa sustentem a retirada sem pressionar reserva.");
+    recommendations.push(adaptive.targets.proLabore.recommendation);
   } else {
-    recommendations.push("Pro-labore pode seguir limitado ao lucro apuravel, sem antecipar retirada sobre vendas ainda nao consolidadas.");
+    recommendations.push(`Pro-labore pode seguir dentro da faixa ${adaptive.targets.proLabore.label} do lucro realizado, sem antecipar vendas nao consolidadas.`);
   }
 
   const targetRevenueBase = Math.max(current.receitaProjetada, diagnosis.avg3Revenue, current.receitaRecebida);
   goals.push(`Faturamento mensal alvo: ${fmtMoney(round(targetRevenueBase * 1.1))} a ${fmtMoney(round(targetRevenueBase * 1.2))}.`);
-  goals.push("Margem bruta minima: 55%; alvo saudavel: 60%+.");
-  goals.push("Gastos operacionais: manter abaixo de 30% da receita.");
-  goals.push("Marketing pago: iniciar/continuar apenas dentro de 5% a 8% da receita enquanto CAC nao estiver medido.");
-  goals.push(`Reserva: formar ou preservar pelo menos ${fmtMoney(round(diagnosis.fixedExpenseBase * 2))}.`);
-  goals.push("Estoque: recomprar apenas produtos com venda comprovada e revisar itens sem giro antes de nova compra.");
+  goals.push(`Fase atual: ${adaptive.phaseLabel}; confianca ${adaptive.confidence} (${adaptive.confidenceScore}/100).`);
+  goals.push(`Marketing pago: ${adaptive.targets.marketing.label} da receita enquanto CAC/ROAS nao estiverem claros.`);
+  goals.push(`Reserva: ${adaptive.targets.reserve.label} do lucro/caixa livre conforme fase e runway.`);
+  goals.push(`Reposicao: ${adaptive.targets.stock.label}; lote grande so com ciclo repetido e caixa livre.`);
+  goals.push(`Pro-labore: ${adaptive.targets.proLabore.label} do lucro realizado, com reserva preservada.`);
 
   return { recommendations, strengths, weaknesses, risks, goals };
 }
@@ -990,7 +1233,8 @@ function dataGaps(current, inventory) {
 
 function buildReport(args, selectedPeriod, history, current, context, inventory) {
   const diagnosis = buildDiagnosis(current, history, context, inventory);
-  const insight = buildRecommendations(current, history, context, inventory, diagnosis);
+  const adaptive = buildAdaptiveIntelligence(current, history, context, inventory, diagnosis, args);
+  const insight = buildRecommendations(current, history, context, inventory, diagnosis, adaptive);
   const initialPlan = buildInitialPlan(current);
   const roadmap = roadmap90Days();
   const blocks = futureBlocks();
@@ -1010,6 +1254,7 @@ function buildReport(args, selectedPeriod, history, current, context, inventory)
     },
     status: diagnosis.status,
     diagnosis,
+    adaptive,
     current,
     history,
     context,
@@ -1025,6 +1270,7 @@ function buildReport(args, selectedPeriod, history, current, context, inventory)
 function buildMarkdown(report) {
   const current = report.current;
   const diagnosis = report.diagnosis;
+  const adaptive = report.adaptive;
   const context = report.context;
   const inventory = report.inventory;
   const insight = report.insight;
@@ -1042,6 +1288,7 @@ function buildMarkdown(report) {
   lines.push("## 1. Resumo executivo");
   lines.push("");
   lines.push(`Status gerencial: **${report.status}**.`);
+  lines.push(`Fase adaptativa: **${adaptive.phaseLabel}**. Confianca: **${adaptive.confidence} (${adaptive.confidenceScore}/100)**.`);
   lines.push(`Receita recebida: **${fmtMoney(current.receitaRecebida)}**. Lucro apuravel: **${fmtMoney(current.lucroApuravel)}**. Margem bruta estimada: **${fmtPercent(current.margemBrutaPct)}**.`);
   lines.push(`Caixa gerencial: **${fmtMoney(context.saldoGerencial)}**. Runway estimado: **${fmtNumber(diagnosis.runwayMonths)} mes(es)**.`);
   lines.push(`Unidades vendidas: **${fmtNumber(current.unidadesVendidas)}**. Ticket medio: **${fmtMoney(current.ticketMedio)}**.`);
@@ -1064,6 +1311,44 @@ function buildMarkdown(report) {
       ["Reserva identificada", fmtMoney(context.reserva)],
     ]
   ));
+  lines.push("");
+
+  lines.push("## Inteligencia adaptativa");
+  lines.push("");
+  lines.push(`Fase atual: **${adaptive.phaseLabel}**.`);
+  lines.push(`Motivo: ${adaptive.reasons.join(" ")}`);
+  lines.push(`Confianca da analise: **${adaptive.confidence} (${adaptive.confidenceScore}/100)**.`);
+  lines.push(adaptive.dataReading);
+  lines.push("");
+  lines.push(table(
+    ["Meta", "Faixa adaptativa", "Leitura"],
+    [
+      ["Marketing pago", adaptive.targets.marketing.label, adaptive.targets.marketing.recommendation],
+      ["Reserva", adaptive.targets.reserve.label, adaptive.targets.reserve.recommendation],
+      ["Reposicao", adaptive.targets.stock.label, adaptive.targets.stock.recommendation],
+      ["Pro-labore", adaptive.targets.proLabore.label, adaptive.targets.proLabore.recommendation],
+    ]
+  ));
+  lines.push("");
+  lines.push(table(
+    ["Destino", "% sugerido"],
+    [
+      ["Caixa", fmtPercent(adaptive.distribution.caixa)],
+      ["Reserva", fmtPercent(adaptive.distribution.reserva)],
+      ["Reposicao", fmtPercent(adaptive.distribution.reposicao)],
+      ["Marketing", fmtPercent(adaptive.distribution.marketing)],
+      ["Reinvestimento", fmtPercent(adaptive.distribution.reinvestimento)],
+      ["Pro-labore", fmtPercent(adaptive.distribution.proLabore)],
+      ["Descontos/campanhas", fmtPercent(adaptive.distribution.descontosCampanhas)],
+    ]
+  ));
+  lines.push(adaptive.distribution.leitura);
+  lines.push("");
+  lines.push("Acoes prioritarias:");
+  lines.push(bullet(adaptive.actions));
+  lines.push("");
+  lines.push("Riscos adaptativos:");
+  lines.push(bullet(adaptive.risks));
   lines.push("");
 
   lines.push("## 2. Rentavel ou nao?");
@@ -1119,8 +1404,8 @@ function buildMarkdown(report) {
   lines.push(`Pro-labore sugerido pelo lucro: ${fmtMoney(current.proLaboreSugerido)}.`);
   lines.push(`Pro-labore aprovado no mes: ${fmtMoney(current.proLaboreAprovado)}. Pago por apuracao: ${fmtMoney(current.proLaborePagoApuracao)}. Pago no caixa: ${fmtMoney(current.proLaborePagoCaixa)}.`);
   lines.push(diagnosis.proLaboreSeguro
-    ? "Leitura: retirada segura se mantida dentro do lucro apuravel e sem consumir reserva."
-    : "Leitura: retirada pede cautela, pois pode comprometer lucro ou caixa.");
+    ? `Leitura: retirada segura se mantida dentro do lucro apuravel e da faixa adaptativa ${adaptive.targets.proLabore.label}.`
+    : adaptive.targets.proLabore.recommendation);
   lines.push("");
 
   lines.push("## 9. Compras de estoque");
@@ -1142,9 +1427,10 @@ function buildMarkdown(report) {
   lines.push("## 11. Marketing");
   lines.push("");
   lines.push(`Marketing, trafego e influenciadores pagos: ${fmtMoney(current.marketingPago)} (${fmtPercent(current.marketingReceitaPct)} da receita).`);
-  lines.push(current.marketingReceitaPct > 10
-    ? "Leitura: marketing pago esta alto para o faturamento atual."
-    : "Leitura: marketing pago esta dentro de uma faixa prudente para uma operacao em validacao.");
+  lines.push(`Faixa adaptativa da fase ${adaptive.phaseLabel}: ${adaptive.targets.marketing.label}.`);
+  lines.push(current.marketingReceitaPct > adaptive.targets.marketing.max
+    ? adaptive.targets.marketing.recommendation
+    : "Leitura: marketing pago esta compativel com a fase e deve seguir medido por produto/canal.");
   lines.push("");
 
   lines.push("## 12. Crescimento");
@@ -1181,7 +1467,7 @@ function buildMarkdown(report) {
   lines.push(`Investimento inicial: ${fmtMoney(plan.investimento)} para ${plan.itens} joias. Custo medio gerencial: ${fmtMoney(plan.custoMedio)} por joia.`);
   lines.push(`Preco minimo aproximado para margem 55%: ${fmtMoney(plan.price55)}; para 60%: ${fmtMoney(plan.price60)}; para 65%: ${fmtMoney(plan.price65)}.`);
   lines.push(`Com preco medio atual/projetado de ${fmtMoney(plan.avgTicketUnit)} por unidade, seriam necessarias cerca de ${plan.unitsToRecover} joias para recuperar o investimento bruto.`);
-  lines.push(`Meta de sell-through inicial: vender ${plan.sellThrough30} a ${plan.sellThrough40} joias antes de ampliar reposicao.`);
+  lines.push(`Referencia de sell-through inicial: vender ${plan.sellThrough30} a ${plan.sellThrough40} joias antes de ampliar reposicao, ajustando pela fase ${adaptive.phaseLabel}.`);
   lines.push(bullet(plan.recommendations));
   lines.push("");
 

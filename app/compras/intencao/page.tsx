@@ -148,16 +148,19 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
             title="Promissores"
             produtos={dados.produtosPromissores}
             empty="Nenhum produto promissor no periodo."
+            orientacao="Observar sinais e repor pequeno apenas se venda, margem e estoque confirmarem."
           />
           <ListaProdutos
             title="Interesse travado"
             produtos={dados.produtosTravados}
             empty="Nenhum gargalo forte de produto no periodo."
+            orientacao="Revisar oferta, preco, fotos e descricao antes de comprar mais."
           />
           <ListaProdutos
             title="Pouco testados"
             produtos={dados.produtosPoucoTestados}
             empty="Nenhum produto pouco testado nos snapshots atuais."
+            orientacao="Expor em vitrines, busca e conteudo antes de decidir reposicao."
           />
         </div>
       </section>
@@ -340,14 +343,17 @@ function ListaProdutos({
   title,
   produtos,
   empty,
+  orientacao,
 }: {
   title: string;
   produtos: IntencaoProduto[];
   empty: string;
+  orientacao: string;
 }) {
   return (
     <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+      <p className="mt-1 text-sm leading-5 text-slate-500">{orientacao}</p>
       <div className="mt-4 space-y-3">
         {produtos.length > 0 ? (
           produtos.map((produto) => (
@@ -364,6 +370,9 @@ function ListaProdutos({
               <p className="mt-1 text-xs text-slate-500">
                 {inteiro(produto.visualizacoes)} views - {inteiro(produto.favoritos)} fav. -{" "}
                 {inteiro(produto.adicoesCarrinho)} carrinho
+              </p>
+              <p className="mt-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-700">
+                {orientacao}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <AcaoLink href={`/loja/produto/${produto.produtoId}`}>
