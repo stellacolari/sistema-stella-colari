@@ -144,9 +144,48 @@ export default function LojaPreviewPaginaClient({
 
       element.dataset.studioBlocoId = bloco.id;
       element.style.cursor = "pointer";
+      element.style.position =
+        getComputedStyle(element).position === "static"
+          ? "relative"
+          : element.style.position;
       element.style.outline =
         bloco.id === selectedBlockId ? "1px solid rgb(99 102 241)" : "";
       element.style.outlineOffset = "-1px";
+      const label = document.createElement("span");
+      label.textContent =
+        bloco.tipo === "TEXTO_IMAGEM" || bloco.tipo === "IMAGEM_TEXTO"
+          ? "Texto + Imagem"
+          : bloco.titulo || bloco.tipo.replaceAll("_", " ");
+      label.style.position = "absolute";
+      label.style.left = "10px";
+      label.style.top = "10px";
+      label.style.zIndex = "60";
+      label.style.pointerEvents = "none";
+      label.style.borderRadius = "999px";
+      label.style.background = "rgba(255,255,255,0.94)";
+      label.style.border = "1px solid rgba(148,163,184,0.35)";
+      label.style.boxShadow = "0 8px 20px rgba(15,23,42,0.08)";
+      label.style.color = "#334155";
+      label.style.fontSize = "11px";
+      label.style.fontWeight = "700";
+      label.style.letterSpacing = "0.02em";
+      label.style.padding = "5px 9px";
+      label.style.opacity = bloco.id === selectedBlockId ? "1" : "0";
+      label.style.transition = "opacity 160ms ease";
+      element.appendChild(label);
+
+      const handleMouseEnter = () => {
+        if (bloco.id !== selectedBlockId) {
+          element.style.outline = "1px solid rgba(99,102,241,0.45)";
+        }
+        label.style.opacity = "1";
+      };
+
+      const handleMouseLeave = () => {
+        element.style.outline =
+          bloco.id === selectedBlockId ? "1px solid rgb(99 102 241)" : "";
+        label.style.opacity = bloco.id === selectedBlockId ? "1" : "0";
+      };
 
       const handleClick = (event: MouseEvent) => {
         const context = getSelectionContext(event.target);
@@ -168,8 +207,68 @@ export default function LojaPreviewPaginaClient({
       };
 
       element.addEventListener("click", handleClick, true);
+      element.addEventListener("mouseenter", handleMouseEnter);
+      element.addEventListener("mouseleave", handleMouseLeave);
+
+      const inlineElements = Array.from(
+        element.querySelectorAll("[data-stella-inline-field]")
+      ) as HTMLElement[];
+      const inlineCleanups: (() => void)[] = [];
+
+      inlineElements.forEach((inlineElement) => {
+        inlineElement.contentEditable = "true";
+        inlineElement.spellcheck = false;
+        inlineElement.style.outline = "none";
+
+        const handleInlineInput = () => {
+          const field = inlineElement.dataset.stellaInlineField || "";
+
+          if (!field) return;
+
+          window.parent.postMessage(
+            {
+              type: "STELLA_BUILDER_STUDIO_INLINE_UPDATE",
+              pageId,
+              blockId: bloco.id,
+              field,
+              value: inlineElement.innerText.trim(),
+            },
+            window.location.origin
+          );
+        };
+
+        const handleInlineClick = (event: MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          window.parent.postMessage(
+            {
+              type: "STELLA_BUILDER_STUDIO_SELECT",
+              pageId,
+              blockId: bloco.id,
+              context: getSelectionContext(inlineElement),
+              itemId: getGalleryItemId(inlineElement),
+            },
+            window.location.origin
+          );
+        };
+
+        inlineElement.addEventListener("input", handleInlineInput);
+        inlineElement.addEventListener("click", handleInlineClick, true);
+        inlineCleanups.push(() => {
+          inlineElement.removeEventListener("input", handleInlineInput);
+          inlineElement.removeEventListener("click", handleInlineClick, true);
+          inlineElement.contentEditable = "false";
+          inlineElement.style.outline = "";
+        });
+      });
+
       cleanups.push(() => {
         element.removeEventListener("click", handleClick, true);
+        element.removeEventListener("mouseenter", handleMouseEnter);
+        element.removeEventListener("mouseleave", handleMouseLeave);
+        inlineCleanups.forEach((cleanup) => cleanup());
+        label.remove();
         element.style.cursor = "";
         element.style.outline = "";
         element.style.outlineOffset = "";

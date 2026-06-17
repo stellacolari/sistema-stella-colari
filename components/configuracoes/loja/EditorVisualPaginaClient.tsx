@@ -267,6 +267,9 @@ type TextStyleConfig = {
   colorPreset: string;
   colorCustom: string;
   letterSpacing: string;
+  lineHeight: string;
+  marginTop: number;
+  marginBottom: number;
   textTransform: string;
   textAlign: string;
 };
@@ -293,6 +296,10 @@ type BlocoEditandoState = {
   exibirBotao: boolean;
   layoutDesktopTextoImagem: string;
   layoutMobileTextoImagem: string;
+  alturaBlocoTextoImagem: string;
+  gapTextoImagem: number;
+  raioImagemTextoImagem: number;
+  imagemAlt: string;
   fonteProdutos: string;
   categoriaProdutoId: string;
   categoriaProdutoSlug: string;
@@ -486,6 +493,13 @@ const TEXT_LETTER_SPACING_PRESETS = [
   { value: "ALTO", label: "Alto" },
 ];
 
+const TEXT_LINE_HEIGHT_PRESETS = [
+  { value: "COMPACTO", label: "Compacto" },
+  { value: "NORMAL", label: "Normal" },
+  { value: "RESPIRADO", label: "Respirado" },
+  { value: "AMPLO", label: "Amplo" },
+];
+
 const TEXT_TRANSFORM_PRESETS = [
   { value: "NORMAL", label: "Normal" },
   { value: "UPPERCASE", label: "Uppercase" },
@@ -674,6 +688,18 @@ const LAYOUT_MOBILE_TEXTO_IMAGEM_PRESETS = [
   { value: "TEXTO_SOBRE_IMAGEM", label: "Texto sobre imagem" },
 ];
 
+const LARGURA_MIDIA_TEXTO_IMAGEM_PRESETS = [
+  { value: "CONTIDA", label: "Contida" },
+  { value: "SANGRANDO_ATE_BORDA", label: "Sangrando até a borda" },
+];
+
+const ALTURA_BLOCO_TEXTO_IMAGEM_PRESETS = [
+  { value: "AUTO", label: "Auto" },
+  { value: "COMPACTO", label: "Compacto" },
+  { value: "PADRAO", label: "Padrão" },
+  { value: "ALTO", label: "Alto" },
+];
+
 const FONTE_PRODUTOS_PRESETS = [
   { value: "TODOS", label: "Todos" },
   { value: "DESCONTOS", label: "Descontos" },
@@ -720,11 +746,6 @@ const ESTILO_BORDA_BOTAO_PRESETS = [
   { value: "SUAVE", label: "Suave" },
   { value: "ARREDONDADO", label: "Arredondado" },
   { value: "PILULA", label: "Pílula" },
-];
-
-const LARGURA_MIDIA_PRESETS = [
-  { value: "CONTIDA", label: "Contida" },
-  { value: "FULL_BLEED", label: "Até o canto" },
 ];
 
 const ALINHAMENTO_CARDS_PRESETS = [
@@ -1635,6 +1656,9 @@ function getTextStyleDefaults(kind: string): TextStyleConfig {
       colorPreset: "PADRAO",
       colorCustom: "",
       letterSpacing: "NORMAL",
+      lineHeight: "NORMAL",
+      marginTop: 0,
+      marginBottom: 0,
       textTransform: "NORMAL",
       textAlign: "CENTRO",
     };
@@ -1647,6 +1671,9 @@ function getTextStyleDefaults(kind: string): TextStyleConfig {
       colorPreset: "PADRAO",
       colorCustom: "",
       letterSpacing: "NORMAL",
+      lineHeight: "RESPIRADO",
+      marginTop: 0,
+      marginBottom: 0,
       textTransform: "NORMAL",
       textAlign: "ESQUERDA",
     };
@@ -1658,6 +1685,9 @@ function getTextStyleDefaults(kind: string): TextStyleConfig {
     colorPreset: "PADRAO",
     colorCustom: "",
     letterSpacing: "NORMAL",
+    lineHeight: "NORMAL",
+    marginTop: 0,
+    marginBottom: 0,
     textTransform: "NORMAL",
     textAlign: "ESQUERDA",
   };
@@ -1672,6 +1702,7 @@ function normalizeTextStyle(
   const fontWeight = getStringConfig(style, "fontWeight");
   const colorPreset = getStringConfig(style, "colorPreset");
   const letterSpacing = getStringConfig(style, "letterSpacing");
+  const lineHeight = getStringConfig(style, "lineHeight");
   const textTransform = getStringConfig(style, "textTransform");
   const textAlign = getStringConfig(style, "textAlign");
 
@@ -1695,6 +1726,13 @@ function normalizeTextStyle(
     )
       ? letterSpacing
       : defaults.letterSpacing,
+    lineHeight: TEXT_LINE_HEIGHT_PRESETS.some(
+      (preset) => preset.value === lineHeight
+    )
+      ? lineHeight
+      : defaults.lineHeight,
+    marginTop: getNumberConfig(style, "marginTop", defaults.marginTop),
+    marginBottom: getNumberConfig(style, "marginBottom", defaults.marginBottom),
     textTransform: TEXT_TRANSFORM_PRESETS.some(
       (preset) => preset.value === textTransform
     )
@@ -1795,6 +1833,12 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
     MEDIO: "0.08em",
     ALTO: "0.14em",
   };
+  const lineHeightMap: Record<string, string> = {
+    COMPACTO: "1",
+    NORMAL: "1.15",
+    RESPIRADO: "1.35",
+    AMPLO: "1.6",
+  };
   const textAlignMap: Record<string, CSSProperties["textAlign"]> = {
     ESQUERDA: "left",
     CENTRO: "center",
@@ -1810,6 +1854,9 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
         : colorMap[style.colorPreset],
     letterSpacing:
       letterSpacingMap[style.letterSpacing] || letterSpacingMap.NORMAL,
+    lineHeight: lineHeightMap[style.lineHeight] || lineHeightMap.NORMAL,
+    marginTop: `${Math.max(0, Number(style.marginTop) || 0)}px`,
+    marginBottom: `${Math.max(0, Number(style.marginBottom) || 0)}px`,
     textTransform:
       style.textTransform === "NORMAL"
         ? "none"
@@ -2254,6 +2301,19 @@ function normalizarLayoutMobileTextoImagem(value: string) {
   }
 
   return "IMAGEM_ACIMA";
+}
+
+function normalizarLarguraMidiaTextoImagem(value: string) {
+  if (value === "FULL_BLEED" || value === "SANGRANDO_ATE_BORDA") {
+    return "SANGRANDO_ATE_BORDA";
+  }
+
+  return "CONTIDA";
+}
+
+function normalizarAlturaBlocoTextoImagem(value: string) {
+  if (["AUTO", "COMPACTO", "PADRAO", "ALTO"].includes(value)) return value;
+  return "AUTO";
 }
 
 function normalizarMediaPosition(value: string) {
@@ -2925,16 +2985,19 @@ function PainelSecao({
 function SecaoRecolhivel({
   title,
   description,
+  defaultOpen = false,
   className = "",
   children,
 }: {
   title: string;
   description?: string;
+  defaultOpen?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <details
+      open={defaultOpen}
       className={`rounded-2xl border border-slate-200 bg-slate-50 p-4 ${className}`}
     >
       <summary className="cursor-pointer text-sm font-semibold text-slate-800">
@@ -3424,53 +3487,306 @@ function ResponsiveTextAlignControls({
   );
 }
 
-function MediaWidthControls({
-  desktopValue,
-  mobileValue,
+function VisualCropControl({
+  label,
+  imageUrl,
+  videoUrl,
+  posterUrl,
+  tipoMidia,
+  focoX,
+  focoY,
+  zoom,
+  aspectClass = "aspect-[4/3]",
   onChange,
 }: {
-  desktopValue: string;
-  mobileValue: string;
-  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+  label: string;
+  imageUrl: string;
+  videoUrl: string;
+  posterUrl?: string;
+  tipoMidia: string;
+  focoX: number;
+  focoY: number;
+  zoom: number;
+  aspectClass?: string;
+  onChange: (data: { focoX: number; focoY: number; zoom: number }) => void;
 }) {
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const safeX = clampMediaCropValue(focoX);
+  const safeY = clampMediaCropValue(focoY);
+  const safeZoom = Math.max(80, Math.min(180, Number(zoom) || 100));
+  const mediaUrl = tipoMidia === "VIDEO" ? videoUrl : imageUrl;
+  const objectPosition = getMediaObjectPosition(safeX, safeY);
+
+  function updateFocusFromPointer(event: ReactMouseEvent<HTMLDivElement>) {
+    const rect = previewRef.current?.getBoundingClientRect();
+
+    if (!rect) return;
+
+    const nextX = clampMediaCropValue(((event.clientX - rect.left) / rect.width) * 100);
+    const nextY = clampMediaCropValue(((event.clientY - rect.top) / rect.height) * 100);
+
+    onChange({ focoX: nextX, focoY: nextY, zoom: safeZoom });
+  }
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <label>
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Largura da mídia desktop
-        </span>
-        <select
-          value={desktopValue}
-          onChange={(event) =>
-            onChange({ larguraMidiaDesktop: event.target.value })
-          }
-          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+    <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">{label}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Clique na prévia para mover o ponto de foco.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onChange({ focoX: 50, focoY: 50, zoom: 100 })}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
         >
-          {LARGURA_MIDIA_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Largura da mídia mobile
-        </span>
-        <select
-          value={mobileValue}
-          onChange={(event) =>
-            onChange({ larguraMidiaMobile: event.target.value })
-          }
-          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-        >
-          {LARGURA_MIDIA_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          Resetar
+        </button>
+      </div>
+
+      <div
+        ref={previewRef}
+        role="button"
+        tabIndex={0}
+        onClick={updateFocusFromPointer}
+        className={`relative overflow-hidden rounded-2xl bg-slate-200 ring-1 ring-slate-200 ${aspectClass}`}
+      >
+        {tipoMidia === "VIDEO" && mediaUrl ? (
+          <video
+            src={mediaUrl}
+            poster={posterUrl || undefined}
+            muted
+            playsInline
+            className="h-full w-full object-cover"
+            style={{
+              objectPosition,
+              transform: `scale(${safeZoom / 100})`,
+            }}
+          />
+        ) : mediaUrl ? (
+          <img
+            src={mediaUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{
+              objectPosition,
+              transform: `scale(${safeZoom / 100})`,
+            }}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm font-medium text-slate-500">
+            Adicionar imagem
+          </div>
+        )}
+
+        <span
+          className="absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-lg ring-2 ring-slate-950/20"
+          style={{ left: `${safeX}%`, top: `${safeY}%` }}
+        />
+      </div>
+
+      <RangeControl
+        label="Zoom"
+        value={safeZoom}
+        min={80}
+        max={180}
+        suffix="%"
+        onChange={(value) => onChange({ focoX: safeX, focoY: safeY, zoom: value })}
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <RangeControl
+          label="Foco horizontal"
+          value={safeX}
+          min={0}
+          max={100}
+          suffix="%"
+          onChange={(value) => onChange({ focoX: value, focoY: safeY, zoom: safeZoom })}
+        />
+        <RangeControl
+          label="Foco vertical"
+          value={safeY}
+          min={0}
+          max={100}
+          suffix="%"
+          onChange={(value) => onChange({ focoX: safeX, focoY: value, zoom: safeZoom })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TextoImagemStyleControls({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: TextStyleConfig;
+  onChange: (value: TextStyleConfig) => void;
+}) {
+  function update(patch: Partial<TextStyleConfig>) {
+    onChange({ ...value, ...patch });
+  }
+
+  return (
+    <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-sm font-semibold text-slate-950">{label}</p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Tamanho
+          </span>
+          <select
+            value={value.fontSizePreset}
+            onChange={(event) => update({ fontSizePreset: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_FONT_SIZE_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Peso
+          </span>
+          <select
+            value={value.fontWeight}
+            onChange={(event) => update({ fontWeight: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_FONT_WEIGHT_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Cor
+          </span>
+          <select
+            value={value.colorPreset}
+            onChange={(event) => update({ colorPreset: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_COLOR_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Cor personalizada
+          </span>
+          <input
+            type="color"
+            value={value.colorCustom || "#0f172a"}
+            onChange={(event) =>
+              update({ colorPreset: "PERSONALIZADO", colorCustom: event.target.value })
+            }
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Alinhamento
+          </span>
+          <select
+            value={value.textAlign}
+            onChange={(event) => update({ textAlign: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_ALIGN_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Line-height
+          </span>
+          <select
+            value={value.lineHeight}
+            onChange={(event) => update({ lineHeight: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_LINE_HEIGHT_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Espaçamento entre letras
+          </span>
+          <select
+            value={value.letterSpacing}
+            onChange={(event) => update({ letterSpacing: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_LETTER_SPACING_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Transformação
+          </span>
+          <select
+            value={value.textTransform}
+            onChange={(event) => update({ textTransform: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_TRANSFORM_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <RangeControl
+          label="Margem superior"
+          value={value.marginTop}
+          min={0}
+          max={80}
+          suffix="px"
+          onChange={(marginTop) => update({ marginTop })}
+        />
+        <RangeControl
+          label="Margem inferior"
+          value={value.marginBottom}
+          min={0}
+          max={80}
+          suffix="px"
+          onChange={(marginBottom) => update({ marginBottom })}
+        />
+      </div>
     </div>
   );
 }
@@ -10575,6 +10891,472 @@ function HeroEditorialPngEditor({
   );
 }
 
+function TextoImagemEditor({
+  estado,
+  selectedContext,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  selectedContext: EditorSelectionContext;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  function updateCrop(device: "DESKTOP" | "MOBILE", data: {
+    focoX: number;
+    focoY: number;
+    zoom: number;
+  }) {
+    const position = getMediaObjectPosition(data.focoX, data.focoY);
+
+    if (device === "DESKTOP") {
+      onChange({
+        mediaCropDesktopX: data.focoX,
+        mediaCropDesktopY: data.focoY,
+        mediaZoomDesktop: data.zoom,
+        mediaPositionDesktop: position,
+      });
+      return;
+    }
+
+    onChange({
+      mediaCropMobileX: data.focoX,
+      mediaCropMobileY: data.focoY,
+      mediaZoomMobile: data.zoom,
+      mediaPositionMobile: position,
+    });
+  }
+
+  return (
+    <div className="space-y-5 px-6 py-5">
+      <SecaoRecolhivel
+        title="Conteúdo"
+        description="Título, texto e visibilidade. O canvas também permite editar texto diretamente."
+        defaultOpen={selectedContext === "BLOCO" || selectedContext === "TEXTO"}
+      >
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Nome interno
+          </span>
+          <input
+            value={estado.nomeInterno}
+            onChange={(event) => onChange({ nomeInterno: event.target.value })}
+            placeholder="Ex: Texto institucional com imagem"
+            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          />
+        </label>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <CampoToggle
+            checked={estado.mostrarTitulo}
+            label="Mostrar título"
+            onChange={(checked) => onChange({ mostrarTitulo: checked })}
+          />
+          <CampoToggle
+            checked={estado.exibirSubtitulo}
+            label="Mostrar texto"
+            onChange={(checked) => onChange({ exibirSubtitulo: checked })}
+          />
+          <CampoToggle
+            checked={estado.exibirBotao}
+            label="Mostrar botão"
+            onChange={(checked) => onChange({ exibirBotao: checked })}
+          />
+        </div>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Título
+          </span>
+          <input
+            value={estado.titulo}
+            onChange={(event) => onChange({ titulo: event.target.value })}
+            placeholder="Título visível"
+            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          />
+        </label>
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Texto
+          </span>
+          <textarea
+            value={estado.texto}
+            onChange={(event) => onChange({ texto: event.target.value })}
+            rows={5}
+            placeholder="Texto do bloco"
+            className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+          />
+        </label>
+      </SecaoRecolhivel>
+
+      <SecaoRecolhivel
+        title="Layout"
+        description="Controle posição da mídia, sangria e altura do bloco."
+        defaultOpen={selectedContext === "BLOCO" || selectedContext === "DESIGN"}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Layout desktop
+            </span>
+            <select
+              value={estado.layoutDesktopTextoImagem}
+              onChange={(event) =>
+                onChange({ layoutDesktopTextoImagem: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {LAYOUT_DESKTOP_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Layout mobile
+            </span>
+            <select
+              value={estado.layoutMobileTextoImagem}
+              onChange={(event) =>
+                onChange({ layoutMobileTextoImagem: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {LAYOUT_MOBILE_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Mídia desktop
+            </span>
+            <select
+              value={estado.larguraMidiaDesktop}
+              onChange={(event) =>
+                onChange({
+                  larguraMidiaDesktop: normalizarLarguraMidiaTextoImagem(
+                    event.target.value
+                  ),
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {LARGURA_MIDIA_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Mídia mobile
+            </span>
+            <select
+              value={estado.larguraMidiaMobile}
+              onChange={(event) =>
+                onChange({
+                  larguraMidiaMobile: normalizarLarguraMidiaTextoImagem(
+                    event.target.value
+                  ),
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {LARGURA_MIDIA_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Altura do bloco
+            </span>
+            <select
+              value={estado.alturaBlocoTextoImagem}
+              onChange={(event) =>
+                onChange({
+                  alturaBlocoTextoImagem: normalizarAlturaBlocoTextoImagem(
+                    event.target.value
+                  ),
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {ALTURA_BLOCO_TEXTO_IMAGEM_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Alinhamento vertical
+            </span>
+            <select
+              value={estado.alinhamentoVertical}
+              onChange={(event) =>
+                onChange({ alinhamentoVertical: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {ALINHAMENTO_VERTICAL_BANNER_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <RangeControl
+          label="Espaço entre imagem e texto"
+          value={estado.gapTextoImagem}
+          min={0}
+          max={96}
+          suffix="px"
+          onChange={(gapTextoImagem) => onChange({ gapTextoImagem })}
+        />
+      </SecaoRecolhivel>
+
+      <SecaoRecolhivel
+        title="Imagem / crop"
+        description="Ajuste imagem desktop/mobile, alt text, foco e zoom vendo o corte."
+        defaultOpen={selectedContext === "IMAGEM"}
+      >
+        <CampoToggle
+          checked={estado.exibirMidia}
+          label="Exibir mídia"
+          onChange={(checked) => onChange({ exibirMidia: checked })}
+        />
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Tipo de mídia
+          </span>
+          <select
+            value={estado.tipoMidia}
+            onChange={(event) => onChange({ tipoMidia: event.target.value })}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {estado.tipoMidia === "VIDEO" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <UploadMidiaCampo
+              label="Vídeo desktop URL"
+              value={estado.videoDesktopUrl}
+              tipoMidia="VIDEO"
+              onChange={(url) => onChange({ videoDesktopUrl: url })}
+              orientacao="Cole uma URL ou envie MP4/WebM. MP4/H.264 é recomendado."
+            />
+            <UploadMidiaCampo
+              label="Vídeo mobile URL"
+              value={estado.videoMobileUrl}
+              tipoMidia="VIDEO"
+              onChange={(url) => onChange({ videoMobileUrl: url })}
+              orientacao="Opcional. Quando vazio, o mobile usa o vídeo desktop."
+            />
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <UploadMidiaCampo
+              label="Imagem desktop URL"
+              value={estado.imagemDesktopUrl}
+              tipoMidia="IMAGEM"
+              onChange={(url) => onChange({ imagemDesktopUrl: url })}
+              orientacao="Desktop recomendado: 1400 x 1800 px ou maior."
+            />
+            <UploadMidiaCampo
+              label="Imagem mobile URL"
+              value={estado.imagemMobileUrl}
+              tipoMidia="IMAGEM"
+              onChange={(url) => onChange({ imagemMobileUrl: url })}
+              orientacao="Opcional. Mobile recomendado: 1080 x 1350 px."
+            />
+          </div>
+        )}
+
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Alt text da imagem
+          </span>
+          <input
+            value={estado.imagemAlt}
+            onChange={(event) => onChange({ imagemAlt: event.target.value })}
+            placeholder="Descrição curta da imagem"
+            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          />
+        </label>
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <VisualCropControl
+            label="Crop desktop"
+            imageUrl={estado.imagemDesktopUrl}
+            videoUrl={estado.videoDesktopUrl}
+            posterUrl={estado.videoPosterUrl}
+            tipoMidia={estado.tipoMidia}
+            focoX={estado.mediaCropDesktopX}
+            focoY={estado.mediaCropDesktopY}
+            zoom={estado.mediaZoomDesktop}
+            onChange={(data) => updateCrop("DESKTOP", data)}
+          />
+          <VisualCropControl
+            label="Crop mobile"
+            imageUrl={estado.imagemMobileUrl || estado.imagemDesktopUrl}
+            videoUrl={estado.videoMobileUrl || estado.videoDesktopUrl}
+            posterUrl={estado.videoPosterUrl}
+            tipoMidia={estado.tipoMidia}
+            focoX={estado.mediaCropMobileX}
+            focoY={estado.mediaCropMobileY}
+            zoom={estado.mediaZoomMobile}
+            aspectClass="aspect-[4/5]"
+            onChange={(data) => updateCrop("MOBILE", data)}
+          />
+        </div>
+      </SecaoRecolhivel>
+
+      <SecaoRecolhivel
+        title="Texto"
+        description="Tipografia, cor, alinhamento, line-height e respiro."
+        defaultOpen={selectedContext === "TEXTO"}
+      >
+        <ResponsiveTextAlignControls
+          desktopValue={estado.alinhamentoTextoDesktop}
+          mobileValue={estado.alinhamentoTextoMobile}
+          onChange={onChange}
+        />
+        <TextoImagemStyleControls
+          label="Título"
+          value={estado.tituloStyle}
+          onChange={(tituloStyle) => onChange({ tituloStyle })}
+        />
+        <TextoImagemStyleControls
+          label="Texto"
+          value={estado.textoStyle}
+          onChange={(textoStyle) => onChange({ textoStyle })}
+        />
+      </SecaoRecolhivel>
+
+      <SecaoRecolhivel
+        title="Botão"
+        description="Texto, link, estilo e tipografia do CTA."
+        defaultOpen={selectedContext === "BOTAO"}
+      >
+        <CampoToggle
+          checked={estado.exibirBotao}
+          label="Exibir botão"
+          onChange={(checked) => onChange({ exibirBotao: checked })}
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Texto do botão
+            </span>
+            <input
+              value={estado.textoBotao}
+              onChange={(event) => onChange({ textoBotao: event.target.value })}
+              placeholder="Ex: Saiba mais"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Link do botão
+            </span>
+            <input
+              value={estado.linkBotao}
+              onChange={(event) => onChange({ linkBotao: event.target.value })}
+              placeholder="/loja/quem-somos"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+        </div>
+        <ButtonRadiusControl
+          value={estado.estiloBordaBotao}
+          onChange={(estiloBordaBotao) => onChange({ estiloBordaBotao })}
+        />
+        <TextoImagemStyleControls
+          label="Tipografia do botão"
+          value={estado.botaoStyle}
+          onChange={(botaoStyle) => onChange({ botaoStyle })}
+        />
+      </SecaoRecolhivel>
+
+      <SecaoRecolhivel
+        title="Design"
+        description="Fundo, espaçamento e raio da imagem contida."
+        defaultOpen={selectedContext === "DESIGN"}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor de fundo
+            </span>
+            <select
+              value={estado.corFundo}
+              onChange={(event) => onChange({ corFundo: event.target.value })}
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {COR_FUNDO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Espaçamento externo
+            </span>
+            <select
+              value={estado.espacamento}
+              onChange={(event) => onChange({ espacamento: event.target.value })}
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {ESPACAMENTO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <RangeControl
+          label="Raio da imagem contida"
+          value={estado.raioImagemTextoImagem}
+          min={0}
+          max={48}
+          suffix="px"
+          onChange={(raioImagemTextoImagem) =>
+            onChange({ raioImagemTextoImagem })
+          }
+        />
+      </SecaoRecolhivel>
+    </div>
+  );
+}
+
 function EditorConteudoBlocoModal({
   estado,
   pagina,
@@ -10583,6 +11365,7 @@ function EditorConteudoBlocoModal({
   produtosDisponiveis,
   colecoesInteligentes,
   campanhasDisponiveis,
+  selectedContext,
   selectedGalleryItemId,
   onChange,
   onClose,
@@ -10596,6 +11379,7 @@ function EditorConteudoBlocoModal({
   produtosDisponiveis: EditorVisualProduto[];
   colecoesInteligentes: EditorVisualColecaoInteligente[];
   campanhasDisponiveis: EditorVisualCampanhaComercial[];
+  selectedContext: EditorSelectionContext;
   selectedGalleryItemId?: string;
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onClose: () => void;
@@ -10802,7 +11586,11 @@ function EditorConteudoBlocoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div
         className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
-          isBanner || isHeroEditorialPng || isGaleriaEditorial || isVitrineEditorial
+          isBanner ||
+          isTextoImagem ||
+          isHeroEditorialPng ||
+          isGaleriaEditorial ||
+          isVitrineEditorial
             ? "max-w-[min(96vw,1760px)]"
             : "max-w-3xl"
         }`}
@@ -11494,263 +12282,11 @@ function EditorConteudoBlocoModal({
           </div>
           </>
         ) : isTextoImagem ? (
-          <div className="space-y-5 px-6 py-5">
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Nome interno
-              </span>
-
-              <input
-                value={estado.nomeInterno}
-                onChange={(event) =>
-                  onChange({ nomeInterno: event.target.value })
-                }
-                placeholder="Ex: Texto institucional com imagem"
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              />
-            </label>
-
-            <SecaoRecolhivel
-              title="Textos / conteúdo"
-              description="Edite título e texto direto no preview quando quiser ajustar por seleção."
-            >
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Título
-                </span>
-
-                <input
-                  value={estado.titulo}
-                  onChange={(event) => onChange({ titulo: event.target.value })}
-                  placeholder="Título visível"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Texto
-                </span>
-
-                <textarea
-                  value={estado.texto}
-                  onChange={(event) => onChange({ texto: event.target.value })}
-                  rows={5}
-                  placeholder="Texto do bloco"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
-                />
-              </label>
-            </SecaoRecolhivel>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Texto do botão
-                </span>
-
-                <input
-                  value={estado.textoBotao}
-                  onChange={(event) =>
-                    onChange({ textoBotao: event.target.value })
-                  }
-                  placeholder="Ex: Saiba mais"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Link do botão
-                </span>
-
-                <input
-                  value={estado.linkBotao}
-                  onChange={(event) =>
-                    onChange({ linkBotao: event.target.value })
-                  }
-                  placeholder="/loja/quem-somos"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                />
-              </label>
-            </div>
-
-            <CampoToggle
-              checked={estado.exibirBotao}
-              label="Exibir botão"
-              onChange={(checked) => onChange({ exibirBotao: checked })}
-            />
-
-            <CampoToggle
-              checked={estado.exibirMidia}
-              label="Exibir mídia"
-              onChange={(checked) => onChange({ exibirMidia: checked })}
-            />
-
-            <label>
-              <span className="mb-2 block text-sm font-medium text-slate-700">
-                Tipo de mídia
-              </span>
-
-              <select
-                value={estado.tipoMidia}
-                onChange={(event) => onChange({ tipoMidia: event.target.value })}
-                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-              >
-                {TIPO_MIDIA_BANNER_PRESETS.map((preset) => (
-                  <option key={preset.value} value={preset.value}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {estado.tipoMidia === "VIDEO" ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                <UploadMidiaCampo
-                  label="Vídeo desktop URL"
-                  value={estado.videoDesktopUrl}
-                  tipoMidia="VIDEO"
-                  onChange={(url) => onChange({ videoDesktopUrl: url })}
-                  orientacao="Cole uma URL ou envie MP4/WebM. MP4/H.264 é recomendado."
-                />
-
-                <UploadMidiaCampo
-                  label="Vídeo mobile URL"
-                  value={estado.videoMobileUrl}
-                  tipoMidia="VIDEO"
-                  onChange={(url) => onChange({ videoMobileUrl: url })}
-                  orientacao="Opcional. Quando vazio, o mobile usa o vídeo desktop."
-                />
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                <UploadMidiaCampo
-                  label="Imagem desktop URL"
-                  value={estado.imagemDesktopUrl}
-                  tipoMidia="IMAGEM"
-                  onChange={(url) => onChange({ imagemDesktopUrl: url })}
-                  orientacao="Cole uma URL ou envie JPG, PNG ou WebP."
-                />
-
-                <UploadMidiaCampo
-                  label="Imagem mobile URL"
-                  value={estado.imagemMobileUrl}
-                  tipoMidia="IMAGEM"
-                  onChange={(url) => onChange({ imagemMobileUrl: url })}
-                  orientacao="Opcional. Quando vazio, o mobile usa a imagem desktop."
-                />
-              </div>
-            )}
-
-            <CropPositionControls
-              desktopValue={estado.mediaPositionDesktop}
-              mobileValue={estado.mediaPositionMobile}
-              onChange={onChange}
-            />
-
-            <MediaWidthControls
-              desktopValue={estado.larguraMidiaDesktop}
-              mobileValue={estado.larguraMidiaMobile}
-              onChange={onChange}
-            />
-
-            <ResponsiveTextAlignControls
-              desktopValue={estado.alinhamentoTextoDesktop}
-              mobileValue={estado.alinhamentoTextoMobile}
-              onChange={onChange}
-            />
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Layout desktop
-                </span>
-
-                <select
-                  value={estado.layoutDesktopTextoImagem}
-                  onChange={(event) =>
-                    onChange({ layoutDesktopTextoImagem: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {LAYOUT_DESKTOP_TEXTO_IMAGEM_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Layout mobile
-                </span>
-
-                <select
-                  value={estado.layoutMobileTextoImagem}
-                  onChange={(event) =>
-                    onChange({ layoutMobileTextoImagem: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {LAYOUT_MOBILE_TEXTO_IMAGEM_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Cor de fundo
-                </span>
-
-                <select
-                  value={estado.corFundo}
-                  onChange={(event) =>
-                    onChange({ corFundo: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {COR_FUNDO_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  Espaçamento
-                </span>
-
-                <select
-                  value={estado.espacamento}
-                  onChange={(event) =>
-                    onChange({ espacamento: event.target.value })
-                  }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
-                >
-                  {ESPACAMENTO_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <ButtonRadiusControl
-                value={estado.estiloBordaBotao}
-                onChange={(value) => onChange({ estiloBordaBotao: value })}
-              />
-            </div>
-
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-              Editor rico de texto e crop ainda não estão ativos nesta etapa.
-            </div>
-          </div>
+          <TextoImagemEditor
+            estado={estado}
+            selectedContext={selectedContext}
+            onChange={onChange}
+          />
         ) : isCta ? (
           <div className="space-y-5 px-6 py-5">
             <label>
@@ -13694,11 +14230,13 @@ export default function EditorVisualPaginaClient({
   useEffect(() => {
     function handlePreviewMessage(
       event: MessageEvent<{
-        type?: string;
-        pageId?: string;
-        blockId?: string;
-        context?: EditorSelectionContext;
-        itemId?: string;
+      type?: string;
+      pageId?: string;
+      blockId?: string;
+      context?: EditorSelectionContext;
+      itemId?: string;
+      field?: string;
+      value?: string;
       }>
     ) {
       if (event.origin !== window.location.origin) return;
@@ -13718,6 +14256,66 @@ export default function EditorVisualPaginaClient({
       ) {
         selecionarBloco(data.blockId, data.context || "BLOCO", data.itemId || "");
         setPainelAberto(true);
+      }
+
+      if (
+        data.type === "STELLA_BUILDER_STUDIO_INLINE_UPDATE" &&
+        data.blockId &&
+        typeof data.field === "string" &&
+        typeof data.value === "string"
+      ) {
+        const patch =
+          data.field === "titulo"
+            ? { titulo: data.value }
+            : data.field === "texto"
+              ? {
+                  texto: data.value,
+                  descricao: data.value,
+                  conteudo: data.value,
+                }
+              : data.field === "textoBotao"
+                ? { textoBotao: data.value, botaoTexto: data.value }
+                : null;
+
+        if (patch) {
+          const inlineValue = data.value;
+          const inlineBlockId = data.blockId;
+
+          setSucesso("");
+          setBlocosComTextoPendente((current) =>
+            current.includes(inlineBlockId) ? current : [...current, inlineBlockId]
+          );
+          setBlocosEditor((current) =>
+            current.map((bloco) =>
+              bloco.id === inlineBlockId
+                ? {
+                    ...bloco,
+                    configJson: {
+                      ...getConfigObject(bloco.configJson),
+                      ...patch,
+                    },
+                  }
+                : bloco
+            )
+          );
+          setEditando((current) => {
+            if (!current || current.bloco.id !== inlineBlockId) return current;
+
+            if (data.field === "titulo") {
+              return { ...current, titulo: inlineValue };
+            }
+
+            if (data.field === "texto") {
+              return { ...current, texto: inlineValue };
+            }
+
+            if (data.field === "textoBotao") {
+              return { ...current, textoBotao: inlineValue };
+            }
+
+            return current;
+          });
+        }
       }
     }
 
@@ -14192,6 +14790,12 @@ export default function EditorVisualPaginaClient({
         getStringConfig(config, "layoutMobile") ||
           getStringConfig(config, "layoutMobileTextoImagem")
       ),
+      alturaBlocoTextoImagem: normalizarAlturaBlocoTextoImagem(
+        getStringConfig(config, "alturaBloco")
+      ),
+      gapTextoImagem: getNumberConfig(config, "gapTextoImagem", 48),
+      raioImagemTextoImagem: getNumberConfig(config, "raioImagem", 2),
+      imagemAlt: getStringConfig(config, "imagemAlt"),
       fonteProdutos: getStringConfig(config, "fonte") || "TODOS",
       categoriaProdutoId: getStringConfig(config, "categoriaId"),
       categoriaProdutoSlug: getStringConfig(config, "categoriaSlug"),
@@ -14461,14 +15065,16 @@ export default function EditorVisualPaginaClient({
       ),
       estiloBordaBotao: getStringConfig(config, "estiloBordaBotao") || "PILULA",
       larguraMidiaDesktop:
-        getStringConfig(config, "larguraMidiaDesktop") ||
-        getStringConfig(config, "larguraMidia") ||
-        "CONTIDA",
+        normalizarLarguraMidiaTextoImagem(
+          getStringConfig(config, "larguraMidiaDesktop") ||
+            getStringConfig(config, "larguraMidia")
+        ),
       larguraMidiaMobile:
-        getStringConfig(config, "larguraMidiaMobile") ||
-        getStringConfig(config, "larguraMidiaDesktop") ||
-        getStringConfig(config, "larguraMidia") ||
-        "CONTIDA",
+        normalizarLarguraMidiaTextoImagem(
+          getStringConfig(config, "larguraMidiaMobile") ||
+            getStringConfig(config, "larguraMidiaDesktop") ||
+            getStringConfig(config, "larguraMidia")
+        ),
       tituloStyle: getTextStyleConfig(config, "tituloStyle"),
       subtituloStyle: getTextStyleConfig(config, "subtituloStyle"),
       botaoPrimarioStyle: getTextStyleConfig(config, "botaoPrimarioStyle"),
@@ -14614,6 +15220,10 @@ export default function EditorVisualPaginaClient({
       layoutMobileTextoImagem: estado.layoutMobileTextoImagem,
       larguraMidiaDesktop: estado.larguraMidiaDesktop,
       larguraMidiaMobile: estado.larguraMidiaMobile,
+      alturaBloco: estado.alturaBlocoTextoImagem,
+      gapTextoImagem: estado.gapTextoImagem,
+      raioImagem: estado.raioImagemTextoImagem,
+      imagemAlt: estado.imagemAlt,
       corFundo: estado.corFundo,
       espacamento: estado.espacamento,
       fonte: estado.fonteProdutos,
@@ -14998,6 +15608,10 @@ export default function EditorVisualPaginaClient({
               layoutMobileTextoImagem: editando.layoutMobileTextoImagem,
               larguraMidiaDesktop: editando.larguraMidiaDesktop,
               larguraMidiaMobile: editando.larguraMidiaMobile,
+              alturaBloco: editando.alturaBlocoTextoImagem,
+              gapTextoImagem: editando.gapTextoImagem,
+              raioImagem: editando.raioImagemTextoImagem,
+              imagemAlt: editando.imagemAlt,
               posicaoImagem:
                 editando.layoutDesktopTextoImagem === "IMAGEM_DIREITA"
                   ? "DIREITA"
@@ -15008,6 +15622,8 @@ export default function EditorVisualPaginaClient({
               mediaCropDesktopY: editando.mediaCropDesktopY,
               mediaCropMobileX: editando.mediaCropMobileX,
               mediaCropMobileY: editando.mediaCropMobileY,
+              mediaZoomDesktop: editando.mediaZoomDesktop,
+              mediaZoomMobile: editando.mediaZoomMobile,
               mediaPositionDesktop: editando.mediaPositionDesktop,
               mediaPositionMobile: editando.mediaPositionMobile,
             }
@@ -15734,6 +16350,7 @@ export default function EditorVisualPaginaClient({
         produtosDisponiveis={produtosDisponiveis}
         colecoesInteligentes={colecoesInteligentes}
         campanhasDisponiveis={campanhasDisponiveis}
+        selectedContext={selectionContext}
         selectedGalleryItemId={selectedGalleryItemId}
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
@@ -9,6 +10,7 @@ import {
   getButtonHref,
   getImageDesktop,
   getImageMobile,
+  getNumber,
   getResponsiveTextAlignClass,
   getStringWithDefault,
   hasTextContent,
@@ -19,6 +21,20 @@ import {
   getTextColorForBackground,
   type BlocoPublicoProps,
 } from "@/components/loja/paginas/blocos/utils";
+
+const ALTURA_BLOCO_CLASS: Record<string, string> = {
+  AUTO: "",
+  COMPACTO: "lg:min-h-[420px]",
+  PADRAO: "lg:min-h-[560px]",
+  ALTO: "lg:min-h-[680px]",
+};
+
+const ALTURA_MIDIA_CLASS: Record<string, string> = {
+  AUTO: "min-h-[340px] md:min-h-[460px]",
+  COMPACTO: "min-h-[300px] lg:min-h-[420px]",
+  PADRAO: "min-h-[340px] lg:min-h-[560px]",
+  ALTO: "min-h-[420px] lg:min-h-[680px]",
+};
 
 function getDesktopLayoutClass(layout: string) {
   if (layout === "IMAGEM_DIREITA") return "lg:grid-cols-2";
@@ -33,6 +49,100 @@ function getMediaOrderClass(layout: string, tipo: string) {
   if (layout === "IMAGEM_DIREITA") return "lg:order-last";
 
   return "lg:order-first";
+}
+
+function normalizeMediaWidth(value: string) {
+  if (value === "SANGRANDO_ATE_BORDA" || value === "FULL_BLEED") {
+    return "SANGRANDO_ATE_BORDA";
+  }
+
+  return "CONTIDA";
+}
+
+function normalizeBlockHeight(value: string) {
+  if (["AUTO", "COMPACTO", "PADRAO", "ALTO"].includes(value)) return value;
+  return "AUTO";
+}
+
+function getVerticalAlignClass(value: string) {
+  if (value === "TOPO") return "items-start";
+  if (value === "BASE") return "items-end";
+  return "items-center";
+}
+
+function getImageRadiusClass(widthMode: string, radius: number) {
+  if (widthMode === "SANGRANDO_ATE_BORDA" && radius <= 0) return "";
+  if (radius <= 0) return "";
+  if (radius <= 4) return "rounded";
+  if (radius <= 12) return "rounded-xl";
+  if (radius <= 24) return "rounded-3xl";
+  return "rounded-[2rem]";
+}
+
+function getTextoImagemStyle(
+  config: Record<string, unknown>,
+  key: string
+): CSSProperties {
+  const style = asConfig(config[key]);
+  const fontSizeMap: Record<string, string> = {
+    PEQUENO: "0.875rem",
+    MEDIO: "1rem",
+    GRANDE: "1.5rem",
+    EXTRA_GRANDE: "2.75rem",
+    EDITORIAL: "3rem",
+  };
+  const fontWeightMap: Record<string, number> = {
+    LIGHT: 300,
+    REGULAR: 400,
+    MEDIUM: 500,
+    SEMIBOLD: 600,
+    BOLD: 700,
+  };
+  const colorMap: Record<string, string> = {
+    CLARO: "#ffffff",
+    ESCURO: "#0f172a",
+    DOURADO: "#b8892e",
+  };
+  const letterSpacingMap: Record<string, string> = {
+    NORMAL: "0",
+    LEVE: "0.02em",
+    MEDIO: "0.08em",
+    ALTO: "0.14em",
+  };
+  const lineHeightMap: Record<string, string> = {
+    COMPACTO: "1",
+    NORMAL: "1.15",
+    RESPIRADO: "1.35",
+    AMPLO: "1.6",
+  };
+  const textAlignMap: Record<string, CSSProperties["textAlign"]> = {
+    ESQUERDA: "left",
+    CENTRO: "center",
+    DIREITA: "right",
+  };
+  const colorPreset = getStringWithDefault(style, "colorPreset", "PADRAO");
+  const colorCustom = getString(style, "colorCustom");
+
+  return {
+    fontSize: fontSizeMap[getStringWithDefault(style, "fontSizePreset", "MEDIO")],
+    fontWeight: fontWeightMap[getStringWithDefault(style, "fontWeight", "REGULAR")],
+    color:
+      colorPreset === "PERSONALIZADO" && colorCustom
+        ? colorCustom
+        : colorMap[colorPreset],
+    letterSpacing:
+      letterSpacingMap[getStringWithDefault(style, "letterSpacing", "NORMAL")],
+    lineHeight: lineHeightMap[getStringWithDefault(style, "lineHeight", "NORMAL")],
+    textTransform:
+      getStringWithDefault(style, "textTransform", "NORMAL") === "UPPERCASE"
+        ? "uppercase"
+        : getStringWithDefault(style, "textTransform", "NORMAL") === "CAPITALIZE"
+          ? "capitalize"
+          : "none",
+    textAlign: textAlignMap[getStringWithDefault(style, "textAlign", "ESQUERDA")],
+    marginTop: `${Math.max(0, getNumber(style, "marginTop", 0))}px`,
+    marginBottom: `${Math.max(0, getNumber(style, "marginBottom", 0))}px`,
+  };
 }
 
 export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
@@ -70,16 +180,22 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const buttonRadiusClass = getButtonRadiusClass(
     getString(config, "estiloBordaBotao", "PILULA")
   );
-  const larguraMidiaDesktop = getString(
-    config,
-    "larguraMidiaDesktop",
-    getString(config, "larguraMidia", "CONTIDA")
+  const larguraMidiaDesktop = normalizeMediaWidth(
+    getString(config, "larguraMidiaDesktop", getString(config, "larguraMidia", "CONTIDA"))
   );
-  const larguraMidiaMobile = getString(
-    config,
-    "larguraMidiaMobile",
-    larguraMidiaDesktop
+  const larguraMidiaMobile = normalizeMediaWidth(
+    getString(config, "larguraMidiaMobile", larguraMidiaDesktop)
   );
+  const alturaBloco = normalizeBlockHeight(getString(config, "alturaBloco", "AUTO"));
+  const alinhamentoVertical = getString(config, "alinhamentoVertical", "CENTRO");
+  const gapDesktop = Math.max(0, Math.min(96, getNumber(config, "gapTextoImagem", 48)));
+  const raioImagem = Math.max(0, Math.min(48, getNumber(config, "raioImagem", 2)));
+  const altText = getString(config, "imagemAlt", titulo);
+  const zoomDesktop = Math.max(80, Math.min(180, getNumber(config, "mediaZoomDesktop", 100)));
+  const zoomMobile = Math.max(80, Math.min(180, getNumber(config, "mediaZoomMobile", 100)));
+  const tituloStyle = getTextoImagemStyle(config, "tituloStyle");
+  const textoStyle = getTextoImagemStyle(config, "textoStyle");
+  const botaoStyle = getTextoImagemStyle(config, "botaoStyle");
   const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"]);
   const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
   const imageDesktop = getImageDesktop(config);
@@ -87,8 +203,13 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const videoDesktop = getString(config, "videoDesktopUrl");
   const videoMobile = getString(config, "videoMobileUrl");
   const exibirMidia = getBoolean(config, "exibirMidia", true);
-  const hasTitulo = hasTextContent(tituloRichText, titulo);
-  const hasTexto = hasTextContent(textoRichText, texto);
+  const hasTitulo =
+    getBoolean(config, "mostrarTitulo", true) &&
+    getBoolean(config, "exibirTexto", true) &&
+    hasTextContent(tituloRichText, titulo);
+  const hasTexto =
+    getBoolean(config, "exibirSubtitulo", true) &&
+    hasTextContent(textoRichText, texto);
   const hasBotao = getBoolean(config, "exibirBotao", true) && textoBotao && linkBotao;
   const hasMedia = exibirMidia && Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
 
@@ -111,7 +232,8 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
             videoMobileUrl={videoMobile}
             objectPositionDesktop={getMediaPosition(config, "Desktop")}
             objectPositionMobile={getMediaPosition(config, "Mobile")}
-            alt={titulo}
+            alt={altText}
+            mediaClassName="scale-[var(--texto-imagem-zoom-mobile)] md:scale-[var(--texto-imagem-zoom-desktop)]"
           />
         </div>
         <div className="absolute inset-0 bg-slate-950/42" />
@@ -122,20 +244,26 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
               <PublicRichTextRenderer
                 value={tituloRichText}
                 fallback={titulo}
+                data-stella-inline-field="titulo"
                 className="text-3xl font-light leading-tight md:text-5xl"
+                style={tituloStyle}
               />
             ) : null}
             {hasTexto ? (
               <PublicRichTextRenderer
                 value={textoRichText}
                 fallback={texto}
+                data-stella-inline-field="texto"
                 className="mt-5 text-base leading-7 text-white/82"
+                style={textoStyle}
               />
             ) : null}
             {hasBotao ? (
               <Link
                 href={linkBotao}
+                data-stella-inline-field="textoBotao"
                 className={`mt-8 inline-flex min-h-11 items-center justify-center bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-white/90 ${buttonRadiusClass}`}
+                style={botaoStyle}
               >
                 {textoBotao}
               </Link>
@@ -149,79 +277,108 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   function renderTextoImagem(viewportClass = "") {
     const isDesktopViewport = viewportClass.includes("lg:block");
     const isMobileViewport = viewportClass.includes("lg:hidden");
-    const fullBleedDesktop = hasMedia && larguraMidiaDesktop === "FULL_BLEED";
-    const fullBleedMobile = hasMedia && larguraMidiaMobile === "FULL_BLEED";
+    const fullBleedDesktop =
+      hasMedia &&
+      larguraMidiaDesktop === "SANGRANDO_ATE_BORDA" &&
+      layoutDesktop !== "IMAGEM_ACIMA";
+    const fullBleedMobile =
+      hasMedia &&
+      larguraMidiaMobile === "SANGRANDO_ATE_BORDA" &&
+      layoutMobile !== "TEXTO_SOBRE_IMAGEM";
     const fullBleed =
       (isDesktopViewport && fullBleedDesktop) ||
       (isMobileViewport && fullBleedMobile) ||
       (!isDesktopViewport && !isMobileViewport && (fullBleedDesktop || fullBleedMobile));
+    const mediaFirst = layoutDesktop !== "IMAGEM_DIREITA";
+    const mediaRadiusClass = getImageRadiusClass(
+      fullBleed ? "SANGRANDO_ATE_BORDA" : "CONTIDA",
+      raioImagem
+    );
+    const mediaStyle = {
+      "--texto-imagem-zoom-desktop": zoomDesktop / 100,
+      "--texto-imagem-zoom-mobile": zoomMobile / 100,
+    } as CSSProperties;
 
     return (
       <section
-        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(config)}`}
+        className={`${viewportClass} ${getBackgroundClass(corFundo)} ${getSpacingClass(config)} overflow-x-clip`}
+        style={mediaStyle}
       >
-      <div
-        className={`mx-auto grid gap-8 lg:items-center lg:gap-12 ${
-          fullBleed ? "max-w-none px-0" : "max-w-7xl"
-        } ${getDesktopLayoutClass(
-          hasMedia ? layoutDesktop : "IMAGEM_ACIMA"
-        )}`}
-      >
-        {hasMedia ? (
-          <div
-            className={`relative h-[340px] overflow-hidden bg-slate-100 md:h-[460px] ${
-              fullBleed ? "" : "rounded-sm"
-            } ${
-              layoutMobile === "TEXTO_ACIMA" ? "order-last" : "order-first"
-            } ${getMediaOrderClass(layoutDesktop, bloco.tipo)}`}
-          >
-            <PublicMediaRenderer
-              tipoMidia={tipoMidia}
-              imagemDesktopUrl={imageDesktop}
-              imagemMobileUrl={imageMobile}
-              videoDesktopUrl={videoDesktop}
-              videoMobileUrl={videoMobile}
-              objectPositionDesktop={getMediaPosition(config, "Desktop")}
-              objectPositionMobile={getMediaPosition(config, "Mobile")}
-              alt={titulo}
-            />
-          </div>
-        ) : null}
-
         <div
-          className={`${
-            hasMedia
-              ? fullBleed
-                ? ""
-                : ""
-              : "mx-auto max-w-3xl"
-          } ${textAlignClass}`}
+          className={`mx-auto grid ${
+            hasMedia ? getDesktopLayoutClass(layoutDesktop) : "lg:grid-cols-1"
+          } ${getVerticalAlignClass(alinhamentoVertical)} ${ALTURA_BLOCO_CLASS[alturaBloco]} ${
+            fullBleed ? "max-w-none px-0" : "max-w-7xl px-4 md:px-6"
+          }`}
+          style={{ columnGap: `${gapDesktop}px` }}
         >
-          {hasTitulo ? (
-            <PublicRichTextRenderer
-              value={tituloRichText}
-              fallback={titulo}
-              className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
-            />
-          ) : null}
-          {hasTexto ? (
-            <PublicRichTextRenderer
-              value={textoRichText}
-              fallback={texto}
-              className={`mt-5 text-base leading-7 ${colors.body}`}
-            />
+          {hasMedia ? (
+            <div
+              data-stella-texto-imagem-media="true"
+              className={`relative overflow-hidden bg-slate-100 ${ALTURA_MIDIA_CLASS[alturaBloco]} ${
+                mediaRadiusClass
+              } ${
+                layoutMobile === "TEXTO_ACIMA" ? "order-last" : "order-first"
+              } ${getMediaOrderClass(layoutDesktop, bloco.tipo)} ${
+                fullBleed && mediaFirst
+                  ? "lg:w-[calc(50vw)]"
+                  : fullBleed && !mediaFirst
+                    ? "lg:w-[calc(50vw)]"
+                    : ""
+              }`}
+            >
+              <PublicMediaRenderer
+                tipoMidia={tipoMidia}
+                imagemDesktopUrl={imageDesktop}
+                imagemMobileUrl={imageMobile}
+                videoDesktopUrl={videoDesktop}
+                videoMobileUrl={videoMobile}
+                objectPositionDesktop={getMediaPosition(config, "Desktop")}
+                objectPositionMobile={getMediaPosition(config, "Mobile")}
+                alt={altText}
+                mediaClassName="scale-[var(--texto-imagem-zoom-mobile)] md:scale-[var(--texto-imagem-zoom-desktop)]"
+              />
+            </div>
           ) : null}
 
-          {hasBotao ? (
-            <Link
-              href={linkBotao}
-              className={`mt-8 inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
-            >
-              {textoBotao}
-            </Link>
-          ) : null}
+          <div
+            className={`flex min-h-full items-center ${
+              fullBleed ? "px-4 py-10 md:px-6 lg:px-12" : "py-10"
+            } ${hasMedia ? "" : "mx-auto max-w-3xl"} ${textAlignClass}`}
+          >
+            <div className="w-full">
+              {hasTitulo ? (
+                <PublicRichTextRenderer
+                  value={tituloRichText}
+                  fallback={titulo}
+                  data-stella-inline-field="titulo"
+                  className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+                  style={tituloStyle}
+                />
+              ) : null}
+              {hasTexto ? (
+                <PublicRichTextRenderer
+                  value={textoRichText}
+                  fallback={texto}
+                  data-stella-inline-field="texto"
+                  className={`mt-5 text-base leading-7 ${colors.body}`}
+                  style={textoStyle}
+                />
+              ) : null}
+
+              {hasBotao ? (
+                <Link
+                  href={linkBotao}
+                  data-stella-inline-field="textoBotao"
+                  className={`mt-8 inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
+                  style={botaoStyle}
+                >
+                  {textoBotao}
+                </Link>
+              ) : null}
+            </div>
+          </div>
         </div>
-      </div>
     </section>
     );
   }

@@ -35,6 +35,7 @@ type PublicRichTextRendererProps = {
   className?: string;
   style?: CSSProperties;
   paragraphClassName?: string;
+  "data-stella-inline-field"?: string;
 };
 
 function resolvePreset(presets: RichTextCssPreset[], value: string) {
@@ -319,6 +320,7 @@ export default function PublicRichTextRenderer({
   className,
   style,
   paragraphClassName,
+  "data-stella-inline-field": dataStellaInlineField,
 }: PublicRichTextRendererProps) {
   if (isRichTextValue(value) && !isRichTextEmpty(value)) {
     const rendered = value.content?.map((node, index) =>
@@ -326,7 +328,11 @@ export default function PublicRichTextRenderer({
     );
 
     return (
-      <div className={className} style={style}>
+      <div
+        className={className}
+        style={style}
+        data-stella-inline-field={dataStellaInlineField || undefined}
+      >
         {rendered}
       </div>
     );
@@ -335,7 +341,11 @@ export default function PublicRichTextRenderer({
   if (!fallback?.trim()) return null;
 
   return (
-    <div className={className} style={style}>
+    <div
+      className={className}
+      style={style}
+      data-stella-inline-field={dataStellaInlineField || undefined}
+    >
       <p className={paragraphClassName}>{fallback}</p>
     </div>
   );
