@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
-import { Heart, ChevronRight, Menu, Search, ShoppingBag, X } from "lucide-react";
+import {
+  ChevronRight,
+  FileText,
+  Folder,
+  Heart,
+  Menu,
+  Package,
+  Search,
+  ShoppingBag,
+  X,
+} from "lucide-react";
 import {
   FAVORITOS_UPDATED_EVENT,
   lerFavoritosIds,
@@ -12,6 +22,7 @@ import {
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import { normalizarLojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import {
+  registrarBuscaRealizada,
   registrarBuscaSemResultado,
   registrarCategoriaClicada,
   registrarCliqueResultadoBusca,
@@ -60,30 +71,51 @@ type ProdutoBuscaMenuItem = {
 
 type BuscaAutocompleteProduto = {
   id: string;
-  codigoInterno: string;
   nome: string;
+  slug: string | null;
   categoria: string;
   imagemUrl?: string | null;
+  precoVenda: number;
+  descontoAtivo: boolean;
+  precoPromocional: number | null;
+  estoqueDisponivel: boolean;
   href: string;
+  tipoResultado: "PRODUTO";
 };
 
 type BuscaAutocompleteCategoria = {
   id: string;
   nome: string;
+  slug: string;
+  caminho: string | null;
+  quantidadeProdutos: number | null;
   href: string;
+  tipoResultado: "CATEGORIA";
 };
 
 type BuscaAutocompletePagina = {
   id: string;
   titulo: string;
+  slug: string;
+  tipo: string;
   href: string;
+  tipoResultado: "PAGINA";
 };
 
+type BuscaAutocompleteGrupo =
+  | "categorias"
+  | "produtos"
+  | "paginas"
+  | "sugestoes";
+
 type BuscaAutocompleteResultado = {
+  modo: "autocomplete";
   produtos: BuscaAutocompleteProduto[];
   categorias: BuscaAutocompleteCategoria[];
   paginas: BuscaAutocompletePagina[];
   sugestoes: string[];
+  termoNormalizado: string;
+  ordemGrupos: BuscaAutocompleteGrupo[];
 };
 
 type BuscaAutocompleteClick = {
@@ -106,9 +138,62 @@ type MenuPublicoLojaProps = {
 };
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
+const AUTOCOMPLETE_CACHE_TTL_MS = 2 * 60_000;
+const autocompleteCache = new Map<
+  string,
+  { timestamp: number; data: BuscaAutocompleteResultado }
+>();
 
 function isExternalUrl(href: string) {
   return /^https?:\/\//i.test(href);
+}
+
+function normalizarChaveAutocomplete(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function moeda(valor: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valor || 0);
+}
+
+function produtoTemDesconto(produto: BuscaAutocompleteProduto) {
+  return (
+    produto.descontoAtivo &&
+    produto.precoPromocional !== null &&
+    produto.precoPromocional > 0 &&
+    produto.precoPromocional < produto.precoVenda
+  );
+}
+
+function precoEfetivoProduto(produto: BuscaAutocompleteProduto) {
+  return produtoTemDesconto(produto) && produto.precoPromocional !== null
+    ? produto.precoPromocional
+    : produto.precoVenda;
+}
+
+function resultadoBuscaTemItens(resultado: BuscaAutocompleteResultado | null) {
+  if (!resultado) return false;
+
+  return (
+    resultado.produtos.length > 0 ||
+    resultado.categorias.length > 0 ||
+    resultado.paginas.length > 0
+  );
+}
+
+function labelTipoPagina(tipo: string) {
+  if (tipo === "LANDING") return "Coleção";
+  if (tipo === "CAMPANHA") return "Campanha";
+
+  return "Página";
 }
 
 function ordenarCategorias(
@@ -210,20 +295,162 @@ function ProdutoSugestaoBusca({
   produto: BuscaAutocompleteProduto;
   onNavigate: () => void;
 }) {
+  const temDesconto = produtoTemDesconto(produto);
+  const preco = precoEfetivoProduto(produto);
+
   return (
     <Link
       href={produto.href}
       onClick={onNavigate}
-      className="block border-b border-slate-100 px-1 py-3 last:border-b-0"
+      className="grid grid-cols-[54px_minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
     >
-      <p className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
-        {produto.nome}
-      </p>
+      <div className="aspect-square overflow-hidden bg-slate-100">
+        {produto.imagemUrl ? (
+          <img
+            src={produto.imagemUrl}
+            alt={produto.nome}
+            className="h-full w-full object-cover object-center"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-400">
+            <Package className="h-5 w-5" />
+          </div>
+        )}
+      </div>
 
-      <p className="mt-1 text-xs text-slate-500">
-        {produto.codigoInterno} · {produto.categoria}
-      </p>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Produto
+          </span>
+          <span
+            className={`text-[11px] font-semibold ${
+              produto.estoqueDisponivel ? "text-emerald-700" : "text-amber-700"
+            }`}
+          >
+            {produto.estoqueDisponivel ? "Disponível" : "Estoque baixo"}
+          </span>
+        </div>
+
+        <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-slate-900">
+          {produto.nome}
+        </p>
+
+        <p className="mt-1 text-xs text-slate-500">{produto.categoria}</p>
+      </div>
+
+      <div className="self-center text-right">
+        <p className="text-sm font-semibold text-slate-950">{moeda(preco)}</p>
+        {temDesconto ? (
+          <p className="mt-1 text-[11px] text-slate-400 line-through">
+            {moeda(produto.precoVenda)}
+          </p>
+        ) : null}
+      </div>
     </Link>
+  );
+}
+
+function CategoriaSugestaoBusca({
+  categoria,
+  onNavigate,
+}: {
+  categoria: BuscaAutocompleteCategoria;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={categoria.href}
+      onClick={onNavigate}
+      className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
+    >
+      <span className="flex h-9 w-9 items-center justify-center border border-slate-200 text-slate-500">
+        <Folder className="h-4 w-4" />
+      </span>
+
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Categoria
+          </span>
+          {categoria.quantidadeProdutos !== null ? (
+            <span className="text-[11px] font-medium text-slate-500">
+              {categoria.quantidadeProdutos} produto
+              {categoria.quantidadeProdutos === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </span>
+
+        <span className="mt-1 block truncate text-sm font-semibold text-slate-950">
+          {categoria.nome}
+        </span>
+
+        {categoria.caminho ? (
+          <span className="mt-1 block truncate text-xs text-slate-500">
+            {categoria.caminho} / {categoria.nome}
+          </span>
+        ) : (
+          <span className="mt-1 block text-xs text-slate-500">
+            Ver linha completa
+          </span>
+        )}
+      </span>
+
+      <ChevronRight className="h-4 w-4 text-slate-400" />
+    </Link>
+  );
+}
+
+function PaginaSugestaoBusca({
+  pagina,
+  onNavigate,
+}: {
+  pagina: BuscaAutocompletePagina;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={pagina.href}
+      onClick={onNavigate}
+      className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
+    >
+      <span className="flex h-9 w-9 items-center justify-center border border-slate-200 text-slate-500">
+        <FileText className="h-4 w-4" />
+      </span>
+
+      <span className="min-w-0">
+        <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          {labelTipoPagina(pagina.tipo)}
+        </span>
+        <span className="mt-1 block truncate text-sm font-semibold text-slate-950">
+          {pagina.titulo}
+        </span>
+      </span>
+
+      <ChevronRight className="h-4 w-4 text-slate-400" />
+    </Link>
+  );
+}
+
+function SecaoAutocomplete({
+  titulo,
+  subtitulo,
+  children,
+}: {
+  titulo: string;
+  subtitulo: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
+      <div className="mb-1 px-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+          {titulo}
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">{subtitulo}</p>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -480,6 +707,40 @@ export default function MenuPublicoLoja({
 
   const termoBusca = busca.trim();
   const sugestoesBusca = resultadoBusca?.produtos || [];
+  const resultadoBuscaPossuiItens = resultadoBuscaTemItens(resultadoBusca);
+  const gruposAutocomplete = useMemo(() => {
+    if (!resultadoBusca) return [];
+
+    const grupos = {
+      categorias: {
+        titulo: "Categorias",
+        subtitulo: "Caminhos para navegar por linhas de joias.",
+        quantidade: resultadoBusca.categorias.length,
+      },
+      produtos: {
+        titulo: "Produtos",
+        subtitulo: "Itens diretos com foto, preço e disponibilidade.",
+        quantidade: resultadoBusca.produtos.length,
+      },
+      paginas: {
+        titulo: "Páginas e coleções",
+        subtitulo: "Conteúdos, campanhas e vitrines relacionadas.",
+        quantidade: resultadoBusca.paginas.length,
+      },
+      sugestoes: {
+        titulo: "Sugestões",
+        subtitulo: "Termos populares para continuar explorando.",
+        quantidade: resultadoBusca.sugestoes.length,
+      },
+    };
+
+    return resultadoBusca.ordemGrupos
+      .map((grupo) => ({
+        chave: grupo,
+        ...grupos[grupo],
+      }))
+      .filter((grupo) => grupo.quantidade > 0);
+  }, [resultadoBusca]);
 
   useEffect(() => {
     function atualizarContador() {
@@ -532,6 +793,15 @@ export default function MenuPublicoLoja({
       return;
     }
 
+    const cacheKey = normalizarChaveAutocomplete(termoBusca);
+    const cache = autocompleteCache.get(cacheKey);
+
+    if (cache && Date.now() - cache.timestamp < AUTOCOMPLETE_CACHE_TTL_MS) {
+      setResultadoBusca(cache.data);
+      setBuscando(false);
+      return;
+    }
+
     const controller = new AbortController();
     buscaAbortRef.current = controller;
     setBuscando(true);
@@ -539,7 +809,7 @@ export default function MenuPublicoLoja({
     const timer = window.setTimeout(async () => {
       try {
         const response = await fetch(
-          `/api/loja/busca?q=${encodeURIComponent(termoBusca)}&limite=6`,
+          `/api/loja/busca?modo=autocomplete&q=${encodeURIComponent(termoBusca)}`,
           {
             signal: controller.signal,
           }
@@ -550,7 +820,22 @@ export default function MenuPublicoLoja({
         }
 
         const data = (await response.json()) as BuscaAutocompleteResultado;
+        autocompleteCache.set(cacheKey, {
+          timestamp: Date.now(),
+          data,
+        });
         setResultadoBusca(data);
+
+        registrarBuscaRealizada({
+          termoBusca,
+          origem: "autocomplete",
+          metadata: {
+            modo: "autocomplete",
+            produtos: data.produtos.length,
+            categorias: data.categorias.length,
+            paginas: data.paginas.length,
+          },
+        });
 
         if (
           data.produtos.length === 0 &&
@@ -561,14 +846,13 @@ export default function MenuPublicoLoja({
             termoBusca,
             origem: "autocomplete",
             metadata: {
-              limite: 6,
+              modo: "autocomplete",
             },
           });
         }
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error("Erro no autocomplete da loja:", error);
-        setResultadoBusca(null);
       } finally {
         if (!controller.signal.aborted) {
           setBuscando(false);
@@ -834,95 +1118,124 @@ export default function MenuPublicoLoja({
               <div className="mt-3 max-h-[55vh] overflow-y-auto">
                 {!termoBusca ? (
                   <>
-                  <p className="px-1 py-3 text-sm font-medium text-slate-500">
-                    Digite o nome, código, categoria ou tamanho do produto.
-                  </p>
-                  {buscasRecentes.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 px-1 pb-3">
-                      {buscasRecentes.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => setBusca(item)}
-                          className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                    <p className="px-1 py-3 text-sm font-medium text-slate-500">
+                      Digite o nome, categoria, material ou tamanho do produto.
+                    </p>
+                    {buscasRecentes.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 px-1 pb-3">
+                        {buscasRecentes.map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setBusca(item)}
+                            className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </>
-                ) : buscando ? (
+                ) : termoBusca.length < 2 ? (
+                  <p className="px-1 py-3 text-sm font-medium text-slate-500">
+                    Digite pelo menos 2 letras para buscar.
+                  </p>
+                ) : buscando && !resultadoBuscaPossuiItens ? (
                   <p className="px-1 py-3 text-sm font-medium text-slate-500">
                     Buscando...
                   </p>
-                ) : resultadoBusca &&
-                  (sugestoesBusca.length > 0 ||
-                    resultadoBusca.categorias.length > 0 ||
-                    resultadoBusca.paginas.length > 0) ? (
-                  <div>
-                    <p className="px-1 pb-1 text-xs font-medium uppercase tracking-[0.22em] brand-text">
-                      Sugestões
-                    </p>
+                ) : resultadoBuscaPossuiItens && resultadoBusca ? (
+                  <div className="space-y-4">
+                    {buscando ? (
+                      <p className="px-1 text-xs font-medium text-slate-400">
+                        Atualizando resultados...
+                      </p>
+                    ) : null}
 
-                    {sugestoesBusca.map((produto, index) => (
-                      <ProdutoSugestaoBusca
-                        key={produto.id}
-                        produto={produto}
-                        onNavigate={() =>
-                          navegarSugestaoBusca({
-                            tipoResultado: "produto",
-                            produtoId: produto.id,
-                            metadata: {
-                              nome: produto.nome,
-                              href: produto.href,
-                              posicao: index + 1,
-                            },
-                          })
-                        }
-                      />
-                    ))}
-
-                    {resultadoBusca?.categorias.map((categoria, index) => (
-                      <Link
-                        key={categoria.id}
-                        href={categoria.href}
-                        onClick={() =>
-                          navegarSugestaoBusca({
-                            tipoResultado: "categoria",
-                            categoriaId: categoria.id,
-                            metadata: {
-                              nome: categoria.nome,
-                              href: categoria.href,
-                              posicao: index + 1,
-                            },
-                          })
-                        }
-                        className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
+                    {gruposAutocomplete.map((grupo) => (
+                      <SecaoAutocomplete
+                        key={grupo.chave}
+                        titulo={grupo.titulo}
+                        subtitulo={grupo.subtitulo}
                       >
-                        {categoria.nome}
-                      </Link>
-                    ))}
+                        {grupo.chave === "categorias"
+                          ? resultadoBusca.categorias.map((categoria, index) => (
+                              <CategoriaSugestaoBusca
+                                key={categoria.id}
+                                categoria={categoria}
+                                onNavigate={() =>
+                                  navegarSugestaoBusca({
+                                    tipoResultado: "categoria",
+                                    categoriaId: categoria.id,
+                                    metadata: {
+                                      nome: categoria.nome,
+                                      href: categoria.href,
+                                      posicao: index + 1,
+                                      slug: categoria.slug,
+                                    },
+                                  })
+                                }
+                              />
+                            ))
+                          : null}
 
-                    {resultadoBusca?.paginas.map((pagina, index) => (
-                      <Link
-                        key={pagina.id}
-                        href={pagina.href}
-                        onClick={() =>
-                          navegarSugestaoBusca({
-                            tipoResultado: "pagina",
-                            paginaId: pagina.id,
-                            metadata: {
-                              titulo: pagina.titulo,
-                              href: pagina.href,
-                              posicao: index + 1,
-                            },
-                          })
-                        }
-                        className="block border-b border-slate-100 px-1 py-2 text-sm font-medium text-slate-900 last:border-b-0"
-                      >
-                        {pagina.titulo}
-                      </Link>
+                        {grupo.chave === "produtos"
+                          ? sugestoesBusca.map((produto, index) => (
+                              <ProdutoSugestaoBusca
+                                key={produto.id}
+                                produto={produto}
+                                onNavigate={() =>
+                                  navegarSugestaoBusca({
+                                    tipoResultado: "produto",
+                                    produtoId: produto.id,
+                                    metadata: {
+                                      nome: produto.nome,
+                                      href: produto.href,
+                                      posicao: index + 1,
+                                      categoria: produto.categoria,
+                                    },
+                                  })
+                                }
+                              />
+                            ))
+                          : null}
+
+                        {grupo.chave === "paginas"
+                          ? resultadoBusca.paginas.map((pagina, index) => (
+                              <PaginaSugestaoBusca
+                                key={pagina.id}
+                                pagina={pagina}
+                                onNavigate={() =>
+                                  navegarSugestaoBusca({
+                                    tipoResultado: "pagina",
+                                    paginaId: pagina.id,
+                                    metadata: {
+                                      titulo: pagina.titulo,
+                                      href: pagina.href,
+                                      posicao: index + 1,
+                                      tipo: pagina.tipo,
+                                    },
+                                  })
+                                }
+                              />
+                            ))
+                          : null}
+
+                        {grupo.chave === "sugestoes" ? (
+                          <div className="flex flex-wrap gap-2 px-1 py-2">
+                            {resultadoBusca.sugestoes.map((sugestao) => (
+                              <button
+                                key={sugestao}
+                                type="button"
+                                onClick={() => setBusca(sugestao)}
+                                className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                              >
+                                {sugestao}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </SecaoAutocomplete>
                     ))}
 
                     <button
@@ -935,8 +1248,11 @@ export default function MenuPublicoLoja({
                   </div>
                 ) : (
                   <div>
-                    <p className="px-1 py-3 text-sm font-medium text-slate-500">
-                      Nenhum produto encontrado.
+                    <p className="px-1 pt-3 text-sm font-semibold text-slate-700">
+                      Nenhum resultado direto encontrado.
+                    </p>
+                    <p className="px-1 pb-3 pt-1 text-sm text-slate-500">
+                      Tente buscar por anel, colar, brinco ou presente.
                     </p>
                     <button
                       type="button"

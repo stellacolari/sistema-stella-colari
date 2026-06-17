@@ -1,7 +1,64 @@
 import { prisma } from "@/lib/prisma";
 import { calcularEstoqueProdutoPublico } from "@/lib/loja/estoque";
+import type { Prisma } from "@prisma/client";
 
 export type BuscaLojaTipo = "todos" | "produtos" | "categorias" | "paginas";
+export type BuscaLojaModo = "autocomplete" | "pagina";
+export type BuscaLojaGrupoResultado =
+  | "categorias"
+  | "produtos"
+  | "paginas"
+  | "sugestoes";
+
+export type BuscaLojaAutocompleteProduto = {
+  id: string;
+  nome: string;
+  slug: string | null;
+  imagemUrl: string | null;
+  categoria: string;
+  precoVenda: number;
+  descontoAtivo: boolean;
+  precoPromocional: number | null;
+  estoqueDisponivel: boolean;
+  href: string;
+  relevancia: number;
+  tipoResultado: "PRODUTO";
+};
+
+export type BuscaLojaAutocompleteCategoria = {
+  id: string;
+  nome: string;
+  slug: string;
+  caminho: string | null;
+  quantidadeProdutos: number | null;
+  href: string;
+  relevancia: number;
+  tipoResultado: "CATEGORIA";
+};
+
+export type BuscaLojaAutocompletePagina = {
+  id: string;
+  titulo: string;
+  slug: string;
+  tipo: string;
+  href: string;
+  relevancia: number;
+  tipoResultado: "PAGINA";
+};
+
+export type BuscaLojaAutocompleteResultado = {
+  modo: "autocomplete";
+  produtos: BuscaLojaAutocompleteProduto[];
+  categorias: BuscaLojaAutocompleteCategoria[];
+  paginas: BuscaLojaAutocompletePagina[];
+  sugestoes: string[];
+  termoNormalizado: string;
+  ordemGrupos: BuscaLojaGrupoResultado[];
+  debug?: {
+    duracaoMs: number;
+    cache: boolean;
+  };
+};
 
 export type BuscaLojaProduto = {
   id: string;
@@ -66,6 +123,15 @@ export type BuscaLojaResultado = {
 type ProdutoBuscaRaw = Awaited<ReturnType<typeof buscarProdutosBuscaRaw>>[number];
 type CategoriaBuscaRaw = Awaited<ReturnType<typeof buscarCategoriasBuscaRaw>>[number];
 type PaginaBuscaRaw = Awaited<ReturnType<typeof buscarPaginasBuscaRaw>>[number];
+type ProdutoAutocompleteRaw = Awaited<
+  ReturnType<typeof buscarProdutosAutocompleteRaw>
+>[number];
+type CategoriaAutocompleteRaw = Awaited<
+  ReturnType<typeof buscarCategoriasAutocompleteRaw>
+>[number];
+type PaginaAutocompleteRaw = Awaited<
+  ReturnType<typeof buscarPaginasAutocompleteRaw>
+>[number];
 
 const SUGESTOES_FIXAS = [
   "Aneis",
@@ -127,6 +193,12 @@ const TERMOS_CATEGORIA = new Set([
   "pingente",
   "acessorio",
 ]);
+
+const AUTOCOMPLETE_CACHE_TTL_MS = 45_000;
+const autocompleteCache = new Map<
+  string,
+  { expiraEm: number; resultado: BuscaLojaAutocompleteResultado }
+>();
 
 export function normalizarTextoBusca(value: string | null | undefined) {
   return String(value ?? "")
@@ -219,6 +291,197 @@ function scoreTextoCampo(texto: string, tokens: string[], peso: number) {
   if (!texto) return 0;
 
   return contarTokensEncontrados(texto, tokens) * peso;
+}
+
+function termosCandidatosBusca(q: string, tokens: string[]) {
+  return Array.from(
+    new Set(
+      [q.trim(), normalizarTextoBusca(q), ...tokens]
+        .map((termo) => termo.trim())
+        .filter((termo) => termo.length >= 2)
+    )
+  ).slice(0, 8);
+}
+
+function filtroTextoProdutoAutocomplete(termo: string): Prisma.ProdutoWhereInput[] {
+  const contains = {
+    contains: termo,
+    mode: "insensitive" as const,
+  };
+
+  return [
+    { nome: contains },
+    { codigoInterno: contains },
+    { categoria: contains },
+    { descricaoLoja: contains },
+    { termosBusca: contains },
+    { tagsComerciais: contains },
+    { familiaMaterial: contains },
+    { familiaCorJoia: contains },
+    {
+      categoriasProduto: {
+        some: {
+          categoria: {
+            OR: [
+              { nome: contains },
+              { slug: contains },
+              { descricaoSeo: contains },
+              { termosBusca: contains },
+            ],
+          },
+        },
+      },
+    },
+  ];
+}
+
+function filtroTextoCategoriaAutocomplete(
+  termo: string
+): Prisma.CategoriaProdutoWhereInput[] {
+  const contains = {
+    contains: termo,
+    mode: "insensitive" as const,
+  };
+
+  return [
+    { nome: contains },
+    { slug: contains },
+    { descricaoSeo: contains },
+    { termosBusca: contains },
+  ];
+}
+
+function filtroTextoPaginaAutocomplete(termo: string): Prisma.LojaPaginaWhereInput[] {
+  const contains = {
+    contains: termo,
+    mode: "insensitive" as const,
+  };
+
+  return [
+    { titulo: contains },
+    { slug: contains },
+    { seoDescription: contains },
+    { termosBusca: contains },
+  ];
+}
+
+async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
+  const termos = termosCandidatosBusca(q, tokens);
+  const OR = termos.flatMap(filtroTextoProdutoAutocomplete);
+
+  return prisma.produto.findMany({
+    where: {
+      ativo: true,
+      status: {
+        not: "NA_LIXEIRA",
+      },
+      ...(OR.length > 0 ? { OR } : {}),
+    },
+    orderBy: [{ nome: "asc" }],
+    take: 48,
+    select: {
+      id: true,
+      codigoInterno: true,
+      nome: true,
+      imagemUrl: true,
+      categoria: true,
+      precoVenda: true,
+      descontoAtivo: true,
+      precoPromocional: true,
+      descricaoLoja: true,
+      termosBusca: true,
+      tagsComerciais: true,
+      tipoProduto: true,
+      familiaMaterial: true,
+      familiaCorJoia: true,
+      estoque: {
+        select: {
+          tamanhoAnel: true,
+          quantidadeAtual: true,
+        },
+        take: 12,
+      },
+      categoriasProduto: {
+        select: {
+          categoria: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
+              descricaoSeo: true,
+              termosBusca: true,
+              categoriaMae: {
+                select: {
+                  nome: true,
+                  slug: true,
+                },
+              },
+            },
+          },
+        },
+        take: 6,
+      },
+    },
+  });
+}
+
+async function buscarCategoriasAutocompleteRaw(q: string, tokens: string[]) {
+  const termos = termosCandidatosBusca(q, tokens);
+  const OR = termos.flatMap(filtroTextoCategoriaAutocomplete);
+  const buscarTodasParaTermoGenerico = buscaGenericaCategoria(tokens);
+
+  return prisma.categoriaProduto.findMany({
+    where: {
+      ativo: true,
+      ...(!buscarTodasParaTermoGenerico && OR.length > 0 ? { OR } : {}),
+    },
+    orderBy: [{ ordemMenu: "asc" }, { nome: "asc" }],
+    take: 32,
+    select: {
+      id: true,
+      nome: true,
+      slug: true,
+      descricaoSeo: true,
+      termosBusca: true,
+      categoriaMae: {
+        select: {
+          nome: true,
+          slug: true,
+        },
+      },
+      _count: {
+        select: {
+          produtos: true,
+        },
+      },
+    },
+  });
+}
+
+async function buscarPaginasAutocompleteRaw(q: string, tokens: string[]) {
+  const termos = termosCandidatosBusca(q, tokens);
+  const OR = termos.flatMap(filtroTextoPaginaAutocomplete);
+
+  return prisma.lojaPagina.findMany({
+    where: {
+      ativo: true,
+      statusPublicacao: "PUBLICADA",
+      tipo: {
+        in: ["GERAL", "LANDING", "CAMPANHA"],
+      },
+      ...(OR.length > 0 ? { OR } : {}),
+    },
+    orderBy: [{ publicadoEm: "desc" }, { atualizadoEm: "desc" }],
+    take: 24,
+    select: {
+      id: true,
+      titulo: true,
+      slug: true,
+      tipo: true,
+      seoDescription: true,
+      termosBusca: true,
+    },
+  });
 }
 
 async function buscarProdutosBuscaRaw() {
@@ -570,6 +833,262 @@ function scorePagina(
   return score;
 }
 
+function buscaGenericaCategoria(tokens: string[]) {
+  return tokens.length <= 1 && tokens.some((token) => TERMOS_CATEGORIA.has(token));
+}
+
+function montarTextoProdutoAutocomplete(produto: ProdutoAutocompleteRaw) {
+  return [
+    produto.nome,
+    produto.codigoInterno,
+    produto.categoria,
+    produto.descricaoLoja,
+    produto.termosBusca,
+    produto.tagsComerciais,
+    produto.familiaMaterial,
+    produto.familiaCorJoia,
+    ...produto.categoriasProduto.flatMap((item) => [
+      item.categoria.nome,
+      item.categoria.slug,
+      item.categoria.descricaoSeo,
+      item.categoria.termosBusca,
+      item.categoria.categoriaMae?.nome,
+      item.categoria.categoriaMae?.slug,
+    ]),
+    ...produto.estoque.map((estoque) =>
+      estoque.tamanhoAnel
+        ? `aro ${estoque.tamanhoAnel} tamanho ${estoque.tamanhoAnel}`
+        : ""
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function produtoAutocompleteTemEstoque(produto: ProdutoAutocompleteRaw) {
+  return produto.estoque.some(
+    (estoque) => Number(estoque.quantidadeAtual || 0) > 0
+  );
+}
+
+function scoreProdutoAutocomplete({
+  produto,
+  tokens,
+  termoNormalizado,
+  filtros,
+}: {
+  produto: ProdutoAutocompleteRaw;
+  tokens: string[];
+  termoNormalizado: string;
+  filtros: BuscaLojaFiltrosDetectados;
+}) {
+  const nome = montarTextoIndexavel(produto.nome);
+  const codigo = montarTextoIndexavel(produto.codigoInterno);
+  const categoriaPrincipal = montarTextoIndexavel(produto.categoria);
+  const categorias = montarTextoIndexavel(
+    produto.categoriasProduto.map((item) => item.categoria.nome).join(" ")
+  );
+  const termosComerciais = montarTextoIndexavel(
+    [produto.termosBusca, produto.tagsComerciais].join(" ")
+  );
+  const atributos = montarTextoIndexavel(
+    [
+      produto.familiaMaterial,
+      produto.familiaCorJoia,
+      ...produto.estoque.map((estoque) => estoque.tamanhoAnel),
+    ].join(" ")
+  );
+  const textoCompleto = montarTextoIndexavel(montarTextoProdutoAutocomplete(produto));
+
+  let score = 0;
+
+  if (nome === termoNormalizado) score += 180;
+  if (nome.startsWith(termoNormalizado) && termoNormalizado) score += 110;
+  score += scoreTextoCampo(nome, tokens, 44);
+  score += scoreTextoCampo(atributos, tokens, 34);
+  score += scoreTextoCampo(termosComerciais, tokens, 30);
+  score += scoreTextoCampo(categoriaPrincipal, tokens, 26);
+  score += scoreTextoCampo(categorias, tokens, 26);
+  score += scoreTextoCampo(codigo, tokens, 20);
+  score += scoreTextoCampo(textoCompleto, tokens, 7);
+
+  if (textoContemTodosTokens(textoCompleto, tokens)) score += 40;
+  if (tokens.length > 1 && textoContemTodosTokens(nome, tokens)) score += 45;
+
+  if (produtoAutocompleteTemEstoque(produto)) score += 16;
+
+  if (filtros.medida) {
+    const temMedida = produto.estoque.some(
+      (estoque) =>
+        normalizarTextoBusca(estoque.tamanhoAnel) === filtros.medida &&
+        Number(estoque.quantidadeAtual || 0) > 0
+    );
+
+    score += temMedida ? 80 : -35;
+  }
+
+  if (filtros.intencoes.includes("promocao") && produto.descontoAtivo) {
+    score += 75;
+  }
+
+  return score;
+}
+
+function scoreCategoriaAutocomplete(
+  categoria: CategoriaAutocompleteRaw,
+  tokens: string[],
+  termoNormalizado: string,
+  priorizarCategoria: boolean
+) {
+  const nome = montarTextoIndexavel(categoria.nome);
+  const slug = montarTextoIndexavel(categoria.slug);
+  const descricaoSeo = montarTextoIndexavel(categoria.descricaoSeo);
+  const termosBusca = montarTextoIndexavel(categoria.termosBusca);
+  const caminho = montarTextoIndexavel(categoria.categoriaMae?.nome);
+  const texto = [nome, slug, descricaoSeo, termosBusca, caminho].join(" ");
+  let score = 0;
+
+  if (nome === termoNormalizado || slug === termoNormalizado) score += 180;
+  if (nome.startsWith(termoNormalizado) && termoNormalizado) score += 110;
+  score += scoreTextoCampo(nome, tokens, 42);
+  score += scoreTextoCampo(slug, tokens, 26);
+  score += scoreTextoCampo(termosBusca, tokens, 34);
+  score += scoreTextoCampo(descricaoSeo, tokens, 18);
+  score += scoreTextoCampo(caminho, tokens, 14);
+  if (textoContemTodosTokens(texto, tokens)) score += 35;
+  if (priorizarCategoria) score += 90;
+
+  return score;
+}
+
+function scorePaginaAutocomplete(
+  pagina: PaginaAutocompleteRaw,
+  tokens: string[],
+  termoNormalizado: string
+) {
+  const titulo = montarTextoIndexavel(pagina.titulo);
+  const slug = montarTextoIndexavel(pagina.slug);
+  const descricao = montarTextoIndexavel(pagina.seoDescription);
+  const termosBusca = montarTextoIndexavel(pagina.termosBusca);
+  const texto = [titulo, slug, descricao, termosBusca].join(" ");
+  let score = 0;
+
+  if (titulo === termoNormalizado || slug === termoNormalizado) score += 120;
+  if (titulo.startsWith(termoNormalizado) && termoNormalizado) score += 70;
+  score += scoreTextoCampo(titulo, tokens, 26);
+  score += scoreTextoCampo(slug, tokens, 18);
+  score += scoreTextoCampo(termosBusca, tokens, 20);
+  score += scoreTextoCampo(descricao, tokens, 8);
+  if (textoContemTodosTokens(texto, tokens)) score += 20;
+
+  return score;
+}
+
+function formatarProdutoAutocomplete(
+  produto: ProdutoAutocompleteRaw,
+  relevancia: number
+): BuscaLojaAutocompleteProduto {
+  return {
+    id: produto.id,
+    nome: produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
+    slug: null,
+    imagemUrl: produto.imagemUrl,
+    categoria: produto.categoria,
+    precoVenda: Number(produto.precoVenda || 0),
+    descontoAtivo: produto.descontoAtivo,
+    precoPromocional:
+      produto.precoPromocional === null
+        ? null
+        : Number(produto.precoPromocional || 0),
+    estoqueDisponivel: produtoAutocompleteTemEstoque(produto),
+    href: `/loja/produto/${produto.id}`,
+    relevancia,
+    tipoResultado: "PRODUTO",
+  };
+}
+
+function formatarCategoriaAutocomplete(
+  categoria: CategoriaAutocompleteRaw,
+  relevancia: number
+): BuscaLojaAutocompleteCategoria {
+  return {
+    id: categoria.id,
+    nome: categoria.nome,
+    slug: categoria.slug,
+    caminho: categoria.categoriaMae?.nome || null,
+    quantidadeProdutos: categoria._count?.produtos ?? null,
+    href: `/loja/categoria/${categoria.slug}`,
+    relevancia,
+    tipoResultado: "CATEGORIA",
+  };
+}
+
+function formatarPaginaAutocomplete(
+  pagina: PaginaAutocompleteRaw,
+  relevancia: number
+): BuscaLojaAutocompletePagina {
+  return {
+    id: pagina.id,
+    titulo: pagina.titulo,
+    slug: pagina.slug,
+    tipo: pagina.tipo,
+    href: `/loja/p/${pagina.slug}`,
+    relevancia,
+    tipoResultado: "PAGINA",
+  };
+}
+
+function ordenarGruposAutocomplete(tokens: string[]): BuscaLojaGrupoResultado[] {
+  if (buscaGenericaCategoria(tokens)) {
+    return ["categorias", "produtos", "paginas", "sugestoes"];
+  }
+
+  return ["produtos", "categorias", "paginas", "sugestoes"];
+}
+
+function sugestoesAutocomplete(categorias: CategoriaAutocompleteRaw[]) {
+  return Array.from(
+    new Set([...categorias.map((categoria) => categoria.nome), ...SUGESTOES_FIXAS])
+  ).slice(0, 3);
+}
+
+function resultadoAutocompleteVazio(
+  termoNormalizado: string,
+  ordemGrupos: BuscaLojaGrupoResultado[]
+): BuscaLojaAutocompleteResultado {
+  return {
+    modo: "autocomplete",
+    produtos: [],
+    categorias: [],
+    paginas: [],
+    sugestoes: SUGESTOES_FIXAS.slice(0, 3),
+    termoNormalizado,
+    ordemGrupos,
+  };
+}
+
+function comDebugAutocomplete({
+  resultado,
+  inicio,
+  cache,
+}: {
+  resultado: BuscaLojaAutocompleteResultado;
+  inicio: number;
+  cache: boolean;
+}) {
+  if (process.env.NODE_ENV === "production") {
+    return resultado;
+  }
+
+  return {
+    ...resultado,
+    debug: {
+      duracaoMs: Date.now() - inicio,
+      cache,
+    },
+  };
+}
+
 function detectarFiltros(termo: string, tokens: string[]): BuscaLojaFiltrosDetectados {
   const intencoes = Array.from(
     new Set(tokens.filter((token) => ["presente", "promocao", "novidade"].includes(token)))
@@ -595,6 +1114,137 @@ function limitarTipo(tipo: BuscaLojaTipo | undefined): BuscaLojaTipo {
   }
 
   return "todos";
+}
+
+export async function buscarLojaAutocomplete({
+  q,
+}: {
+  q: string;
+}): Promise<BuscaLojaAutocompleteResultado> {
+  const inicio = Date.now();
+  const termoNormalizado = normalizarTextoBusca(q);
+  const tokens = tokenizarBusca(q);
+  const ordemGrupos = ordenarGruposAutocomplete(tokens);
+  const termoCanonico = tokens.join(" ");
+  const cacheKey = `${termoNormalizado}|${termoCanonico}`;
+
+  if (termoNormalizado.length < 2) {
+    return resultadoAutocompleteVazio(termoCanonico, ordemGrupos);
+  }
+
+  const cache = autocompleteCache.get(cacheKey);
+
+  if (cache && cache.expiraEm > Date.now()) {
+    return comDebugAutocomplete({
+      resultado: cache.resultado,
+      inicio,
+      cache: true,
+    });
+  }
+
+  const filtrosDetectados = detectarFiltros(q, tokens);
+  const priorizarCategoria = buscaGenericaCategoria(tokens);
+
+  const [produtosRaw, categoriasRaw, paginasRaw] = await Promise.all([
+    buscarProdutosAutocompleteRaw(q, tokens),
+    buscarCategoriasAutocompleteRaw(q, tokens),
+    buscarPaginasAutocompleteRaw(q, tokens),
+  ]);
+
+  const produtos = produtosRaw
+    .map((produto) => ({
+      produto,
+      relevancia: scoreProdutoAutocomplete({
+        produto,
+        tokens,
+        termoNormalizado,
+        filtros: filtrosDetectados,
+      }),
+    }))
+    .filter(({ produto, relevancia }) => {
+      if (filtrosDetectados.precoMaximo !== null) {
+        const preco = precoFinalProduto({
+          precoVenda: Number(produto.precoVenda),
+          descontoAtivo: produto.descontoAtivo,
+          precoPromocional: produto.precoPromocional
+            ? Number(produto.precoPromocional)
+            : null,
+        });
+
+        if (preco > filtrosDetectados.precoMaximo) return false;
+      }
+
+      return relevancia > 0;
+    })
+    .sort(
+      (a, b) =>
+        b.relevancia - a.relevancia || a.produto.nome.localeCompare(b.produto.nome)
+    )
+    .slice(0, 6)
+    .map(({ produto, relevancia }) =>
+      formatarProdutoAutocomplete(produto, relevancia)
+    );
+
+  const categorias = categoriasRaw
+    .map((categoria) => ({
+      categoria,
+      relevancia: scoreCategoriaAutocomplete(
+        categoria,
+        tokens,
+        termoNormalizado,
+        priorizarCategoria
+      ),
+    }))
+    .filter(({ relevancia }) => relevancia > 0)
+    .sort(
+      (a, b) =>
+        b.relevancia - a.relevancia || a.categoria.nome.localeCompare(b.categoria.nome)
+    )
+    .slice(0, 4)
+    .map(({ categoria, relevancia }) =>
+      formatarCategoriaAutocomplete(categoria, relevancia)
+    );
+
+  const paginas = paginasRaw
+    .map((pagina) => ({
+      pagina,
+      relevancia: scorePaginaAutocomplete(pagina, tokens, termoNormalizado),
+    }))
+    .filter(({ relevancia }) => relevancia > 0)
+    .sort((a, b) => b.relevancia - a.relevancia || a.pagina.titulo.localeCompare(b.pagina.titulo))
+    .slice(0, 3)
+    .map(({ pagina, relevancia }) => formatarPaginaAutocomplete(pagina, relevancia));
+
+  const resultado: BuscaLojaAutocompleteResultado = {
+    modo: "autocomplete",
+    produtos,
+    categorias,
+    paginas,
+    sugestoes: sugestoesAutocomplete(categoriasRaw),
+    termoNormalizado: termoCanonico,
+    ordemGrupos,
+  };
+
+  autocompleteCache.set(cacheKey, {
+    expiraEm: Date.now() + AUTOCOMPLETE_CACHE_TTL_MS,
+    resultado,
+  });
+
+  if (autocompleteCache.size > 120) {
+    const now = Date.now();
+
+    for (const [key, item] of autocompleteCache.entries()) {
+      if (item.expiraEm <= now) {
+        autocompleteCache.delete(key);
+      }
+    }
+  }
+
+  return comDebugAutocomplete({
+    resultado,
+    inicio,
+    cache: false,
+  });
 }
 
 export async function buscarLojaInteligente({

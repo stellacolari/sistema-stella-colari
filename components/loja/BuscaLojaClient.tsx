@@ -197,6 +197,7 @@ export default function BuscaLojaClient({
 
   const temResultados =
     produtos.length > 0 || categorias.length > 0 || paginas.length > 0;
+  const categoriaPrincipal = categorias[0] || null;
 
   useEffect(() => {
     const termoLimpo = termoInicial.trim();
@@ -415,47 +416,57 @@ export default function BuscaLojaClient({
             </div>
           </aside>
 
-          <div className="min-w-0">
-            {produtosFiltrados.length > 0 ? (
-              <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-                {produtosFiltrados.map((produto, index) => (
-                  <ProdutoCardLoja
-                    key={produto.id}
-                    produto={produto}
-                    revealDelayMs={index * 50}
-                    trackingOrigem="pagina_busca"
-                    trackingResultadoBusca={{
-                      termoBusca: termoInicial,
-                      posicao: index + 1,
-                    }}
-                    trackingMetadata={{
-                      relevancia: produto.relevancia,
-                    }}
-                  />
-                ))}
-              </div>
-            ) : temResultados ? (
-              <div className="border border-slate-200 bg-white px-6 py-12 text-center">
-                <p className="text-lg font-semibold text-slate-950">
-                  Nenhum produto encontrado com os filtros selecionados.
+          <div className="min-w-0 space-y-10">
+            {categoriaPrincipal ? (
+              <div className="border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                  Melhor caminho de navegação
                 </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-950">
+                      {categoriaPrincipal.nome}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Para buscas amplas, veja a categoria completa antes de escolher
+                      um produto específico.
+                    </p>
+                  </div>
+                  <Link
+                    href={categoriaPrincipal.href}
+                    onClick={() =>
+                      registrarCliqueResultadoBusca({
+                        termoBusca: termoInicial,
+                        tipoResultado: "categoria",
+                        categoriaId: categoriaPrincipal.id,
+                        origem: "pagina_busca",
+                        metadata: {
+                          nome: categoriaPrincipal.nome,
+                          href: categoriaPrincipal.href,
+                          posicao: 1,
+                          relevancia: categoriaPrincipal.relevancia,
+                          cta: "categoria_principal",
+                        },
+                      })
+                    }
+                    className="inline-flex h-11 items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    Ver todos os produtos desta categoria
+                  </Link>
+                </div>
               </div>
-            ) : (
-              <div className="border border-slate-200 bg-white px-6 py-12 text-center">
-                <p className="text-lg font-semibold text-slate-950">
-                  {`Nao encontramos resultados para "${termoInicial}".`}
-                </p>
-                <p className="mt-3 text-sm text-slate-600">
-                  Confira a escrita ou tente termos como anel, brinco ou colar.
-                </p>
-              </div>
-            )}
+            ) : null}
 
             {categorias.length > 0 ? (
-              <section className="mt-12">
-                <h2 className="text-xl font-semibold text-slate-950">
-                  Categorias encontradas
-                </h2>
+              <section>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                    Categorias
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                    Caminhos relacionados
+                  </h2>
+                </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {categorias.map((categoria, index) => (
                     <Link
@@ -489,11 +500,62 @@ export default function BuscaLojaClient({
               </section>
             ) : null}
 
-            {paginas.length > 0 ? (
-              <section className="mt-12">
-                <h2 className="text-xl font-semibold text-slate-950">
-                  Paginas encontradas
+            <section>
+              <div className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                  Produtos
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                  Resultados para compra
                 </h2>
+              </div>
+
+              {produtosFiltrados.length > 0 ? (
+                <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+                  {produtosFiltrados.map((produto, index) => (
+                    <ProdutoCardLoja
+                      key={produto.id}
+                      produto={produto}
+                      revealDelayMs={index * 50}
+                      trackingOrigem="pagina_busca"
+                      trackingResultadoBusca={{
+                        termoBusca: termoInicial,
+                        posicao: index + 1,
+                      }}
+                      trackingMetadata={{
+                        relevancia: produto.relevancia,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : temResultados ? (
+                <div className="border border-slate-200 bg-white px-6 py-12 text-center">
+                  <p className="text-lg font-semibold text-slate-950">
+                    Nenhum produto encontrado com os filtros selecionados.
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-slate-200 bg-white px-6 py-12 text-center">
+                  <p className="text-lg font-semibold text-slate-950">
+                    {`Nao encontramos resultados para "${termoInicial}".`}
+                  </p>
+                  <p className="mt-3 text-sm text-slate-600">
+                    Confira a escrita ou tente termos como anel, brinco ou colar.
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {paginas.length > 0 ? (
+              <section>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                    Páginas e coleções
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                    Conteúdos relacionados
+                  </h2>
+                </div>
                 <div className="mt-4 grid gap-3">
                   {paginas.map((pagina, index) => (
                     <Link

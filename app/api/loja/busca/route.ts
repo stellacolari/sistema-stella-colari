@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import {
+  buscarLojaAutocomplete,
   buscarLojaInteligente,
   type BuscaLojaTipo,
+  type BuscaLojaModo,
 } from "@/lib/loja/busca";
 
 export async function GET(req: Request) {
@@ -10,6 +12,14 @@ export async function GET(req: Request) {
     const q = searchParams.get("q") || "";
     const limite = Number(searchParams.get("limite") || 12);
     const tipo = (searchParams.get("tipo") || "todos") as BuscaLojaTipo;
+    const modo: BuscaLojaModo =
+      searchParams.get("modo") === "autocomplete" ? "autocomplete" : "pagina";
+
+    if (modo === "autocomplete") {
+      const resultado = await buscarLojaAutocomplete({ q });
+
+      return NextResponse.json(resultado);
+    }
 
     const resultado = await buscarLojaInteligente({
       q,
