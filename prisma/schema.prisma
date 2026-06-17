@@ -67,8 +67,8 @@ model Produto {
   metricasSnapshots              ProdutoMetricaSnapshot[]
   eventosComerciais              EventoComercial[]
   campanhasComerciais            CampanhaComercial[]
-  recomendacoesGerenciais         RecomendacaoGerencial[]
-  vitrinesInteligentesSugestoes   VitrineInteligenteSugestao[]
+  recomendacoesGerenciais        RecomendacaoGerencial[]
+  vitrinesInteligentesSugestoes  VitrineInteligenteSugestao[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -161,16 +161,16 @@ model ProdutoImagem {
 }
 
 model ProdutoVariacao {
-  id           String                 @id @default(cuid())
-  produtoId    String
-  nome         String
-  obrigatoria  Boolean                @default(true)
-  ativo        Boolean                @default(true)
-  ordem        Int                    @default(0)
-  criadoEm     DateTime               @default(now())
-  atualizadoEm DateTime               @updatedAt
-  produto      Produto                @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  opcoes       ProdutoVariacaoOpcao[]
+  id                String                   @id @default(cuid())
+  produtoId         String
+  nome              String
+  obrigatoria       Boolean                  @default(true)
+  ativo             Boolean                  @default(true)
+  ordem             Int                      @default(0)
+  criadoEm          DateTime                 @default(now())
+  atualizadoEm      DateTime                 @updatedAt
+  produto           Produto                  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  opcoes            ProdutoVariacaoOpcao[]
   ciclosEstoque     ProdutoCicloEstoque[]
   metricasSnapshots ProdutoMetricaSnapshot[]
 
@@ -443,39 +443,39 @@ model CompraItem {
 }
 
 model LancamentoFinanceiro {
-  id                    String    @id @default(cuid())
-  codigo                String    @unique
-  tipo                  String
-  categoria             String
-  titulo                String
-  descricao             String?
-  fornecedorParceiro    String?
-  valorPrevisto         Float?
-  valorReal             Float
-  statusPagamento       String    @default("PENDENTE")
-  statusOperacional     String    @default("ATIVO")
-  dataCompetencia       DateTime?
-  dataVencimento        DateTime?
-  dataPagamento         DateTime?
-  recorrente            Boolean   @default(false)
-  recorrencia           String?
-  quantidadeParcelas    Int?
-  parcelaAtual          Int?
-  meioPagamento         String?
-  origemTipo            String?
-  origemId              String?
-  observacoes           String?
-  linkReferencia        String?
-  anexoUrl              String?
-  status                String    @default("ATIVO")
-  statusAntesLixeira    String?
-  impactaCaixa          Boolean   @default(false)
-  contaFinanceiraId     String?
-  movimentacaoCaixaId   String?   @unique
-  criadoEm              DateTime  @default(now())
-  atualizadoEm          DateTime  @updatedAt
-  contaFinanceira       ContaFinanceira?   @relation("LancamentoContaFinanceira", fields: [contaFinanceiraId], references: [id])
-  movimentacaoCaixa     MovimentacaoCaixa? @relation("LancamentoMovimentacaoCaixa", fields: [movimentacaoCaixaId], references: [id])
+  id                  String             @id @default(cuid())
+  codigo              String             @unique
+  tipo                String
+  categoria           String
+  titulo              String
+  descricao           String?
+  fornecedorParceiro  String?
+  valorPrevisto       Float?
+  valorReal           Float
+  statusPagamento     String             @default("PENDENTE")
+  statusOperacional   String             @default("ATIVO")
+  dataCompetencia     DateTime?
+  dataVencimento      DateTime?
+  dataPagamento       DateTime?
+  recorrente          Boolean            @default(false)
+  recorrencia         String?
+  quantidadeParcelas  Int?
+  parcelaAtual        Int?
+  meioPagamento       String?
+  origemTipo          String?
+  origemId            String?
+  observacoes         String?
+  linkReferencia      String?
+  anexoUrl            String?
+  status              String             @default("ATIVO")
+  statusAntesLixeira  String?
+  impactaCaixa        Boolean            @default(false)
+  contaFinanceiraId   String?
+  movimentacaoCaixaId String?            @unique
+  criadoEm            DateTime           @default(now())
+  atualizadoEm        DateTime           @updatedAt
+  contaFinanceira     ContaFinanceira?   @relation("LancamentoContaFinanceira", fields: [contaFinanceiraId], references: [id])
+  movimentacaoCaixa   MovimentacaoCaixa? @relation("LancamentoMovimentacaoCaixa", fields: [movimentacaoCaixaId], references: [id])
 
   @@index([tipo])
   @@index([categoria])
@@ -507,26 +507,26 @@ model ContaFinanceira {
 }
 
 model MovimentacaoCaixa {
-  id                    String                    @id @default(cuid())
-  codigo                String                    @unique
-  contaId               String
-  tipo                  String
-  categoria             String
-  descricao             String
-  valor                 Float
-  status                String                    @default("PREVISTA")
-  dataPrevista          DateTime?
-  dataEfetiva           DateTime?
-  origemTipo            String?
-  origemId              String?
-  aprovadoEm            DateTime?
-  pagoEm                DateTime?
-  observacoes           String?
-  criadoEm              DateTime                  @default(now())
-  atualizadoEm          DateTime                  @updatedAt
-  conta                 ContaFinanceira           @relation(fields: [contaId], references: [id])
-  destinoApuracao       ApuracaoResultadoDestino?
-  lancamentoFinanceiro  LancamentoFinanceiro?     @relation("LancamentoMovimentacaoCaixa")
+  id                   String                    @id @default(cuid())
+  codigo               String                    @unique
+  contaId              String
+  tipo                 String
+  categoria            String
+  descricao            String
+  valor                Float
+  status               String                    @default("PREVISTA")
+  dataPrevista         DateTime?
+  dataEfetiva          DateTime?
+  origemTipo           String?
+  origemId             String?
+  aprovadoEm           DateTime?
+  pagoEm               DateTime?
+  observacoes          String?
+  criadoEm             DateTime                  @default(now())
+  atualizadoEm         DateTime                  @updatedAt
+  conta                ContaFinanceira           @relation(fields: [contaId], references: [id])
+  destinoApuracao      ApuracaoResultadoDestino?
+  lancamentoFinanceiro LancamentoFinanceiro?     @relation("LancamentoMovimentacaoCaixa")
 
   @@unique([origemTipo, origemId])
   @@index([contaId])
@@ -539,29 +539,29 @@ model MovimentacaoCaixa {
 }
 
 model RegraDistribuicaoResultado {
-  id                    String                     @id @default(cuid())
-  nome                  String
-  ativa                 Boolean                    @default(true)
-  percentualEmpresa     Float                      @default(50)
-  percentualProLabore   Float                      @default(50)
-  observacoes           String?
-  criadoEm              DateTime                   @default(now())
-  atualizadoEm          DateTime                   @updatedAt
-  destinos              RegraDistribuicaoDestino[]
+  id                  String                     @id @default(cuid())
+  nome                String
+  ativa               Boolean                    @default(true)
+  percentualEmpresa   Float                      @default(50)
+  percentualProLabore Float                      @default(50)
+  observacoes         String?
+  criadoEm            DateTime                   @default(now())
+  atualizadoEm        DateTime                   @updatedAt
+  destinos            RegraDistribuicaoDestino[]
 
   @@index([ativa])
 }
 
 model RegraDistribuicaoDestino {
-  id           String                      @id @default(cuid())
-  regraId      String
-  tipo         String
-  nome         String
-  percentual   Float
-  ordem        Int                         @default(0)
-  ativo        Boolean                     @default(true)
-  observacoes  String?
-  regra        RegraDistribuicaoResultado  @relation(fields: [regraId], references: [id], onDelete: Cascade)
+  id          String                     @id @default(cuid())
+  regraId     String
+  tipo        String
+  nome        String
+  percentual  Float
+  ordem       Int                        @default(0)
+  ativo       Boolean                    @default(true)
+  observacoes String?
+  regra       RegraDistribuicaoResultado @relation(fields: [regraId], references: [id], onDelete: Cascade)
 
   @@index([regraId])
   @@index([tipo])
@@ -569,31 +569,31 @@ model RegraDistribuicaoDestino {
 }
 
 model ApuracaoResultadoMensal {
-  id                    String                      @id @default(cuid())
-  codigo                String                      @unique
-  mes                   Int
-  ano                   Int
-  periodoInicio         DateTime
-  periodoFim            DateTime
-  status                String                      @default("RASCUNHO")
-  receitaRecebida       Float                       @default(0)
-  custoProdutos         Float                       @default(0)
-  custoEmbalagens       Float                       @default(0)
-  taxas                 Float                       @default(0)
-  fretes                Float                       @default(0)
-  gastosOperacionais    Float                       @default(0)
-  comprasEstoqueCaixa   Float                       @default(0)
-  resultadoBruto        Float                       @default(0)
-  lucroApuravel         Float                       @default(0)
-  caixaLiquido          Float                       @default(0)
-  regraSnapshotJson     Json?
-  fontesSnapshotJson    Json?
-  alertasSnapshotJson   Json?
-  fechadoEm             DateTime?
-  observacoes           String?
-  criadoEm              DateTime                    @default(now())
-  atualizadoEm          DateTime                    @updatedAt
-  destinos              ApuracaoResultadoDestino[]
+  id                  String                     @id @default(cuid())
+  codigo              String                     @unique
+  mes                 Int
+  ano                 Int
+  periodoInicio       DateTime
+  periodoFim          DateTime
+  status              String                     @default("RASCUNHO")
+  receitaRecebida     Float                      @default(0)
+  custoProdutos       Float                      @default(0)
+  custoEmbalagens     Float                      @default(0)
+  taxas               Float                      @default(0)
+  fretes              Float                      @default(0)
+  gastosOperacionais  Float                      @default(0)
+  comprasEstoqueCaixa Float                      @default(0)
+  resultadoBruto      Float                      @default(0)
+  lucroApuravel       Float                      @default(0)
+  caixaLiquido        Float                      @default(0)
+  regraSnapshotJson   Json?
+  fontesSnapshotJson  Json?
+  alertasSnapshotJson Json?
+  fechadoEm           DateTime?
+  observacoes         String?
+  criadoEm            DateTime                   @default(now())
+  atualizadoEm        DateTime                   @updatedAt
+  destinos            ApuracaoResultadoDestino[]
 
   @@unique([mes, ano])
   @@index([status])
@@ -602,19 +602,19 @@ model ApuracaoResultadoMensal {
 }
 
 model ApuracaoResultadoDestino {
-  id                    String                    @id @default(cuid())
-  apuracaoId            String
-  tipo                  String
-  nome                  String
-  percentual            Float
-  valor                 Float
-  statusPagamento       String                    @default("PREVISTO")
-  movimentacaoCaixaId   String?                   @unique
-  observacoes           String?
-  criadoEm              DateTime                  @default(now())
-  atualizadoEm          DateTime                  @updatedAt
-  apuracao              ApuracaoResultadoMensal   @relation(fields: [apuracaoId], references: [id], onDelete: Cascade)
-  movimentacaoCaixa     MovimentacaoCaixa?        @relation(fields: [movimentacaoCaixaId], references: [id])
+  id                  String                  @id @default(cuid())
+  apuracaoId          String
+  tipo                String
+  nome                String
+  percentual          Float
+  valor               Float
+  statusPagamento     String                  @default("PREVISTO")
+  movimentacaoCaixaId String?                 @unique
+  observacoes         String?
+  criadoEm            DateTime                @default(now())
+  atualizadoEm        DateTime                @updatedAt
+  apuracao            ApuracaoResultadoMensal @relation(fields: [apuracaoId], references: [id], onDelete: Cascade)
+  movimentacaoCaixa   MovimentacaoCaixa?      @relation(fields: [movimentacaoCaixaId], references: [id])
 
   @@index([apuracaoId])
   @@index([tipo])
@@ -622,8 +622,8 @@ model ApuracaoResultadoDestino {
 }
 
 model RecomendacaoGerencial {
-  id                 String    @id @default(cuid())
-  codigo             String    @unique
+  id                 String                         @id @default(cuid())
+  codigo             String                         @unique
   tipo               String
   titulo             String
   descricao          String
@@ -631,8 +631,8 @@ model RecomendacaoGerencial {
   evidenciasJson     Json?
   impactoEsperado    String?
   risco              String?
-  prioridade         String    @default("MEDIA")
-  status             String    @default("NOVA")
+  prioridade         String                         @default("MEDIA")
+  status             String                         @default("NOVA")
   acaoSugerida       String?
   linkAcao           String?
   origem             String?
@@ -644,8 +644,8 @@ model RecomendacaoGerencial {
   prazoSugerido      DateTime?
   resultadoObservado String?
   observacao         String?
-  criadoEm           DateTime  @default(now())
-  atualizadoEm       DateTime  @updatedAt
+  criadoEm           DateTime                       @default(now())
+  atualizadoEm       DateTime                       @updatedAt
   aceitaEm           DateTime?
   iniciadaEm         DateTime?
   concluidaEm        DateTime?
@@ -654,8 +654,8 @@ model RecomendacaoGerencial {
   impactos           RecomendacaoGerencialImpacto[]
   campanhas          CampanhaComercial[]
   vitrinesSugestoes  VitrineInteligenteSugestao[]
-  produto            Produto?  @relation(fields: [produtoId], references: [id], onDelete: SetNull)
-  categoria          CategoriaProduto? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  produto            Produto?                       @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria          CategoriaProduto?              @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
   @@index([tipo])
   @@index([prioridade])
@@ -669,20 +669,20 @@ model RecomendacaoGerencial {
 }
 
 model RecomendacaoGerencialImpacto {
-  id                  String                 @id @default(cuid())
-  recomendacaoId       String
-  janelaDias           Int
-  statusImpacto        String
-  scoreImpacto         Float
-  resumo               String
-  metricasAntesJson    Json?
-  metricasDepoisJson   Json?
-  comparativoJson      Json?
-  proximaAcaoSugerida  String?
-  avaliadoEm           DateTime               @default(now())
-  criadoEm             DateTime               @default(now())
-  atualizadoEm         DateTime               @updatedAt
-  recomendacao         RecomendacaoGerencial  @relation(fields: [recomendacaoId], references: [id], onDelete: Cascade)
+  id                  String                @id @default(cuid())
+  recomendacaoId      String
+  janelaDias          Int
+  statusImpacto       String
+  scoreImpacto        Float
+  resumo              String
+  metricasAntesJson   Json?
+  metricasDepoisJson  Json?
+  comparativoJson     Json?
+  proximaAcaoSugerida String?
+  avaliadoEm          DateTime              @default(now())
+  criadoEm            DateTime              @default(now())
+  atualizadoEm        DateTime              @updatedAt
+  recomendacao        RecomendacaoGerencial @relation(fields: [recomendacaoId], references: [id], onDelete: Cascade)
 
   @@unique([recomendacaoId, janelaDias])
   @@index([recomendacaoId])
@@ -692,40 +692,40 @@ model RecomendacaoGerencialImpacto {
 }
 
 model CampanhaComercial {
-  id                  String                  @id @default(cuid())
-  codigo              String                  @unique
-  titulo              String
-  objetivo            String
-  tipo                String
-  status              String                  @default("RASCUNHO")
-  origem              String
-  recomendacaoId      String?
-  produtoId           String?
-  categoriaId         String?
-  descricao           String
-  estrategia          String
-  publicoAlvo         String?
-  canalPrincipal      String
-  canaisJson          Json?
-  produtosJson        Json?
-  acoesJson           Json?
-  metasJson           Json?
-  riscosJson          Json?
-  orcamentoSugerido   Float?
-  descontoSugerido    Float?
-  cupomSugerido       String?
-  dataInicioSugerida  DateTime?
-  dataFimSugerida     DateTime?
-  resultadoJson       Json?
-  criadoEm            DateTime                @default(now())
-  atualizadoEm        DateTime                @updatedAt
-  iniciadaEm          DateTime?
-  concluidaEm         DateTime?
-  canceladaEm         DateTime?
-  recomendacao        RecomendacaoGerencial?  @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
-  produto             Produto?                @relation(fields: [produtoId], references: [id], onDelete: SetNull)
-  categoria           CategoriaProduto?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  vitrinesSugestoes   VitrineInteligenteSugestao[]
+  id                 String                       @id @default(cuid())
+  codigo             String                       @unique
+  titulo             String
+  objetivo           String
+  tipo               String
+  status             String                       @default("RASCUNHO")
+  origem             String
+  recomendacaoId     String?
+  produtoId          String?
+  categoriaId        String?
+  descricao          String
+  estrategia         String
+  publicoAlvo        String?
+  canalPrincipal     String
+  canaisJson         Json?
+  produtosJson       Json?
+  acoesJson          Json?
+  metasJson          Json?
+  riscosJson         Json?
+  orcamentoSugerido  Float?
+  descontoSugerido   Float?
+  cupomSugerido      String?
+  dataInicioSugerida DateTime?
+  dataFimSugerida    DateTime?
+  resultadoJson      Json?
+  criadoEm           DateTime                     @default(now())
+  atualizadoEm       DateTime                     @updatedAt
+  iniciadaEm         DateTime?
+  concluidaEm        DateTime?
+  canceladaEm        DateTime?
+  recomendacao       RecomendacaoGerencial?       @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
+  produto            Produto?                     @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria          CategoriaProduto?            @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  vitrinesSugestoes  VitrineInteligenteSugestao[]
 
   @@index([codigo])
   @@index([tipo])
@@ -1215,21 +1215,21 @@ model ClienteCashbackMovimentacao {
 }
 
 model LojaPagina {
-  id                     String            @id @default(cuid())
+  id                     String                       @id @default(cuid())
   titulo                 String
-  slug                   String            @unique
-  tipo                   String            @default("GERAL")
-  ativo                  Boolean           @default(true)
-  criadoEm               DateTime          @default(now())
-  atualizadoEm           DateTime          @updatedAt
+  slug                   String                       @unique
+  tipo                   String                       @default("GERAL")
+  ativo                  Boolean                      @default(true)
+  criadoEm               DateTime                     @default(now())
+  atualizadoEm           DateTime                     @updatedAt
   categoriaId            String?
   publicadoEm            DateTime?
   seoDescription         String?
   seoTitle               String?
   termosBusca            String?
-  statusPublicacao       String            @default("PUBLICADA")
-  usarComoTemplatePadrao Boolean           @default(false)
-  categoria              CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
+  statusPublicacao       String                       @default("PUBLICADA")
+  usarComoTemplatePadrao Boolean                      @default(false)
+  categoria              CategoriaProduto?            @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
   blocos                 LojaPaginaBloco[]
   eventosComerciais      EventoComercial[]
   vitrinesSugestoes      VitrineInteligenteSugestao[] @relation("VitrinePaginaDestino")
@@ -1243,16 +1243,16 @@ model LojaPagina {
 }
 
 model LojaPaginaBloco {
-  id           String     @id @default(cuid())
-  paginaId     String
-  tipo         String
-  titulo       String?
-  ativo        Boolean    @default(true)
-  ordem        Int        @default(0)
-  configJson   Json
-  criadoEm     DateTime   @default(now())
-  atualizadoEm DateTime   @updatedAt
-  pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
+  id                String                       @id @default(cuid())
+  paginaId          String
+  tipo              String
+  titulo            String?
+  ativo             Boolean                      @default(true)
+  ordem             Int                          @default(0)
+  configJson        Json
+  criadoEm          DateTime                     @default(now())
+  atualizadoEm      DateTime                     @updatedAt
+  pagina            LojaPagina                   @relation(fields: [paginaId], references: [id], onDelete: Cascade)
   eventosComerciais EventoComercial[]
   vitrinesSugestoes VitrineInteligenteSugestao[]
 
@@ -1281,12 +1281,12 @@ model CategoriaProduto {
   categoriaMae               CategoriaProduto?                @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id])
   subcategorias              CategoriaProduto[]               @relation("CategoriaHierarquia")
   paginasBuilder             LojaPagina[]                     @relation("LojaPaginaCategoria")
-  vitrinesSugestoes           VitrineInteligenteSugestao[]
+  vitrinesSugestoes          VitrineInteligenteSugestao[]
   embalagensCompatibilidades EmbalagemModeloCompatibilidade[]
   produtos                   ProdutoCategoria[]
   eventosComerciais          EventoComercial[]
   campanhasComerciais        CampanhaComercial[]
-  recomendacoesGerenciais     RecomendacaoGerencial[]
+  recomendacoesGerenciais    RecomendacaoGerencial[]
 
   @@index([categoriaMaeId])
   @@index([slug])
@@ -1297,38 +1297,38 @@ model CategoriaProduto {
 }
 
 model VitrineInteligenteSugestao {
-  id                String                  @id @default(cuid())
-  codigo            String                  @unique
-  titulo            String
-  subtitulo         String?
-  descricao         String?
-  tipo              String
-  status            String                  @default("SUGERIDA")
-  origem            String
-  campanhaId        String?
-  recomendacaoId    String?
-  produtoId         String?
-  categoriaId       String?
-  paginaDestinoId   String?
-  blocoCriadoId     String?
-  produtosJson      Json
-  criteriosJson     Json?
-  configBlocoJson   Json
-  metricasJson      Json?
-  justificativa     String?
-  risco             String?
-  acaoSugerida      String?
-  criadoEm          DateTime                @default(now())
-  atualizadoEm      DateTime                @updatedAt
-  aplicadaEm        DateTime?
-  ignoradaEm        DateTime?
-  canceladaEm       DateTime?
-  campanha          CampanhaComercial?      @relation(fields: [campanhaId], references: [id], onDelete: SetNull)
-  recomendacao      RecomendacaoGerencial?  @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
-  produto           Produto?                @relation(fields: [produtoId], references: [id], onDelete: SetNull)
-  categoria         CategoriaProduto?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  paginaDestino     LojaPagina?             @relation("VitrinePaginaDestino", fields: [paginaDestinoId], references: [id], onDelete: SetNull)
-  blocoCriado       LojaPaginaBloco?        @relation(fields: [blocoCriadoId], references: [id], onDelete: SetNull)
+  id              String                 @id @default(cuid())
+  codigo          String                 @unique
+  titulo          String
+  subtitulo       String?
+  descricao       String?
+  tipo            String
+  status          String                 @default("SUGERIDA")
+  origem          String
+  campanhaId      String?
+  recomendacaoId  String?
+  produtoId       String?
+  categoriaId     String?
+  paginaDestinoId String?
+  blocoCriadoId   String?
+  produtosJson    Json
+  criteriosJson   Json?
+  configBlocoJson Json
+  metricasJson    Json?
+  justificativa   String?
+  risco           String?
+  acaoSugerida    String?
+  criadoEm        DateTime               @default(now())
+  atualizadoEm    DateTime               @updatedAt
+  aplicadaEm      DateTime?
+  ignoradaEm      DateTime?
+  canceladaEm     DateTime?
+  campanha        CampanhaComercial?     @relation(fields: [campanhaId], references: [id], onDelete: SetNull)
+  recomendacao    RecomendacaoGerencial? @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
+  produto         Produto?               @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria       CategoriaProduto?      @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  paginaDestino   LojaPagina?            @relation("VitrinePaginaDestino", fields: [paginaDestinoId], references: [id], onDelete: SetNull)
+  blocoCriado     LojaPaginaBloco?       @relation(fields: [blocoCriadoId], references: [id], onDelete: SetNull)
 
   @@index([codigo])
   @@index([tipo])
@@ -1559,21 +1559,21 @@ model LojaMenuRodapeConfiguracao {
 }
 
 model LojaEntregaManualOrigem {
-  id          String   @id @default(cuid())
-  nome        String
-  cep         String
-  rua         String
-  numero      String
-  complemento String?
-  bairro      String
-  cidade      String
-  uf          String
-  latitude    Float?
-  longitude   Float?
-  observacao  String?
-  padrao      Boolean  @default(false)
-  ativo       Boolean  @default(true)
-  criadoEm    DateTime @default(now())
+  id           String   @id @default(cuid())
+  nome         String
+  cep          String
+  rua          String
+  numero       String
+  complemento  String?
+  bairro       String
+  cidade       String
+  uf           String
+  latitude     Float?
+  longitude    Float?
+  observacao   String?
+  padrao       Boolean  @default(false)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   @@index([padrao])
@@ -1581,19 +1581,92 @@ model LojaEntregaManualOrigem {
 }
 
 model UsuarioAdmin {
-  id            String    @id @default(cuid())
+  id            String               @id @default(cuid())
   nome          String
-  email         String    @unique
+  email         String               @unique
   senhaHash     String
-  perfil        String    @default("ACESSO_GERAL")
-  ativo         Boolean   @default(true)
+  perfil        String               @default("ACESSO_GERAL")
+  ativo         Boolean              @default(true)
   ultimoLoginEm DateTime?
-  criadoEm      DateTime  @default(now())
-  atualizadoEm  DateTime  @updatedAt
+  criadoEm      DateTime             @default(now())
+  atualizadoEm  DateTime             @updatedAt
+  notificacoes  NotificacaoUsuario[]
 
   @@index([email])
   @@index([ativo])
   @@index([perfil])
+}
+
+model NotificacaoSistema {
+  id            String                  @id @default(cuid())
+  tipo          String
+  categoria     String
+  prioridade    String                  @default("MEDIA")
+  titulo        String
+  descricao     String
+  resumo        String?
+  status        String                  @default("NOVA")
+  origemTipo    String
+  origemId      String?
+  linkAcao      String?
+  acaoLabel     String?
+  metadataJson  Json?
+  expiraEm      DateTime?
+  criadoEm      DateTime                @default(now())
+  atualizadoEm  DateTime                @updatedAt
+  destinatarios NotificacaoUsuario[]
+  canaisEnvio   NotificacaoCanalEnvio[]
+
+  @@index([tipo])
+  @@index([categoria])
+  @@index([prioridade])
+  @@index([status])
+  @@index([origemTipo])
+  @@index([origemId])
+  @@index([linkAcao])
+  @@index([criadoEm])
+  @@index([expiraEm])
+}
+
+model NotificacaoUsuario {
+  id            String             @id @default(cuid())
+  notificacaoId String
+  usuarioId     String?
+  perfilDestino String?
+  lidaEm        DateTime?
+  arquivadaEm   DateTime?
+  excluidaEm    DateTime?
+  criadoEm      DateTime           @default(now())
+  atualizadoEm  DateTime           @updatedAt
+  notificacao   NotificacaoSistema @relation(fields: [notificacaoId], references: [id], onDelete: Cascade)
+  usuario       UsuarioAdmin?      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([notificacaoId, usuarioId])
+  @@unique([notificacaoId, perfilDestino])
+  @@index([notificacaoId])
+  @@index([usuarioId])
+  @@index([perfilDestino])
+  @@index([lidaEm])
+  @@index([arquivadaEm])
+  @@index([excluidaEm])
+}
+
+model NotificacaoCanalEnvio {
+  id            String             @id @default(cuid())
+  notificacaoId String
+  canal         String             @default("IN_APP")
+  destinatario  String?
+  status        String             @default("PENDENTE")
+  tentativas    Int                @default(0)
+  erro          String?
+  enviadoEm     DateTime?
+  criadoEm      DateTime           @default(now())
+  notificacao   NotificacaoSistema @relation(fields: [notificacaoId], references: [id], onDelete: Cascade)
+
+  @@index([notificacaoId])
+  @@index([canal])
+  @@index([status])
+  @@index([enviadoEm])
 }
 
 model CupomLoja {

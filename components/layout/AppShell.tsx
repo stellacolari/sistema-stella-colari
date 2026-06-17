@@ -4,11 +4,19 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Menu, X } from "lucide-react";
+import { Bell, ExternalLink, Menu, X } from "lucide-react";
 import SidebarMenu from "@/components/layout/SidebarMenu";
 import LogoutButton from "@/components/layout/LogoutButton";
 
 type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
+type NotificacaoContadores = {
+  total: number;
+  pedidos: number;
+  reposicao: number;
+  recomendacoes: number;
+  campanhas: number;
+  precificacao: number;
+};
 
 function getPageInfo(pathname: string) {
   if (pathname.startsWith("/pedidos")) {
@@ -16,6 +24,15 @@ function getPageInfo(pathname: string) {
       eyebrow: "Operacao",
       title: "Pedidos",
       description: "Central operacional de pagamento, separacao e entrega.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/notificacoes")) {
+    return {
+      eyebrow: "Operacao",
+      title: "Caixa de Entrada",
+      description: "Notificacoes internas e acoes pendentes da plataforma.",
       showLojaButton: false,
     };
   }
@@ -328,6 +345,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<PerfilAdmin>("VENDEDOR");
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [sidebarCompacta, setSidebarCompacta] = useState(false);
+  const [notificacoes, setNotificacoes] = useState<NotificacaoContadores>({
+    total: 0,
+    pedidos: 0,
+    reposicao: 0,
+    recomendacoes: 0,
+    campanhas: 0,
+    precificacao: 0,
+  });
 
   useEffect(() => {
     if (isPublicShell) {
@@ -349,6 +374,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }
 
         setPerfil(perfilResposta === "ACESSO_GERAL" ? "ACESSO_GERAL" : "VENDEDOR");
+
+        const notificacoesResponse = await fetch("/api/notificacoes/contadores", {
+          cache: "no-store",
+        });
+        const notificacoesData = await notificacoesResponse.json().catch(() => ({}));
+
+        if (ativo && notificacoesData.contadores) {
+          setNotificacoes(notificacoesData.contadores);
+        }
       } catch {
         if (ativo) {
           setPerfil("VENDEDOR");
@@ -452,6 +486,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         <SidebarMenu
           perfil={perfil}
+          notificacoes={notificacoes}
           compacto={sidebarCompacta}
           onCompactoChange={alternarSidebarCompacta}
           showCompactToggle
@@ -518,6 +553,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="min-h-0 flex-1">
               <SidebarMenu
                 perfil={perfil}
+                notificacoes={notificacoes}
                 compacto={false}
                 onNavigate={() => setMenuMobileAberto(false)}
               />
@@ -570,6 +606,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               )}
+
+              <Link
+                href="/notificacoes"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+                title="Caixa de Entrada"
+              >
+                <Bell className="h-5 w-5" />
+                {notificacoes.total > 0 && (
+                  <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1.5 py-0.5 text-center text-[10px] font-black text-white">
+                    {notificacoes.total > 99 ? "99+" : notificacoes.total}
+                  </span>
+                )}
+              </Link>
 
               <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 xl:block">
                 Plataforma Stella Colari

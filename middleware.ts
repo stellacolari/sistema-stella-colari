@@ -26,6 +26,7 @@ const ADMIN_API_PREFIXES = [
   "/api/configuracoes",
   "/api/estoque",
   "/api/itens-adicionais",
+  "/api/notificacoes",
   "/api/pedidos",
   "/api/produtos",
   "/api/vendas",
@@ -36,10 +37,12 @@ const VENDEDOR_PAGE_PREFIXES = [
   "/vendas",
   "/produtos",
   "/clientes",
+  "/notificacoes",
 ];
 
 const VENDEDOR_API_PREFIXES = [
   "/api/clientes",
+  "/api/notificacoes",
   "/api/pedidos",
   "/api/produtos",
   "/api/vendas",

@@ -19,6 +19,7 @@
     "recomendacoes:impacto": "node scripts/avaliar-impacto-recomendacoes.mjs",
     "campanhas:gerar": "node scripts/gerar-campanhas-comerciais.mjs",
     "precificacao:analisar": "node scripts/analisar-precificacao-stella.mjs",
+    "notificacoes:sincronizar": "node scripts/sincronizar-notificacoes.mjs",
     "vitrines:gerar": "node scripts/gerar-vitrines-inteligentes.mjs"
   },
   "dependencies": {

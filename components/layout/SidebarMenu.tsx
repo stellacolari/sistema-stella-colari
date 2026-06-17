@@ -6,12 +6,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Bell,
   Boxes,
   ChevronDown,
   ClipboardList,
   LayoutDashboard,
+  Lightbulb,
+  Megaphone,
+  MousePointerClick,
   Package,
   Plus,
+  RefreshCcw,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
@@ -22,6 +27,14 @@ import {
 
 type MenuTone = "default" | "site" | "system";
 type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
+type NotificacaoContadores = {
+  total: number;
+  pedidos: number;
+  reposicao: number;
+  recomendacoes: number;
+  campanhas: number;
+  precificacao: number;
+};
 
 type MenuSingleLink = {
   type: "link";
@@ -94,6 +107,14 @@ const menuSections: MenuSection[] = [
       },
       {
         type: "link",
+        href: "/notificacoes",
+        label: "Caixa de Entrada",
+        icon: Bell,
+        description: "Notificacoes e acoes",
+        highlight: true,
+      },
+      {
+        type: "link",
         href: "/vendas",
         label: "Vendas",
         icon: ShoppingBag,
@@ -146,11 +167,18 @@ const menuSections: MenuSection[] = [
     description: "Compras, gastos e reposição",
     items: [
       {
-        type: "link",
+        type: "group",
         href: "/compras",
         label: "Compras e Financeiro",
         icon: ShoppingCart,
         description: "Central de compras e financeiro",
+        activePrefixes: ["/compras"],
+        links: [
+          { href: "/compras/reposicao", label: "Reposicao", icon: RefreshCcw },
+          { href: "/compras/recomendacoes", label: "Recomendacoes", icon: Lightbulb },
+          { href: "/compras/campanhas", label: "Campanhas", icon: Megaphone },
+          { href: "/compras/precificacao", label: "Precificacao", icon: MousePointerClick },
+        ],
       },
     ],
   },
@@ -224,6 +252,14 @@ const vendedorMenuSections: MenuSection[] = [
         label: "Pedidos",
         icon: ClipboardList,
         description: "Central operacional",
+        highlight: true,
+      },
+      {
+        type: "link",
+        href: "/notificacoes",
+        label: "Caixa de Entrada",
+        icon: Bell,
+        description: "Acoes pendentes",
         highlight: true,
       },
       {
@@ -461,12 +497,14 @@ export default function SidebarMenu({
   compacto = false,
   onCompactoChange,
   showCompactToggle = false,
+  notificacoes,
 }: {
   perfil?: PerfilAdmin;
   onNavigate?: () => void;
   compacto?: boolean;
   onCompactoChange?: () => void;
   showCompactToggle?: boolean;
+  notificacoes?: NotificacaoContadores;
 }) {
   const pathname = usePathname();
   const sections = useMemo(() => getMenuSections(perfil), [perfil]);
@@ -514,6 +552,39 @@ export default function SidebarMenu({
 
   function alternarModoMenu() {
     onCompactoChange?.();
+  }
+
+  function badgeForHref(href: string) {
+    if (!notificacoes) return 0;
+    if (href === "/notificacoes") return notificacoes.total;
+    if (href === "/pedidos") return notificacoes.pedidos;
+    if (href === "/compras") {
+      return (
+        notificacoes.reposicao +
+        notificacoes.recomendacoes +
+        notificacoes.campanhas +
+        notificacoes.precificacao
+      );
+    }
+    if (href === "/compras/reposicao") return notificacoes.reposicao;
+    if (href === "/compras/recomendacoes") return notificacoes.recomendacoes;
+    if (href === "/compras/campanhas") return notificacoes.campanhas;
+    if (href === "/compras/precificacao") return notificacoes.precificacao;
+    return 0;
+  }
+
+  function Badge({ total, forte = false }: { total: number; forte?: boolean }) {
+    if (!total) return null;
+
+    return (
+      <span
+        className={`ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black ${
+          forte ? "bg-red-600 text-white" : "bg-slate-900 text-white"
+        }`}
+      >
+        {total > 99 ? "99+" : total}
+      </span>
+    );
   }
 
   const sectionSpacing = compacto ? "space-y-3" : "space-y-6";
@@ -647,6 +718,7 @@ export default function SidebarMenu({
                     );
                     const Icon = item.icon;
                     const tone = getItemTone(item);
+                    const badge = badgeForHref(item.href);
 
                     return (
                       <Link
@@ -654,7 +726,7 @@ export default function SidebarMenu({
                         href={item.href}
                         title={item.label}
                         onClick={onNavigate}
-                        className={`group flex items-center ${itemGap} rounded-2xl border transition ${itemPadding} ${getItemButtonClass(
+                        className={`group relative flex items-center ${itemGap} rounded-2xl border transition ${itemPadding} ${getItemButtonClass(
                           {
                             active,
                             highlight: item.highlight,
@@ -684,12 +756,20 @@ export default function SidebarMenu({
                             </p>
                           ) : null}
                         </div>
+                        {compacto ? (
+                          badge > 0 && (
+                            <span className={`absolute right-1 top-1 h-2.5 w-2.5 rounded-full ${item.href === "/pedidos" ? "bg-red-600" : "bg-slate-900"}`} />
+                          )
+                        ) : (
+                          <Badge total={badge} forte={item.href === "/pedidos"} />
+                        )}
                       </Link>
                     );
                   }
 
                   const Icon = item.icon;
                   const tone = getItemTone(item);
+                  const groupBadge = badgeForHref(item.href);
                   const groupIsActive =
                     isPathActive(
                       pathname,
@@ -722,7 +802,7 @@ export default function SidebarMenu({
                           type="button"
                           title={item.label}
                           onClick={() => toggleGroup(item.href)}
-                          className={`group flex min-w-0 flex-1 items-center ${itemGap} rounded-2xl border text-left transition ${itemPadding} ${getItemButtonClass(
+                          className={`group relative flex min-w-0 flex-1 items-center ${itemGap} rounded-2xl border text-left transition ${itemPadding} ${getItemButtonClass(
                             {
                               active: groupIsActive,
                               highlight: item.highlight,
@@ -754,12 +834,18 @@ export default function SidebarMenu({
                           </div>
 
                           {!compacto && (
-                          <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-slate-400 transition ${
-                              isOpen ? "rotate-180" : ""
-                            }`}
-                          />
+                          <>
+                            <Badge total={groupBadge} />
+                            <ChevronDown
+                              className={`h-4 w-4 shrink-0 text-slate-400 transition ${
+                                isOpen ? "rotate-180" : ""
+                              }`}
+                            />
+                          </>
                           )}
+                          {compacto && groupBadge > 0 ? (
+                            <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-slate-900" />
+                          ) : null}
                         </button>
 
                         {item.quickAddHref && !compacto ? (
@@ -788,6 +874,7 @@ export default function SidebarMenu({
                               );
                               const SubIcon = link.icon;
                               const subTone = getItemTone(link);
+                              const subBadge = badgeForHref(link.href);
 
                               return (
                                 <Link
@@ -810,6 +897,7 @@ export default function SidebarMenu({
                                   <span className="truncate font-medium">
                                     {link.label}
                                   </span>
+                                  <Badge total={subBadge} forte={link.href === "/pedidos"} />
                                 </Link>
                               );
                             })

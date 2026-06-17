@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { exigirAdmin } from "@/lib/auth/admin";
+import { contarNotificacoesNaoLidas } from "@/lib/notificacoes/notificacoes";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ function moeda(valor: number) {
 export default async function ComprasPage() {
   const usuario = await exigirAdmin();
   const podeVerRecomendacoes = usuario.perfil === "ACESSO_GERAL";
-  const [totalComprasEstoque, totalGastos, gastosAbertos, gastosPagosMes] =
+  const [totalComprasEstoque, totalGastos, gastosAbertos, gastosPagosMes, contadoresNotificacao] =
     await Promise.all([
       prisma.compra.count({
         where: {
@@ -97,6 +98,16 @@ export default async function ComprasPage() {
           valorReal: true,
         },
       }),
+      podeVerRecomendacoes
+        ? contarNotificacoesNaoLidas(usuario.id, usuario.perfil)
+        : Promise.resolve({
+            total: 0,
+            pedidos: 0,
+            reposicao: 0,
+            recomendacoes: 0,
+            campanhas: 0,
+            precificacao: 0,
+          }),
     ]);
 
   return (
@@ -216,6 +227,35 @@ export default async function ComprasPage() {
         )}
       </section>
 
+      {podeVerRecomendacoes &&
+        (contadoresNotificacao.pedidos > 0 ||
+          contadoresNotificacao.reposicao > 0 ||
+          contadoresNotificacao.recomendacoes > 0 ||
+          contadoresNotificacao.campanhas > 0) && (
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <AcaoPendenteCard
+              titulo={`${contadoresNotificacao.pedidos} pedidos precisam de atencao`}
+              href="/notificacoes?categoria=PEDIDO"
+              ativo={contadoresNotificacao.pedidos > 0}
+            />
+            <AcaoPendenteCard
+              titulo={`${contadoresNotificacao.reposicao} reposicoes sugeridas`}
+              href="/compras/reposicao"
+              ativo={contadoresNotificacao.reposicao > 0}
+            />
+            <AcaoPendenteCard
+              titulo={`${contadoresNotificacao.recomendacoes} recomendacoes novas`}
+              href="/compras/recomendacoes"
+              ativo={contadoresNotificacao.recomendacoes > 0}
+            />
+            <AcaoPendenteCard
+              titulo={`${contadoresNotificacao.campanhas} campanhas em rascunho`}
+              href="/compras/campanhas"
+              ativo={contadoresNotificacao.campanhas > 0}
+            />
+          </section>
+        )}
+
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
           <div className="flex items-center gap-3">
@@ -307,6 +347,28 @@ export default async function ComprasPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+function AcaoPendenteCard({
+  titulo,
+  href,
+  ativo,
+}: {
+  titulo: string;
+  href: string;
+  ativo: boolean;
+}) {
+  if (!ativo) return null;
+
+  return (
+    <Link
+      href={href}
+      className="flex min-h-20 items-center justify-between gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-900 shadow-sm transition hover:bg-amber-100"
+    >
+      {titulo}
+      <ArrowRight className="h-4 w-4 shrink-0" />
+    </Link>
   );
 }
 
