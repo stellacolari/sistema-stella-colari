@@ -5,6 +5,7 @@ import {
   excluirTodasNotificacoes,
   excluirVariasNotificacoes,
   marcarComoLida,
+  perfilNotificacaoUsuario,
 } from "@/lib/notificacoes/notificacoes";
 
 export async function POST(request: NextRequest) {
@@ -12,10 +13,11 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const acao = String(body.acao || "").toUpperCase();
   const ids: string[] = Array.isArray(body.ids) ? body.ids.filter(Boolean).map(String) : [];
+  const perfilNotificacao = perfilNotificacaoUsuario(usuario);
 
   try {
     if (acao === "EXCLUIR_TUDO") {
-      const resultado = await excluirTodasNotificacoes(usuario.id, usuario.perfil);
+      const resultado = await excluirTodasNotificacoes(usuario.id, perfilNotificacao);
       return NextResponse.json({ ok: true, resultado });
     }
 
@@ -24,17 +26,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (acao === "EXCLUIR") {
-      const resultado = await excluirVariasNotificacoes(ids, usuario.id, usuario.perfil);
+      const resultado = await excluirVariasNotificacoes(ids, usuario.id, perfilNotificacao);
       return NextResponse.json({ ok: true, resultado });
     }
 
     if (acao === "LIDA") {
-      await Promise.all(ids.map((id) => marcarComoLida(id, usuario.id, usuario.perfil)));
+      await Promise.all(ids.map((id) => marcarComoLida(id, usuario.id, perfilNotificacao)));
       return NextResponse.json({ ok: true, resultado: { total: ids.length } });
     }
 
     if (acao === "ARQUIVAR") {
-      await Promise.all(ids.map((id) => arquivarNotificacao(id, usuario.id, usuario.perfil)));
+      await Promise.all(ids.map((id) => arquivarNotificacao(id, usuario.id, perfilNotificacao)));
       return NextResponse.json({ ok: true, resultado: { total: ids.length } });
     }
   } catch (error) {

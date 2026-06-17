@@ -1586,15 +1586,37 @@ model UsuarioAdmin {
   email         String               @unique
   senhaHash     String
   perfil        String               @default("ACESSO_GERAL")
+  perfilAdministrativoId String?
   ativo         Boolean              @default(true)
   ultimoLoginEm DateTime?
   criadoEm      DateTime             @default(now())
   atualizadoEm  DateTime             @updatedAt
   notificacoes  NotificacaoUsuario[]
+  perfilAdministrativo PerfilAdministrativo? @relation(fields: [perfilAdministrativoId], references: [id], onDelete: SetNull)
+  regrasNotificacao RegraNotificacaoPerfil[]
 
   @@index([email])
   @@index([ativo])
   @@index([perfil])
+  @@index([perfilAdministrativoId])
+}
+
+model PerfilAdministrativo {
+  id             String                     @id @default(cuid())
+  nome           String
+  codigo         String                     @unique
+  descricao      String?
+  tipoBase       String                     @default("PERSONALIZADO")
+  ativo          Boolean                    @default(true)
+  permissoesJson Json
+  criadoEm       DateTime                   @default(now())
+  atualizadoEm   DateTime                   @updatedAt
+  usuarios       UsuarioAdmin[]
+  regrasNotificacao RegraNotificacaoPerfil[]
+
+  @@index([codigo])
+  @@index([tipoBase])
+  @@index([ativo])
 }
 
 model NotificacaoSistema {
@@ -1667,6 +1689,31 @@ model NotificacaoCanalEnvio {
   @@index([canal])
   @@index([status])
   @@index([enviadoEm])
+}
+
+model RegraNotificacaoPerfil {
+  id                  String                 @id @default(cuid())
+  tipoNotificacao     String
+  categoria           String
+  prioridadeMinima    String                 @default("INFO")
+  perfilId            String?
+  usuarioId           String?
+  ativo               Boolean                @default(true)
+  canalInApp          Boolean                @default(true)
+  canalWhatsappFuturo Boolean                @default(false)
+  canalSmsFuturo      Boolean                @default(false)
+  canalEmailFuturo    Boolean                @default(false)
+  criadoEm            DateTime               @default(now())
+  atualizadoEm        DateTime               @updatedAt
+  perfil              PerfilAdministrativo?  @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  usuario             UsuarioAdmin?          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tipoNotificacao])
+  @@index([categoria])
+  @@index([prioridadeMinima])
+  @@index([perfilId])
+  @@index([usuarioId])
+  @@index([ativo])
 }
 
 model CupomLoja {

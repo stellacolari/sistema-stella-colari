@@ -4,6 +4,7 @@ import {
   arquivarNotificacao,
   excluirNotificacao,
   marcarComoLida,
+  perfilNotificacaoUsuario,
 } from "@/lib/notificacoes/notificacoes";
 
 export async function PATCH(
@@ -14,20 +15,21 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const acao = String(body.acao || "LIDA").toUpperCase();
+  const perfilNotificacao = perfilNotificacaoUsuario(usuario);
 
   try {
     if (acao === "LIDA") {
-      const notificacao = await marcarComoLida(id, usuario.id, usuario.perfil);
+      const notificacao = await marcarComoLida(id, usuario.id, perfilNotificacao);
       return NextResponse.json({ notificacao });
     }
 
     if (acao === "ARQUIVAR") {
-      const notificacao = await arquivarNotificacao(id, usuario.id, usuario.perfil);
+      const notificacao = await arquivarNotificacao(id, usuario.id, perfilNotificacao);
       return NextResponse.json({ notificacao });
     }
 
     if (acao === "EXCLUIR") {
-      const notificacao = await excluirNotificacao(id, usuario.id, usuario.perfil);
+      const notificacao = await excluirNotificacao(id, usuario.id, perfilNotificacao);
       return NextResponse.json({ notificacao });
     }
   } catch (error) {

@@ -20,6 +20,7 @@
     "campanhas:gerar": "node scripts/gerar-campanhas-comerciais.mjs",
     "precificacao:analisar": "node scripts/analisar-precificacao-stella.mjs",
     "notificacoes:sincronizar": "node scripts/sincronizar-notificacoes.mjs",
+    "perfis:seed": "node scripts/seed-perfis-administrativos.mjs",
     "vitrines:gerar": "node scripts/gerar-vitrines-inteligentes.mjs"
   },
   "dependencies": {

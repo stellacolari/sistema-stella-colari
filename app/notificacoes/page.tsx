@@ -3,6 +3,7 @@ import { exigirAdmin } from "@/lib/auth/admin";
 import {
   contarNotificacoesNaoLidas,
   listarNotificacoes,
+  perfilNotificacaoUsuario,
 } from "@/lib/notificacoes/notificacoes";
 import NotificacoesClient from "@/components/notificacoes/NotificacoesClient";
 
@@ -14,9 +15,10 @@ export const dynamic = "force-dynamic";
 
 export default async function NotificacoesPage() {
   const usuario = await exigirAdmin();
+  const perfilNotificacao = perfilNotificacaoUsuario(usuario);
   const [notificacoes, contadores] = await Promise.all([
-    listarNotificacoes({ usuarioId: usuario.id, perfil: usuario.perfil, take: 150 }),
-    contarNotificacoesNaoLidas(usuario.id, usuario.perfil),
+    listarNotificacoes({ usuarioId: usuario.id, perfil: perfilNotificacao, take: 150 }),
+    contarNotificacoesNaoLidas(usuario.id, perfilNotificacao),
   ]);
 
   return (

@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 
 type MenuTone = "default" | "site" | "system";
-type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
+type PerfilAdmin = string;
+type PermissoesPerfil = Record<string, string[]>;
 type NotificacaoContadores = {
   total: number;
   pedidos: number;
@@ -46,6 +47,7 @@ type MenuSingleLink = {
   tone?: MenuTone;
   exact?: boolean;
   activePrefixes?: string[];
+  modulo?: string;
 };
 
 type MenuGroup = {
@@ -60,6 +62,7 @@ type MenuGroup = {
   quickAddLabel?: string;
   tone?: MenuTone;
   activePrefixes?: string[];
+  modulo?: string;
   links: {
     href: string;
     label: string;
@@ -67,6 +70,7 @@ type MenuGroup = {
     tone?: MenuTone;
     exact?: boolean;
     activePrefixes?: string[];
+    modulo?: string;
   }[];
 };
 
@@ -83,6 +87,7 @@ type QuickAction = {
   label: string;
   icon: ElementType;
   tone?: MenuTone;
+  modulo?: string;
 };
 
 const menuSections: MenuSection[] = [
@@ -93,6 +98,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/dashboard",
+        modulo: "dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
         description: "Visão geral do sistema",
@@ -100,6 +106,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/pedidos",
+        modulo: "pedidos",
         label: "Pedidos",
         icon: ClipboardList,
         description: "Central operacional",
@@ -108,6 +115,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/notificacoes",
+        modulo: "notificacoes",
         label: "Caixa de Entrada",
         icon: Bell,
         description: "Notificacoes e acoes",
@@ -116,6 +124,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/vendas",
+        modulo: "vendas",
         label: "Vendas",
         icon: ShoppingBag,
         description: "Histórico de vendas",
@@ -123,6 +132,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/clientes",
+        modulo: "clientes",
         label: "Clientes",
         icon: Users,
         description: "Cadastro e histórico",
@@ -136,6 +146,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/produtos",
+        modulo: "produtos",
         label: "Produtos",
         icon: Package,
         description: "Cadastro, variações e famílias",
@@ -143,6 +154,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/estoque",
+        modulo: "estoque",
         label: "Estoque",
         icon: Warehouse,
         description: "Saldos e ajustes",
@@ -150,6 +162,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/insumos-embalagens",
+        modulo: "produtos",
         label: "Insumos e Embalagens",
         icon: Boxes,
         description: "Insumos, regras e embalagens",
@@ -169,15 +182,16 @@ const menuSections: MenuSection[] = [
       {
         type: "group",
         href: "/compras",
+        modulo: "compras",
         label: "Compras e Financeiro",
         icon: ShoppingCart,
         description: "Central de compras e financeiro",
         activePrefixes: ["/compras"],
         links: [
-          { href: "/compras/reposicao", label: "Reposicao", icon: RefreshCcw },
-          { href: "/compras/recomendacoes", label: "Recomendacoes", icon: Lightbulb },
-          { href: "/compras/campanhas", label: "Campanhas", icon: Megaphone },
-          { href: "/compras/precificacao", label: "Precificacao", icon: MousePointerClick },
+          { href: "/compras/reposicao", label: "Reposicao", icon: RefreshCcw, modulo: "reposicao" },
+          { href: "/compras/recomendacoes", label: "Recomendacoes", icon: Lightbulb, modulo: "recomendacoes" },
+          { href: "/compras/campanhas", label: "Campanhas", icon: Megaphone, modulo: "campanhas" },
+          { href: "/compras/precificacao", label: "Precificacao", icon: MousePointerClick, modulo: "precificacao" },
         ],
       },
     ],
@@ -189,6 +203,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/configuracoes/loja",
+        modulo: "lojaOnline",
         label: "Loja Online",
         icon: Store,
         description: "Paginas, categorias e navegacao",
@@ -215,6 +230,7 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/relatorios",
+        modulo: "relatorios",
         label: "Relatórios",
         icon: BarChart3,
         description: "Vendas, estoque, clientes e financeiro",
@@ -230,12 +246,13 @@ const menuSections: MenuSection[] = [
       {
         type: "link",
         href: "/configuracoes",
+        modulo: "configuracoes",
         label: "Configurações",
         icon: SlidersHorizontal,
         description: "Loja, integrações e lixeira",
         tone: "system",
         exact: true,
-        activePrefixes: ["/configuracoes/integracoes", "/lixeira"],
+        activePrefixes: ["/configuracoes/integracoes", "/configuracoes/perfis", "/lixeira"],
       },
     ],
   },
@@ -298,16 +315,19 @@ const quickActions: QuickAction[] = [
     href: "/vendas/nova-v2",
     label: "Nova venda",
     icon: ShoppingBag,
+    modulo: "vendas",
   },
   {
     href: "/compras/nova-v2",
     label: "Nova compra de estoque",
     icon: ShoppingCart,
+    modulo: "compras",
   },
   {
     href: "/produtos/novo",
     label: "Novo produto",
     icon: Package,
+    modulo: "produtos",
   },
 ];
 
@@ -316,6 +336,7 @@ const vendedorQuickActions: QuickAction[] = [
     href: "/vendas/nova-v2",
     label: "Nova venda",
     icon: ShoppingBag,
+    modulo: "vendas",
   },
 ];
 
@@ -478,6 +499,32 @@ function getQuickActions(perfil: PerfilAdmin) {
   return perfil === "VENDEDOR" ? vendedorQuickActions : quickActions;
 }
 
+function podeVerModulo(modulo: string | undefined, permissoes: PermissoesPerfil | undefined) {
+  if (!modulo || !permissoes) return true;
+  return permissoes[modulo]?.includes("ver") || false;
+}
+
+function filtrarSectionsPorPermissao(sections: MenuSection[], permissoes: PermissoesPerfil | undefined) {
+  if (!permissoes) return sections;
+
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .map((item) => {
+          if (item.type === "group") {
+            return { ...item, links: item.links.filter((link) => podeVerModulo(link.modulo, permissoes)) };
+          }
+          return item;
+        })
+        .filter((item) => {
+          if (item.type === "group") return podeVerModulo(item.modulo, permissoes) || item.links.length > 0;
+          return podeVerModulo(item.modulo, permissoes);
+        }),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 function getSectionGroups(sections: MenuSection[]) {
   return sections.flatMap((section) =>
     section.items
@@ -498,6 +545,7 @@ export default function SidebarMenu({
   onCompactoChange,
   showCompactToggle = false,
   notificacoes,
+  permissoes,
 }: {
   perfil?: PerfilAdmin;
   onNavigate?: () => void;
@@ -505,10 +553,11 @@ export default function SidebarMenu({
   onCompactoChange?: () => void;
   showCompactToggle?: boolean;
   notificacoes?: NotificacaoContadores;
+  permissoes?: PermissoesPerfil;
 }) {
   const pathname = usePathname();
-  const sections = useMemo(() => getMenuSections(perfil), [perfil]);
-  const actions = useMemo(() => getQuickActions(perfil), [perfil]);
+  const sections = useMemo(() => filtrarSectionsPorPermissao(getMenuSections(perfil), permissoes), [perfil, permissoes]);
+  const actions = useMemo(() => getQuickActions(perfil).filter((action) => podeVerModulo(action.modulo, permissoes)), [perfil, permissoes]);
 
   const groups = useMemo(() => getSectionGroups(sections), [sections]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});

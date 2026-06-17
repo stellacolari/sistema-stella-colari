@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { lerSessaoAdmin } from "@/lib/auth/admin";
+import { exigirAdmin, lerSessaoAdmin } from "@/lib/auth/admin";
+import { obterPermissoesUsuario } from "@/lib/permissoes/perfis";
 
 export async function GET() {
   const sessao = await lerSessaoAdmin();
@@ -11,12 +12,16 @@ export async function GET() {
     );
   }
 
+  const usuario = await exigirAdmin();
+
   return NextResponse.json({
     usuario: {
-      id: sessao.sub,
-      nome: sessao.nome,
-      email: sessao.email,
-      perfil: sessao.perfil,
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil,
+      perfilAdministrativo: usuario.perfilAdministrativo,
+      permissoes: obterPermissoesUsuario(usuario),
     },
   });
 }

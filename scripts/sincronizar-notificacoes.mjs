@@ -44,6 +44,11 @@ function destinoPadrao(categoria) {
     : ["ACESSO_GERAL"];
 }
 
+function prioridadeAtendeMinima(prioridade, minima) {
+  const pesos = { INFO: 0, BAIXA: 1, MEDIA: 2, ALTA: 3, CRITICA: 4 };
+  return (pesos[prioridade] ?? 0) >= (pesos[minima] ?? 0);
+}
+
 async function garantirDestinatarios(notificacaoId, perfisDestino) {
   for (const perfilDestino of perfisDestino) {
     await prisma.notificacaoUsuario.upsert({
@@ -62,6 +67,64 @@ async function garantirDestinatarios(notificacaoId, perfisDestino) {
   }
 }
 
+async function garantirDestinatariosUsuarios(notificacaoId, usuariosDestino) {
+  for (const usuarioId of usuariosDestino) {
+    await prisma.notificacaoUsuario.upsert({
+      where: {
+        notificacaoId_usuarioId: {
+          notificacaoId,
+          usuarioId,
+        },
+      },
+      update: {},
+      create: {
+        notificacaoId,
+        usuarioId,
+      },
+    });
+  }
+}
+
+async function resolverDestinatarios(params) {
+  const regras = await prisma.regraNotificacaoPerfil.findMany({
+    where: {
+      ativo: true,
+      canalInApp: true,
+      OR: [
+        { tipoNotificacao: params.tipo },
+        { tipoNotificacao: "*" },
+        { categoria: params.categoria },
+      ],
+    },
+    include: {
+      perfil: true,
+      usuario: { select: { id: true, ativo: true } },
+    },
+  });
+  const perfis = new Set();
+  const usuarios = new Set();
+  const regrasEspecificas = regras.filter((regra) => regra.tipoNotificacao === params.tipo);
+  const regrasAplicaveis = regrasEspecificas.length ? regrasEspecificas : regras;
+
+  for (const regra of regrasAplicaveis) {
+    if (!prioridadeAtendeMinima(params.prioridade, regra.prioridadeMinima)) continue;
+    if (regra.perfil?.ativo) {
+      perfis.add(regra.perfil.codigo);
+      if (regra.perfil.tipoBase === "ADMIN_GERAL") perfis.add("ACESSO_GERAL");
+      if (regra.perfil.tipoBase === "VENDEDOR") perfis.add("VENDEDOR");
+    }
+    if (regra.usuario?.ativo) usuarios.add(regra.usuario.id);
+  }
+
+  if (perfis.size === 0 && usuarios.size === 0) {
+    for (const perfil of params.perfisDestino || destinoPadrao(params.categoria)) {
+      perfis.add(perfil);
+    }
+  }
+
+  return { perfis: [...perfis], usuarios: [...usuarios] };
+}
+
 async function criarOuAtualizar(params) {
   const existente = await prisma.notificacaoSistema.findFirst({
     where: {
@@ -73,7 +136,7 @@ async function criarOuAtualizar(params) {
     },
     orderBy: { criadoEm: "desc" },
   });
-  const perfisDestino = params.perfisDestino || destinoPadrao(params.categoria);
+  const destinos = await resolverDestinatarios(params);
 
   if (existente) {
     const notificacao = await prisma.notificacaoSistema.update({
@@ -89,7 +152,15 @@ async function criarOuAtualizar(params) {
         metadataJson: params.metadataJson,
       },
     });
-    await garantirDestinatarios(notificacao.id, perfisDestino);
+    await garantirDestinatarios(notificacao.id, destinos.perfis);
+    await prisma.notificacaoUsuario.deleteMany({
+      where: {
+        notificacaoId: notificacao.id,
+        usuarioId: null,
+        perfilDestino: { notIn: destinos.perfis },
+      },
+    });
+    await garantirDestinatariosUsuarios(notificacao.id, destinos.usuarios);
     return notificacao;
   }
 
@@ -112,7 +183,15 @@ async function criarOuAtualizar(params) {
       },
     },
   });
-  await garantirDestinatarios(notificacao.id, perfisDestino);
+  await garantirDestinatarios(notificacao.id, destinos.perfis);
+  await prisma.notificacaoUsuario.deleteMany({
+    where: {
+      notificacaoId: notificacao.id,
+      usuarioId: null,
+      perfilDestino: { notIn: destinos.perfis },
+    },
+  });
+  await garantirDestinatariosUsuarios(notificacao.id, destinos.usuarios);
   return notificacao;
 }
 

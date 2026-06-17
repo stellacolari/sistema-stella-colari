@@ -1,7 +1,7 @@
 import type { ElementType } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, PlugZap, Settings, Store, Trash2 } from "lucide-react";
+import { ArrowRight, PlugZap, Settings, ShieldCheck, Store, Trash2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Configurações | Plataforma Stella Colari",
@@ -28,6 +28,13 @@ const configuracoes = [
     title: "Integrações",
     description: "Gerencie canais conectados, importações e produtos por canal.",
     icon: PlugZap,
+    tone: "system" as const,
+  },
+  {
+    href: "/configuracoes/perfis",
+    title: "Perfis e Permissoes",
+    description: "Configure cargos administrativos, acessos e regras de notificacao.",
+    icon: ShieldCheck,
     tone: "system" as const,
   },
   {

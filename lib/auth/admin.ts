@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
 import {
   ADMIN_SESSION_COOKIE,
   assinarSessaoAdmin,
@@ -82,11 +83,34 @@ export async function exigirAdmin() {
       nome: true,
       email: true,
       perfil: true,
+      perfilAdministrativo: {
+        select: {
+          id: true,
+          codigo: true,
+          nome: true,
+          tipoBase: true,
+          ativo: true,
+          permissoesJson: true,
+        },
+      },
     },
   });
 
   if (!usuario) {
     redirect("/login");
+  }
+
+  return usuario;
+}
+
+export async function exigirAdminGeral() {
+  const usuario = await exigirAdmin();
+
+  if (
+    usuario.perfil !== "ACESSO_GERAL" &&
+    !usuarioTemPermissao(usuario, "configuracoes", "editar")
+  ) {
+    throw new Error("Acesso nao permitido para este perfil.");
   }
 
   return usuario;

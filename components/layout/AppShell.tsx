@@ -8,7 +8,8 @@ import { Bell, ExternalLink, Menu, X } from "lucide-react";
 import SidebarMenu from "@/components/layout/SidebarMenu";
 import LogoutButton from "@/components/layout/LogoutButton";
 
-type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR";
+type PerfilAdmin = string;
+type PermissoesPerfil = Record<string, string[]>;
 type NotificacaoContadores = {
   total: number;
   pedidos: number;
@@ -135,6 +136,15 @@ function getPageInfo(pathname: string) {
       eyebrow: "Integracoes",
       title: "Integracoes",
       description: "Canais, importacoes e produtos vinculados.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/configuracoes/perfis")) {
+    return {
+      eyebrow: "Sistema",
+      title: "Perfis e Permissoes",
+      description: "Cargos administrativos, acessos e distribuicao de notificacoes.",
       showLojaButton: false,
     };
   }
@@ -343,6 +353,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     /\.[a-zA-Z0-9]+$/.test(pathname);
   const pageInfo = getPageInfo(pathname);
   const [perfil, setPerfil] = useState<PerfilAdmin>("VENDEDOR");
+  const [permissoes, setPermissoes] = useState<PermissoesPerfil | undefined>();
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [sidebarCompacta, setSidebarCompacta] = useState(false);
   const [notificacoes, setNotificacoes] = useState<NotificacaoContadores>({
@@ -373,7 +384,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
 
-        setPerfil(perfilResposta === "ACESSO_GERAL" ? "ACESSO_GERAL" : "VENDEDOR");
+        setPerfil(typeof perfilResposta === "string" && perfilResposta ? perfilResposta : "VENDEDOR");
+        setPermissoes(data.usuario?.permissoes);
 
         const notificacoesResponse = await fetch("/api/notificacoes/contadores", {
           cache: "no-store",
@@ -486,6 +498,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         <SidebarMenu
           perfil={perfil}
+          permissoes={permissoes}
           notificacoes={notificacoes}
           compacto={sidebarCompacta}
           onCompactoChange={alternarSidebarCompacta}
@@ -553,6 +566,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="min-h-0 flex-1">
               <SidebarMenu
                 perfil={perfil}
+                permissoes={permissoes}
                 notificacoes={notificacoes}
                 compacto={false}
                 onNavigate={() => setMenuMobileAberto(false)}

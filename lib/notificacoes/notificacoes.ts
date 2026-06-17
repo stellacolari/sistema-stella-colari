@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { analisarPrecificacaoProdutos } from "@/lib/financeiro/precificacao-inteligente";
+import { mapearPerfilLegado, prioridadeAtendeMinima } from "@/lib/permissoes/perfis";
 
 export const NOTIFICACAO_CATEGORIAS = [
   "PEDIDO",
@@ -68,7 +69,13 @@ type ListarParams = {
 
 function perfisPermitidos(perfil: PerfilAdmin) {
   if (perfil === "ACESSO_GERAL") return undefined;
+  if (perfil !== "VENDEDOR") return undefined;
   return ["PEDIDO", "OPERACIONAL"];
+}
+
+export function perfilNotificacaoUsuario(usuario: { perfil: string; perfilAdministrativo?: { codigo: string; ativo: boolean } | null }) {
+  if (usuario.perfilAdministrativo?.ativo) return usuario.perfilAdministrativo.codigo;
+  return usuario.perfil;
 }
 
 function destinoPadrao(categoria: string) {
@@ -113,10 +120,89 @@ async function garantirDestinatarios(notificacaoId: string, perfisDestino: strin
   );
 }
 
+async function resolverDestinatarios(params: {
+  tipo: string;
+  categoria: string;
+  prioridade: string;
+  perfisDestino?: string[];
+}) {
+  const regras = await prisma.regraNotificacaoPerfil.findMany({
+    where: {
+      ativo: true,
+      canalInApp: true,
+      OR: [
+        { tipoNotificacao: params.tipo },
+        { tipoNotificacao: "*" },
+        { categoria: params.categoria },
+      ],
+    },
+    include: {
+      perfil: true,
+      usuario: { select: { id: true, ativo: true } },
+    },
+  });
+
+  const perfis = new Set<string>();
+  const usuarios = new Set<string>();
+  const regrasEspecificas = regras.filter((regra) => regra.tipoNotificacao === params.tipo);
+  const regrasAplicaveis = regrasEspecificas.length ? regrasEspecificas : regras;
+
+  for (const regra of regrasAplicaveis) {
+    if (!prioridadeAtendeMinima(params.prioridade, regra.prioridadeMinima)) continue;
+    if (regra.perfil?.ativo) {
+      perfis.add(regra.perfil.codigo);
+      if (regra.perfil.tipoBase === "ADMIN_GERAL") perfis.add("ACESSO_GERAL");
+      if (regra.perfil.tipoBase === "VENDEDOR") perfis.add("VENDEDOR");
+    }
+    if (regra.usuario?.ativo) usuarios.add(regra.usuario.id);
+  }
+
+  if (perfis.size === 0 && usuarios.size === 0) {
+    for (const perfil of params.perfisDestino?.length ? params.perfisDestino : destinoPadrao(params.categoria)) {
+      perfis.add(mapearPerfilLegado(perfil) === "ADMIN_GERAL" ? "ACESSO_GERAL" : "VENDEDOR");
+      perfis.add(perfil);
+    }
+  }
+
+  return { perfis: [...perfis], usuarios: [...usuarios] };
+}
+
+async function garantirDestinatariosRegras(notificacaoId: string, params: CriarNotificacaoParams) {
+  const destinos = await resolverDestinatarios({
+    tipo: params.tipo,
+    categoria: params.categoria,
+    prioridade: params.prioridade,
+    perfisDestino: params.perfisDestino,
+  });
+
+  await Promise.all([
+    garantirDestinatarios(notificacaoId, destinos.perfis),
+    prisma.notificacaoUsuario.deleteMany({
+      where: {
+        notificacaoId,
+        usuarioId: null,
+        perfilDestino: { notIn: destinos.perfis },
+      },
+    }),
+    ...destinos.usuarios.map((usuarioId) =>
+      prisma.notificacaoUsuario.upsert({
+        where: {
+          notificacaoId_usuarioId: {
+            notificacaoId,
+            usuarioId,
+          },
+        },
+        update: {},
+        create: {
+          notificacaoId,
+          usuarioId,
+        },
+      }),
+    ),
+  ]);
+}
+
 export async function criarNotificacao(params: CriarNotificacaoParams) {
-  const perfisDestino = params.perfisDestino?.length
-    ? params.perfisDestino
-    : destinoPadrao(params.categoria);
   const notificacao = await prisma.notificacaoSistema.create({
     data: {
       tipo: params.tipo,
@@ -141,7 +227,7 @@ export async function criarNotificacao(params: CriarNotificacaoParams) {
     },
   });
 
-  await garantirDestinatarios(notificacao.id, perfisDestino);
+  await garantirDestinatariosRegras(notificacao.id, params);
   return notificacao;
 }
 
@@ -174,10 +260,7 @@ export async function criarOuAtualizarNotificacao(params: CriarNotificacaoParams
     },
   });
 
-  await garantirDestinatarios(
-    notificacao.id,
-    params.perfisDestino?.length ? params.perfisDestino : destinoPadrao(params.categoria),
-  );
+  await garantirDestinatariosRegras(notificacao.id, params);
 
   return notificacao;
 }
@@ -196,7 +279,6 @@ export async function listarNotificacoes(params: ListarParams) {
 
   if (params.categoria && params.categoria !== "TODAS") where.categoria = params.categoria;
   if (params.prioridade && params.prioridade !== "TODAS") where.prioridade = params.prioridade;
-  if (params.status && params.status !== "TODAS") where.status = params.status;
   if (params.busca) {
     where.OR = [
       { titulo: { contains: params.busca, mode: "insensitive" } },
@@ -221,31 +303,41 @@ export async function listarNotificacoes(params: ListarParams) {
       { criadoEm: "desc" },
     ],
     take: params.take || 100,
-  });
+  }).then((notificacoes) =>
+    notificacoes
+      .map((notificacao) => {
+        const destinatarioUsuario = notificacao.destinatarios.find((item) => item.usuarioId === params.usuarioId);
+        const destinatarioPerfil = notificacao.destinatarios.find((item) => item.perfilDestino === params.perfil);
+        const destinatario = destinatarioUsuario || destinatarioPerfil;
+        const statusIndividual = destinatario?.arquivadaEm
+          ? "ARQUIVADA"
+          : destinatario?.lidaEm
+            ? "LIDA"
+            : notificacao.status;
+
+        return {
+          ...notificacao,
+          status: statusIndividual,
+          destinatarios: destinatario ? [destinatario] : [],
+        };
+      })
+      .filter((notificacao) => {
+        const destinatario = notificacao.destinatarios[0];
+        if (!destinatario || destinatario.excluidaEm) return false;
+        if (params.status && params.status !== "TODAS") return notificacao.status === params.status;
+        return true;
+      }),
+  );
 }
 
 export async function contarNotificacoesNaoLidas(usuarioId: string, perfil: PerfilAdmin) {
-  const whereBase: Prisma.NotificacaoSistemaWhereInput = {
-    status: "NOVA",
-    ...filtroAcesso(perfil),
-    destinatarios: {
-      some: {
-        OR: [{ usuarioId }, { perfilDestino: perfil }],
-        lidaEm: null,
-        arquivadaEm: null,
-        excluidaEm: null,
-      },
-    },
-  };
-
-  const [total, pedidos, reposicao, recomendacoes, campanhas, precificacao] = await Promise.all([
-    prisma.notificacaoSistema.count({ where: whereBase }),
-    prisma.notificacaoSistema.count({ where: { ...whereBase, categoria: "PEDIDO" } }),
-    prisma.notificacaoSistema.count({ where: { ...whereBase, categoria: { in: ["ESTOQUE", "REPOSICAO"] } } }),
-    prisma.notificacaoSistema.count({ where: { ...whereBase, categoria: "RECOMENDACAO" } }),
-    prisma.notificacaoSistema.count({ where: { ...whereBase, categoria: "CAMPANHA" } }),
-    prisma.notificacaoSistema.count({ where: { ...whereBase, categoria: "PRECIFICACAO" } }),
-  ]);
+  const notificacoes = (await listarNotificacoes({ usuarioId, perfil, take: 1000 })).filter((item) => item.status === "NOVA");
+  const total = notificacoes.length;
+  const pedidos = notificacoes.filter((item) => item.categoria === "PEDIDO").length;
+  const reposicao = notificacoes.filter((item) => ["ESTOQUE", "REPOSICAO"].includes(item.categoria)).length;
+  const recomendacoes = notificacoes.filter((item) => item.categoria === "RECOMENDACAO").length;
+  const campanhas = notificacoes.filter((item) => item.categoria === "CAMPANHA").length;
+  const precificacao = notificacoes.filter((item) => item.categoria === "PRECIFICACAO").length;
 
   return { total, pedidos, reposicao, recomendacoes, campanhas, precificacao };
 }
@@ -264,15 +356,25 @@ async function destinatarioDoUsuario(notificacaoId: string, usuarioId: string, p
     throw new Error("Notificacao nao encontrada ou sem permissao para este perfil.");
   }
 
-  const existente = await prisma.notificacaoUsuario.findFirst({
+  const destinoUsuario = await prisma.notificacaoUsuario.findFirst({
     where: {
       notificacaoId,
-      OR: [{ usuarioId }, { perfilDestino: perfil }],
+      usuarioId,
     },
-    orderBy: { usuarioId: "desc" },
   });
 
-  if (existente) return existente;
+  if (destinoUsuario) return destinoUsuario;
+
+  const destinoPerfil = await prisma.notificacaoUsuario.findFirst({
+    where: {
+      notificacaoId,
+      perfilDestino: perfil,
+    },
+  });
+
+  if (!destinoPerfil) {
+    throw new Error("Notificacao nao encontrada ou sem permissao para este perfil.");
+  }
 
   return prisma.notificacaoUsuario.create({
     data: { notificacaoId, usuarioId },
@@ -286,10 +388,7 @@ export async function marcarComoLida(id: string, usuarioId: string, perfil: Perf
     data: { lidaEm: new Date() },
   });
 
-  return prisma.notificacaoSistema.update({
-    where: { id },
-    data: { status: "LIDA" },
-  });
+  return prisma.notificacaoSistema.findUniqueOrThrow({ where: { id } });
 }
 
 export async function arquivarNotificacao(id: string, usuarioId: string, perfil: PerfilAdmin) {
@@ -299,10 +398,7 @@ export async function arquivarNotificacao(id: string, usuarioId: string, perfil:
     data: { arquivadaEm: new Date() },
   });
 
-  return prisma.notificacaoSistema.update({
-    where: { id },
-    data: { status: "ARQUIVADA" },
-  });
+  return prisma.notificacaoSistema.findUniqueOrThrow({ where: { id } });
 }
 
 export async function excluirNotificacao(id: string, usuarioId: string, perfil: PerfilAdmin) {
@@ -312,10 +408,7 @@ export async function excluirNotificacao(id: string, usuarioId: string, perfil: 
     data: { excluidaEm: new Date() },
   });
 
-  return prisma.notificacaoSistema.update({
-    where: { id },
-    data: { status: "EXCLUIDA" },
-  });
+  return prisma.notificacaoSistema.findUniqueOrThrow({ where: { id } });
 }
 
 export async function excluirVariasNotificacoes(ids: string[], usuarioId: string, perfil: PerfilAdmin) {
