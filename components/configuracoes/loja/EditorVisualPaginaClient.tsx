@@ -11502,9 +11502,31 @@ export default function EditorVisualPaginaClient({
     );
   }
 
-  function marcarTextoPendente(blocoId: string) {
+  function marcarAlteracaoPendente(blocoId: string) {
     setBlocosComTextoPendente((current) =>
       current.includes(blocoId) ? current : [...current, blocoId]
+    );
+  }
+
+  function marcarTextoPendente(blocoId: string) {
+    marcarAlteracaoPendente(blocoId);
+  }
+
+  function atualizarConfigBlocoDraft(
+    blocoId: string,
+    configJson: Record<string, unknown>
+  ) {
+    marcarAlteracaoPendente(blocoId);
+    setSucesso("");
+    setBlocosEditor((current) =>
+      current.map((bloco) =>
+        bloco.id === blocoId
+          ? {
+              ...bloco,
+              configJson,
+            }
+          : bloco
+      )
     );
   }
 
@@ -11512,20 +11534,14 @@ export default function EditorVisualPaginaClient({
     blocoId: string,
     patch: Record<string, unknown>
   ) {
-    marcarTextoPendente(blocoId);
-    setBlocosEditor((current) =>
-      current.map((bloco) =>
-        bloco.id === blocoId
-          ? {
-              ...bloco,
-              configJson: {
-                ...getConfigObject(bloco.configJson),
-                ...patch,
-              },
-            }
-          : bloco
-      )
-    );
+    const blocoAtual = getBlocoEditorAtual(blocoId);
+
+    if (!blocoAtual) return;
+
+    atualizarConfigBlocoDraft(blocoId, {
+      ...getConfigObject(blocoAtual.configJson),
+      ...patch,
+    });
   }
 
   function atualizarCardInline(
@@ -12215,15 +12231,336 @@ export default function EditorVisualPaginaClient({
     });
   }
 
-  function atualizarEdicao(data: Partial<NonNullable<BlocoEditandoState>>) {
-    setEditando((current) =>
-      current
-        ? {
-            ...current,
-            ...data,
-          }
-        : current
+  function montarConfigDraftEdicao({
+    estado,
+    blocoAtual,
+  }: {
+    estado: NonNullable<BlocoEditandoState>;
+    blocoAtual: EditorVisualBloco;
+  }) {
+    const configAtual = getConfigObject(
+      isVitrineEditorialTipo(blocoAtual.tipo)
+        ? estado.bloco.configJson
+        : blocoAtual.configJson
     );
+
+    if (isVitrineEditorialTipo(blocoAtual.tipo)) {
+      return configAtual;
+    }
+
+    const tituloRichText = estado.titulo.trim()
+      ? getRichTextFallback(estado.titulo.trim())
+      : null;
+    const textoRichText = estado.texto.trim()
+      ? getRichTextFallback(estado.texto.trim())
+      : null;
+
+    return {
+      ...configAtual,
+      titulo: estado.titulo,
+      texto: estado.texto,
+      descricao: estado.texto,
+      conteudo: estado.texto,
+      tituloRichText,
+      textoRichText,
+      subtituloRichText: textoRichText,
+      tituloSecaoRichText: tituloRichText,
+      subtituloSecaoRichText: textoRichText,
+      textoBotao: estado.textoBotao,
+      botaoTexto: estado.textoBotao,
+      textoBotaoPrimario: estado.textoBotao,
+      linkBotao: estado.linkBotao,
+      botaoLink: estado.linkBotao,
+      linkUrl: estado.linkBotao,
+      linkBotaoPrimario: estado.linkBotao,
+      textoBotaoSecundario: estado.textoBotaoSecundario,
+      botaoSecundarioTexto: estado.textoBotaoSecundario,
+      linkBotaoSecundario: estado.linkBotaoSecundario,
+      botaoSecundarioLink: estado.linkBotaoSecundario,
+      exibirBotao: estado.exibirBotao,
+      exibirTexto: estado.exibirTexto,
+      exibirSubtitulo: estado.exibirSubtitulo,
+      exibirBotaoPrimario: estado.exibirBotaoPrimario,
+      exibirBotaoSecundario: estado.exibirBotaoSecundario,
+      tipoMidia: estado.tipoMidia,
+      exibirMidia: estado.exibirMidia,
+      imagemUrl: estado.imagemDesktopUrl || estado.imagemUrl,
+      imagemDesktopUrl: estado.imagemDesktopUrl,
+      imagemDesktop: estado.imagemDesktopUrl,
+      imagemMobileUrl: estado.imagemMobileUrl,
+      imagemMobile: estado.imagemMobileUrl,
+      videoDesktopUrl: estado.videoDesktopUrl,
+      videoMobileUrl: estado.videoMobileUrl,
+      videoPosterUrl: estado.videoPosterUrl,
+      videoLoop: estado.videoLoop,
+      videoSom: estado.videoSom,
+      mediaCropDesktopX: estado.mediaCropDesktopX,
+      mediaCropDesktopY: estado.mediaCropDesktopY,
+      mediaCropMobileX: estado.mediaCropMobileX,
+      mediaCropMobileY: estado.mediaCropMobileY,
+      mediaPositionDesktop: estado.mediaPositionDesktop,
+      mediaPositionMobile: estado.mediaPositionMobile,
+      mediaZoomDesktop: estado.mediaZoomDesktop,
+      mediaZoomMobile: estado.mediaZoomMobile,
+      modeloBanner: estado.modeloBanner,
+      textoPrincipal: estado.textoPrincipal,
+      varianteVisual: estado.varianteVisual,
+      animarLetras: estado.animarLetras,
+      velocidadeAnimacao: estado.velocidadeAnimacao,
+      mostrarTitulo: estado.mostrarTitulo,
+      mostrarSubtitulo: estado.mostrarSubtitulo,
+      mostrarCta: estado.mostrarCta,
+      animacaoElementos: estado.animacaoElementos,
+      alinhamentoConteudo: estado.alinhamentoConteudo,
+      alinhamentoTextoDesktop: estado.alinhamentoTextoDesktop,
+      alinhamentoTextoMobile: estado.alinhamentoTextoMobile,
+      alturaBanner: estado.alturaBanner,
+      larguraBanner: estado.larguraBanner,
+      overlayBanner: estado.overlayBanner,
+      corTextoBanner: estado.corTextoBanner,
+      alinhamentoVertical: estado.alinhamentoVertical,
+      margemSeguraX: estado.margemSeguraX,
+      margemSeguraY: estado.margemSeguraY,
+      larguraTextoPercentual: estado.larguraTextoPercentual,
+      fonteTituloDesktop: estado.fonteTituloDesktop,
+      fonteTituloMobile: estado.fonteTituloMobile,
+      lineHeightTitulo: estado.lineHeightTitulo,
+      letterSpacingTitulo: estado.letterSpacingTitulo,
+      imagemFrenteDesktopUrl: estado.imagemFrenteDesktopUrl,
+      imagemFrenteMobileUrl: estado.imagemFrenteMobileUrl,
+      imagemFrenteAlt: estado.imagemFrenteAlt,
+      imagemFrenteX: estado.imagemFrenteX,
+      imagemFrenteY: estado.imagemFrenteY,
+      imagemFrenteLarguraDesktop: estado.imagemFrenteLarguraDesktop,
+      imagemFrenteLarguraMobile: estado.imagemFrenteLarguraMobile,
+      estiloCtaBanner: estado.estiloCtaBanner,
+      ctaNovaAba: estado.ctaNovaAba,
+      produtosFlutuantesAtivos: estado.produtosFlutuantesAtivos,
+      layoutDesktop: isTextoImagemTipo(blocoAtual.tipo)
+        ? estado.layoutDesktopTextoImagem
+        : isListaProdutosTipo(blocoAtual.tipo)
+          ? estado.layoutDesktopProdutos
+          : isDestaquesCardsTipo(blocoAtual.tipo)
+            ? estado.layoutDesktopCards
+            : isCtaTipo(blocoAtual.tipo)
+              ? estado.layoutDesktopCta
+              : getStringConfig(configAtual, "layoutDesktop"),
+      layoutMobile: isTextoImagemTipo(blocoAtual.tipo)
+        ? estado.layoutMobileTextoImagem
+        : isListaProdutosTipo(blocoAtual.tipo)
+          ? estado.layoutMobileProdutos
+          : isDestaquesCardsTipo(blocoAtual.tipo)
+            ? estado.layoutMobileCards
+            : isCtaTipo(blocoAtual.tipo)
+              ? estado.layoutMobileCta
+              : getStringConfig(configAtual, "layoutMobile"),
+      layoutDesktopTextoImagem: estado.layoutDesktopTextoImagem,
+      layoutMobileTextoImagem: estado.layoutMobileTextoImagem,
+      larguraMidiaDesktop: estado.larguraMidiaDesktop,
+      larguraMidiaMobile: estado.larguraMidiaMobile,
+      corFundo: estado.corFundo,
+      espacamento: estado.espacamento,
+      fonte: estado.fonteProdutos,
+      categoriaId: estado.categoriaProdutoId,
+      categoriaSlug: estado.categoriaProdutoSlug,
+      categoriaNome: estado.categoriaProdutoNome,
+      categoriasIds: estado.categoriasProdutosIds,
+      categoriasSlugs: estado.categoriasProdutosSlugs,
+      categoriasNomes: estado.categoriasProdutosNomes,
+      categorias: estado.categoriasProdutosIds,
+      produtosIds: estado.produtosSelecionadosIds,
+      colecaoInteligenteId: estado.colecaoInteligenteId,
+      colecaoInteligenteSlug: estado.colecaoInteligenteSlug,
+      colecaoInteligenteNome: estado.colecaoInteligenteNome,
+      ordenacaoColecao: estado.ordenacaoColecao,
+      incluirSugeridosColecao: estado.incluirSugeridosColecao,
+      limite: Math.max(1, Number(estado.limiteProdutos) || 1),
+      modo: estado.layoutDesktopProdutos,
+      exibirSetasCarrossel: estado.exibirSetasCarrossel,
+      posicaoSetasCarrossel: estado.posicaoSetasCarrossel,
+      estiloSetasCarrossel: estado.estiloSetasCarrossel,
+      navegarPor: estado.navegarPor,
+      colunasDesktop: Math.max(
+        1,
+        Number(
+          isListaProdutosTipo(blocoAtual.tipo)
+            ? estado.colunasDesktopProdutos
+            : isColecoesCategoriasTipo(blocoAtual.tipo)
+              ? estado.colunasDesktopColecoes
+              : estado.colunasDesktopCards
+        ) || 1
+      ),
+      colunasTablet: Math.max(
+        1,
+        Number(
+          isListaProdutosTipo(blocoAtual.tipo)
+            ? estado.colunasTabletProdutos
+            : isColecoesCategoriasTipo(blocoAtual.tipo)
+              ? estado.colunasTabletColecoes
+              : estado.colunasTabletCards
+        ) || 1
+      ),
+      colunasMobile: Math.max(
+        1,
+        Number(
+          isListaProdutosTipo(blocoAtual.tipo)
+            ? estado.colunasMobileProdutos
+            : isColecoesCategoriasTipo(blocoAtual.tipo)
+              ? estado.colunasMobileColecoes
+              : estado.colunasMobileCards
+        ) || 1
+      ),
+      produtosPorLinha: Math.max(1, Number(estado.colunasDesktopProdutos) || 1),
+      exibirPreco: estado.exibirPrecoProdutos,
+      exibirSeloDesconto: estado.exibirSeloDescontoProdutos,
+      cards: estado.cardsDestaques.map((card) => ({
+        id: card.id,
+        titulo: card.titulo,
+        texto: card.texto,
+        tituloRichText: card.tituloRichText,
+        textoRichText: card.textoRichText,
+        exibirMidia: card.exibirMidia,
+        tipoMidia: card.tipoMidia,
+        imagemUrl: card.imagemDesktopUrl,
+        imagemDesktopUrl: card.imagemDesktopUrl,
+        imagemMobileUrl: card.imagemMobileUrl,
+        videoDesktopUrl: card.videoDesktopUrl,
+        videoMobileUrl: card.videoMobileUrl,
+        icone: card.icone,
+        mediaPositionDesktop: card.mediaPositionDesktop,
+        mediaPositionMobile: card.mediaPositionMobile,
+        mediaCropDesktopX: card.mediaCropDesktopX,
+        mediaCropDesktopY: card.mediaCropDesktopY,
+        mediaCropMobileX: card.mediaCropMobileX,
+        mediaCropMobileY: card.mediaCropMobileY,
+        exibirBotao: card.exibirBotao,
+        textoBotao: card.textoBotao,
+        linkBotao: card.linkBotao,
+      })),
+      layoutVisual: estado.layoutVisualColecoes,
+      origemItens: estado.origemItensColecoes,
+      larguraConteudo: isCtaTipo(blocoAtual.tipo)
+        ? estado.larguraConteudoCta
+        : estado.larguraConteudoColecoes,
+      alinhamento: isCtaTipo(blocoAtual.tipo)
+        ? estado.alinhamentoCta
+        : estado.alinhamentoCards,
+      estiloEtiqueta: estado.estiloEtiquetaColecoes,
+      presetMosaico: estado.presetMosaicoColecoes,
+      gapMosaico: estado.gapMosaicoColecoes,
+      tamanhoEtiqueta: estado.tamanhoEtiquetaColecoes,
+      posicaoEtiqueta: estado.posicaoEtiquetaColecoes,
+      larguraEtiqueta: estado.larguraEtiquetaColecoes,
+      exibirLinhaEtiqueta: estado.exibirLinhaEtiquetaColecoes,
+      exibirEtiqueta: estado.exibirEtiquetaColecoes,
+      exibirBotaoEtiqueta: estado.exibirBotaoEtiquetaColecoes,
+      cardInteiroClicavel: estado.cardInteiroClicavelColecoes,
+      larguraCabecalhoDesktop: Math.min(
+        40,
+        Math.max(25, Number(estado.larguraCabecalhoDesktopColecoes) || 32)
+      ),
+      posicaoCabecalhoMosaico: estado.posicaoCabecalhoMosaicoColecoes,
+      tipoCabecalho: estado.tipoCabecalhoColecoes,
+      logoTituloUrl: estado.logoTituloUrl,
+      logoTituloMobileUrl: estado.logoTituloMobileUrl,
+      logoTituloAlt: estado.logoTituloAlt,
+      logoTituloLarguraDesktop: Math.max(
+        40,
+        Number(estado.logoTituloLarguraDesktop) || 420
+      ),
+      logoTituloLarguraMobile: Math.max(
+        40,
+        Number(estado.logoTituloLarguraMobile) || 260
+      ),
+      logoTituloPosicao: estado.logoTituloPosicao,
+      imagemTituloUrl: estado.imagemTituloUrl,
+      imagemTituloMobileUrl: estado.imagemTituloMobileUrl,
+      imagemTituloAlt: estado.imagemTituloAlt,
+      imagemTituloLarguraDesktop: Math.max(
+        40,
+        Number(estado.imagemTituloLarguraDesktop) || 520
+      ),
+      imagemTituloLarguraMobile: Math.max(
+        40,
+        Number(estado.imagemTituloLarguraMobile) || 300
+      ),
+      alinhamentoCabecalhoDesktop: estado.alinhamentoCabecalhoDesktop,
+      alinhamentoCabecalhoMobile: estado.alinhamentoCabecalhoMobile,
+      itens: estado.itensColecoes.map((item, index) => ({
+        id: item.id,
+        tipoLink: item.tipoLink,
+        categoriaId: item.categoriaId,
+        categoriaSlug: item.categoriaSlug,
+        categoriaNome: item.categoriaNome,
+        titulo: item.titulo,
+        subtitulo: item.subtitulo,
+        tituloRichText: item.tituloRichText,
+        subtituloRichText: item.subtituloRichText,
+        textoLink: item.textoLink,
+        linkUrl: item.linkUrl,
+        imagemDesktopUrl: item.imagemDesktopUrl,
+        imagemUrl: item.imagemDesktopUrl,
+        imagemMobileUrl: item.imagemMobileUrl,
+        tipoMidia: item.tipoMidia,
+        videoDesktopUrl: item.videoDesktopUrl,
+        videoMobileUrl: item.videoMobileUrl,
+        mediaPositionDesktop: item.mediaPositionDesktop,
+        mediaPositionMobile: item.mediaPositionMobile,
+        mediaCropDesktopX: item.mediaCropDesktopX,
+        mediaCropDesktopY: item.mediaCropDesktopY,
+        mediaCropMobileX: item.mediaCropMobileX,
+        mediaCropMobileY: item.mediaCropMobileY,
+        tamanhoMosaico: item.tamanhoMosaico,
+        ordem: index,
+      })),
+      tituloStyle: estado.tituloStyle,
+      subtituloStyle: estado.subtituloStyle,
+      botaoPrimarioStyle: estado.botaoPrimarioStyle,
+      botaoSecundarioStyle: estado.botaoSecundarioStyle,
+      textoStyle: estado.textoStyle,
+      botaoStyle: estado.botaoStyle,
+      nomeProdutoStyle: estado.nomeProdutoStyle,
+      precoProdutoStyle: estado.precoProdutoStyle,
+      tituloSecaoStyle: estado.tituloSecaoStyle,
+      subtituloSecaoStyle: estado.subtituloSecaoStyle,
+      cardTituloStyle: estado.cardTituloStyle,
+      cardTextoStyle: estado.cardTextoStyle,
+      cardBotaoStyle: estado.cardBotaoStyle,
+    };
+  }
+
+  function aplicarEdicaoNoDraft(estado: NonNullable<BlocoEditandoState>) {
+    marcarAlteracaoPendente(estado.bloco.id);
+    setSucesso("");
+    setBlocosEditor((current) =>
+      current.map((bloco) =>
+        bloco.id === estado.bloco.id
+          ? {
+              ...bloco,
+              titulo: estado.nomeInterno || estado.titulo || bloco.titulo,
+              configJson: montarConfigDraftEdicao({
+                estado,
+                blocoAtual: bloco,
+              }),
+            }
+          : bloco
+      )
+    );
+  }
+
+  function atualizarEdicao(data: Partial<NonNullable<BlocoEditandoState>>) {
+    setEditando((current) => {
+      if (!current) return current;
+
+      const proximoEstado = {
+        ...current,
+        ...data,
+      };
+
+      aplicarEdicaoNoDraft(proximoEstado);
+
+      return proximoEstado;
+    });
   }
 
   async function salvarEdicaoBloco() {
@@ -12671,6 +13008,22 @@ export default function EditorVisualPaginaClient({
   void atualizarCardInline;
   void atualizarColecaoItemInline;
 
+  const possuiAlteracoesNaoSalvas = blocosComTextoPendente.length > 0;
+  const statusSalvamento = salvando
+    ? "Salvando"
+    : erro
+    ? "Erro ao salvar"
+    : possuiAlteracoesNaoSalvas
+    ? "Alterações não salvas"
+    : "Salvo";
+  const statusSalvamentoClass = salvando
+    ? "bg-blue-50 text-blue-700"
+    : erro
+    ? "bg-red-50 text-red-700"
+    : possuiAlteracoesNaoSalvas
+    ? "bg-amber-50 text-amber-700"
+    : "bg-emerald-50 text-emerald-700";
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-slate-100 text-slate-900">
       <header className="z-30 flex min-h-16 items-center gap-3 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4">
@@ -12700,6 +13053,12 @@ export default function EditorVisualPaginaClient({
 
             <span className="hidden rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 md:inline-flex">
               {pagina.statusPublicacao}
+            </span>
+
+            <span
+              className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold lg:inline-flex ${statusSalvamentoClass}`}
+            >
+              {statusSalvamento}
             </span>
           </div>
 
