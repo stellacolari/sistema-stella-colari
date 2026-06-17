@@ -172,6 +172,23 @@ function InfoCard({
   );
 }
 
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="md:col-span-2 xl:col-span-3">
+      <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
+        {title}
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
+  );
+}
+
 export default async function LojaOnlineCentralPage() {
   const usuario = await exigirAdmin();
   const podeVerVitrinesInteligentes = usuario.perfil === "ACESSO_GERAL";
@@ -369,6 +386,10 @@ export default async function LojaOnlineCentralPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SectionHeader
+          title="Builder e conteudo"
+          description="Paginas e blocos que estruturam a experiencia visual da loja."
+        />
         <CentralCard
           title="Páginas"
           description="Edite Home, páginas comuns, landing pages e páginas de categoria pelo editor visual."
@@ -383,6 +404,11 @@ export default async function LojaOnlineCentralPage() {
               primary: true,
             },
           ]}
+        />
+
+        <SectionHeader
+          title="Inteligencia comercial"
+          description="Vitrines e colecoes que ajudam a montar exposicao de produtos."
         />
 
         {podeVerVitrinesInteligentes ? (
@@ -421,6 +447,11 @@ export default async function LojaOnlineCentralPage() {
           />
         ) : null}
 
+        <SectionHeader
+          title="Navegacao e catalogo"
+          description="Menu, rodape e categorias que orientam a descoberta na loja."
+        />
+
         <CentralCard
           title="Menu e Rodapé"
           description="Configure navegação global, links, categorias do menu e referências usadas no rodapé."
@@ -452,6 +483,11 @@ export default async function LojaOnlineCentralPage() {
           ]}
         />
 
+        <SectionHeader
+          title="Promocoes"
+          description="Cupons e cashback da loja online."
+        />
+
         <CentralCard
           title="Promoções"
           description="Configure cupons e cashback."
@@ -470,6 +506,11 @@ export default async function LojaOnlineCentralPage() {
               label: "Cashback",
             },
           ]}
+        />
+
+        <SectionHeader
+          title="Configuracoes"
+          description="Frete, formularios e embalagens usadas pela operacao da loja."
         />
 
         <CentralCard
