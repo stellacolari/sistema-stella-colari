@@ -17,6 +17,7 @@ import {
   type IntencaoConteudo,
   type IntencaoProduto,
 } from "@/lib/loja/intencao-comercial";
+import { listarRecomendacoesGerenciais } from "@/lib/financeiro/recomendacoes-gerenciais";
 import ImageBox from "@/components/ui/ImageBox";
 
 export const metadata: Metadata = {
@@ -55,6 +56,20 @@ function dataCurta(value: Date) {
   }).format(value);
 }
 
+function prioridadeClasses(prioridade: string) {
+  if (prioridade === "ALTA") return "border-red-200 bg-red-50 text-red-800";
+  if (prioridade === "MEDIA") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function labelStatusRecomendacao(status: string) {
+  if (status === "NOVA") return "Nova";
+  if (status === "ACEITA") return "Aceita";
+  if (status === "EM_EXECUCAO") return "Em execucao";
+  if (status === "ADIADA") return "Adiada";
+  return status.replaceAll("_", " ");
+}
+
 export default async function IntencaoComercialPage({ searchParams }: PageProps) {
   const usuario = await exigirAdmin();
 
@@ -64,7 +79,21 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
 
   const params = await searchParams;
   const dias = Math.min(Math.max(Math.round(numero(params.dias, 30)), 7), 120);
-  const dados = await montarIntencaoComercial({ dias });
+  const [dados, recomendacoesIntencao] = await Promise.all([
+    montarIntencaoComercial({ dias }),
+    listarRecomendacoesGerenciais({
+      status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
+      tipo: ["LOJA", "REPOSICAO", "ESTOQUE", "PRECIFICACAO"],
+      origemTipo: [
+        "INTENCAO_PRODUTO",
+        "INTENCAO_BUSCA",
+        "INTENCAO_RUPTURA",
+        "INTENCAO_CONTEUDO",
+        "PRODUTO_ESTOQUE_PARADO",
+      ],
+      take: 6,
+    }),
+  ]);
   const produtosRiscoRupturaIntencao = dados.produtos
     .filter(
       (produto) =>
@@ -170,6 +199,58 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
           />
         </div>
       </section>
+
+      {recomendacoesIntencao.length > 0 && (
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <SectionTitle
+              icon={Sparkles}
+              title="Recomendacoes acompanhaveis"
+              description="Acoes abertas a partir da intencao comercial para revisar oferta, expor melhor ou evitar ruptura."
+            />
+            <Link
+              href="/compras/recomendacoes?tipo=LOJA"
+              className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Acompanhar decisoes
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {recomendacoesIntencao.map((recomendacao) => (
+              <div
+                key={recomendacao.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${prioridadeClasses(
+                      recomendacao.prioridade
+                    )}`}
+                  >
+                    {recomendacao.prioridade}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {labelStatusRecomendacao(recomendacao.status)}
+                  </span>
+                </div>
+                <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
+                  {recomendacao.titulo}
+                </p>
+                <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">
+                  {recomendacao.acaoSugerida || recomendacao.descricao}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {recomendacao.linkAcao && (
+                    <AcaoLink href={recomendacao.linkAcao}>Ver acao</AcaoLink>
+                  )}
+                  <AcaoLink href="/compras/recomendacoes">Acompanhar</AcaoLink>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">

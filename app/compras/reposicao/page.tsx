@@ -4,6 +4,10 @@ import {
   montarInteligenciaAdaptativaAtual,
 } from "@/lib/financeiro/inteligencia-adaptativa";
 import { exigirAdmin } from "@/lib/auth/admin";
+import {
+  listarRecomendacoesGerenciais,
+  serializarRecomendacaoGerencial,
+} from "@/lib/financeiro/recomendacoes-gerenciais";
 import { gerarRecomendacaoReposicao } from "@/lib/produtos/metricas-produto";
 import ReposicaoComprasClient, {
   type ReposicaoCompraItem,
@@ -90,6 +94,21 @@ export default async function ReposicaoComprasPage() {
         )
       )
     : estoqueProdutosReposicao.map(() => null);
+  const recomendacoesAbertas = podeVerInteligenciaAdaptativa
+    ? await listarRecomendacoesGerenciais({
+        status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
+        tipo: ["REPOSICAO", "PRECIFICACAO", "ESTOQUE", "LOJA"],
+        take: 120,
+      })
+    : [];
+  const recomendacoesPorProduto = new Map(
+    recomendacoesAbertas
+      .filter((recomendacao) => recomendacao.produtoId)
+      .map((recomendacao) => [
+        recomendacao.produtoId,
+        serializarRecomendacaoGerencial(recomendacao),
+      ])
+  );
 
   const itensProdutos: ReposicaoCompraItem[] = estoqueProdutosReposicao.map(
     (estoque, index) => {
@@ -185,6 +204,9 @@ export default async function ReposicaoComprasPage() {
       loteConfianca: decisaoLote?.confianca,
       margemAcao: decisaoLote?.margem.acao,
       margemRecomendacao: decisaoLote?.margem.recomendacao,
+      recomendacaoGerencial: podeVerInteligenciaAdaptativa
+        ? recomendacoesPorProduto.get(estoque.produto.id) || null
+        : null,
       };
     }
   );

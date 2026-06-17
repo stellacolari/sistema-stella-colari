@@ -618,6 +618,48 @@ model ApuracaoResultadoDestino {
   @@index([statusPagamento])
 }
 
+model RecomendacaoGerencial {
+  id                 String    @id @default(cuid())
+  codigo             String    @unique
+  tipo               String
+  titulo             String
+  descricao          String
+  motivo             String?
+  evidenciasJson     Json?
+  impactoEsperado    String?
+  risco              String?
+  prioridade         String    @default("MEDIA")
+  status             String    @default("NOVA")
+  acaoSugerida       String?
+  linkAcao           String?
+  origem             String?
+  origemTipo         String
+  origemId           String?
+  produtoId          String?
+  categoriaId        String?
+  periodoReferencia  String?
+  prazoSugerido      DateTime?
+  resultadoObservado String?
+  observacao         String?
+  criadoEm           DateTime  @default(now())
+  atualizadoEm       DateTime  @updatedAt
+  aceitaEm           DateTime?
+  iniciadaEm         DateTime?
+  concluidaEm        DateTime?
+  ignoradaEm         DateTime?
+  adiadaEm           DateTime?
+
+  @@index([tipo])
+  @@index([prioridade])
+  @@index([status])
+  @@index([origemTipo])
+  @@index([origemId])
+  @@index([produtoId])
+  @@index([categoriaId])
+  @@index([periodoReferencia])
+  @@index([criadoEm])
+}
+
 model EstoqueProduto {
   id              String   @id @default(cuid())
   produtoId       String

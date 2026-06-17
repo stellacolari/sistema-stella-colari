@@ -11,6 +11,10 @@ import {
   periodoFinanceiro,
 } from "@/lib/financeiro/resultado";
 import { montarInteligenciaGerencial } from "@/lib/financeiro/inteligencia-gerencial";
+import {
+  listarRecomendacoesGerenciais,
+  serializarRecomendacaoGerencial,
+} from "@/lib/financeiro/recomendacoes-gerenciais";
 import ResultadoDistribuicaoClient, {
   type FinanceiroApuracao,
   type FinanceiroHistoricoItem,
@@ -249,6 +253,11 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
     reservaAtual,
     historico,
   });
+  const recomendacoesGerenciais = await listarRecomendacoesGerenciais({
+    status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
+    tipo: ["FINANCEIRO", "CAIXA", "PRO_LABORE", "MARKETING", "CRESCIMENTO"],
+    take: 3,
+  });
 
   return (
     <ResultadoDistribuicaoClient
@@ -279,6 +288,9 @@ export default async function ResultadoPage({ searchParams }: PageProps) {
       historicoApuracoes={historicoApuracoes.map(serializarApuracao)}
       historico={historico}
       diagnostico={diagnostico}
+      recomendacoesGerenciais={recomendacoesGerenciais.map(
+        serializarRecomendacaoGerencial
+      )}
     />
   );
 }

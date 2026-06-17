@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PackagePlus, RefreshCcw, Search } from "lucide-react";
+import type { RecomendacaoGerencialResumo } from "@/components/compras/RecomendacoesGerenciaisClient";
 
 export type ReposicaoCompraItem = {
   id: string;
@@ -40,6 +41,7 @@ export type ReposicaoCompraItem = {
   loteConfianca?: string | null;
   margemAcao?: string | null;
   margemRecomendacao?: string | null;
+  recomendacaoGerencial?: RecomendacaoGerencialResumo | null;
 };
 
 type Props = {
@@ -124,6 +126,14 @@ function decisaoClasses(value: string | null | undefined) {
   return "border-rose-200 bg-rose-50 text-rose-700";
 }
 
+function labelStatusRecomendacao(value: string | null | undefined) {
+  if (value === "NOVA") return "Nova";
+  if (value === "ACEITA") return "Aceita";
+  if (value === "EM_EXECUCAO") return "Em execucao";
+  if (value === "ADIADA") return "Adiada";
+  return labelInteligencia(value);
+}
+
 function compraHref(item: ReposicaoCompraItem) {
   const params = new URLSearchParams({
     itemTipo: item.tipo === "produto" ? "produto" : "adicional",
@@ -196,6 +206,8 @@ export default function ReposicaoComprasClient({
           item.loteSugestao,
           item.loteMotivo,
           item.margemRecomendacao,
+          item.recomendacaoGerencial?.titulo,
+          item.recomendacaoGerencial?.acaoSugerida,
           labelTipo(item.tipo),
         ].join(" ")
       ).includes(termo);
@@ -497,6 +509,29 @@ export default function ReposicaoComprasClient({
                                 <p className="leading-5 text-slate-500">
                                   {item.margemRecomendacao}
                                 </p>
+                              )}
+                              {item.recomendacaoGerencial && (
+                                <div className="mt-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2">
+                                  <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                                    Recomendacao{" "}
+                                    {labelStatusRecomendacao(
+                                      item.recomendacaoGerencial.status
+                                    )}
+                                  </p>
+                                  <p className="mt-1 leading-5 font-semibold text-blue-900">
+                                    {item.recomendacaoGerencial.titulo}
+                                  </p>
+                                  <p className="mt-1 leading-5 text-blue-800">
+                                    {item.recomendacaoGerencial.acaoSugerida ||
+                                      item.recomendacaoGerencial.descricao}
+                                  </p>
+                                  <Link
+                                    href={`/compras/recomendacoes?produtoId=${item.cadastroId}`}
+                                    className="mt-2 inline-flex min-h-8 items-center rounded-2xl bg-white px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200 transition hover:bg-blue-100"
+                                  >
+                                    Acompanhar decisao
+                                  </Link>
+                                </div>
                               )}
                             </>
                           ) : (

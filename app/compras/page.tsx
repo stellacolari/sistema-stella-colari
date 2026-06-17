@@ -4,6 +4,7 @@ import {
   BarChart3,
   Boxes,
   CreditCard,
+  Lightbulb,
   MousePointerClick,
   Package,
   Plus,
@@ -14,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { exigirAdmin } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,8 @@ function moeda(valor: number) {
 }
 
 export default async function ComprasPage() {
+  const usuario = await exigirAdmin();
+  const podeVerRecomendacoes = usuario.perfil === "ACESSO_GERAL";
   const [totalComprasEstoque, totalGastos, gastosAbertos, gastosPagosMes] =
     await Promise.all([
       prisma.compra.count({
@@ -142,7 +146,7 @@ export default async function ComprasPage() {
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-4">
+      <section className="grid gap-4 lg:grid-cols-4 xl:grid-cols-5">
         <HubCard
           icon={ShoppingCart}
           title="Compras de estoque"
@@ -178,6 +182,16 @@ export default async function ComprasPage() {
           primaryLabel="Ver intencao"
           primaryHref="/compras/intencao"
         />
+
+        {podeVerRecomendacoes && (
+          <HubCard
+            icon={Lightbulb}
+            title="Recomendações Gerenciais"
+            description="Acompanhe ações sugeridas pela inteligência da plataforma e registre decisões."
+            primaryLabel="Ver recomendacoes"
+            primaryHref="/compras/recomendacoes"
+          />
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

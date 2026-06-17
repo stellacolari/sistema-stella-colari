@@ -18,6 +18,7 @@ import {
   Target,
   WalletCards,
 } from "lucide-react";
+import type { RecomendacaoGerencialResumo } from "@/components/compras/RecomendacoesGerenciaisClient";
 import type { DiagnosticoFinanceiro } from "@/lib/financeiro/inteligencia-gerencial";
 
 export type FinanceiroContaOption = {
@@ -140,6 +141,7 @@ type Props = {
   historicoApuracoes: FinanceiroApuracao[];
   historico: FinanceiroHistoricoItem[];
   diagnostico: DiagnosticoFinanceiro;
+  recomendacoesGerenciais?: RecomendacaoGerencialResumo[];
 };
 
 const DESTINOS_PRO_LABORE = ["PRO_LABORE_SOCIO_1", "PRO_LABORE_SOCIO_2"];
@@ -186,6 +188,20 @@ function statusDiagnosticoClass(status: string) {
   if (status === "ATENCAO") return "border-amber-200 bg-amber-50 text-amber-800";
   if (status === "RISCO") return "border-orange-200 bg-orange-50 text-orange-800";
   return "border-red-200 bg-red-50 text-red-800";
+}
+
+function prioridadeRecomendacaoClasses(prioridade: string) {
+  if (prioridade === "ALTA") return "border-red-200 bg-red-50 text-red-800";
+  if (prioridade === "MEDIA") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function labelRecomendacaoStatus(status: string) {
+  if (status === "NOVA") return "Nova";
+  if (status === "ACEITA") return "Aceita";
+  if (status === "EM_EXECUCAO") return "Em execucao";
+  if (status === "ADIADA") return "Adiada";
+  return status.replaceAll("_", " ");
 }
 
 function isProLabore(tipo: string) {
@@ -298,6 +314,7 @@ export default function ResultadoDistribuicaoClient({
   historicoApuracoes,
   historico,
   diagnostico,
+  recomendacoesGerenciais = [],
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -578,6 +595,58 @@ export default function ResultadoDistribuicaoClient({
           ))}
         </div>
       </section>
+
+      {recomendacoesGerenciais.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+                <Lightbulb className="h-4 w-4" />
+                Recomendacoes financeiras abertas
+              </p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Decisoes que afetam retirada, caixa, marketing e distribuicao.
+                Use a pagina de recomendacoes para registrar o andamento.
+              </p>
+            </div>
+            <Link
+              href="/compras/recomendacoes"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Acompanhar
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {recomendacoesGerenciais.map((recomendacao) => (
+              <div
+                key={recomendacao.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${prioridadeRecomendacaoClasses(
+                      recomendacao.prioridade
+                    )}`}
+                  >
+                    {recomendacao.prioridade}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {labelRecomendacaoStatus(recomendacao.status)}
+                  </span>
+                </div>
+                <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
+                  {recomendacao.titulo}
+                </p>
+                <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">
+                  {recomendacao.acaoSugerida || recomendacao.descricao}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">

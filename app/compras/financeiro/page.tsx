@@ -9,6 +9,10 @@ import {
   periodoFinanceiro,
 } from "@/lib/financeiro/resultado";
 import { montarInteligenciaGerencial } from "@/lib/financeiro/inteligencia-gerencial";
+import {
+  listarRecomendacoesGerenciais,
+  serializarRecomendacaoGerencial,
+} from "@/lib/financeiro/recomendacoes-gerenciais";
 import CentralFinanceiraClient, {
   type CentralAlerta,
   type CentralCompraPendente,
@@ -187,6 +191,11 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
     reservaAtual,
     historico,
   });
+  const recomendacoesGerenciais = await listarRecomendacoesGerenciais({
+    status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
+    tipo: ["FINANCEIRO", "CAIXA", "PRO_LABORE", "MARKETING", "CRESCIMENTO"],
+    take: 3,
+  });
 
   return (
     <CentralFinanceiraClient
@@ -284,6 +293,9 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
       historico={historico}
       gastosPorCategoria={gastosPorCategoria}
       diagnostico={diagnostico}
+      recomendacoesGerenciais={recomendacoesGerenciais.map(
+        serializarRecomendacaoGerencial
+      )}
     />
   );
 }
