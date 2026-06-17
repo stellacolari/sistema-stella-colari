@@ -6,6 +6,10 @@ import {
   obterResumoCampanhasComerciais,
   serializarCampanhaComercial,
 } from "@/lib/loja/campanhas-comerciais";
+import {
+  analisarPrecificacaoProdutos,
+  serializarAnalisePrecificacao,
+} from "@/lib/financeiro/precificacao-inteligente";
 import CampanhasComerciaisClient from "@/components/compras/CampanhasComerciaisClient";
 
 export const metadata: Metadata = {
@@ -31,19 +35,21 @@ export default async function CampanhasComerciaisPage({
   }
 
   const params = await searchParams;
-  const [campanhas, resumo] = await Promise.all([
+  const [campanhas, resumo, precificacao] = await Promise.all([
     listarCampanhasComerciais({
       status: params.status && params.status !== "TODOS" ? params.status : undefined,
       tipo: params.tipo && params.tipo !== "TODOS" ? params.tipo : undefined,
       take: 200,
     }),
     obterResumoCampanhasComerciais(),
+    analisarPrecificacaoProdutos(),
   ]);
 
   return (
     <CampanhasComerciaisClient
       campanhas={campanhas.map(serializarCampanhaComercial)}
       resumo={resumo}
+      precificacoes={precificacao.produtos.map(serializarAnalisePrecificacao)}
       filtroInicial={{
         status: params.status,
         tipo: params.tipo,

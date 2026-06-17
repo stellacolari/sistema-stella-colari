@@ -54,9 +54,19 @@ export type CampanhaComercialResumo = {
   } | null;
 };
 
+type PrecificacaoCampanhaResumo = {
+  produtoId: string;
+  descontoMaximoSeguroPct: number;
+  descontoPermitido: boolean;
+  classificacao: string;
+  precoMinimoSeguro: number;
+  margemBrutaPct: number;
+};
+
 type Props = {
   campanhas: CampanhaComercialResumo[];
   resumo: Record<string, number>;
+  precificacoes?: PrecificacaoCampanhaResumo[];
   filtroInicial?: {
     status?: string;
     tipo?: string;
@@ -161,6 +171,7 @@ function objectResumo(value: unknown) {
 export default function CampanhasComerciaisClient({
   campanhas,
   resumo,
+  precificacoes = [],
   filtroInicial,
 }: Props) {
   const router = useRouter();
@@ -358,6 +369,7 @@ export default function CampanhasComerciaisClient({
             <CampanhaCard
               key={campanha.id}
               campanha={campanha}
+              precificacao={precificacaoCampanha(campanha, precificacoes)}
               onStatus={atualizarCampanha}
             />
           ))
@@ -369,11 +381,20 @@ export default function CampanhasComerciaisClient({
 
 function CampanhaCard({
   campanha,
+  precificacao,
   onStatus,
 }: {
   campanha: CampanhaComercialResumo;
+  precificacao: PrecificacaoCampanhaResumo | null;
   onStatus: (campanha: CampanhaComercialResumo, status: string) => void;
 }) {
+  const descontoSugerido = Number(campanha.descontoSugerido || 0);
+  const descontoInseguro =
+    Boolean(precificacao) &&
+    descontoSugerido > 0 &&
+    (!precificacao?.descontoPermitido ||
+      descontoSugerido > Number(precificacao?.descontoMaximoSeguroPct || 0));
+
   return (
     <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -453,6 +474,30 @@ function CampanhaCard({
         </div>
       </div>
 
+      {precificacao && (
+        <div
+          className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+            descontoInseguro
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          <p className="text-xs font-bold uppercase tracking-wide">
+            Analise de desconto da campanha
+          </p>
+          <p className="mt-2 font-semibold leading-6">
+            {descontoInseguro
+              ? "Desconto sugerido compromete margem. Considere vitrine, combo ou conteudo organico."
+              : `Desconto sugerido dentro do limite seguro de ${precificacao.descontoMaximoSeguroPct}%.`}
+          </p>
+          <p className="mt-1 text-xs leading-5">
+            Classificacao: {precificacao.classificacao.replaceAll("_", " ").toLowerCase()} ·
+            margem atual {precificacao.margemBrutaPct}% · minimo seguro{" "}
+            {moeda(precificacao.precoMinimoSeguro)}
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
         <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
           Inicio sugerido: {dataCurta(campanha.dataInicioSugerida)}
@@ -475,6 +520,32 @@ function CampanhaCard({
       </div>
     </article>
   );
+}
+
+function precificacaoCampanha(
+  campanha: CampanhaComercialResumo,
+  precificacoes: PrecificacaoCampanhaResumo[]
+) {
+  if (campanha.produtoId) {
+    return (
+      precificacoes.find((item) => item.produtoId === campanha.produtoId) || null
+    );
+  }
+
+  const produtos = Array.isArray(campanha.produtosJson)
+    ? campanha.produtosJson
+    : [];
+  const produtoId = produtos
+    .map((item) =>
+      item && typeof item === "object"
+        ? String((item as Record<string, unknown>).produtoId || "")
+        : ""
+    )
+    .find(Boolean);
+
+  return produtoId
+    ? precificacoes.find((item) => item.produtoId === produtoId) || null
+    : null;
 }
 
 function ResumoCard({

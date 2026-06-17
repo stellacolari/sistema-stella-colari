@@ -12,6 +12,7 @@ import {
   RefreshCcw,
   Settings,
   ShoppingCart,
+  Tags,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -201,6 +202,16 @@ export default async function ComprasPage() {
             description="Planeje acoes comerciais a partir das recomendacoes, intencao de compra e estoque."
             primaryLabel="Ver campanhas"
             primaryHref="/compras/campanhas"
+          />
+        )}
+
+        {podeVerRecomendacoes && (
+          <HubCard
+            icon={Tags}
+            title="Precificacao e Descontos"
+            description="Analise margem, preco minimo, desconto seguro e protecao de margem por produto."
+            primaryLabel="Ver precificacao"
+            primaryHref="/compras/precificacao"
           />
         )}
       </section>

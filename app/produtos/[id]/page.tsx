@@ -4,6 +4,7 @@ import { atualizarProduto } from "../actions";
 import EditarProdutoClient from "@/components/produtos/EditarProdutoClient";
 import { exigirAdmin } from "@/lib/auth/admin";
 import { obterInteligenciaProduto } from "@/lib/produtos/metricas-produto";
+import { analisarPrecificacaoProduto } from "@/lib/financeiro/precificacao-inteligente";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function EditarProdutoPage({
     embalagemClasses,
     embalagemModelos,
     inteligenciaProduto,
+    precificacaoProduto,
   ] =
     await Promise.all([
       prisma.produto.findUnique({
@@ -166,6 +168,7 @@ export default async function EditarProdutoPage({
       }),
 
       obterInteligenciaProduto(id),
+      podeEditarBuscaSeo ? analisarPrecificacaoProduto(id) : Promise.resolve(null),
     ]);
 
   if (!produto) {
@@ -321,6 +324,7 @@ export default async function EditarProdutoPage({
     <EditarProdutoClient
       produto={produtoSerializado}
       inteligenciaProduto={inteligenciaProdutoSerializada}
+      precificacaoProduto={precificacaoProduto}
       categorias={categorias}
       produtosDisponiveisKit={produtosKitSerializados}
       regrasAdicionais={regrasAdicionaisSerializadas}

@@ -141,6 +141,18 @@ type ProdutoInteligencia = {
   };
 };
 
+type PrecificacaoProdutoResumo = {
+  margemBrutaValor: number;
+  margemBrutaPct: number;
+  precoMinimoSeguro: number;
+  descontoMaximoSeguroPct: number;
+  classificacao: string;
+  recomendacao: string;
+  motivo: string;
+  acaoSugerida: string;
+  custoAusente: boolean;
+};
+
 type IntencaoProdutoResumo = {
   visualizacoes: number;
   favoritos: number;
@@ -156,6 +168,7 @@ type IntencaoProdutoResumo = {
 type EditarProdutoClientProps = {
   produto: ProdutoEdicao;
   inteligenciaProduto?: ProdutoInteligencia;
+  precificacaoProduto?: PrecificacaoProdutoResumo | null;
   categorias: CategoriaProduto[];
   produtosDisponiveisKit: ProdutoDisponivelKit[];
   regrasAdicionais: RegraAdicionalProduto[];
@@ -388,6 +401,7 @@ function AccordionSection({
 export default function EditarProdutoClient({
   produto,
   inteligenciaProduto,
+  precificacaoProduto,
   categorias,
   produtosDisponiveisKit,
   regrasAdicionais,
@@ -1170,6 +1184,64 @@ export default function EditarProdutoClient({
                     Sugestao: {inteligenciaProduto.recomendacao.sugestaoQuantidade} un.
                   </p>
                 </div>
+
+                {precificacaoProduto && (
+                  <div
+                    className={`rounded-2xl border px-4 py-4 ${
+                      precificacaoProduto.custoAusente
+                        ? "border-violet-200 bg-violet-50"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-slate-900">
+                      Preco e margem
+                    </p>
+                    {precificacaoProduto.custoAusente ? (
+                      <p className="mt-2 text-sm leading-6 text-violet-800">
+                        Produto sem custo cadastrado. Nao e possivel calcular
+                        margem com seguranca.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <InfoCard
+                            label="Margem atual"
+                            value={`${moeda(
+                              precificacaoProduto.margemBrutaValor
+                            )} (${percentualDireto(
+                              precificacaoProduto.margemBrutaPct
+                            )})`}
+                          />
+                          <InfoCard
+                            label="Preco minimo seguro"
+                            value={moeda(precificacaoProduto.precoMinimoSeguro)}
+                          />
+                          <InfoCard
+                            label="Desconto maximo seguro"
+                            value={percentualDireto(
+                              precificacaoProduto.descontoMaximoSeguroPct
+                            )}
+                          />
+                          <InfoCard
+                            label="Classificacao"
+                            value={labelInteligencia(
+                              precificacaoProduto.classificacao
+                            )}
+                          />
+                        </div>
+                        <p className="mt-3 text-sm font-semibold leading-6 text-slate-800">
+                          {precificacaoProduto.recomendacao}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-500">
+                          {precificacaoProduto.motivo}
+                        </p>
+                        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                          {precificacaoProduto.acaoSugerida}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <p className="mb-3 text-sm font-semibold text-slate-900">

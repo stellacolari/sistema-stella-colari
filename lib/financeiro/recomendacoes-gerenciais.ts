@@ -21,6 +21,7 @@ import {
   avaliarCompraLoteProduto,
   montarInteligenciaAdaptativaAtual,
 } from "@/lib/financeiro/inteligencia-adaptativa";
+import { analisarPrecificacaoProdutos } from "@/lib/financeiro/precificacao-inteligente";
 import { extrairIntencaoSnapshot } from "@/lib/produtos/metricas-produto";
 import { montarIntencaoComercial } from "@/lib/loja/intencao-comercial";
 import type { FinanceiroHistoricoItem } from "@/components/financeiro/ResultadoDistribuicaoClient";
@@ -999,6 +1000,130 @@ async function montarCandidatosIntencao(periodoReferencia: string) {
   return candidatos;
 }
 
+async function montarCandidatosPrecificacao(periodoReferencia: string) {
+  const candidatos: CandidatoRecomendacao[] = [];
+  const analise = await analisarPrecificacaoProdutos();
+
+  for (const produto of analise.produtos) {
+    const evidencia = {
+      precoAtual: produto.precoAtual,
+      custoEstimado: produto.custoEstimado,
+      margemBrutaPct: produto.margemBrutaPct,
+      precoMinimoSeguro: produto.precoMinimoSeguro,
+      descontoMaximoSeguroPct: produto.descontoMaximoSeguroPct,
+      classificacao: produto.classificacao,
+      statusComercial: produto.statusComercial,
+      estoqueAtual: produto.estoqueAtual,
+    } satisfies Prisma.InputJsonObject;
+
+    if (produto.custoAusente) {
+      candidatos.push({
+        tipo: "PRECIFICACAO",
+        titulo: `Cadastrar custo de ${produto.codigoInterno}`,
+        descricao: `${produto.nome} esta sem custo confiavel para calcular margem e desconto seguro.`,
+        motivo: produto.motivo,
+        evidenciasJson: evidencia,
+        impactoEsperado: "Permitir decisao segura de preco, margem e campanha.",
+        risco: "Sem custo, descontos e campanhas podem destruir margem sem aviso.",
+        prioridade: "ALTA",
+        acaoSugerida: "Cadastrar custo antes de autorizar desconto ou campanha.",
+        linkAcao: `/produtos/${produto.produtoId}`,
+        origem: "Precificacao inteligente",
+        origemTipo: "PRECIFICACAO_SEM_CUSTO",
+        origemId: produto.produtoId,
+        produtoId: produto.produtoId,
+        periodoReferencia,
+      });
+    }
+
+    if (produto.classificacao === "PRECO_CRITICO") {
+      candidatos.push({
+        tipo: "PRECIFICACAO",
+        titulo: `Revisar preco critico de ${produto.codigoInterno}`,
+        descricao: `${produto.nome} esta com margem abaixo da faixa segura.`,
+        motivo: produto.motivo,
+        evidenciasJson: evidencia,
+        impactoEsperado: "Recuperar margem antes de ampliar exposicao ou desconto.",
+        risco: "Manter preco atual pode transformar venda em margem insuficiente.",
+        prioridade: "ALTA",
+        acaoSugerida: produto.acaoSugerida,
+        linkAcao: `/produtos/${produto.produtoId}`,
+        origem: "Precificacao inteligente",
+        origemTipo: "PRECIFICACAO_PRECO_CRITICO",
+        origemId: produto.produtoId,
+        produtoId: produto.produtoId,
+        periodoReferencia,
+      });
+    }
+
+    if (
+      produto.classificacao === "MARGEM_PROTEGIDA" &&
+      produto.campanhasAbertas.some((campanha) => campanha.alertaDesconto)
+    ) {
+      candidatos.push({
+        tipo: "PRECIFICACAO",
+        titulo: `Bloquear desconto inseguro de ${produto.codigoInterno}`,
+        descricao: `${produto.nome} tem campanha com desconto que pode comprometer margem.`,
+        motivo: produto.campanhasAbertas.find((campanha) => campanha.alertaDesconto)
+          ?.alertaDesconto || produto.motivo,
+        evidenciasJson: evidencia,
+        impactoEsperado: "Evitar campanha que reduza lucro abaixo do minimo seguro.",
+        risco: "Desconto sugerido pode consumir margem de produto protegido.",
+        prioridade: "ALTA",
+        acaoSugerida: "Trocar desconto por vitrine, combo ou conteudo organico.",
+        linkAcao: "/compras/campanhas",
+        origem: "Precificacao inteligente",
+        origemTipo: "PRECIFICACAO_CAMPANHA_INSEGURA",
+        origemId: produto.produtoId,
+        produtoId: produto.produtoId,
+        periodoReferencia,
+      });
+    }
+
+    if (produto.classificacao === "DESCONTO_CONTROLADO") {
+      candidatos.push({
+        tipo: "PRECIFICACAO",
+        titulo: `Testar desconto controlado de ${produto.codigoInterno}`,
+        descricao: `${produto.nome} permite desconto pequeno sem ultrapassar o preco minimo seguro.`,
+        motivo: produto.motivo,
+        evidenciasJson: evidencia,
+        impactoEsperado: "Girar estoque ou validar campanha sem destruir margem.",
+        risco: "Desconto acima do limite seguro compromete caixa e lucro.",
+        prioridade: "MEDIA",
+        acaoSugerida: produto.acaoSugerida,
+        linkAcao: "/compras/precificacao",
+        origem: "Precificacao inteligente",
+        origemTipo: "PRECIFICACAO_DESCONTO_CONTROLADO",
+        origemId: produto.produtoId,
+        produtoId: produto.produtoId,
+        periodoReferencia,
+      });
+    }
+
+    if (produto.classificacao === "REVISAR_PRECO") {
+      candidatos.push({
+        tipo: "PRECIFICACAO",
+        titulo: `Revisar preco e oferta de ${produto.codigoInterno}`,
+        descricao: `${produto.nome} tem sinal de interesse sem conversao ou friccao de oferta.`,
+        motivo: produto.motivo,
+        evidenciasJson: evidencia,
+        impactoEsperado: "Melhorar conversao sem recorrer primeiro a desconto agressivo.",
+        risco: "Desconto pode mascarar problema de foto, frete, descricao ou preco.",
+        prioridade: "MEDIA",
+        acaoSugerida: produto.acaoSugerida,
+        linkAcao: `/produtos/${produto.produtoId}`,
+        origem: "Precificacao inteligente",
+        origemTipo: "PRECIFICACAO_REVISAR_PRECO",
+        origemId: produto.produtoId,
+        produtoId: produto.produtoId,
+        periodoReferencia,
+      });
+    }
+  }
+
+  return candidatos;
+}
+
 export async function gerarRecomendacoesGerenciais(
   params: GerarRecomendacoesParams = {}
 ) {
@@ -1006,10 +1131,11 @@ export async function gerarRecomendacoesGerenciais(
   const mes = params.mes || atual.mes;
   const ano = params.ano || atual.ano;
   const periodoReferencia = mesLabel(mes, ano);
-  const [base, candidatosProduto, candidatosIntencao] = await Promise.all([
+  const [base, candidatosProduto, candidatosIntencao, candidatosPrecificacao] = await Promise.all([
     montarDiagnosticoBase(mes, ano),
     montarCandidatosProduto(periodoReferencia),
     montarCandidatosIntencao(periodoReferencia),
+    montarCandidatosPrecificacao(periodoReferencia),
   ]);
   const candidatos = [
     ...montarCandidatosFinanceiros({
@@ -1018,6 +1144,7 @@ export async function gerarRecomendacoesGerenciais(
     }),
     ...candidatosProduto,
     ...candidatosIntencao,
+    ...candidatosPrecificacao,
   ];
   const titulosUnicos = new Set<string>();
   const candidatosUnicos = candidatos.filter((candidato) => {
