@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   criarMovimentacaoCaixa,
   obterOuCriarContaPrincipal,
@@ -25,6 +26,7 @@ function dataOpcional(value: unknown) {
 
 export async function POST(req: Request) {
   try {
+    await exigirAdminComPermissao("financeiro", "editar");
     const body = await req.json();
     const contaPadrao = await obterOuCriarContaPrincipal();
     const contaId = texto(body.contaId) || contaPadrao.id;
@@ -80,6 +82,9 @@ export async function POST(req: Request) {
         ? error.message
         : "Nao foi possivel registrar a movimentacao de caixa.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

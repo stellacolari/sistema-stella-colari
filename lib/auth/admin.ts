@@ -17,6 +17,8 @@ const scryptAsync = promisify(scrypt);
 const HASH_PREFIXO = "scrypt";
 const HASH_KEY_LENGTH = 64;
 
+export class AdminPermissaoError extends Error {}
+
 export async function hashSenha(senha: string) {
   const salt = randomBytes(16).toString("hex");
   const derivedKey = (await scryptAsync(
@@ -111,6 +113,24 @@ export async function exigirAdminGeral() {
     !usuarioTemPermissao(usuario, "configuracoes", "editar")
   ) {
     throw new Error("Acesso nao permitido para este perfil.");
+  }
+
+  return usuario;
+}
+
+export function usuarioTemPermissaoAdmin(
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>,
+  modulo: string,
+  acao: string
+) {
+  return usuario.perfil === "ACESSO_GERAL" || usuarioTemPermissao(usuario, modulo, acao);
+}
+
+export async function exigirAdminComPermissao(modulo: string, acao = "ver") {
+  const usuario = await exigirAdmin();
+
+  if (!usuarioTemPermissaoAdmin(usuario, modulo, acao)) {
+    throw new AdminPermissaoError("Acesso nao permitido para este perfil.");
   }
 
   return usuario;

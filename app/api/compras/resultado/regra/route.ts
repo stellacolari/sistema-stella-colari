@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   obterOuCriarRegraDistribuicaoAtiva,
   validarRegraDistribuicao,
@@ -25,6 +26,7 @@ function numero(value: unknown) {
 
 export async function PATCH(req: Request) {
   try {
+    await exigirAdminComPermissao("resultado", "editar");
     const body = await req.json();
     const regraAtual = await obterOuCriarRegraDistribuicaoAtiva();
     const destinosBody: DestinoBody[] = Array.isArray(body.destinos)
@@ -92,6 +94,9 @@ export async function PATCH(req: Request) {
         ? error.message
         : "Nao foi possivel salvar a regra de distribuicao.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

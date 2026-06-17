@@ -16,8 +16,7 @@ export default async function ColecoesInteligentesPage() {
   const usuario = await exigirAdmin();
   if (
     usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "lojaOnline", "ver") &&
-    !usuarioTemPermissao(usuario, "configuracoes", "ver")
+    !usuarioTemPermissao(usuario, "lojaOnline", "ver")
   ) {
     redirect("/notificacoes");
   }

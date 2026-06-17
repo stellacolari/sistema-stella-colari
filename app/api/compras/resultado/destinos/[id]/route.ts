@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   atualizarStatusDestino,
   obterOuCriarContaPrincipal,
@@ -14,6 +15,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirAdminComPermissao("resultado", "editar");
     const { id } = await context.params;
     const body = await req.json();
     const acao = texto(body.acao).toUpperCase();
@@ -56,6 +58,9 @@ export async function PATCH(
         ? error.message
         : "Nao foi possivel atualizar o destino da apuracao.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

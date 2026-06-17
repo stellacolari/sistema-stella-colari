@@ -122,12 +122,6 @@ type PaginaBuscaRaw = Awaited<ReturnType<typeof buscarPaginasBuscaRaw>>[number];
 type ProdutoAutocompleteRaw = Awaited<
   ReturnType<typeof buscarProdutosAutocompleteRaw>
 >[number];
-type CategoriaAutocompleteRaw = Awaited<
-  ReturnType<typeof buscarCategoriasAutocompleteRaw>
->[number];
-type PaginaAutocompleteRaw = Awaited<
-  ReturnType<typeof buscarPaginasAutocompleteRaw>
->[number];
 
 const SUGESTOES_FIXAS = [
   "anel",
@@ -317,36 +311,6 @@ function filtroTextoProdutoAutocomplete(termo: string): Prisma.ProdutoWhereInput
   ];
 }
 
-function filtroTextoCategoriaAutocomplete(
-  termo: string
-): Prisma.CategoriaProdutoWhereInput[] {
-  const contains = {
-    contains: termo,
-    mode: "insensitive" as const,
-  };
-
-  return [
-    { nome: contains },
-    { slug: contains },
-    { descricaoSeo: contains },
-    { termosBusca: contains },
-  ];
-}
-
-function filtroTextoPaginaAutocomplete(termo: string): Prisma.LojaPaginaWhereInput[] {
-  const contains = {
-    contains: termo,
-    mode: "insensitive" as const,
-  };
-
-  return [
-    { titulo: contains },
-    { slug: contains },
-    { seoDescription: contains },
-    { termosBusca: contains },
-  ];
-}
-
 async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
   const termos = termosCandidatosBusca(q, tokens);
   const OR = termos.flatMap(filtroTextoProdutoAutocomplete);
@@ -383,65 +347,6 @@ async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
         },
         take: 12,
       },
-    },
-  });
-}
-
-async function buscarCategoriasAutocompleteRaw(q: string, tokens: string[]) {
-  const termos = termosCandidatosBusca(q, tokens);
-  const OR = termos.flatMap(filtroTextoCategoriaAutocomplete);
-  const buscarTodasParaTermoGenerico = buscaGenericaCategoria(tokens);
-
-  return prisma.categoriaProduto.findMany({
-    where: {
-      ativo: true,
-      ...(!buscarTodasParaTermoGenerico && OR.length > 0 ? { OR } : {}),
-    },
-    orderBy: [{ ordemMenu: "asc" }, { nome: "asc" }],
-    take: 32,
-    select: {
-      id: true,
-      nome: true,
-      slug: true,
-      descricaoSeo: true,
-      termosBusca: true,
-      categoriaMae: {
-        select: {
-          nome: true,
-          slug: true,
-        },
-      },
-      _count: {
-        select: {
-          produtos: true,
-        },
-      },
-    },
-  });
-}
-
-async function buscarPaginasAutocompleteRaw(q: string, tokens: string[]) {
-  const termos = termosCandidatosBusca(q, tokens);
-  const OR = termos.flatMap(filtroTextoPaginaAutocomplete);
-
-  return prisma.lojaPagina.findMany({
-    where: {
-      ativo: true,
-      statusPublicacao: "PUBLICADA",
-      tipo: {
-        in: ["GERAL", "LANDING", "CAMPANHA"],
-      },
-      ...(OR.length > 0 ? { OR } : {}),
-    },
-    orderBy: [{ publicadoEm: "desc" }, { atualizadoEm: "desc" }],
-    take: 24,
-    select: {
-      id: true,
-      titulo: true,
-      slug: true,
-      tipo: true,
-      seoDescription: true,
-      termosBusca: true,
     },
   });
 }
@@ -795,10 +700,6 @@ function scorePagina(
   return score;
 }
 
-function buscaGenericaCategoria(tokens: string[]) {
-  return tokens.length <= 1 && tokens.some((token) => TERMOS_CATEGORIA.has(token));
-}
-
 function montarTextoProdutoAutocomplete(produto: ProdutoAutocompleteRaw) {
   return [
     produto.nome,
@@ -884,56 +785,6 @@ function scoreProdutoAutocomplete({
   return score;
 }
 
-function scoreCategoriaAutocomplete(
-  categoria: CategoriaAutocompleteRaw,
-  tokens: string[],
-  termoNormalizado: string,
-  priorizarCategoria: boolean
-) {
-  const nome = montarTextoIndexavel(categoria.nome);
-  const slug = montarTextoIndexavel(categoria.slug);
-  const descricaoSeo = montarTextoIndexavel(categoria.descricaoSeo);
-  const termosBusca = montarTextoIndexavel(categoria.termosBusca);
-  const caminho = montarTextoIndexavel(categoria.categoriaMae?.nome);
-  const texto = [nome, slug, descricaoSeo, termosBusca, caminho].join(" ");
-  let score = 0;
-
-  if (nome === termoNormalizado || slug === termoNormalizado) score += 180;
-  if (nome.startsWith(termoNormalizado) && termoNormalizado) score += 110;
-  score += scoreTextoCampo(nome, tokens, 42);
-  score += scoreTextoCampo(slug, tokens, 26);
-  score += scoreTextoCampo(termosBusca, tokens, 34);
-  score += scoreTextoCampo(descricaoSeo, tokens, 18);
-  score += scoreTextoCampo(caminho, tokens, 14);
-  if (textoContemTodosTokens(texto, tokens)) score += 35;
-  if (priorizarCategoria) score += 90;
-
-  return score;
-}
-
-function scorePaginaAutocomplete(
-  pagina: PaginaAutocompleteRaw,
-  tokens: string[],
-  termoNormalizado: string
-) {
-  const titulo = montarTextoIndexavel(pagina.titulo);
-  const slug = montarTextoIndexavel(pagina.slug);
-  const descricao = montarTextoIndexavel(pagina.seoDescription);
-  const termosBusca = montarTextoIndexavel(pagina.termosBusca);
-  const texto = [titulo, slug, descricao, termosBusca].join(" ");
-  let score = 0;
-
-  if (titulo === termoNormalizado || slug === termoNormalizado) score += 120;
-  if (titulo.startsWith(termoNormalizado) && termoNormalizado) score += 70;
-  score += scoreTextoCampo(titulo, tokens, 26);
-  score += scoreTextoCampo(slug, tokens, 18);
-  score += scoreTextoCampo(termosBusca, tokens, 20);
-  score += scoreTextoCampo(descricao, tokens, 8);
-  if (textoContemTodosTokens(texto, tokens)) score += 20;
-
-  return score;
-}
-
 function formatarProdutoAutocomplete(
   produto: ProdutoAutocompleteRaw,
   relevancia: number
@@ -947,37 +798,6 @@ function formatarProdutoAutocomplete(
     href: `/loja/produto/${produto.id}`,
     relevancia,
     tipoResultado: "PRODUTO",
-  };
-}
-
-function formatarCategoriaAutocomplete(
-  categoria: CategoriaAutocompleteRaw,
-  relevancia: number
-): BuscaLojaAutocompleteCategoria {
-  return {
-    id: categoria.id,
-    nome: categoria.nome,
-    slug: categoria.slug,
-    caminho: categoria.categoriaMae?.nome || null,
-    quantidadeProdutos: categoria._count?.produtos ?? null,
-    href: `/loja/categoria/${categoria.slug}`,
-    relevancia,
-    tipoResultado: "CATEGORIA",
-  };
-}
-
-function formatarPaginaAutocomplete(
-  pagina: PaginaAutocompleteRaw,
-  relevancia: number
-): BuscaLojaAutocompletePagina {
-  return {
-    id: pagina.id,
-    titulo: pagina.titulo,
-    slug: pagina.slug,
-    tipo: pagina.tipo,
-    href: `/loja/p/${pagina.slug}`,
-    relevancia,
-    tipoResultado: "PAGINA",
   };
 }
 

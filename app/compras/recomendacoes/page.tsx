@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdmin, usuarioTemPermissaoAdmin } from "@/lib/auth/admin";
 import {
   filtrarTiposUnicos,
   listarRecomendacoesGerenciais,
@@ -30,7 +30,7 @@ export default async function RecomendacoesGerenciaisPage({
 }: PageProps) {
   const usuario = await exigirAdmin();
 
-  if (usuario.perfil !== "ACESSO_GERAL") {
+  if (!usuarioTemPermissaoAdmin(usuario, "recomendacoes", "ver")) {
     redirect("/vendas/nova-v2");
   }
 

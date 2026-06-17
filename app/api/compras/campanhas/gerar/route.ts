@@ -1,20 +1,19 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   gerarCampanhaAPartirDeRecomendacao,
   gerarCampanhasComerciais,
   serializarCampanhaComercial,
 } from "@/lib/loja/campanhas-comerciais";
 
-async function exigirAcessoGeral() {
-  const usuario = await exigirAdmin();
-
-  if (usuario.perfil !== "ACESSO_GERAL") {
+async function exigirAcessoModulo(modulo: string, acao = "ver") {
+  try {
+    await exigirAdminComPermissao(modulo, acao);
+    return null;
+  } catch {
     return NextResponse.json({ error: "Acesso nao autorizado." }, { status: 403 });
   }
-
-  return null;
 }
 
 function revalidarGestao() {
@@ -27,7 +26,7 @@ function revalidarGestao() {
 }
 
 export async function POST(req: Request) {
-  const bloqueio = await exigirAcessoGeral();
+  const bloqueio = await exigirAcessoModulo("campanhas", "executar");
 
   if (bloqueio) return bloqueio;
 

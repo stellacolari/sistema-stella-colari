@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   avaliarImpactoRecomendacao,
   serializarImpactoRecomendacao,
@@ -12,14 +12,13 @@ type RouteContext = {
   }>;
 };
 
-async function exigirAcessoGeral() {
-  const usuario = await exigirAdmin();
-
-  if (usuario.perfil !== "ACESSO_GERAL") {
+async function exigirAcessoModulo(modulo: string, acao = "ver") {
+  try {
+    await exigirAdminComPermissao(modulo, acao);
+    return null;
+  } catch {
     return NextResponse.json({ error: "Acesso nao autorizado." }, { status: 403 });
   }
-
-  return null;
 }
 
 function janela(value: unknown) {
@@ -35,7 +34,7 @@ function revalidarGestao() {
 }
 
 export async function POST(req: Request, context: RouteContext) {
-  const bloqueio = await exigirAcessoGeral();
+  const bloqueio = await exigirAcessoModulo("recomendacoes", "executar");
 
   if (bloqueio) return bloqueio;
 

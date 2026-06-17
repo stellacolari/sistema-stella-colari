@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin } from "@/lib/auth/admin";
-import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import { serializarColecao } from "@/lib/loja/colecoes-inteligentes";
 
 async function exigirAcessoColecoes() {
-  const usuario = await exigirAdmin();
-  if (
-    usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "lojaOnline", "editar") &&
-    !usuarioTemPermissao(usuario, "configuracoes", "editar")
-  ) {
-    throw new Error("Acesso nao permitido para este perfil.");
-  }
-  return usuario;
+  return exigirAdminComPermissao("lojaOnline", "ver");
 }
 
 export async function GET() {
@@ -44,6 +35,9 @@ export async function GET() {
 
     return NextResponse.json({ colecoes: colecoes.map(serializarColecao) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Acesso nao permitido." }, { status: 403 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Nao foi possivel listar colecoes." },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

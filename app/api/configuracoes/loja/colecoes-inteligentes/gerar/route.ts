@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { exigirAdmin } from "@/lib/auth/admin";
-import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import { gerarColecoesInteligentes } from "@/lib/loja/colecoes-inteligentes";
 
 async function exigirAcesso() {
-  const usuario = await exigirAdmin();
-  if (
-    usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "lojaOnline", "executar") &&
-    !usuarioTemPermissao(usuario, "configuracoes", "editar")
-  ) {
-    throw new Error("Acesso nao permitido para este perfil.");
-  }
+  await exigirAdminComPermissao("lojaOnline", "executar");
 }
 
 export async function POST() {
@@ -20,6 +12,9 @@ export async function POST() {
     const resultado = await gerarColecoesInteligentes();
     return NextResponse.json({ ok: true, resultado });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Nao foi possivel gerar colecoes." }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Nao foi possivel gerar colecoes." },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

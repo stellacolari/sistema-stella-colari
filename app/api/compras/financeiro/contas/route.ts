@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import { listarContasFinanceiras } from "@/lib/financeiro/resultado";
 
 function texto(value: unknown) {
@@ -13,6 +14,7 @@ function numero(value: unknown) {
 
 export async function GET() {
   try {
+    await exigirAdminComPermissao("financeiro", "ver");
     const contas = await listarContasFinanceiras();
 
     return NextResponse.json({ ok: true, contas });
@@ -20,12 +22,16 @@ export async function GET() {
     const message =
       error instanceof Error ? error.message : "Nao foi possivel listar contas.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }
 
 export async function POST(req: Request) {
   try {
+    await exigirAdminComPermissao("financeiro", "editar");
     const body = await req.json();
     const nome = texto(body.nome);
     const tipo = texto(body.tipo) || "OUTROS";
@@ -52,6 +58,9 @@ export async function POST(req: Request) {
     const message =
       error instanceof Error ? error.message : "Nao foi possivel criar a conta.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

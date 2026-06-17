@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Check, ExternalLink, Pin, RefreshCcw, Search, ShieldCheck, Trash2 } from "lucide-react";
 
 type ProdutoColecao = {
@@ -147,7 +148,7 @@ export default function ColecoesInteligentesClient({ colecoes: colecoesIniciais 
             type="button"
             onClick={gerar}
             disabled={isPending}
-            className="inline-flex min-h-11 items-center justify-center gap-2 bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60 sm:w-auto"
           >
             <RefreshCcw className="h-4 w-4" />
             Gerar colecoes inteligentes
@@ -190,6 +191,12 @@ export default function ColecoesInteligentesClient({ colecoes: colecoesIniciais 
               <span className="mt-1 block text-xs opacity-70">{label(colecao.tipo)} | {colecao.produtos.length} produtos</span>
             </button>
           ))}
+
+          {filtradas.length === 0 ? (
+            <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm font-semibold text-slate-500">
+              Nenhuma colecao encontrada para os filtros.
+            </div>
+          ) : null}
         </aside>
 
         {selecionada ? (
@@ -206,12 +213,12 @@ export default function ColecoesInteligentesClient({ colecoes: colecoesIniciais 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{selecionada.descricao}</p>
                   <p className="mt-2 text-xs font-semibold text-slate-500">Atualizada: {selecionada.geradaEm ? new Date(selecionada.geradaEm).toLocaleString("pt-BR") : "Ainda nao gerada"}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "ATIVA" })} className="inline-flex items-center gap-2 bg-emerald-600 px-3 py-2 text-xs font-black text-white"><ShieldCheck className="h-4 w-4" /> Ativar</button>
-                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "PAUSADA" })} className="border border-amber-200 px-3 py-2 text-xs font-black text-amber-700">Pausar</button>
-                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "ARQUIVADA" })} className="border border-slate-200 px-3 py-2 text-xs font-black text-slate-600">Arquivar</button>
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "ATIVA" })} className="inline-flex flex-1 items-center justify-center gap-2 bg-emerald-600 px-3 py-2 text-xs font-black text-white sm:flex-none"><ShieldCheck className="h-4 w-4" /> Ativar</button>
+                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "PAUSADA" })} className="flex-1 border border-amber-200 px-3 py-2 text-xs font-black text-amber-700 sm:flex-none">Pausar</button>
+                  <button type="button" onClick={() => atualizarColecao(selecionada.id, { status: "ARQUIVADA" })} className="flex-1 border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 sm:flex-none">Arquivar</button>
                   {selecionada.status === "ATIVA" ? (
-                    <Link href={`/loja/colecao/${selecionada.slug}`} target="_blank" className="inline-flex items-center gap-2 border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">
+                    <Link href={`/loja/colecao/${selecionada.slug}`} target="_blank" className="inline-flex flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 sm:flex-none">
                       <ExternalLink className="h-4 w-4" /> Ver pagina
                     </Link>
                   ) : null}
@@ -220,15 +227,24 @@ export default function ColecoesInteligentesClient({ colecoes: colecoesIniciais 
             </section>
 
             <section className="bg-white p-4 shadow-sm ring-1 ring-slate-200">
-              <div className="mb-3 grid grid-cols-4 gap-2 text-xs font-black uppercase text-slate-500 md:grid-cols-[1fr_110px_110px_220px]">
+              <div className="mb-3 hidden gap-2 text-xs font-black uppercase text-slate-500 md:grid md:grid-cols-[1fr_110px_110px_220px]">
                 <span>Produto</span><span>Score</span><span>Status</span><span>Acoes</span>
               </div>
               <div className="space-y-2">
                 {selecionada.produtos.map((item) => (
                   <div key={item.id} className="grid gap-3 border border-slate-200 p-3 md:grid-cols-[1fr_110px_110px_220px] md:items-center">
                     <div className="flex min-w-0 gap-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden bg-slate-100">
-                        {item.produto.imagemUrl || item.produto.imagemHoverUrl ? <img src={item.produto.imagemUrl || item.produto.imagemHoverUrl || ""} alt={item.produto.nome} className="h-full w-full object-cover" /> : null}
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-slate-100">
+                        {item.produto.imagemUrl || item.produto.imagemHoverUrl ? (
+                          <Image
+                            src={item.produto.imagemUrl || item.produto.imagemHoverUrl || ""}
+                            alt={item.produto.nome}
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : null}
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-black text-slate-900">{item.produto.nome}</p>

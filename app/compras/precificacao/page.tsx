@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdmin, usuarioTemPermissaoAdmin } from "@/lib/auth/admin";
 import {
   analisarPrecificacaoProdutos,
   serializarAnalisePrecificacao,
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function PrecificacaoPage() {
   const usuario = await exigirAdmin();
 
-  if (usuario.perfil !== "ACESSO_GERAL") {
+  if (!usuarioTemPermissaoAdmin(usuario, "precificacao", "ver")) {
     redirect("/vendas/nova-v2");
   }
 

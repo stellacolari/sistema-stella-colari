@@ -1,20 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin } from "@/lib/auth/admin";
-import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 const STATUS_VALIDOS = new Set(["RASCUNHO", "ATIVA", "PAUSADA", "ARQUIVADA"]);
 
 async function exigirAcesso() {
-  const usuario = await exigirAdmin();
-  if (
-    usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "lojaOnline", "editar") &&
-    !usuarioTemPermissao(usuario, "configuracoes", "editar")
-  ) {
-    throw new Error("Acesso nao permitido para este perfil.");
-  }
+  await exigirAdminComPermissao("lojaOnline", "editar");
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -44,6 +36,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     return NextResponse.json({ colecao });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Nao foi possivel atualizar a colecao." }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Nao foi possivel atualizar a colecao." },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

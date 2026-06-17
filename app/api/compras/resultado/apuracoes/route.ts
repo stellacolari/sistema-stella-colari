@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import { fecharApuracaoResultadoMensal } from "@/lib/financeiro/resultado";
 
 function numero(value: unknown) {
@@ -12,6 +13,7 @@ function texto(value: unknown) {
 
 export async function POST(req: Request) {
   try {
+    await exigirAdminComPermissao("resultado", "editar");
     const body = await req.json();
     const mes = numero(body.mes);
     const ano = numero(body.ano);
@@ -36,6 +38,9 @@ export async function POST(req: Request) {
         ? error.message
         : "Nao foi possivel fechar a apuracao.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

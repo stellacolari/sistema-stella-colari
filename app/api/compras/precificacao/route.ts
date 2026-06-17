@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import {
   analisarPrecificacaoProdutos,
   serializarAnalisePrecificacao,
 } from "@/lib/financeiro/precificacao-inteligente";
 
-async function exigirAcessoGeral() {
-  const usuario = await exigirAdmin();
-
-  if (usuario.perfil !== "ACESSO_GERAL") {
+async function exigirAcessoModulo(modulo: string, acao = "ver") {
+  try {
+    await exigirAdminComPermissao(modulo, acao);
+    return null;
+  } catch {
     return NextResponse.json({ error: "Acesso nao autorizado." }, { status: 403 });
   }
-
-  return null;
 }
 
 export async function GET() {
-  const bloqueio = await exigirAcessoGeral();
+  const bloqueio = await exigirAcessoModulo("precificacao", "ver");
 
   if (bloqueio) return bloqueio;
 

@@ -10,7 +10,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdmin, usuarioTemPermissaoAdmin } from "@/lib/auth/admin";
 import {
   montarIntencaoComercial,
   type IntencaoBusca,
@@ -83,7 +83,7 @@ function labelImpactoRecomendacao(status: string) {
 export default async function IntencaoComercialPage({ searchParams }: PageProps) {
   const usuario = await exigirAdmin();
 
-  if (usuario.perfil !== "ACESSO_GERAL") {
+  if (!usuarioTemPermissaoAdmin(usuario, "intencaoComercial", "ver")) {
     redirect("/vendas/nova-v2");
   }
 

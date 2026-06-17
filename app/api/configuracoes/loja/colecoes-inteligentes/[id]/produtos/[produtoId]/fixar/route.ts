@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { exigirAdmin } from "@/lib/auth/admin";
-import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 import { fixarProdutoNaColecao } from "@/lib/loja/colecoes-inteligentes";
 
 async function exigirAcesso() {
-  const usuario = await exigirAdmin();
-  if (
-    usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "lojaOnline", "editar") &&
-    !usuarioTemPermissao(usuario, "configuracoes", "editar")
-  ) {
-    throw new Error("Acesso nao permitido para este perfil.");
-  }
+  await exigirAdminComPermissao("lojaOnline", "editar");
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string; produtoId: string }> }) {
@@ -22,6 +14,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const item = await fixarProdutoNaColecao(id, produtoId, body.fixado !== false);
     return NextResponse.json({ ok: true, item });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Nao foi possivel fixar produto." }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Nao foi possivel fixar produto." },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }
