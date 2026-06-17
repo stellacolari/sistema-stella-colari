@@ -11,9 +11,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") || "";
     const limite = Number(searchParams.get("limite") || 12);
-    const tipo = (searchParams.get("tipo") || "todos") as BuscaLojaTipo;
     const modo: BuscaLojaModo =
       searchParams.get("modo") === "autocomplete" ? "autocomplete" : "pagina";
+    const tipo = (modo === "pagina"
+      ? "produtos"
+      : searchParams.get("tipo") || "produtos") as BuscaLojaTipo;
 
     if (modo === "autocomplete") {
       const resultado = await buscarLojaAutocomplete({ q });

@@ -134,12 +134,12 @@ type PaginaAutocompleteRaw = Awaited<
 >[number];
 
 const SUGESTOES_FIXAS = [
-  "Aneis",
-  "Brincos",
-  "Colares",
-  "Pulseiras",
-  "Presentes",
-  "Promocoes",
+  "anel",
+  "colar",
+  "brinco",
+  "presente",
+  "pulseira",
+  "promocao",
 ];
 
 const SINONIMOS: Record<string, string> = {
@@ -318,20 +318,6 @@ function filtroTextoProdutoAutocomplete(termo: string): Prisma.ProdutoWhereInput
     { tagsComerciais: contains },
     { familiaMaterial: contains },
     { familiaCorJoia: contains },
-    {
-      categoriasProduto: {
-        some: {
-          categoria: {
-            OR: [
-              { nome: contains },
-              { slug: contains },
-              { descricaoSeo: contains },
-              { termosBusca: contains },
-            ],
-          },
-        },
-      },
-    },
   ];
 }
 
@@ -400,26 +386,6 @@ async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
           quantidadeAtual: true,
         },
         take: 12,
-      },
-      categoriasProduto: {
-        select: {
-          categoria: {
-            select: {
-              id: true,
-              nome: true,
-              slug: true,
-              descricaoSeo: true,
-              termosBusca: true,
-              categoriaMae: {
-                select: {
-                  nome: true,
-                  slug: true,
-                },
-              },
-            },
-          },
-        },
-        take: 6,
       },
     },
   });
@@ -847,14 +813,6 @@ function montarTextoProdutoAutocomplete(produto: ProdutoAutocompleteRaw) {
     produto.tagsComerciais,
     produto.familiaMaterial,
     produto.familiaCorJoia,
-    ...produto.categoriasProduto.flatMap((item) => [
-      item.categoria.nome,
-      item.categoria.slug,
-      item.categoria.descricaoSeo,
-      item.categoria.termosBusca,
-      item.categoria.categoriaMae?.nome,
-      item.categoria.categoriaMae?.slug,
-    ]),
     ...produto.estoque.map((estoque) =>
       estoque.tamanhoAnel
         ? `aro ${estoque.tamanhoAnel} tamanho ${estoque.tamanhoAnel}`
@@ -885,9 +843,6 @@ function scoreProdutoAutocomplete({
   const nome = montarTextoIndexavel(produto.nome);
   const codigo = montarTextoIndexavel(produto.codigoInterno);
   const categoriaPrincipal = montarTextoIndexavel(produto.categoria);
-  const categorias = montarTextoIndexavel(
-    produto.categoriasProduto.map((item) => item.categoria.nome).join(" ")
-  );
   const termosComerciais = montarTextoIndexavel(
     [produto.termosBusca, produto.tagsComerciais].join(" ")
   );
@@ -908,7 +863,6 @@ function scoreProdutoAutocomplete({
   score += scoreTextoCampo(atributos, tokens, 34);
   score += scoreTextoCampo(termosComerciais, tokens, 30);
   score += scoreTextoCampo(categoriaPrincipal, tokens, 26);
-  score += scoreTextoCampo(categorias, tokens, 26);
   score += scoreTextoCampo(codigo, tokens, 20);
   score += scoreTextoCampo(textoCompleto, tokens, 7);
 
@@ -1038,18 +992,12 @@ function formatarPaginaAutocomplete(
   };
 }
 
-function ordenarGruposAutocomplete(tokens: string[]): BuscaLojaGrupoResultado[] {
-  if (buscaGenericaCategoria(tokens)) {
-    return ["categorias", "produtos", "paginas", "sugestoes"];
-  }
-
-  return ["produtos", "categorias", "paginas", "sugestoes"];
+function ordenarGruposAutocomplete(): BuscaLojaGrupoResultado[] {
+  return ["produtos", "sugestoes"];
 }
 
-function sugestoesAutocomplete(categorias: CategoriaAutocompleteRaw[]) {
-  return Array.from(
-    new Set([...categorias.map((categoria) => categoria.nome), ...SUGESTOES_FIXAS])
-  ).slice(0, 3);
+function sugestoesAutocomplete() {
+  return SUGESTOES_FIXAS.slice(0, 4);
 }
 
 function resultadoAutocompleteVazio(
@@ -1061,7 +1009,7 @@ function resultadoAutocompleteVazio(
     produtos: [],
     categorias: [],
     paginas: [],
-    sugestoes: SUGESTOES_FIXAS.slice(0, 3),
+    sugestoes: sugestoesAutocomplete(),
     termoNormalizado,
     ordemGrupos,
   };
@@ -1124,7 +1072,7 @@ export async function buscarLojaAutocomplete({
   const inicio = Date.now();
   const termoNormalizado = normalizarTextoBusca(q);
   const tokens = tokenizarBusca(q);
-  const ordemGrupos = ordenarGruposAutocomplete(tokens);
+  const ordemGrupos = ordenarGruposAutocomplete();
   const termoCanonico = tokens.join(" ");
   const cacheKey = `${termoNormalizado}|${termoCanonico}`;
 
@@ -1143,13 +1091,7 @@ export async function buscarLojaAutocomplete({
   }
 
   const filtrosDetectados = detectarFiltros(q, tokens);
-  const priorizarCategoria = buscaGenericaCategoria(tokens);
-
-  const [produtosRaw, categoriasRaw, paginasRaw] = await Promise.all([
-    buscarProdutosAutocompleteRaw(q, tokens),
-    buscarCategoriasAutocompleteRaw(q, tokens),
-    buscarPaginasAutocompleteRaw(q, tokens),
-  ]);
+  const produtosRaw = await buscarProdutosAutocompleteRaw(q, tokens);
 
   const produtos = produtosRaw
     .map((produto) => ({
@@ -1185,42 +1127,12 @@ export async function buscarLojaAutocomplete({
       formatarProdutoAutocomplete(produto, relevancia)
     );
 
-  const categorias = categoriasRaw
-    .map((categoria) => ({
-      categoria,
-      relevancia: scoreCategoriaAutocomplete(
-        categoria,
-        tokens,
-        termoNormalizado,
-        priorizarCategoria
-      ),
-    }))
-    .filter(({ relevancia }) => relevancia > 0)
-    .sort(
-      (a, b) =>
-        b.relevancia - a.relevancia || a.categoria.nome.localeCompare(b.categoria.nome)
-    )
-    .slice(0, 4)
-    .map(({ categoria, relevancia }) =>
-      formatarCategoriaAutocomplete(categoria, relevancia)
-    );
-
-  const paginas = paginasRaw
-    .map((pagina) => ({
-      pagina,
-      relevancia: scorePaginaAutocomplete(pagina, tokens, termoNormalizado),
-    }))
-    .filter(({ relevancia }) => relevancia > 0)
-    .sort((a, b) => b.relevancia - a.relevancia || a.pagina.titulo.localeCompare(b.pagina.titulo))
-    .slice(0, 3)
-    .map(({ pagina, relevancia }) => formatarPaginaAutocomplete(pagina, relevancia));
-
   const resultado: BuscaLojaAutocompleteResultado = {
     modo: "autocomplete",
     produtos,
-    categorias,
-    paginas,
-    sugestoes: sugestoesAutocomplete(categoriasRaw),
+    categorias: [],
+    paginas: [],
+    sugestoes: sugestoesAutocomplete(),
     termoNormalizado: termoCanonico,
     ordemGrupos,
   };

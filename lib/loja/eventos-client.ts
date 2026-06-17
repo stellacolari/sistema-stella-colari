@@ -217,24 +217,18 @@ export function registrarCliqueResultadoBusca({
   termoBusca,
   tipoResultado,
   produtoId,
-  categoriaId,
-  paginaId,
   origem,
   metadata,
 }: {
   termoBusca: string;
-  tipoResultado: "produto" | "categoria" | "pagina";
+  tipoResultado: "produto";
   produtoId?: string;
-  categoriaId?: string;
-  paginaId?: string;
   origem?: string;
   metadata?: Record<string, unknown>;
 }) {
   registrarEventoLoja({
     tipo: "BUSCA_RESULTADO_CLICADO",
     produtoId,
-    categoriaId,
-    paginaId,
     termoBusca,
     origem: origem || "busca",
     metadata: {

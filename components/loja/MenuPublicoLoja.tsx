@@ -6,8 +6,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
 import {
   ChevronRight,
-  FileText,
-  Folder,
   Heart,
   Menu,
   Package,
@@ -84,29 +82,14 @@ type BuscaAutocompleteProduto = {
 };
 
 type BuscaAutocompleteCategoria = {
-  id: string;
-  nome: string;
-  slug: string;
-  caminho: string | null;
-  quantidadeProdutos: number | null;
-  href: string;
-  tipoResultado: "CATEGORIA";
+  id?: never;
 };
 
 type BuscaAutocompletePagina = {
-  id: string;
-  titulo: string;
-  slug: string;
-  tipo: string;
-  href: string;
-  tipoResultado: "PAGINA";
+  id?: never;
 };
 
-type BuscaAutocompleteGrupo =
-  | "categorias"
-  | "produtos"
-  | "paginas"
-  | "sugestoes";
+type BuscaAutocompleteGrupo = "produtos" | "sugestoes";
 
 type BuscaAutocompleteResultado = {
   modo: "autocomplete";
@@ -119,10 +102,8 @@ type BuscaAutocompleteResultado = {
 };
 
 type BuscaAutocompleteClick = {
-  tipoResultado: "produto" | "categoria" | "pagina";
+  tipoResultado: "produto";
   produtoId?: string;
-  categoriaId?: string;
-  paginaId?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -182,18 +163,7 @@ function precoEfetivoProduto(produto: BuscaAutocompleteProduto) {
 function resultadoBuscaTemItens(resultado: BuscaAutocompleteResultado | null) {
   if (!resultado) return false;
 
-  return (
-    resultado.produtos.length > 0 ||
-    resultado.categorias.length > 0 ||
-    resultado.paginas.length > 0
-  );
-}
-
-function labelTipoPagina(tipo: string) {
-  if (tipo === "LANDING") return "Coleção";
-  if (tipo === "CAMPANHA") return "Campanha";
-
-  return "Página";
+  return resultado.produtos.length > 0;
 }
 
 function ordenarCategorias(
@@ -335,8 +305,6 @@ function ProdutoSugestaoBusca({
         <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-slate-900">
           {produto.nome}
         </p>
-
-        <p className="mt-1 text-xs text-slate-500">{produto.categoria}</p>
       </div>
 
       <div className="self-center text-right">
@@ -347,87 +315,6 @@ function ProdutoSugestaoBusca({
           </p>
         ) : null}
       </div>
-    </Link>
-  );
-}
-
-function CategoriaSugestaoBusca({
-  categoria,
-  onNavigate,
-}: {
-  categoria: BuscaAutocompleteCategoria;
-  onNavigate: () => void;
-}) {
-  return (
-    <Link
-      href={categoria.href}
-      onClick={onNavigate}
-      className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
-    >
-      <span className="flex h-9 w-9 items-center justify-center border border-slate-200 text-slate-500">
-        <Folder className="h-4 w-4" />
-      </span>
-
-      <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-1.5">
-          <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Categoria
-          </span>
-          {categoria.quantidadeProdutos !== null ? (
-            <span className="text-[11px] font-medium text-slate-500">
-              {categoria.quantidadeProdutos} produto
-              {categoria.quantidadeProdutos === 1 ? "" : "s"}
-            </span>
-          ) : null}
-        </span>
-
-        <span className="mt-1 block truncate text-sm font-semibold text-slate-950">
-          {categoria.nome}
-        </span>
-
-        {categoria.caminho ? (
-          <span className="mt-1 block truncate text-xs text-slate-500">
-            {categoria.caminho} / {categoria.nome}
-          </span>
-        ) : (
-          <span className="mt-1 block text-xs text-slate-500">
-            Ver linha completa
-          </span>
-        )}
-      </span>
-
-      <ChevronRight className="h-4 w-4 text-slate-400" />
-    </Link>
-  );
-}
-
-function PaginaSugestaoBusca({
-  pagina,
-  onNavigate,
-}: {
-  pagina: BuscaAutocompletePagina;
-  onNavigate: () => void;
-}) {
-  return (
-    <Link
-      href={pagina.href}
-      onClick={onNavigate}
-      className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
-    >
-      <span className="flex h-9 w-9 items-center justify-center border border-slate-200 text-slate-500">
-        <FileText className="h-4 w-4" />
-      </span>
-
-      <span className="min-w-0">
-        <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          {labelTipoPagina(pagina.tipo)}
-        </span>
-        <span className="mt-1 block truncate text-sm font-semibold text-slate-950">
-          {pagina.titulo}
-        </span>
-      </span>
-
-      <ChevronRight className="h-4 w-4 text-slate-400" />
     </Link>
   );
 }
@@ -712,24 +599,14 @@ export default function MenuPublicoLoja({
     if (!resultadoBusca) return [];
 
     const grupos = {
-      categorias: {
-        titulo: "Categorias",
-        subtitulo: "Caminhos para navegar por linhas de joias.",
-        quantidade: resultadoBusca.categorias.length,
-      },
       produtos: {
-        titulo: "Produtos",
-        subtitulo: "Itens diretos com foto, preço e disponibilidade.",
+        titulo: "Produtos encontrados",
+        subtitulo: "Itens diretos com foto, preço e link para compra.",
         quantidade: resultadoBusca.produtos.length,
-      },
-      paginas: {
-        titulo: "Páginas e coleções",
-        subtitulo: "Conteúdos, campanhas e vitrines relacionadas.",
-        quantidade: resultadoBusca.paginas.length,
       },
       sugestoes: {
         titulo: "Sugestões",
-        subtitulo: "Termos populares para continuar explorando.",
+        subtitulo: "Termos para refinar a busca.",
         quantidade: resultadoBusca.sugestoes.length,
       },
     };
@@ -832,16 +709,10 @@ export default function MenuPublicoLoja({
           metadata: {
             modo: "autocomplete",
             produtos: data.produtos.length,
-            categorias: data.categorias.length,
-            paginas: data.paginas.length,
           },
         });
 
-        if (
-          data.produtos.length === 0 &&
-          data.categorias.length === 0 &&
-          data.paginas.length === 0
-        ) {
+        if (data.produtos.length === 0) {
           registrarBuscaSemResultado({
             termoBusca,
             origem: "autocomplete",
@@ -941,8 +812,6 @@ export default function MenuPublicoLoja({
           termoBusca: termo,
           tipoResultado: evento.tipoResultado,
           produtoId: evento.produtoId,
-          categoriaId: evento.categoriaId,
-          paginaId: evento.paginaId,
           origem: "autocomplete",
           metadata: evento.metadata,
         });
@@ -1100,7 +969,7 @@ export default function MenuPublicoLoja({
                         irParaResultadosBusca();
                       }
                     }}
-                    placeholder="Buscar joias, categorias ou códigos"
+                    placeholder="Buscar joias, produtos ou códigos"
                     className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
                   />
                 </label>
@@ -1119,7 +988,7 @@ export default function MenuPublicoLoja({
                 {!termoBusca ? (
                   <>
                     <p className="px-1 py-3 text-sm font-medium text-slate-500">
-                      Digite o nome, categoria, material ou tamanho do produto.
+                      Digite o nome, material ou tamanho do produto.
                     </p>
                     {buscasRecentes.length > 0 ? (
                       <div className="flex flex-wrap gap-2 px-1 pb-3">
@@ -1158,27 +1027,6 @@ export default function MenuPublicoLoja({
                         titulo={grupo.titulo}
                         subtitulo={grupo.subtitulo}
                       >
-                        {grupo.chave === "categorias"
-                          ? resultadoBusca.categorias.map((categoria, index) => (
-                              <CategoriaSugestaoBusca
-                                key={categoria.id}
-                                categoria={categoria}
-                                onNavigate={() =>
-                                  navegarSugestaoBusca({
-                                    tipoResultado: "categoria",
-                                    categoriaId: categoria.id,
-                                    metadata: {
-                                      nome: categoria.nome,
-                                      href: categoria.href,
-                                      posicao: index + 1,
-                                      slug: categoria.slug,
-                                    },
-                                  })
-                                }
-                              />
-                            ))
-                          : null}
-
                         {grupo.chave === "produtos"
                           ? sugestoesBusca.map((produto, index) => (
                               <ProdutoSugestaoBusca
@@ -1200,38 +1048,23 @@ export default function MenuPublicoLoja({
                             ))
                           : null}
 
-                        {grupo.chave === "paginas"
-                          ? resultadoBusca.paginas.map((pagina, index) => (
-                              <PaginaSugestaoBusca
-                                key={pagina.id}
-                                pagina={pagina}
-                                onNavigate={() =>
-                                  navegarSugestaoBusca({
-                                    tipoResultado: "pagina",
-                                    paginaId: pagina.id,
-                                    metadata: {
-                                      titulo: pagina.titulo,
-                                      href: pagina.href,
-                                      posicao: index + 1,
-                                      tipo: pagina.tipo,
-                                    },
-                                  })
-                                }
-                              />
-                            ))
-                          : null}
-
                         {grupo.chave === "sugestoes" ? (
                           <div className="flex flex-wrap gap-2 px-1 py-2">
                             {resultadoBusca.sugestoes.map((sugestao) => (
-                              <button
+                              <Link
                                 key={sugestao}
-                                type="button"
-                                onClick={() => setBusca(sugestao)}
+                                href={`/loja/busca?q=${encodeURIComponent(
+                                  sugestao
+                                )}`}
+                                onClick={() => {
+                                  salvarBuscaRecente(sugestao);
+                                  setBuscasRecentes(lerBuscasRecentes());
+                                  fecharBusca();
+                                }}
                                 className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
                               >
                                 {sugestao}
-                              </button>
+                              </Link>
                             ))}
                           </div>
                         ) : null}
@@ -1247,20 +1080,37 @@ export default function MenuPublicoLoja({
                     </button>
                   </div>
                 ) : (
-                  <div>
+                  <div className="space-y-4">
                     <p className="px-1 pt-3 text-sm font-semibold text-slate-700">
-                      Nenhum resultado direto encontrado.
+                      Nenhum produto encontrado.
                     </p>
-                    <p className="px-1 pb-3 pt-1 text-sm text-slate-500">
-                      Tente buscar por anel, colar, brinco ou presente.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={irParaResultadosBusca}
-                      className="flex h-11 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+
+                    <SecaoAutocomplete
+                      titulo="Sugestões"
+                      subtitulo="Termos para tentar agora."
                     >
-                      Ver busca completa
-                    </button>
+                      <div className="flex flex-wrap gap-2 px-1 py-2">
+                        {(resultadoBusca?.sugestoes || [
+                          "anel",
+                          "colar",
+                          "brinco",
+                          "presente",
+                        ]).map((sugestao) => (
+                          <Link
+                            key={sugestao}
+                            href={`/loja/busca?q=${encodeURIComponent(sugestao)}`}
+                            onClick={() => {
+                              salvarBuscaRecente(sugestao);
+                              setBuscasRecentes(lerBuscasRecentes());
+                              fecharBusca();
+                            }}
+                            className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                          >
+                            {sugestao}
+                          </Link>
+                        ))}
+                      </div>
+                    </SecaoAutocomplete>
                   </div>
                 )}
               </div>

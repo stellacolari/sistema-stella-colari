@@ -5,15 +5,12 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import type {
-  BuscaLojaCategoria,
   BuscaLojaFiltrosDetectados,
-  BuscaLojaPagina,
   BuscaLojaProduto,
 } from "@/lib/loja/busca";
 import {
   registrarBuscaRealizada,
   registrarBuscaSemResultado,
-  registrarCliqueResultadoBusca,
 } from "@/lib/loja/eventos-client";
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
@@ -23,8 +20,6 @@ type OrdenacaoBusca = "RELEVANCIA" | "MENOR_PRECO" | "MAIOR_PRECO" | "AZ" | "ZA"
 type BuscaLojaClientProps = {
   termoInicial: string;
   produtos: BuscaLojaProduto[];
-  categorias: BuscaLojaCategoria[];
-  paginas: BuscaLojaPagina[];
   sugestoes: string[];
   filtrosDetectados: BuscaLojaFiltrosDetectados;
 };
@@ -81,14 +76,11 @@ function salvarBuscaRecente(termo: string) {
 export default function BuscaLojaClient({
   termoInicial,
   produtos,
-  categorias,
-  paginas,
   sugestoes,
   filtrosDetectados,
 }: BuscaLojaClientProps) {
   const [termo, setTermo] = useState(termoInicial);
   const [ordenacao, setOrdenacao] = useState<OrdenacaoBusca>("RELEVANCIA");
-  const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [precoFiltro, setPrecoFiltro] = useState("");
   const [disponibilidadeFiltro, setDisponibilidadeFiltro] = useState("");
   const [tamanhoFiltro, setTamanhoFiltro] = useState(filtrosDetectados.medida || "");
@@ -106,21 +98,6 @@ export default function BuscaLojaClient({
     setBuscasRecentes(lerBuscasRecentes());
   }, [termoInicial]);
 
-  const categoriasDisponiveis = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          produtos.flatMap((produto) => [
-            produto.categoria,
-            ...produto.categoriaNomes,
-          ])
-        )
-      )
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b)),
-    [produtos]
-  );
-
   const tamanhosDisponiveis = useMemo(
     () =>
       Array.from(
@@ -135,14 +112,6 @@ export default function BuscaLojaClient({
 
   const produtosFiltrados = useMemo(() => {
     let resultado = [...produtos];
-
-    if (categoriaFiltro) {
-      resultado = resultado.filter(
-        (produto) =>
-          produto.categoria === categoriaFiltro ||
-          produto.categoriaNomes.includes(categoriaFiltro)
-      );
-    }
 
     if (precoFiltro) {
       const [min, max] = precoFiltro.split("-").map(Number);
@@ -187,7 +156,6 @@ export default function BuscaLojaClient({
 
     return resultado;
   }, [
-    categoriaFiltro,
     disponibilidadeFiltro,
     ordenacao,
     precoFiltro,
@@ -195,9 +163,7 @@ export default function BuscaLojaClient({
     tamanhoFiltro,
   ]);
 
-  const temResultados =
-    produtos.length > 0 || categorias.length > 0 || paginas.length > 0;
-  const categoriaPrincipal = categorias[0] || null;
+  const temResultados = produtos.length > 0;
 
   useEffect(() => {
     const termoLimpo = termoInicial.trim();
@@ -206,8 +172,6 @@ export default function BuscaLojaClient({
 
     const metadata = {
       produtos: produtos.length,
-      categorias: categorias.length,
-      paginas: paginas.length,
       filtros: filtrosDetectados,
     };
 
@@ -225,9 +189,7 @@ export default function BuscaLojaClient({
       });
     }
   }, [
-    categorias.length,
     filtrosDetectados,
-    paginas.length,
     produtos.length,
     temResultados,
     termoInicial,
@@ -332,8 +294,9 @@ export default function BuscaLojaClient({
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-950">
-              {produtosFiltrados.length} produto(s), {categorias.length} categoria(s),{" "}
-              {paginas.length} pagina(s)
+              {produtosFiltrados.length} produto
+              {produtosFiltrados.length === 1 ? "" : "s"} encontrado
+              {produtosFiltrados.length === 1 ? "" : "s"}
             </p>
           </div>
 
@@ -362,21 +325,6 @@ export default function BuscaLojaClient({
                 <option value="ZA">Z-A</option>
                 <option value="RECENTES">Mais recentes</option>
               </select>
-
-              {categoriasDisponiveis.length > 0 ? (
-                <select
-                  value={categoriaFiltro}
-                  onChange={(event) => setCategoriaFiltro(event.target.value)}
-                  className="h-11 w-full border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-                >
-                  <option value="">Todas as categorias</option>
-                  {categoriasDisponiveis.map((categoria) => (
-                    <option key={categoria} value={categoria}>
-                      {categoria}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
 
               <select
                 value={precoFiltro}
@@ -417,93 +365,10 @@ export default function BuscaLojaClient({
           </aside>
 
           <div className="min-w-0 space-y-10">
-            {categoriaPrincipal ? (
-              <div className="border border-slate-200 bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
-                  Melhor caminho de navegação
-                </p>
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-lg font-semibold text-slate-950">
-                      {categoriaPrincipal.nome}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Para buscas amplas, veja a categoria completa antes de escolher
-                      um produto específico.
-                    </p>
-                  </div>
-                  <Link
-                    href={categoriaPrincipal.href}
-                    onClick={() =>
-                      registrarCliqueResultadoBusca({
-                        termoBusca: termoInicial,
-                        tipoResultado: "categoria",
-                        categoriaId: categoriaPrincipal.id,
-                        origem: "pagina_busca",
-                        metadata: {
-                          nome: categoriaPrincipal.nome,
-                          href: categoriaPrincipal.href,
-                          posicao: 1,
-                          relevancia: categoriaPrincipal.relevancia,
-                          cta: "categoria_principal",
-                        },
-                      })
-                    }
-                    className="inline-flex h-11 items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Ver todos os produtos desta categoria
-                  </Link>
-                </div>
-              </div>
-            ) : null}
-
-            {categorias.length > 0 ? (
-              <section>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
-                    Categorias
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                    Caminhos relacionados
-                  </h2>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {categorias.map((categoria, index) => (
-                    <Link
-                      key={categoria.id}
-                      href={categoria.href}
-                      onClick={() =>
-                        registrarCliqueResultadoBusca({
-                          termoBusca: termoInicial,
-                          tipoResultado: "categoria",
-                          categoriaId: categoria.id,
-                          origem: "pagina_busca",
-                          metadata: {
-                            nome: categoria.nome,
-                            href: categoria.href,
-                            posicao: index + 1,
-                            relevancia: categoria.relevancia,
-                          },
-                        })
-                      }
-                      className="border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-blue)]"
-                    >
-                      <p className="font-semibold text-slate-950">{categoria.nome}</p>
-                      {categoria.descricao ? (
-                        <p className="mt-2 line-clamp-2 text-sm text-slate-500">
-                          {categoria.descricao}
-                        </p>
-                      ) : null}
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
             <section>
               <div className="mb-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
-                  Produtos
+                  Produtos encontrados
                 </p>
                 <h2 className="mt-1 text-xl font-semibold text-slate-950">
                   Resultados para compra
@@ -537,7 +402,7 @@ export default function BuscaLojaClient({
               ) : (
                 <div className="border border-slate-200 bg-white px-6 py-12 text-center">
                   <p className="text-lg font-semibold text-slate-950">
-                    {`Nao encontramos resultados para "${termoInicial}".`}
+                    Nenhum produto encontrado.
                   </p>
                   <p className="mt-3 text-sm text-slate-600">
                     Confira a escrita ou tente termos como anel, brinco ou colar.
@@ -546,54 +411,16 @@ export default function BuscaLojaClient({
               )}
             </section>
 
-            {paginas.length > 0 ? (
+            {sugestoes.length > 0 ? (
               <section>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
-                    Páginas e coleções
+                    Sugestões
                   </p>
                   <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                    Conteúdos relacionados
+                    Continue buscando
                   </h2>
                 </div>
-                <div className="mt-4 grid gap-3">
-                  {paginas.map((pagina, index) => (
-                    <Link
-                      key={pagina.id}
-                      href={pagina.href}
-                      onClick={() =>
-                        registrarCliqueResultadoBusca({
-                          termoBusca: termoInicial,
-                          tipoResultado: "pagina",
-                          paginaId: pagina.id,
-                          origem: "pagina_busca",
-                          metadata: {
-                            titulo: pagina.titulo,
-                            href: pagina.href,
-                            posicao: index + 1,
-                            relevancia: pagina.relevancia,
-                          },
-                        })
-                      }
-                      className="border border-slate-200 bg-white p-4 transition hover:border-[var(--brand-blue)]"
-                    >
-                      <p className="font-semibold text-slate-950">{pagina.titulo}</p>
-                      {pagina.descricao ? (
-                        <p className="mt-2 line-clamp-2 text-sm text-slate-500">
-                          {pagina.descricao}
-                        </p>
-                      ) : null}
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {!temResultados && sugestoes.length > 0 ? (
-              <section className="mt-8">
-                <p className="text-sm font-semibold text-slate-700">
-                  Sugestoes para tentar:
-                </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {sugestoes.map((sugestao) => (
                     <Link

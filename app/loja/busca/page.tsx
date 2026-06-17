@@ -33,7 +33,7 @@ export default async function BuscaLojaPage({
       buscarLojaInteligente({
         q: termo,
         limite: 48,
-        tipo: "todos",
+        tipo: "produtos",
       }),
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
@@ -55,8 +55,6 @@ export default async function BuscaLojaPage({
       <BuscaLojaClient
         termoInicial={termo}
         produtos={resultado.produtos}
-        categorias={resultado.categorias}
-        paginas={resultado.paginas}
         sugestoes={resultado.sugestoes}
         filtrosDetectados={resultado.filtrosDetectados}
       />
