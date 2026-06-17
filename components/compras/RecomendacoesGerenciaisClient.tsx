@@ -207,6 +207,51 @@ function evidenciasResumo(value: unknown) {
     }));
 }
 
+function evidenciasRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function selosEvidencia(value: unknown) {
+  const evidencias = evidenciasRecord(value);
+  const nivel = String(evidencias.nivelEvidencia || "");
+  const selos: { label: string; className: string }[] = [];
+
+  if (evidencias.sinalInicial) {
+    selos.push({
+      label: "Sinal inicial",
+      className: "border-sky-200 bg-sky-50 text-sky-800",
+    });
+  }
+  if (nivel === "EVIDENCIA_MODERADA") {
+    selos.push({
+      label: "Evidencia moderada",
+      className: "border-amber-200 bg-amber-50 text-amber-800",
+    });
+  }
+  if (nivel === "EVIDENCIA_FORTE") {
+    selos.push({
+      label: "Evidencia forte",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    });
+  }
+  if (evidencias.amostraPequena) {
+    selos.push({
+      label: "Amostra pequena",
+      className: "border-slate-200 bg-slate-50 text-slate-700",
+    });
+  }
+  if (evidencias.revalidada) {
+    selos.push({
+      label: "Revalidada",
+      className: "border-indigo-200 bg-indigo-50 text-indigo-800",
+    });
+  }
+
+  return selos;
+}
+
 function latestImpacto(recomendacao: RecomendacaoGerencialResumo) {
   return recomendacao.impactos?.[0] || null;
 }
@@ -513,10 +558,10 @@ export default function RecomendacoesGerenciaisClient({
       </section>
 
       <section className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900 shadow-sm">
-        A empresa esta em fase inicial e muitos produtos ainda tem pouca
-        amostra. Por isso, recomendacoes individuais so serao geradas quando
-        houver sinais reais de venda, intencao, exposicao suficiente ou risco
-        comprovado.
+        Como a operacao ainda esta em fase inicial, produtos com poucas
+        unidades podem gerar sinais positivos rapidos. O sistema agora
+        diferencia sinal inicial de produto realmente validado, evitando
+        alertas fortes sem confirmacao.
       </section>
 
       {(erro || mensagem) && (
@@ -675,6 +720,14 @@ function RecomendacaoCard({
 }) {
   const impacto = latestImpacto(recomendacao);
   const campanha = latestCampanha(recomendacao);
+  const evidencias = evidenciasRecord(recomendacao.evidenciasJson);
+  const prioridadeVisual =
+    recomendacao.prioridade === "ALTA" && (evidencias.sinalInicial || evidencias.amostraPequena)
+      ? "MEDIA"
+      : recomendacao.prioridade;
+  const podeCriarCampanha =
+    !(evidencias.revalidada && (evidencias.sinalInicial || evidencias.amostraPequena)) &&
+    !["SEM_EVIDENCIA", "EVIDENCIA_FRACA"].includes(String(evidencias.nivelEvidencia || ""));
 
   return (
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
@@ -690,10 +743,10 @@ function RecomendacaoCard({
                     </span>
                     <span
                       className={`rounded-full border px-3 py-1 text-xs font-bold ${prioridadeClasses(
-                        recomendacao.prioridade
+                        prioridadeVisual
                       )}`}
                     >
-                      Prioridade {labelTipo(recomendacao.prioridade)}
+                      Prioridade {labelTipo(prioridadeVisual)}
                     </span>
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
                       {labelTipo(recomendacao.tipo)}
@@ -712,6 +765,14 @@ function RecomendacaoCard({
                         {recomendacao.periodoReferencia}
                       </span>
                     )}
+                    {selosEvidencia(recomendacao.evidenciasJson).map((selo) => (
+                      <span
+                        key={selo.label}
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${selo.className}`}
+                      >
+                        {selo.label}
+                      </span>
+                    ))}
                   </div>
 
                   <h2 className="mt-3 text-xl font-black text-slate-950">
@@ -720,6 +781,12 @@ function RecomendacaoCard({
                   <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
                     {recomendacao.descricao}
                   </p>
+                  {Boolean(evidencias.sinalInicial || evidencias.amostraPequena) && (
+                    <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-sky-800">
+                      Este produto tem sinal inicial positivo, mas ainda precisa
+                      de confirmacao antes de uma recompra maior.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 xl:justify-end">
@@ -770,7 +837,8 @@ function RecomendacaoCard({
                   ) : (
                     ["NOVA", "ACEITA", "EM_EXECUCAO"].includes(
                       recomendacao.status
-                    ) && (
+                    ) &&
+                    podeCriarCampanha && (
                       <AcaoButton
                         icon={<Megaphone className="h-4 w-4" />}
                         label="Criar campanha"

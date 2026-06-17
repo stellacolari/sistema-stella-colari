@@ -31,7 +31,9 @@ type ProdutoPrecificacaoBase = Produto & {
     recomendacao: string | null;
     sellThroughAcumulado: number;
     scoreValidacao: number;
+    estoqueInicial: number;
     estoqueFinal: number;
+    entradas: number;
     vendasQuantidade: number;
     dadosJson: Prisma.JsonValue;
   }[];
@@ -188,16 +190,23 @@ export function avaliarProtecaoMargem(params: {
   margemBrutaPct: number;
   faseEmpresa: string;
   sellThrough?: number;
+  quantidadeBase?: number;
 }) {
+  const sellThrough = numero(params.sellThrough);
+  const quantidadeBase = numero(params.quantidadeBase);
+  const amostraMinima = quantidadeBase >= 3 || params.scoreInteresse >= 18 || params.scoreConversao >= 20;
+
   return (
     ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(params.statusComercial) ||
     params.scoreInteresse >= 35 ||
     params.scoreConversao >= 45 ||
     (params.estoqueAtual <= 2 &&
-      (numero(params.sellThrough) >= 35 || params.scoreInteresse >= 18 || params.scoreConversao >= 20)) ||
+      ((sellThrough >= 35 && amostraMinima) || params.scoreInteresse >= 18 || params.scoreConversao >= 20)) ||
     params.margemBrutaPct < 45 ||
     (["PRESSAO_CAIXA", "CRISE_DEFESA"].includes(params.faseEmpresa) &&
-      (params.scoreInteresse >= 18 || params.scoreConversao >= 20 || numero(params.sellThrough) >= 35))
+      (params.scoreInteresse >= 18 ||
+        params.scoreConversao >= 20 ||
+        (sellThrough >= 35 && amostraMinima)))
   );
 }
 
@@ -395,6 +404,7 @@ function analisarProdutoBase(
     margemBrutaPct,
     faseEmpresa,
     sellThrough: numero(snapshot?.sellThroughAcumulado),
+    quantidadeBase: numero(snapshot?.estoqueInicial) + numero(snapshot?.entradas),
   });
   const descontoPermitido = avaliarPermissaoDesconto({
     custoAusente,

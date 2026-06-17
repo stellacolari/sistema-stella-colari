@@ -182,6 +182,30 @@ function pesoNivelEvidencia(nivel: NivelEvidenciaRecomendacao) {
   return 0;
 }
 
+function tamanhoAmostra(evidencias: Record<string, unknown>) {
+  const quantidadeBase = numero(
+    evidencias.quantidadeBase ??
+      evidencias.amostraUnidades ??
+      numero(evidencias.estoqueInicial) + numero(evidencias.entradas)
+  );
+  const vendas = numero(evidencias.vendasQuantidade ?? evidencias.vendas);
+  const visualizacoes = numero(evidencias.visualizacoes);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos ?? evidencias.adicoesCarrinho);
+  const cliquesBusca = numero(evidencias.cliquesBusca);
+  const cliquesVitrine = numero(evidencias.cliquesVitrine);
+  const eventos = visualizacoes + favoritos + carrinhos + cliquesBusca + cliquesVitrine;
+
+  return {
+    quantidadeBase,
+    vendas,
+    eventos,
+    pequena: quantidadeBase > 0 ? quantidadeBase <= 2 : vendas <= 1 && eventos < 5,
+    minimaAceitavel: quantidadeBase >= 3 || eventos >= 8 || vendas >= 2,
+    volumeForte: quantidadeBase >= 5 || vendas >= 3 || eventos >= 18,
+  };
+}
+
 export function avaliarEvidenciaRecomendacao(
   evidencias: Record<string, unknown>
 ): NivelEvidenciaRecomendacao {
@@ -197,35 +221,39 @@ export function avaliarEvidenciaRecomendacao(
   const campanhasAbertas = numero(evidencias.campanhasAbertas);
   const estoqueFinal = numero(evidencias.estoqueFinal ?? evidencias.estoqueTotal);
   const segundoCicloPositivo = Boolean(evidencias.segundoCicloPositivo);
+  const amostra = tamanhoAmostra(evidencias);
+  const temIntencao = favoritos > 0 || carrinhos > 0 || cliquesBusca >= 2 || cliquesVitrine >= 2;
+  const intencaoForte = favoritos >= 3 || carrinhos >= 2 || scoreInteresse >= 35;
+  const sellThroughForteComVolume = sellThrough >= 70 && amostra.volumeForte;
+  const sellThroughModeradoComAmostra = sellThrough >= 35 && amostra.minimaAceitavel;
 
   if (
-    vendas >= 2 ||
-    sellThrough >= 70 ||
-    favoritos >= 3 ||
-    carrinhos >= 2 ||
-    scoreInteresse >= 35 ||
-    scoreValidacao >= 70 ||
-    segundoCicloPositivo
+    segundoCicloPositivo ||
+    (sellThroughForteComVolume && (vendas >= 2 || temIntencao || estoqueFinal <= 1)) ||
+    (vendas >= 3 && (temIntencao || sellThrough >= 50)) ||
+    intencaoForte ||
+    (scoreValidacao >= 80 && amostra.volumeForte) ||
+    (estoqueFinal <= 1 && vendas >= 2 && temIntencao)
   ) {
     return "EVIDENCIA_FORTE";
   }
 
   if (
-    vendas >= 1 ||
-    sellThrough >= 35 ||
+    (vendas >= 1 && (temIntencao || visualizacoes >= 8 || sellThroughModeradoComAmostra)) ||
+    sellThroughModeradoComAmostra ||
     visualizacoes >= 12 ||
     favoritos >= 1 ||
     carrinhos >= 1 ||
     cliquesBusca >= 2 ||
     cliquesVitrine >= 2 ||
     scoreInteresse >= 18 ||
-    scoreValidacao >= 45 ||
-    campanhasAbertas > 0
+    (scoreValidacao >= 45 && amostra.minimaAceitavel) ||
+    (campanhasAbertas > 0 && (temIntencao || vendas > 0))
   ) {
     return "EVIDENCIA_MODERADA";
   }
 
-  if (estoqueFinal > 0 || visualizacoes > 0) {
+  if (sellThrough > 0 || vendas > 0 || estoqueFinal > 0 || visualizacoes > 0) {
     return "EVIDENCIA_FRACA";
   }
 
@@ -241,28 +269,61 @@ function evidenciaSuficiente(
 
 function limitarPrioridadePorEvidencia(
   prioridade: RecomendacaoPrioridade,
-  nivel: NivelEvidenciaRecomendacao
+  nivel: NivelEvidenciaRecomendacao,
+  evidencias: Record<string, unknown> = {}
 ): RecomendacaoPrioridade {
-  if (nivel === "EVIDENCIA_FORTE") return prioridade;
+  if (nivel === "EVIDENCIA_FORTE") {
+    if (prioridade !== "ALTA") return prioridade;
+    return urgenciaReal(evidencias) ? "ALTA" : "MEDIA";
+  }
   if (nivel === "EVIDENCIA_MODERADA" && prioridade === "ALTA") return "MEDIA";
   if (nivel === "EVIDENCIA_FRACA") return "BAIXA";
   return prioridade;
+}
+
+function urgenciaReal(evidencias: Record<string, unknown>) {
+  const vendas = numero(evidencias.vendasQuantidade ?? evidencias.vendas);
+  const estoqueFinal = numero(evidencias.estoqueFinal ?? evidencias.estoqueTotal);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos ?? evidencias.adicoesCarrinho);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+  const statusComercial = String(evidencias.statusComercial || "");
+  const segundoCicloPositivo = Boolean(evidencias.segundoCicloPositivo);
+  const demandaForte =
+    carrinhos >= 2 ||
+    favoritos >= 3 ||
+    scoreInteresse >= 35 ||
+    segundoCicloPositivo ||
+    vendas >= 3;
+
+  return (
+    (estoqueFinal <= 1 && (demandaForte || vendas >= 2)) ||
+    (statusComercial === "RISCO_RUPTURA" && estoqueFinal <= 2 && (vendas > 0 || demandaForte))
+  );
 }
 
 function anexarNivelEvidencia(
   evidencias: Record<string, unknown>,
   nivel: NivelEvidenciaRecomendacao
 ) {
+  const amostra = tamanhoAmostra(evidencias);
+  const sinalInicial = nivel === "EVIDENCIA_FRACA" || (nivel === "EVIDENCIA_MODERADA" && amostra.pequena);
+
   return {
     ...evidencias,
+    amostraPequena: amostra.pequena,
+    quantidadeBase: amostra.quantidadeBase || undefined,
+    sinalInicial,
     nivelEvidencia: nivel,
     leituraEvidencia:
       nivel === "SEM_EVIDENCIA"
         ? "Produto ainda nao testado. Aumente exposicao antes de tomar decisao de preco, desconto ou reposicao."
-        : nivel === "EVIDENCIA_FRACA"
+      : nivel === "EVIDENCIA_FRACA"
           ? "Amostra ainda pequena; manter observacao e exposicao leve."
           : nivel === "EVIDENCIA_MODERADA"
-            ? "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
+            ? sinalInicial
+              ? "Sinal inicial positivo; confirmar antes de elevar urgencia ou lote."
+              : "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
             : "Ha sinal forte para acao seletiva.",
   } satisfies Prisma.InputJsonObject;
 }
@@ -472,7 +533,7 @@ async function criarOuAtualizarRecomendacao(candidato: CandidatoRecomendacao) {
     take: 20,
   });
   const tituloNormalizado = normalizarTexto(candidato.titulo);
-  const existente = existentes.find((item) => {
+  const existentePorTitulo = existentes.find((item) => {
     const tituloExistente = normalizarTexto(item.titulo);
     return (
       tituloExistente === tituloNormalizado ||
@@ -480,6 +541,7 @@ async function criarOuAtualizarRecomendacao(candidato: CandidatoRecomendacao) {
       tituloNormalizado.includes(tituloExistente)
     );
   });
+  const existente = existentePorTitulo || existentes[0];
   const data = {
     tipo: candidato.tipo,
     titulo: candidato.titulo,
@@ -517,6 +579,176 @@ async function criarOuAtualizarRecomendacao(candidato: CandidatoRecomendacao) {
   });
 
   return { recomendacao, criada: true };
+}
+
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+async function evidenciasAtuaisProduto(produtoId: string) {
+  const snapshot = await prisma.produtoMetricaSnapshot.findFirst({
+    where: {
+      produtoId,
+      periodoTipo: "ATUAL",
+    },
+    orderBy: [{ tamanhoAnel: "asc" }, { criadoEm: "desc" }],
+  });
+
+  if (!snapshot) return {};
+
+  const intencao = extrairIntencaoSnapshot(snapshot.dadosJson);
+
+  return {
+    statusComercial: snapshot.statusComercial,
+    recomendacao: snapshot.recomendacao,
+    vendasQuantidade: snapshot.vendasQuantidade,
+    estoqueInicial: snapshot.estoqueInicial,
+    entradas: snapshot.entradas,
+    estoqueFinal: snapshot.estoqueFinal,
+    quantidadeBase: snapshot.estoqueInicial + snapshot.entradas,
+    sellThrough: snapshot.sellThroughAcumulado,
+    scoreValidacao: snapshot.scoreValidacao,
+    visualizacoes: intencao.visualizacoes,
+    favoritos: intencao.favoritos,
+    carrinhos: intencao.adicoesCarrinho,
+    cliquesBusca: intencao.cliquesBusca,
+    cliquesVitrine: intencao.cliquesVitrine,
+    scoreInteresse: intencao.scoreInteresse,
+  };
+}
+
+function textoRevalidacao(
+  nivel: NivelEvidenciaRecomendacao,
+  evidencias: Record<string, unknown>
+) {
+  const amostra = tamanhoAmostra(evidencias);
+
+  if (nivel === "SEM_EVIDENCIA") {
+    return {
+      prioridade: "BAIXA" as RecomendacaoPrioridade,
+      status: "ADIADA" as const,
+      motivo:
+        "Recomendacao revalidada: nao ha evidencia atual suficiente para acao por produto.",
+      descricao:
+        "A recomendacao foi mantida como historico, mas saiu da leitura de urgencia ate surgirem sinais reais.",
+    };
+  }
+
+  if (nivel === "EVIDENCIA_FRACA" || amostra.pequena) {
+    return {
+      prioridade: "BAIXA" as RecomendacaoPrioridade,
+      status: undefined,
+      motivo:
+        "Sinal inicial positivo, mas a amostra ainda precisa de confirmacao antes de recompra, desconto ou campanha.",
+      descricao:
+        "Este produto tem sinal inicial positivo, mas ainda precisa de confirmacao antes de uma recompra maior.",
+    };
+  }
+
+  return {
+    prioridade: limitarPrioridadePorEvidencia("ALTA", nivel, evidencias),
+    status: undefined,
+    motivo: undefined,
+    descricao: undefined,
+  };
+}
+
+function tituloRevalidado(
+  recomendacao: Pick<RecomendacaoGerencial, "tipo" | "titulo" | "origemTipo"> & {
+    produto?: { nome: string } | null;
+  },
+  nivel: NivelEvidenciaRecomendacao,
+  evidencias: Record<string, unknown>,
+  prioridade: RecomendacaoPrioridade
+) {
+  const nome = recomendacao.produto?.nome || String(evidencias.produto || "").trim();
+  const sinalInicial =
+    nivel === "EVIDENCIA_FRACA" ||
+    Boolean(evidencias.sinalInicial || evidencias.amostraPequena);
+
+  if (recomendacao.tipo === "REPOSICAO") {
+    if (prioridade === "ALTA" && urgenciaReal(evidencias)) {
+      return nome ? `Reposicao urgente: ${nome}` : recomendacao.titulo;
+    }
+
+    return "Sinal inicial positivo: considerar reposicao pequena";
+  }
+
+  if (recomendacao.tipo === "PRECIFICACAO" && recomendacao.titulo.match(/proteger margem/i)) {
+    if (sinalInicial) return nome ? `Sinal inicial positivo: ${nome}` : "Sinal inicial positivo";
+    return nome ? `Proteger margem: ${nome}` : recomendacao.titulo;
+  }
+
+  return recomendacao.titulo;
+}
+
+export async function revalidarRecomendacoesGerenciaisAbertas() {
+  const abertas = await prisma.recomendacaoGerencial.findMany({
+    where: {
+      status: { in: [...RECOMENDACAO_STATUS_ABERTOS] },
+      produtoId: { not: null },
+    },
+    include: {
+      produto: {
+        select: {
+          codigoInterno: true,
+          nome: true,
+        },
+      },
+    },
+    orderBy: { criadoEm: "asc" },
+  });
+  let revalidadas = 0;
+  let rebaixadas = 0;
+  let adiadas = 0;
+
+  for (const recomendacao of abertas) {
+    if (!recomendacao.produtoId) continue;
+
+    const evidenciasOriginais = jsonRecord(recomendacao.evidenciasJson);
+    const evidenciasAtuais = await evidenciasAtuaisProduto(recomendacao.produtoId);
+    const evidenciasBase = {
+      ...evidenciasOriginais,
+      ...evidenciasAtuais,
+      produto: recomendacao.produto?.codigoInterno || evidenciasOriginais.produto,
+      revalidada: true,
+      revalidadaEm: new Date().toISOString(),
+    };
+    const nivel = avaliarEvidenciaRecomendacao(evidenciasBase);
+    const evidenciasJson = anexarNivelEvidencia(evidenciasBase, nivel);
+    const ajuste = textoRevalidacao(nivel, evidenciasJson);
+    const prioridade = limitarPrioridadePorEvidencia(
+      ajuste.prioridade || (recomendacao.prioridade as RecomendacaoPrioridade),
+      nivel,
+      evidenciasJson
+    );
+    const data: Prisma.RecomendacaoGerencialUpdateInput = {
+      evidenciasJson,
+      prioridade,
+    };
+
+    if (ajuste.status && recomendacao.status === "NOVA") data.status = ajuste.status;
+    if (ajuste.motivo) data.motivo = ajuste.motivo;
+    if (ajuste.descricao) data.descricao = ajuste.descricao;
+
+    data.titulo = tituloRevalidado(recomendacao, nivel, evidenciasJson, prioridade);
+
+    const prioridadeAnterior = recomendacao.prioridade;
+    const statusAnterior = recomendacao.status;
+
+    await prisma.recomendacaoGerencial.update({
+      where: { id: recomendacao.id },
+      data,
+    });
+
+    revalidadas += 1;
+    if (prioridadePeso(prioridade) > prioridadePeso(prioridadeAnterior)) rebaixadas += 1;
+    if (data.status && data.status !== statusAnterior) adiadas += 1;
+  }
+
+  return { revalidadas, rebaixadas, adiadas };
 }
 
 function montarCandidatosFinanceiros({
@@ -773,7 +1005,10 @@ async function montarCandidatosProduto(periodoReferencia: string) {
       recomendacao: snapshot.recomendacao,
       scoreValidacao: snapshot.scoreValidacao,
       vendasQuantidade: snapshot.vendasQuantidade,
+      estoqueInicial: snapshot.estoqueInicial,
+      entradas: snapshot.entradas,
       estoqueFinal: snapshot.estoqueFinal,
+      quantidadeBase: snapshot.estoqueInicial + snapshot.entradas,
       sellThrough: snapshot.sellThroughAcumulado,
       visualizacoes: intencao.visualizacoes,
       favoritos: intencao.favoritos,
@@ -786,6 +1021,11 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     };
     const nivelEvidencia = avaliarEvidenciaRecomendacao(evidenciaBase);
     const evidenciasJson = anexarNivelEvidencia(evidenciaBase, nivelEvidencia);
+    const prioridadeReposicao = limitarPrioridadePorEvidencia(
+      "ALTA",
+      nivelEvidencia,
+      evidenciaBase
+    );
 
     if (
       ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(
@@ -796,13 +1036,22 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
-        descricao: `${produto.nome} tem sinal comercial forte e estoque baixo.`,
-        motivo: decisao.motivo,
+        titulo:
+          prioridadeReposicao === "ALTA"
+            ? `Reposicao urgente: ${produto.nome}`
+            : `Sinal inicial positivo: considerar reposicao pequena`,
+        descricao:
+          prioridadeReposicao === "ALTA"
+            ? `${produto.nome} tem demanda confirmada e estoque critico.`
+            : `${produto.nome} teve bom giro inicial, mas a amostra ainda pede cautela.`,
+        motivo:
+          prioridadeReposicao === "ALTA"
+            ? decisao.motivo
+            : "O produto teve bom giro inicial, mas a amostra ainda e pequena. Repor pouco evita ruptura sem assumir lote grande.",
         evidenciasJson,
         impactoEsperado: "Evitar ruptura sem assumir lote grande cedo demais.",
         risco: "Sem reposicao seletiva, a vitrine pode perder produto validado.",
-        prioridade: "ALTA",
+        prioridade: prioridadeReposicao,
         acaoSugerida: decisao.loteGrandeLiberado
           ? "Avaliar lote maior com caixa confirmado."
           : "Repor pequeno ou medio conforme decisao de lote.",
@@ -822,9 +1071,10 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
+        titulo: `Sinal inicial positivo: considerar reposicao pequena`,
         descricao: `${produto.nome} tem sinal inicial e pede reposicao pequena, nao lote grande.`,
-        motivo: decisao.motivo,
+        motivo:
+          "O produto teve bom giro inicial, mas a amostra ainda e pequena. Repor pouco evita ruptura sem assumir lote grande.",
         evidenciasJson,
         impactoEsperado: "Preservar aprendizado com baixo risco de estoque.",
         risco: "Comprar grande com pouca amostra pode travar caixa em estoque.",
@@ -961,7 +1211,8 @@ async function montarCandidatosProduto(periodoReferencia: string) {
           ["RISCO_RUPTURA", "CAMPEAO_PROVAVEL"].includes(snapshot.statusComercial)
             ? "ALTA"
             : "MEDIA",
-          nivelEvidencia
+          nivelEvidencia,
+          evidenciaBase
         ),
         acaoSugerida: "Evitar desconto amplo; testar destaque, kit ou vitrine.",
         linkAcao: `/produtos/${produto.id}`,
@@ -1328,6 +1579,8 @@ export async function gerarRecomendacoesGerenciais(
     }
   }
 
+  const revalidacao = await revalidarRecomendacoesGerenciaisAbertas();
+
   const abertas = await prisma.recomendacaoGerencial.count({
     where: {
       status: { in: [...RECOMENDACAO_STATUS_ABERTOS] },
@@ -1339,6 +1592,7 @@ export async function gerarRecomendacoesGerenciais(
     candidatos: candidatosUnicos.length,
     criadas,
     atualizadas,
+    revalidacao,
     totalAbertas: abertas,
     porTipo: RECOMENDACAO_TIPOS.reduce<Record<string, number>>((acc, tipo) => {
       acc[tipo] = candidatosUnicos.filter((item) => item.tipo === tipo).length;

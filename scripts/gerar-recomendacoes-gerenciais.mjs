@@ -124,33 +124,48 @@ function avaliarEvidencia(evidencias) {
   const scoreInteresse = numero(evidencias.scoreInteresse);
   const scoreValidacao = numero(evidencias.scoreValidacao);
   const estoqueFinal = numero(evidencias.estoqueFinal || evidencias.estoqueTotal);
+  const quantidadeBase = numero(
+    evidencias.quantidadeBase || numero(evidencias.estoqueInicial) + numero(evidencias.entradas),
+  );
+  const eventos =
+    visualizacoes +
+    favoritos +
+    carrinhos +
+    cliquesBusca +
+    cliquesVitrine;
+  const amostraPequena = quantidadeBase > 0 ? quantidadeBase <= 2 : vendas <= 1 && eventos < 5;
+  const amostraMinima = quantidadeBase >= 3 || eventos >= 8 || vendas >= 2;
+  const volumeForte = quantidadeBase >= 5 || vendas >= 3 || eventos >= 18;
+  const temIntencao = favoritos > 0 || carrinhos > 0 || cliquesBusca >= 2 || cliquesVitrine >= 2;
+  const intencaoForte = favoritos >= 3 || carrinhos >= 2 || scoreInteresse >= 35;
 
   if (
-    vendas >= 2 ||
-    sellThrough >= 70 ||
-    favoritos >= 3 ||
-    carrinhos >= 2 ||
-    scoreInteresse >= 35 ||
-    scoreValidacao >= 70
+    (sellThrough >= 70 && volumeForte && (vendas >= 2 || temIntencao || estoqueFinal <= 1)) ||
+    (vendas >= 3 && (temIntencao || sellThrough >= 50)) ||
+    intencaoForte ||
+    (scoreValidacao >= 80 && volumeForte) ||
+    (estoqueFinal <= 1 && vendas >= 2 && temIntencao)
   ) {
     return "EVIDENCIA_FORTE";
   }
 
   if (
-    vendas >= 1 ||
-    sellThrough >= 35 ||
+    (vendas >= 1 && (temIntencao || visualizacoes >= 8 || (sellThrough >= 35 && amostraMinima))) ||
+    (sellThrough >= 35 && amostraMinima) ||
     visualizacoes >= 12 ||
     favoritos >= 1 ||
     carrinhos >= 1 ||
     cliquesBusca >= 2 ||
     cliquesVitrine >= 2 ||
     scoreInteresse >= 18 ||
-    scoreValidacao >= 45
+    (scoreValidacao >= 45 && amostraMinima)
   ) {
     return "EVIDENCIA_MODERADA";
   }
 
-  if (estoqueFinal > 0 || visualizacoes > 0) return "EVIDENCIA_FRACA";
+  if (sellThrough > 0 || vendas > 0 || estoqueFinal > 0 || visualizacoes > 0 || amostraPequena) {
+    return "EVIDENCIA_FRACA";
+  }
   return "SEM_EVIDENCIA";
 }
 
@@ -172,9 +187,46 @@ function prioridadePorEvidencia(prioridade, nivel) {
   return prioridade;
 }
 
+function urgenciaReal(evidencias) {
+  const vendas = numero(evidencias.vendasQuantidade || evidencias.vendas);
+  const estoqueFinal = numero(evidencias.estoqueFinal || evidencias.estoqueTotal);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+  const statusComercial = String(evidencias.statusComercial || "");
+  const demandaForte = carrinhos >= 2 || favoritos >= 3 || scoreInteresse >= 35 || vendas >= 3;
+
+  return (
+    (estoqueFinal <= 1 && (demandaForte || vendas >= 2)) ||
+    (statusComercial === "RISCO_RUPTURA" && estoqueFinal <= 2 && (vendas > 0 || demandaForte))
+  );
+}
+
+function limitarPrioridade(prioridade, nivel, evidencias) {
+  const base = prioridadePorEvidencia(prioridade, nivel);
+  if (base === "ALTA" && !urgenciaReal(evidencias)) return "MEDIA";
+  return base;
+}
+
 function anexarEvidencia(evidencia, nivel) {
+  const quantidadeBase = numero(
+    evidencia.quantidadeBase || numero(evidencia.estoqueInicial) + numero(evidencia.entradas),
+  );
+  const eventos =
+    numero(evidencia.visualizacoes) +
+    numero(evidencia.favoritos) +
+    numero(evidencia.carrinhos) +
+    numero(evidencia.cliquesBusca) +
+    numero(evidencia.cliquesVitrine);
+  const vendas = numero(evidencia.vendasQuantidade || evidencia.vendas);
+  const amostraPequena = quantidadeBase > 0 ? quantidadeBase <= 2 : vendas <= 1 && eventos < 5;
+  const sinalInicial = nivel === "EVIDENCIA_FRACA" || (nivel === "EVIDENCIA_MODERADA" && amostraPequena);
+
   return {
     ...evidencia,
+    quantidadeBase,
+    amostraPequena,
+    sinalInicial,
     nivelEvidencia: nivel,
     leituraEvidencia:
       nivel === "SEM_EVIDENCIA"
@@ -182,7 +234,9 @@ function anexarEvidencia(evidencia, nivel) {
         : nivel === "EVIDENCIA_FRACA"
           ? "Amostra ainda pequena; manter observacao e exposicao leve."
           : nivel === "EVIDENCIA_MODERADA"
-            ? "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
+            ? sinalInicial
+              ? "Sinal inicial positivo; confirmar antes de elevar urgencia ou lote."
+              : "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
             : "Ha sinal forte para acao seletiva.",
   };
 }
@@ -208,7 +262,7 @@ async function criarOuAtualizar(candidato) {
     take: 20,
   });
   const tituloNormalizado = normalizarTexto(candidato.titulo);
-  const existente = existentes.find((item) => {
+  const existentePorTitulo = existentes.find((item) => {
     const tituloExistente = normalizarTexto(item.titulo);
     return (
       tituloExistente === tituloNormalizado ||
@@ -216,6 +270,7 @@ async function criarOuAtualizar(candidato) {
       tituloNormalizado.includes(tituloExistente)
     );
   });
+  const existente = existentePorTitulo || existentes[0];
   const data = {
     tipo: candidato.tipo,
     titulo: candidato.titulo,
@@ -298,7 +353,10 @@ async function candidatosDeProdutos(periodoReferencia) {
       statusComercial: snapshot.statusComercial,
       recomendacao: snapshot.recomendacao,
       vendasQuantidade: snapshot.vendasQuantidade,
+      estoqueInicial: snapshot.estoqueInicial,
+      entradas: snapshot.entradas,
       estoqueFinal: snapshot.estoqueFinal,
+      quantidadeBase: snapshot.estoqueInicial + snapshot.entradas,
       sellThrough: snapshot.sellThroughAcumulado,
       scoreValidacao: snapshot.scoreValidacao,
       visualizacoes: intencao.visualizacoes,
@@ -308,6 +366,7 @@ async function candidatosDeProdutos(periodoReferencia) {
     };
     const nivelEvidencia = avaliarEvidencia(evidencia);
     const evidenciasJson = anexarEvidencia(evidencia, nivelEvidencia);
+    const prioridadeReposicao = limitarPrioridade("ALTA", nivelEvidencia, evidencia);
 
     if (
       ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(
@@ -318,13 +377,22 @@ async function candidatosDeProdutos(periodoReferencia) {
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
-        descricao: `${produto.nome} tem sinal comercial forte e estoque baixo.`,
-        motivo: "Repor sem assumir lote grande automaticamente preserva caixa e evita ruptura.",
+        titulo:
+          prioridadeReposicao === "ALTA"
+            ? `Reposicao urgente: ${produto.nome}`
+            : "Sinal inicial positivo: considerar reposicao pequena",
+        descricao:
+          prioridadeReposicao === "ALTA"
+            ? `${produto.nome} tem demanda confirmada e estoque critico.`
+            : `${produto.nome} teve bom giro inicial, mas a amostra ainda pede cautela.`,
+        motivo:
+          prioridadeReposicao === "ALTA"
+            ? "Repor sem assumir lote grande automaticamente preserva caixa e evita ruptura."
+            : "O produto teve bom giro inicial, mas a amostra ainda e pequena. Repor pouco evita ruptura sem assumir lote grande.",
         evidenciasJson,
         impactoEsperado: "Manter produto validado disponivel com risco controlado.",
         risco: "Sem reposicao seletiva, a vitrine pode perder produto com demanda.",
-        prioridade: prioridadePorEvidencia("ALTA", nivelEvidencia),
+        prioridade: prioridadeReposicao,
         acaoSugerida: "Repor pequeno ou medio conforme caixa e ciclo confirmado.",
         linkAcao: "/compras/reposicao",
         origem: "Reposicao inteligente",
@@ -375,7 +443,7 @@ async function candidatosDeProdutos(periodoReferencia) {
         evidenciasJson,
         impactoEsperado: "Melhorar conversao sem aumentar compra no escuro.",
         risco: "Recomprar antes de ajustar oferta pode aumentar estoque parado.",
-        prioridade: prioridadePorEvidencia("ALTA", nivelEvidencia),
+        prioridade: limitarPrioridade("ALTA", nivelEvidencia, evidencia),
         acaoSugerida: "Revisar preco, foto, descricao, frete ou oferta.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Intencao comercial",

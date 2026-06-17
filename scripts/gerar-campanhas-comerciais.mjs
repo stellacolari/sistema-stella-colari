@@ -28,6 +28,8 @@ function jsonRecord(value) {
 
 function evidenciaCampanhaSuficiente(evidencias) {
   const nivel = String(evidencias.nivelEvidencia || "");
+  if (evidencias.revalidada && (evidencias.sinalInicial || evidencias.amostraPequena)) return false;
+  if (nivel === "SEM_EVIDENCIA" || nivel === "EVIDENCIA_FRACA") return false;
   if (nivel === "EVIDENCIA_MODERADA" || nivel === "EVIDENCIA_FORTE") return true;
 
   const vendas = numero(evidencias.vendasQuantidade || evidencias.vendas);

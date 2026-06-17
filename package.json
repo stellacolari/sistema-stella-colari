@@ -15,6 +15,7 @@
     "consultoria:financeira": "node scripts/consultoria-financeira-stella.mjs",
     "metricas:produtos": "node scripts/gerar-metricas-produtos.mjs",
     "recomendacoes:gerar": "node scripts/gerar-recomendacoes-gerenciais.mjs",
+    "recomendacoes:revalidar": "node scripts/revalidar-recomendacoes-gerenciais.mjs",
     "recomendacoes:impacto": "node scripts/avaliar-impacto-recomendacoes.mjs",
     "campanhas:gerar": "node scripts/gerar-campanhas-comerciais.mjs",
     "precificacao:analisar": "node scripts/analisar-precificacao-stella.mjs",
