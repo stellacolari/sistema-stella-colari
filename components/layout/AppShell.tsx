@@ -140,6 +140,15 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes/loja/colecoes-inteligentes")) {
+    return {
+      eyebrow: "Loja online / Builder",
+      title: "Colecoes Inteligentes",
+      description: "Grupos aprovados de produtos para usar no editor visual.",
+      showLojaButton: true,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes/perfis")) {
     return {
       eyebrow: "Sistema",
@@ -229,6 +238,60 @@ function getPageInfo(pathname: string) {
       eyebrow: "Compras e Financeiro",
       title: "Reposição",
       description: "Itens sugeridos para recompra por compra de estoque.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/recomendacoes")) {
+    return {
+      eyebrow: "Compras e Gestao",
+      title: "Recomendacoes Gerenciais",
+      description: "Acoes sugeridas pela inteligencia e decisoes registradas.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/campanhas")) {
+    return {
+      eyebrow: "Compras e Gestao",
+      title: "Campanhas Comerciais",
+      description: "Planejamento comercial em rascunho, revisao e execucao.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/precificacao")) {
+    return {
+      eyebrow: "Compras e Gestao",
+      title: "Precificacao e Descontos",
+      description: "Margem, preco minimo e desconto seguro por produto.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/intencao")) {
+    return {
+      eyebrow: "Compras e Gestao",
+      title: "Intencao Comercial",
+      description: "Sinais de interesse da loja para exposicao e compra.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/financeiro")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Central Financeira",
+      description: "Leitura de caixa, gastos e compromissos financeiros.",
+      showLojaButton: false,
+    };
+  }
+
+  if (pathname.startsWith("/compras/resultado")) {
+    return {
+      eyebrow: "Compras e Financeiro",
+      title: "Resultado e Distribuicao",
+      description: "Apuracao de resultado e distribuicao financeira.",
       showLojaButton: false,
     };
   }

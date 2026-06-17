@@ -209,6 +209,46 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
         <Resumo label="Precificacao" value={contadores.precificacao} tone="violet" />
       </section>
 
+      <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
+              O que precisa de atencao agora
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Pedidos ficam no topo da fila. Itens estrategicos aparecem para
+              perfis com acesso.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[560px]">
+            <AtencaoLink
+              href="/notificacoes?categoria=PEDIDO"
+              label="Pedidos"
+              value={contadores.pedidos}
+              tone="red"
+            />
+            <AtencaoLink
+              href="/compras/reposicao"
+              label="Reposicao"
+              value={contadores.reposicao}
+              tone="amber"
+            />
+            <AtencaoLink
+              href="/compras/recomendacoes"
+              label="Recomendacoes"
+              value={contadores.recomendacoes}
+              tone="blue"
+            />
+            <AtencaoLink
+              href="/compras/campanhas"
+              label="Campanhas"
+              value={contadores.campanhas}
+              tone="emerald"
+            />
+          </div>
+        </div>
+      </section>
+
       {mensagem && <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{mensagem}</div>}
 
       <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
@@ -332,6 +372,37 @@ function Resumo({ label, value, tone }: { label: string; value: number; tone: st
       </div>
       <p className="mt-2 text-3xl font-black">{value}</p>
     </div>
+  );
+}
+
+function AtencaoLink({
+  href,
+  label,
+  value,
+  tone,
+}: {
+  href: string;
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  const classes: Record<string, string> = {
+    red: value > 0 ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-50 text-slate-500",
+    amber: value > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-500",
+    blue: value > 0 ? "border-blue-200 bg-blue-50 text-blue-800" : "border-slate-200 bg-slate-50 text-slate-500",
+    emerald: value > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-50 text-slate-500",
+  };
+
+  return (
+    <Link
+      href={href}
+      className={`flex min-h-12 items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-sm font-bold transition hover:bg-white ${classes[tone] || classes.blue}`}
+    >
+      <span>{label}</span>
+      <span className="rounded-full bg-white px-2.5 py-1 text-xs ring-1 ring-current/10">
+        {value}
+      </span>
+    </Link>
   );
 }
 
