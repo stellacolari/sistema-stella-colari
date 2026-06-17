@@ -17,7 +17,8 @@
     "recomendacoes:gerar": "node scripts/gerar-recomendacoes-gerenciais.mjs",
     "recomendacoes:impacto": "node scripts/avaliar-impacto-recomendacoes.mjs",
     "campanhas:gerar": "node scripts/gerar-campanhas-comerciais.mjs",
-    "precificacao:analisar": "node scripts/analisar-precificacao-stella.mjs"
+    "precificacao:analisar": "node scripts/analisar-precificacao-stella.mjs",
+    "vitrines:gerar": "node scripts/gerar-vitrines-inteligentes.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

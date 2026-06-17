@@ -7,12 +7,14 @@ import {
   ClipboardList,
   Eye,
   FolderKanban,
+  GalleryVerticalEnd,
   LayoutTemplate,
   Menu,
   PackageCheck,
   Sparkles,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { exigirAdmin } from "@/lib/auth/admin";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
 
 export const metadata: Metadata = {
@@ -171,6 +173,8 @@ function InfoCard({
 }
 
 export default async function LojaOnlineCentralPage() {
+  const usuario = await exigirAdmin();
+  const podeVerVitrinesInteligentes = usuario.perfil === "ACESSO_GERAL";
   const [
     menusAtivos,
     categoriasTotal,
@@ -183,6 +187,7 @@ export default async function LojaOnlineCentralPage() {
     cashbackConfig,
     freteConfig,
     modelosEmbalagem,
+    vitrinesSugeridas,
   ] = await Promise.all([
     prisma.menuLoja.count({
       where: {
@@ -253,6 +258,14 @@ export default async function LojaOnlineCentralPage() {
     prisma.embalagemModelo.count({
       where: {
         ativo: true,
+      },
+    }),
+
+    prisma.vitrineInteligenteSugestao.count({
+      where: {
+        status: {
+          in: ["SUGERIDA", "EM_REVISAO"],
+        },
       },
     }),
   ]);
@@ -362,6 +375,24 @@ export default async function LojaOnlineCentralPage() {
             },
           ]}
         />
+
+        {podeVerVitrinesInteligentes ? (
+          <CentralCard
+            title="Vitrines Inteligentes"
+            description="Sugestões de vitrines para o builder com base em intenção, campanhas, estoque e margem."
+            icon={GalleryVerticalEnd}
+            metric={`${vitrinesSugeridas}`}
+            metricLabel="sugestões abertas"
+            tone="site"
+            actions={[
+              {
+                href: "/configuracoes/loja/vitrines-inteligentes",
+                label: "Ver vitrines",
+                primary: true,
+              },
+            ]}
+          />
+        ) : null}
 
         <CentralCard
           title="Menu e Rodapé"

@@ -27,6 +27,7 @@ export default async function EditarProdutoPage({
     embalagemModelos,
     inteligenciaProduto,
     precificacaoProduto,
+    vitrinesProduto,
   ] =
     await Promise.all([
       prisma.produto.findUnique({
@@ -169,6 +170,24 @@ export default async function EditarProdutoPage({
 
       obterInteligenciaProduto(id),
       podeEditarBuscaSeo ? analisarPrecificacaoProduto(id) : Promise.resolve(null),
+      podeEditarBuscaSeo
+        ? prisma.vitrineInteligenteSugestao.findMany({
+            where: {
+              produtoId: id,
+              status: {
+                in: ["SUGERIDA", "EM_REVISAO", "APLICADA_COMO_RASCUNHO"],
+              },
+            },
+            orderBy: { criadoEm: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              titulo: true,
+              tipo: true,
+              status: true,
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
   if (!produto) {
@@ -325,6 +344,7 @@ export default async function EditarProdutoPage({
       produto={produtoSerializado}
       inteligenciaProduto={inteligenciaProdutoSerializada}
       precificacaoProduto={precificacaoProduto}
+      vitrinesProduto={vitrinesProduto}
       categorias={categorias}
       produtosDisponiveisKit={produtosKitSerializados}
       regrasAdicionais={regrasAdicionaisSerializadas}

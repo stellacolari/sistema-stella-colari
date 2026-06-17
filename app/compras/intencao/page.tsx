@@ -139,6 +139,13 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/configuracoes/loja/vitrines-inteligentes"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+            >
+              <Sparkles className="h-4 w-4" />
+              Sugerir vitrine
+            </Link>
             {[7, 30, 60, 120].map((item) => (
               <Link
                 key={item}

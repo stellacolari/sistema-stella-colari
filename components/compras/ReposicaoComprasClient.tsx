@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PackagePlus, RefreshCcw, Search } from "lucide-react";
+import { PackagePlus, RefreshCcw, Search, Sparkles } from "lucide-react";
 import type { RecomendacaoGerencialResumo } from "@/components/compras/RecomendacoesGerenciaisClient";
 
 export type ReposicaoCompraItem = {
@@ -268,12 +268,23 @@ export default function ReposicaoComprasClient({
             </p>
           </div>
 
-          <Link
-            href="/compras"
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            Voltar para central
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {exibirInteligenciaAdaptativa ? (
+              <Link
+                href="/configuracoes/loja/vitrines-inteligentes"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
+              >
+                <Sparkles className="h-4 w-4" />
+                Sugerir vitrine
+              </Link>
+            ) : null}
+            <Link
+              href="/compras"
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Voltar para central
+            </Link>
+          </div>
         </div>
       </div>
 

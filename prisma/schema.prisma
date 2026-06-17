@@ -68,6 +68,7 @@ model Produto {
   eventosComerciais              EventoComercial[]
   campanhasComerciais            CampanhaComercial[]
   recomendacoesGerenciais         RecomendacaoGerencial[]
+  vitrinesInteligentesSugestoes   VitrineInteligenteSugestao[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -652,6 +653,7 @@ model RecomendacaoGerencial {
   adiadaEm           DateTime?
   impactos           RecomendacaoGerencialImpacto[]
   campanhas          CampanhaComercial[]
+  vitrinesSugestoes  VitrineInteligenteSugestao[]
   produto            Produto?  @relation(fields: [produtoId], references: [id], onDelete: SetNull)
   categoria          CategoriaProduto? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
@@ -723,6 +725,7 @@ model CampanhaComercial {
   recomendacao        RecomendacaoGerencial?  @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
   produto             Produto?                @relation(fields: [produtoId], references: [id], onDelete: SetNull)
   categoria           CategoriaProduto?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  vitrinesSugestoes   VitrineInteligenteSugestao[]
 
   @@index([codigo])
   @@index([tipo])
@@ -1229,6 +1232,7 @@ model LojaPagina {
   categoria              CategoriaProduto? @relation("LojaPaginaCategoria", fields: [categoriaId], references: [id])
   blocos                 LojaPaginaBloco[]
   eventosComerciais      EventoComercial[]
+  vitrinesSugestoes      VitrineInteligenteSugestao[] @relation("VitrinePaginaDestino")
 
   @@index([slug])
   @@index([tipo])
@@ -1250,6 +1254,7 @@ model LojaPaginaBloco {
   atualizadoEm DateTime   @updatedAt
   pagina       LojaPagina @relation(fields: [paginaId], references: [id], onDelete: Cascade)
   eventosComerciais EventoComercial[]
+  vitrinesSugestoes VitrineInteligenteSugestao[]
 
   @@index([paginaId])
   @@index([ordem])
@@ -1276,6 +1281,7 @@ model CategoriaProduto {
   categoriaMae               CategoriaProduto?                @relation("CategoriaHierarquia", fields: [categoriaMaeId], references: [id])
   subcategorias              CategoriaProduto[]               @relation("CategoriaHierarquia")
   paginasBuilder             LojaPagina[]                     @relation("LojaPaginaCategoria")
+  vitrinesSugestoes           VitrineInteligenteSugestao[]
   embalagensCompatibilidades EmbalagemModeloCompatibilidade[]
   produtos                   ProdutoCategoria[]
   eventosComerciais          EventoComercial[]
@@ -1288,6 +1294,53 @@ model CategoriaProduto {
   @@index([ordem])
   @@index([exibirNoMenu])
   @@index([ordemMenu])
+}
+
+model VitrineInteligenteSugestao {
+  id                String                  @id @default(cuid())
+  codigo            String                  @unique
+  titulo            String
+  subtitulo         String?
+  descricao         String?
+  tipo              String
+  status            String                  @default("SUGERIDA")
+  origem            String
+  campanhaId        String?
+  recomendacaoId    String?
+  produtoId         String?
+  categoriaId       String?
+  paginaDestinoId   String?
+  blocoCriadoId     String?
+  produtosJson      Json
+  criteriosJson     Json?
+  configBlocoJson   Json
+  metricasJson      Json?
+  justificativa     String?
+  risco             String?
+  acaoSugerida      String?
+  criadoEm          DateTime                @default(now())
+  atualizadoEm      DateTime                @updatedAt
+  aplicadaEm        DateTime?
+  ignoradaEm        DateTime?
+  canceladaEm       DateTime?
+  campanha          CampanhaComercial?      @relation(fields: [campanhaId], references: [id], onDelete: SetNull)
+  recomendacao      RecomendacaoGerencial?  @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
+  produto           Produto?                @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria         CategoriaProduto?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  paginaDestino     LojaPagina?             @relation("VitrinePaginaDestino", fields: [paginaDestinoId], references: [id], onDelete: SetNull)
+  blocoCriado       LojaPaginaBloco?        @relation(fields: [blocoCriadoId], references: [id], onDelete: SetNull)
+
+  @@index([codigo])
+  @@index([tipo])
+  @@index([status])
+  @@index([origem])
+  @@index([campanhaId])
+  @@index([recomendacaoId])
+  @@index([produtoId])
+  @@index([categoriaId])
+  @@index([paginaDestinoId])
+  @@index([blocoCriadoId])
+  @@index([criadoEm])
 }
 
 model ProdutoCategoria {

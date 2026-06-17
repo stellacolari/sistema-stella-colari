@@ -153,6 +153,13 @@ type PrecificacaoProdutoResumo = {
   custoAusente: boolean;
 };
 
+type VitrineProdutoResumo = {
+  id: string;
+  titulo: string;
+  tipo: string;
+  status: string;
+};
+
 type IntencaoProdutoResumo = {
   visualizacoes: number;
   favoritos: number;
@@ -169,6 +176,7 @@ type EditarProdutoClientProps = {
   produto: ProdutoEdicao;
   inteligenciaProduto?: ProdutoInteligencia;
   precificacaoProduto?: PrecificacaoProdutoResumo | null;
+  vitrinesProduto?: VitrineProdutoResumo[];
   categorias: CategoriaProduto[];
   produtosDisponiveisKit: ProdutoDisponivelKit[];
   regrasAdicionais: RegraAdicionalProduto[];
@@ -402,6 +410,7 @@ export default function EditarProdutoClient({
   produto,
   inteligenciaProduto,
   precificacaoProduto,
+  vitrinesProduto = [],
   categorias,
   produtosDisponiveisKit,
   regrasAdicionais,
@@ -1242,6 +1251,49 @@ export default function EditarProdutoClient({
                     )}
                   </div>
                 )}
+
+                {vitrinesProduto.length > 0 ? (
+                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+                    <p className="text-sm font-semibold text-indigo-950">
+                      Vitrine sugerida relacionada
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {vitrinesProduto.map((vitrine) => (
+                        <div
+                          key={vitrine.id}
+                          className="flex flex-col gap-2 rounded-xl bg-white px-3 py-2 text-sm text-slate-700 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span>
+                            {vitrine.titulo} · {labelInteligencia(vitrine.tipo)} ·{" "}
+                            {labelInteligencia(vitrine.status)}
+                          </span>
+                          <Link
+                            href={`/configuracoes/loja/vitrines-inteligentes?produtoId=${produto.id}`}
+                            className="text-xs font-bold uppercase tracking-wide text-indigo-700"
+                          >
+                            Ver vitrines
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : precificacaoProduto ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <p className="text-sm font-semibold text-slate-900">
+                      Vitrine sugerida relacionada
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      Nenhuma vitrine aberta para este produto. A geracao fica em
+                      Vitrines Inteligentes e nao publica nada automaticamente.
+                    </p>
+                    <Link
+                      href={`/configuracoes/loja/vitrines-inteligentes?produtoId=${produto.id}`}
+                      className="mt-3 inline-flex min-h-9 items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700"
+                    >
+                      Sugerir vitrine
+                    </Link>
+                  </div>
+                ) : null}
 
                 <div>
                   <p className="mb-3 text-sm font-semibold text-slate-900">

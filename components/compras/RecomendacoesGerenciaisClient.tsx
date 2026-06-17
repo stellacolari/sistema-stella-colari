@@ -79,10 +79,18 @@ export type CampanhaComercialResumo = {
 
 type ResumoStatus = Record<string, number>;
 
+type VitrineRecomendacaoResumo = {
+  id: string;
+  recomendacaoId: string | null;
+  status: string;
+  titulo: string;
+};
+
 type Props = {
   recomendacoes: RecomendacaoGerencialResumo[];
   resumo: ResumoStatus;
   tipos: string[];
+  vitrines?: VitrineRecomendacaoResumo[];
   filtroInicial?: {
     status?: string;
     tipo?: string;
@@ -243,6 +251,7 @@ export default function RecomendacoesGerenciaisClient({
   recomendacoes,
   resumo,
   tipos,
+  vitrines = [],
   filtroInicial,
 }: Props) {
   const router = useRouter();
@@ -632,6 +641,7 @@ export default function RecomendacoesGerenciaisClient({
             <RecomendacaoCard
               key={recomendacao.id}
               recomendacao={recomendacao}
+              vitrine={vitrines.find((item) => item.recomendacaoId === recomendacao.id) || null}
               onAcao={acionarRecomendacao}
               onAvaliarImpacto={avaliarImpacto}
               onCriarCampanha={criarCampanha}
@@ -645,11 +655,13 @@ export default function RecomendacoesGerenciaisClient({
 
 function RecomendacaoCard({
   recomendacao,
+  vitrine,
   onAcao,
   onAvaliarImpacto,
   onCriarCampanha,
 }: {
   recomendacao: RecomendacaoGerencialResumo;
+  vitrine: VitrineRecomendacaoResumo | null;
   onAcao: (recomendacao: RecomendacaoGerencialResumo, acao: string) => void;
   onAvaliarImpacto: (recomendacao: RecomendacaoGerencialResumo) => void;
   onCriarCampanha: (recomendacao: RecomendacaoGerencialResumo) => void;
@@ -808,6 +820,17 @@ function RecomendacaoCard({
                     {recomendacao.acaoSugerida || "Registrar decisao gerencial."}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      href={
+                        vitrine
+                          ? `/configuracoes/loja/vitrines-inteligentes?recomendacaoId=${recomendacao.id}`
+                          : "/configuracoes/loja/vitrines-inteligentes"
+                      }
+                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+                    >
+                      {vitrine ? "Ver vitrine sugerida" : "Sugerir vitrine"}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
                     {recomendacao.linkAcao && (
                       <Link
                         href={recomendacao.linkAcao}

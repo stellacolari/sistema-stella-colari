@@ -63,10 +63,18 @@ type PrecificacaoCampanhaResumo = {
   margemBrutaPct: number;
 };
 
+type VitrineCampanhaResumo = {
+  id: string;
+  campanhaId: string | null;
+  status: string;
+  titulo: string;
+};
+
 type Props = {
   campanhas: CampanhaComercialResumo[];
   resumo: Record<string, number>;
   precificacoes?: PrecificacaoCampanhaResumo[];
+  vitrines?: VitrineCampanhaResumo[];
   filtroInicial?: {
     status?: string;
     tipo?: string;
@@ -172,6 +180,7 @@ export default function CampanhasComerciaisClient({
   campanhas,
   resumo,
   precificacoes = [],
+  vitrines = [],
   filtroInicial,
 }: Props) {
   const router = useRouter();
@@ -370,6 +379,7 @@ export default function CampanhasComerciaisClient({
               key={campanha.id}
               campanha={campanha}
               precificacao={precificacaoCampanha(campanha, precificacoes)}
+              vitrine={vitrines.find((item) => item.campanhaId === campanha.id) || null}
               onStatus={atualizarCampanha}
             />
           ))
@@ -382,10 +392,12 @@ export default function CampanhasComerciaisClient({
 function CampanhaCard({
   campanha,
   precificacao,
+  vitrine,
   onStatus,
 }: {
   campanha: CampanhaComercialResumo;
   precificacao: PrecificacaoCampanhaResumo | null;
+  vitrine: VitrineCampanhaResumo | null;
   onStatus: (campanha: CampanhaComercialResumo, status: string) => void;
 }) {
   const descontoSugerido = Number(campanha.descontoSugerido || 0);
@@ -499,6 +511,16 @@ function CampanhaCard({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+        <Link
+          href={
+            vitrine
+              ? `/configuracoes/loja/vitrines-inteligentes?campanhaId=${campanha.id}`
+              : `/configuracoes/loja/vitrines-inteligentes`
+          }
+          className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-700"
+        >
+          {vitrine ? "Ver vitrine sugerida" : "Sugerir vitrine"}
+        </Link>
         <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
           Inicio sugerido: {dataCurta(campanha.dataInicioSugerida)}
         </span>

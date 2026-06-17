@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { exigirAdmin } from "@/lib/auth/admin";
 import {
   listarCampanhasComerciais,
@@ -35,7 +36,7 @@ export default async function CampanhasComerciaisPage({
   }
 
   const params = await searchParams;
-  const [campanhas, resumo, precificacao] = await Promise.all([
+  const [campanhas, resumo, precificacao, vitrines] = await Promise.all([
     listarCampanhasComerciais({
       status: params.status && params.status !== "TODOS" ? params.status : undefined,
       tipo: params.tipo && params.tipo !== "TODOS" ? params.tipo : undefined,
@@ -43,6 +44,22 @@ export default async function CampanhasComerciaisPage({
     }),
     obterResumoCampanhasComerciais(),
     analisarPrecificacaoProdutos(),
+    prisma.vitrineInteligenteSugestao.findMany({
+      where: {
+        status: {
+          in: ["SUGERIDA", "EM_REVISAO", "APLICADA_COMO_RASCUNHO"],
+        },
+        campanhaId: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        campanhaId: true,
+        status: true,
+        titulo: true,
+      },
+    }),
   ]);
 
   return (
@@ -50,6 +67,7 @@ export default async function CampanhasComerciaisPage({
       campanhas={campanhas.map(serializarCampanhaComercial)}
       resumo={resumo}
       precificacoes={precificacao.produtos.map(serializarAnalisePrecificacao)}
+      vitrines={vitrines}
       filtroInicial={{
         status: params.status,
         tipo: params.tipo,

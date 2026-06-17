@@ -314,6 +314,12 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
 
           <div className="flex flex-wrap gap-2">
             <Link
+              href="/configuracoes/loja/vitrines-inteligentes"
+              className="inline-flex items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+            >
+              Vitrines Inteligentes
+            </Link>
+            <Link
               href={pagina.urlPublica}
               target="_blank"
               className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"

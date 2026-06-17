@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { exigirAdmin } from "@/lib/auth/admin";
 import {
   filtrarTiposUnicos,
@@ -34,7 +35,7 @@ export default async function RecomendacoesGerenciaisPage({
   }
 
   const params = await searchParams;
-  const [recomendacoes, resumo] = await Promise.all([
+  const [recomendacoes, resumo, vitrines] = await Promise.all([
     listarRecomendacoesGerenciais({
       status: params.status && params.status !== "TODOS" ? params.status : undefined,
       tipo: params.tipo && params.tipo !== "TODOS" ? params.tipo : undefined,
@@ -46,6 +47,22 @@ export default async function RecomendacoesGerenciaisPage({
       take: 200,
     }),
     obterResumoRecomendacoes(),
+    prisma.vitrineInteligenteSugestao.findMany({
+      where: {
+        status: {
+          in: ["SUGERIDA", "EM_REVISAO", "APLICADA_COMO_RASCUNHO"],
+        },
+        recomendacaoId: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        recomendacaoId: true,
+        status: true,
+        titulo: true,
+      },
+    }),
   ]);
 
   return (
@@ -53,6 +70,7 @@ export default async function RecomendacoesGerenciaisPage({
       recomendacoes={recomendacoes.map(serializarRecomendacaoGerencial)}
       resumo={resumo}
       tipos={filtrarTiposUnicos(recomendacoes)}
+      vitrines={vitrines}
       filtroInicial={{
         status: params.status,
         tipo: params.tipo,
