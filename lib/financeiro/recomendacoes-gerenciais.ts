@@ -3,6 +3,10 @@ import "server-only";
 import type { Prisma, RecomendacaoGerencial } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  serializarImpactoRecomendacao,
+  type RecomendacaoImpactoSerializada,
+} from "@/lib/financeiro/impacto-recomendacoes";
+import {
   calcularResultadoMensal,
   mesAnoAtual,
   montarCentralFinanceira,
@@ -83,6 +87,7 @@ export type RecomendacaoGerencialResumo = {
   concluidaEm: string | null;
   ignoradaEm: string | null;
   adiadaEm: string | null;
+  impactos?: RecomendacaoImpactoSerializada[];
 };
 
 type CandidatoRecomendacao = {
@@ -179,7 +184,9 @@ function statusPeso(value: string) {
 }
 
 export function serializarRecomendacaoGerencial(
-  recomendacao: RecomendacaoGerencial
+  recomendacao: RecomendacaoGerencial & {
+    impactos?: Parameters<typeof serializarImpactoRecomendacao>[0][];
+  }
 ): RecomendacaoGerencialResumo {
   return {
     ...recomendacao,
@@ -191,6 +198,7 @@ export function serializarRecomendacaoGerencial(
     concluidaEm: recomendacao.concluidaEm?.toISOString() || null,
     ignoradaEm: recomendacao.ignoradaEm?.toISOString() || null,
     adiadaEm: recomendacao.adiadaEm?.toISOString() || null,
+    impactos: recomendacao.impactos?.map(serializarImpactoRecomendacao) || [],
   };
 }
 
@@ -211,6 +219,12 @@ export async function listarRecomendacoesGerenciais(
 
   const recomendacoes = await prisma.recomendacaoGerencial.findMany({
     where,
+    include: {
+      impactos: {
+        orderBy: [{ avaliadoEm: "desc" }],
+        take: 3,
+      },
+    },
     orderBy: [{ criadoEm: "desc" }],
     take: params.take,
   });

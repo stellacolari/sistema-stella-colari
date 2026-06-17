@@ -134,6 +134,16 @@ function labelStatusRecomendacao(value: string | null | undefined) {
   return labelInteligencia(value);
 }
 
+function labelImpactoRecomendacao(status: string) {
+  if (status === "POSITIVO") return "Impacto positivo";
+  if (status === "PARCIAL") return "Impacto parcial";
+  if (status === "NEUTRO") return "Impacto neutro";
+  if (status === "NEGATIVO") return "Impacto negativo";
+  if (status === "INCONCLUSIVO") return "Impacto inconclusivo";
+  if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
+  return status.replaceAll("_", " ");
+}
+
 function compraHref(item: ReposicaoCompraItem) {
   const params = new URLSearchParams({
     itemTipo: item.tipo === "produto" ? "produto" : "adicional",
@@ -518,6 +528,14 @@ export default function ReposicaoComprasClient({
                                       item.recomendacaoGerencial.status
                                     )}
                                   </p>
+                                  {item.recomendacaoGerencial.impactos?.[0] && (
+                                    <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                                      {labelImpactoRecomendacao(
+                                        item.recomendacaoGerencial.impactos[0]
+                                          .statusImpacto
+                                      )}
+                                    </p>
+                                  )}
                                   <p className="mt-1 leading-5 font-semibold text-blue-900">
                                     {item.recomendacaoGerencial.titulo}
                                   </p>

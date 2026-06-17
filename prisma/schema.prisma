@@ -648,6 +648,7 @@ model RecomendacaoGerencial {
   concluidaEm        DateTime?
   ignoradaEm         DateTime?
   adiadaEm           DateTime?
+  impactos           RecomendacaoGerencialImpacto[]
 
   @@index([tipo])
   @@index([prioridade])
@@ -658,6 +659,29 @@ model RecomendacaoGerencial {
   @@index([categoriaId])
   @@index([periodoReferencia])
   @@index([criadoEm])
+}
+
+model RecomendacaoGerencialImpacto {
+  id                  String                 @id @default(cuid())
+  recomendacaoId       String
+  janelaDias           Int
+  statusImpacto        String
+  scoreImpacto         Float
+  resumo               String
+  metricasAntesJson    Json?
+  metricasDepoisJson   Json?
+  comparativoJson      Json?
+  proximaAcaoSugerida  String?
+  avaliadoEm           DateTime               @default(now())
+  criadoEm             DateTime               @default(now())
+  atualizadoEm         DateTime               @updatedAt
+  recomendacao         RecomendacaoGerencial  @relation(fields: [recomendacaoId], references: [id], onDelete: Cascade)
+
+  @@unique([recomendacaoId, janelaDias])
+  @@index([recomendacaoId])
+  @@index([janelaDias])
+  @@index([statusImpacto])
+  @@index([avaliadoEm])
 }
 
 model EstoqueProduto {

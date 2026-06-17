@@ -14,7 +14,8 @@
     "auditar:simulacao": "node scripts/auditar-operacao-simulada.mjs",
     "consultoria:financeira": "node scripts/consultoria-financeira-stella.mjs",
     "metricas:produtos": "node scripts/gerar-metricas-produtos.mjs",
-    "recomendacoes:gerar": "node scripts/gerar-recomendacoes-gerenciais.mjs"
+    "recomendacoes:gerar": "node scripts/gerar-recomendacoes-gerenciais.mjs",
+    "recomendacoes:impacto": "node scripts/avaliar-impacto-recomendacoes.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

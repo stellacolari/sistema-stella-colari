@@ -207,6 +207,16 @@ function prioridadeClasses(prioridade: string) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function labelImpacto(status: string) {
+  if (status === "POSITIVO") return "Impacto positivo";
+  if (status === "PARCIAL") return "Impacto parcial";
+  if (status === "NEUTRO") return "Impacto neutro";
+  if (status === "NEGATIVO") return "Impacto negativo";
+  if (status === "INCONCLUSIVO") return "Impacto inconclusivo";
+  if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
+  return status.replaceAll("_", " ");
+}
+
 function labelRecomendacaoStatus(status: string) {
   if (status === "NOVA") return "Nova";
   if (status === "ACEITA") return "Aceita";
@@ -848,6 +858,11 @@ export default function CentralFinanceiraClient({
                   <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
                     {labelRecomendacaoStatus(recomendacao.status)}
                   </span>
+                  {recomendacao.impactos?.[0] && (
+                    <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                      {labelImpacto(recomendacao.impactos[0].statusImpacto)}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
                   {recomendacao.titulo}

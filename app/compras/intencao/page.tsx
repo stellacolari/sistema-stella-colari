@@ -70,6 +70,16 @@ function labelStatusRecomendacao(status: string) {
   return status.replaceAll("_", " ");
 }
 
+function labelImpactoRecomendacao(status: string) {
+  if (status === "POSITIVO") return "Impacto positivo";
+  if (status === "PARCIAL") return "Impacto parcial";
+  if (status === "NEUTRO") return "Impacto neutro";
+  if (status === "NEGATIVO") return "Impacto negativo";
+  if (status === "INCONCLUSIVO") return "Impacto inconclusivo";
+  if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
+  return status.replaceAll("_", " ");
+}
+
 export default async function IntencaoComercialPage({ searchParams }: PageProps) {
   const usuario = await exigirAdmin();
 
@@ -233,6 +243,13 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
                   <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
                     {labelStatusRecomendacao(recomendacao.status)}
                   </span>
+                  {recomendacao.impactos?.[0] && (
+                    <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                      {labelImpactoRecomendacao(
+                        recomendacao.impactos[0].statusImpacto
+                      )}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
                   {recomendacao.titulo}

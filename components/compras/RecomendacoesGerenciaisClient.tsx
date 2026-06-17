@@ -12,6 +12,7 @@ import {
   PauseCircle,
   PlayCircle,
   RefreshCcw,
+  TrendingUp,
   Search,
   XCircle,
 } from "lucide-react";
@@ -46,6 +47,23 @@ export type RecomendacaoGerencialResumo = {
   concluidaEm: string | null;
   ignoradaEm: string | null;
   adiadaEm: string | null;
+  impactos?: RecomendacaoImpactoResumo[];
+};
+
+export type RecomendacaoImpactoResumo = {
+  id: string;
+  recomendacaoId: string;
+  janelaDias: number;
+  statusImpacto: string;
+  scoreImpacto: number;
+  resumo: string;
+  metricasAntesJson: unknown;
+  metricasDepoisJson: unknown;
+  comparativoJson: unknown;
+  proximaAcaoSugerida: string | null;
+  avaliadoEm: string;
+  criadoEm: string;
+  atualizadoEm: string;
 };
 
 type ResumoStatus = Record<string, number>;
@@ -112,6 +130,25 @@ function prioridadeClasses(prioridade: string) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function labelImpacto(status: string) {
+  if (status === "POSITIVO") return "Positivo";
+  if (status === "PARCIAL") return "Parcial";
+  if (status === "NEUTRO") return "Neutro";
+  if (status === "NEGATIVO") return "Negativo";
+  if (status === "INCONCLUSIVO") return "Inconclusivo";
+  if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
+  return status.replaceAll("_", " ");
+}
+
+function impactoClasses(status: string) {
+  if (status === "POSITIVO") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "PARCIAL") return "border-blue-200 bg-blue-50 text-blue-800";
+  if (status === "NEUTRO") return "border-slate-200 bg-slate-50 text-slate-700";
+  if (status === "NEGATIVO") return "border-red-200 bg-red-50 text-red-800";
+  if (status === "AGUARDANDO_DADOS") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-violet-200 bg-violet-50 text-violet-800";
+}
+
 function labelTipo(tipo: string) {
   const labels: Record<string, string> = {
     FINANCEIRO: "Financeiro",
@@ -151,6 +188,24 @@ function evidenciasResumo(value: unknown) {
     }));
 }
 
+function latestImpacto(recomendacao: RecomendacaoGerencialResumo) {
+  return recomendacao.impactos?.[0] || null;
+}
+
+function metricasResumo(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+
+  return Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => typeof item === "number")
+    .slice(0, 4)
+    .map(([key, item]) => ({
+      key,
+      value: new Intl.NumberFormat("pt-BR", {
+        maximumFractionDigits: 2,
+      }).format(Number(item)),
+    }));
+}
+
 function ResumoCard({
   label,
   value,
@@ -185,6 +240,26 @@ export default function RecomendacoesGerenciaisClient({
   );
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+
+  const resumoImpactos = useMemo(() => {
+    const impactos = recomendacoes
+      .map(latestImpacto)
+      .filter((impacto): impacto is RecomendacaoImpactoResumo => Boolean(impacto));
+    const concluidas = recomendacoes.filter(
+      (recomendacao) => recomendacao.status === "CONCLUIDA"
+    ).length;
+    const positivas = impactos.filter((impacto) =>
+      ["POSITIVO", "PARCIAL"].includes(impacto.statusImpacto)
+    ).length;
+
+    return {
+      positivos: impactos.filter((impacto) => impacto.statusImpacto === "POSITIVO").length,
+      inconclusivos: impactos.filter((impacto) => impacto.statusImpacto === "INCONCLUSIVO").length,
+      negativos: impactos.filter((impacto) => impacto.statusImpacto === "NEGATIVO").length,
+      aguardando: impactos.filter((impacto) => impacto.statusImpacto === "AGUARDANDO_DADOS").length,
+      taxaPositiva: concluidas > 0 ? Math.round((positivas / concluidas) * 100) : 0,
+    };
+  }, [recomendacoes]);
 
   const recomendacoesFiltradas = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -245,6 +320,29 @@ export default function RecomendacoesGerenciaisClient({
         data.atualizadas?.length || 0
       } atualizada(s).`
     );
+    refresh();
+  }
+
+  async function avaliarImpacto(recomendacao: RecomendacaoGerencialResumo) {
+    setErro("");
+    setMensagem("");
+
+    const response = await fetch(
+      `/api/compras/recomendacoes/${recomendacao.id}/avaliar-impacto`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ janelaDias: 14 }),
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setErro(data.error || "Nao foi possivel avaliar impacto.");
+      return;
+    }
+
+    setMensagem("Impacto avaliado.");
     refresh();
   }
 
@@ -332,6 +430,33 @@ export default function RecomendacoesGerenciaisClient({
               <RefreshCcw className="h-4 w-4" />
               Gerar recomendacoes
             </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setErro("");
+                setMensagem("");
+                const response = await fetch(
+                  "/api/compras/recomendacoes/avaliar-impactos",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ janelaDias: 14 }),
+                  }
+                );
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                  setErro(data.error || "Nao foi possivel avaliar impactos.");
+                  return;
+                }
+                setMensagem(`${data.avaliadas || 0} impacto(s) avaliado(s).`);
+                refresh();
+              }}
+              disabled={isPending}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Avaliar impactos
+            </button>
             <Link
               href="/compras"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -383,6 +508,34 @@ export default function RecomendacoesGerenciaisClient({
           label="Ignoradas"
           value={resumo.IGNORADA || 0}
           description="Descartadas conscientemente."
+        />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <ResumoCard
+          label="Impacto positivo"
+          value={resumoImpactos.positivos}
+          description="Recomendacoes com melhora clara."
+        />
+        <ResumoCard
+          label="Inconclusivas"
+          value={resumoImpactos.inconclusivos}
+          description="Ainda sem amostra suficiente."
+        />
+        <ResumoCard
+          label="Impacto negativo"
+          value={resumoImpactos.negativos}
+          description="Pedem revisao da premissa."
+        />
+        <ResumoCard
+          label="Aguardando dados"
+          value={resumoImpactos.aguardando}
+          description="Janela ainda em andamento."
+        />
+        <ResumoCard
+          label="Taxa positiva"
+          value={resumoImpactos.taxaPositiva}
+          description="% das concluidas com impacto bom."
         />
       </section>
 
@@ -441,10 +594,32 @@ export default function RecomendacoesGerenciaisClient({
           </div>
         ) : (
           recomendacoesFiltradas.map((recomendacao) => (
-            <article
+            <RecomendacaoCard
               key={recomendacao.id}
-              className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
-            >
+              recomendacao={recomendacao}
+              onAcao={acionarRecomendacao}
+              onAvaliarImpacto={avaliarImpacto}
+            />
+          ))
+        )}
+      </section>
+    </div>
+  );
+}
+
+function RecomendacaoCard({
+  recomendacao,
+  onAcao,
+  onAvaliarImpacto,
+}: {
+  recomendacao: RecomendacaoGerencialResumo;
+  onAcao: (recomendacao: RecomendacaoGerencialResumo, acao: string) => void;
+  onAvaliarImpacto: (recomendacao: RecomendacaoGerencialResumo) => void;
+}) {
+  const impacto = latestImpacto(recomendacao);
+
+  return (
+            <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -465,6 +640,15 @@ export default function RecomendacoesGerenciaisClient({
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
                       {labelTipo(recomendacao.tipo)}
                     </span>
+                    {impacto && (
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${impactoClasses(
+                          impacto.statusImpacto
+                        )}`}
+                      >
+                        Impacto {labelImpacto(impacto.statusImpacto)}
+                      </span>
+                    )}
                     {recomendacao.periodoReferencia && (
                       <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
                         {recomendacao.periodoReferencia}
@@ -485,7 +669,7 @@ export default function RecomendacoesGerenciaisClient({
                     <AcaoButton
                       icon={<CheckCircle2 className="h-4 w-4" />}
                       label="Aceitar"
-                      onClick={() => acionarRecomendacao(recomendacao, "ACEITAR")}
+                      onClick={() => onAcao(recomendacao, "ACEITAR")}
                     />
                   )}
                   {["NOVA", "ACEITA", "ADIADA"].includes(
@@ -494,7 +678,7 @@ export default function RecomendacoesGerenciaisClient({
                     <AcaoButton
                       icon={<PlayCircle className="h-4 w-4" />}
                       label="Iniciar"
-                      onClick={() => acionarRecomendacao(recomendacao, "INICIAR")}
+                      onClick={() => onAcao(recomendacao, "INICIAR")}
                     />
                   )}
                   {recomendacao.status !== "CONCLUIDA" &&
@@ -503,17 +687,27 @@ export default function RecomendacoesGerenciaisClient({
                         icon={<CheckCircle2 className="h-4 w-4" />}
                         label="Concluir"
                         onClick={() =>
-                          acionarRecomendacao(recomendacao, "CONCLUIR")
+                          onAcao(recomendacao, "CONCLUIR")
                         }
                       />
                     )}
+                  {["ACEITA", "EM_EXECUCAO", "CONCLUIDA"].includes(
+                    recomendacao.status
+                  ) && (
+                    <AcaoButton
+                      icon={<TrendingUp className="h-4 w-4" />}
+                      label="Avaliar impacto"
+                      variant="secondary"
+                      onClick={() => onAvaliarImpacto(recomendacao)}
+                    />
+                  )}
                   {recomendacao.status !== "CONCLUIDA" &&
                     recomendacao.status !== "IGNORADA" && (
                       <AcaoButton
                         icon={<PauseCircle className="h-4 w-4" />}
                         label="Adiar"
                         variant="secondary"
-                        onClick={() => acionarRecomendacao(recomendacao, "ADIAR")}
+                        onClick={() => onAcao(recomendacao, "ADIAR")}
                       />
                     )}
                   {recomendacao.status !== "CONCLUIDA" &&
@@ -523,7 +717,7 @@ export default function RecomendacoesGerenciaisClient({
                         label="Ignorar"
                         variant="secondary"
                         onClick={() =>
-                          acionarRecomendacao(recomendacao, "IGNORAR")
+                          onAcao(recomendacao, "IGNORAR")
                         }
                       />
                     )}
@@ -610,10 +804,75 @@ export default function RecomendacoesGerenciaisClient({
                   ))}
                 </div>
               )}
+              {impacto && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Avaliacao de impacto - {impacto.janelaDias} dias
+                      </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+                        {impacto.resumo}
+                      </p>
+                    </div>
+                    <span
+                      className={`w-fit rounded-full border px-3 py-1 text-xs font-bold ${impactoClasses(
+                        impacto.statusImpacto
+                      )}`}
+                    >
+                      Score {impacto.scoreImpacto}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                    <ImpactoMetricasBox
+                      title="Antes"
+                      items={metricasResumo(impacto.metricasAntesJson)}
+                    />
+                    <ImpactoMetricasBox
+                      title="Depois"
+                      items={metricasResumo(impacto.metricasDepoisJson)}
+                    />
+                    <div className="rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-600">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Proxima acao
+                      </p>
+                      <p className="mt-2 font-semibold text-slate-800">
+                        {impacto.proximaAcaoSugerida ||
+                          "Acompanhar antes de escalar."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </article>
+  );
+}
+
+function ImpactoMetricasBox({
+  title,
+  items,
+}: {
+  title: string;
+  items: { key: string; value: string }[];
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-3 py-2">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
+      <div className="mt-2 space-y-1 text-xs font-semibold text-slate-600">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <div key={item.key} className="flex justify-between gap-3">
+              <span>{item.key}</span>
+              <span className="text-slate-900">{item.value}</span>
+            </div>
           ))
+        ) : (
+          <p>Sem metrica numerica suficiente.</p>
         )}
-      </section>
+      </div>
     </div>
   );
 }
