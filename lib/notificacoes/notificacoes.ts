@@ -21,6 +21,21 @@ export const NOTIFICACAO_PRIORIDADES = ["CRITICA", "ALTA", "MEDIA", "BAIXA", "IN
 export const NOTIFICACAO_STATUS = ["NOVA", "LIDA", "ARQUIVADA", "EXCLUIDA"] as const;
 export const PERFIS_ESTRATEGICOS = ["ACESSO_GERAL"] as const;
 export const PERFIS_OPERACIONAIS = ["ACESSO_GERAL", "VENDEDOR"] as const;
+const TIPOS_SINCRONIZADOS = [
+  "PEDIDO_PAGO_PREPARO",
+  "PEDIDO_PAGAMENTO_PENDENTE",
+  "PEDIDO_COM_PROBLEMA",
+  "PEDIDO_CANCELADO_CONFERENCIA",
+  "PEDIDO_ETIQUETA_PENDENTE",
+  "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO",
+  "PEDIDO_RETIRADA_PENDENTE",
+  "REPOSICAO_SUGERIDA",
+  "RECOMENDACAO_GERENCIAL_NOVA",
+  "RECOMENDACAO_VENCIDA",
+  "CAMPANHA_AGUARDA_ACAO",
+  "PRODUTO_SEM_CUSTO",
+  "PRECIFICACAO_ALERTA",
+];
 
 type PerfilAdmin = "ACESSO_GERAL" | "VENDEDOR" | string;
 type NotificacaoPrioridade = (typeof NOTIFICACAO_PRIORIDADES)[number];
@@ -72,6 +87,10 @@ function horasAtras(horas: number) {
   const data = new Date();
   data.setHours(data.getHours() - horas);
   return data;
+}
+
+function chaveNotificacao(params: { tipo: string; origemTipo: string; origemId?: string | null; linkAcao?: string | null }) {
+  return [params.tipo, params.origemTipo, params.origemId || "", params.linkAcao || ""].join("|");
 }
 
 async function garantirDestinatarios(notificacaoId: string, perfisDestino: string[]) {
@@ -232,6 +251,19 @@ export async function contarNotificacoesNaoLidas(usuarioId: string, perfil: Perf
 }
 
 async function destinatarioDoUsuario(notificacaoId: string, usuarioId: string, perfil: PerfilAdmin) {
+  const notificacao = await prisma.notificacaoSistema.findFirst({
+    where: {
+      id: notificacaoId,
+      status: { not: "EXCLUIDA" },
+      ...filtroAcesso(perfil),
+    },
+    select: { id: true },
+  });
+
+  if (!notificacao) {
+    throw new Error("Notificacao nao encontrada ou sem permissao para este perfil.");
+  }
+
   const existente = await prisma.notificacaoUsuario.findFirst({
     where: {
       notificacaoId,
@@ -299,6 +331,7 @@ export async function excluirTodasNotificacoes(usuarioId: string, perfil: Perfil
 }
 
 async function sincronizarPedidos() {
+  const ativas = new Set<string>();
   const pedidos = await prisma.pedidoOnline.findMany({
     where: {
       status: { notIn: ["ENTREGUE", "FINALIZADO", "CANCELADO"] },
@@ -313,6 +346,7 @@ async function sincronizarPedidos() {
     const linkAcao = `/pedidos/${pedido.id}`;
 
     if (pedido.statusPagamento === "PAGO" && ["PEDIDO_RECEBIDO", "EM_SEPARACAO"].includes(pedido.status)) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_PAGO_PREPARO", origemTipo: "PEDIDO", origemId: pedido.id, linkAcao }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_PAGO_PREPARO",
         categoria: "PEDIDO",
@@ -330,6 +364,7 @@ async function sincronizarPedidos() {
     }
 
     if (["AGUARDANDO_PAGAMENTO", "PENDENTE"].includes(pedido.statusPagamento) && pedido.criadoEm < horasAtras(24)) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_PAGAMENTO_PENDENTE", origemTipo: "PEDIDO", origemId: pedido.id, linkAcao }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_PAGAMENTO_PENDENTE",
         categoria: "PEDIDO",
@@ -347,6 +382,7 @@ async function sincronizarPedidos() {
     }
 
     if (["PROBLEMA", "PROBLEMA_OPERACIONAL"].includes(pedido.status)) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_COM_PROBLEMA", origemTipo: "PEDIDO", origemId: pedido.id, linkAcao }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_COM_PROBLEMA",
         categoria: "PEDIDO",
@@ -363,7 +399,32 @@ async function sincronizarPedidos() {
       total += 1;
     }
 
-    if (pedido.statusPagamento === "PAGO" && pedido.envio?.tipoEntrega !== "RETIRADA" && pedido.envio && !pedido.envio.etiquetaPdfUrl) {
+    if (pedido.status === "CANCELADO") {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_CANCELADO_CONFERENCIA", origemTipo: "PEDIDO", origemId: pedido.id, linkAcao }));
+      await criarOuAtualizarNotificacao({
+        tipo: "PEDIDO_CANCELADO_CONFERENCIA",
+        categoria: "PEDIDO",
+        prioridade: "ALTA",
+        titulo: `Pedido ${pedido.codigo} cancelado para conferir`,
+        descricao: "Pedido cancelado deve ser conferido para garantir que pagamento, estoque e atendimento estejam coerentes.",
+        resumo: "Pedido cancelado",
+        origemTipo: "PEDIDO",
+        origemId: pedido.id,
+        linkAcao,
+        acaoLabel: "Conferir pedido",
+        metadataJson: { codigo: pedido.codigo, status: pedido.status, statusPagamento: pedido.statusPagamento },
+      });
+      total += 1;
+    }
+
+    if (
+      pedido.statusPagamento === "PAGO" &&
+      pedido.status === "SEPARADO" &&
+      pedido.envio?.tipoEntrega !== "RETIRADA" &&
+      pedido.envio?.statusEnvio === "PENDENTE" &&
+      !pedido.envio.etiquetaPdfUrl
+    ) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_ETIQUETA_PENDENTE", origemTipo: "PEDIDO_ENVIO", origemId: pedido.envio.id, linkAcao }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_ETIQUETA_PENDENTE",
         categoria: "OPERACIONAL",
@@ -380,7 +441,36 @@ async function sincronizarPedidos() {
       total += 1;
     }
 
-    if (pedido.envio?.tipoEntrega === "RETIRADA" && pedido.statusPagamento === "PAGO" && !pedido.envio.entregueEm) {
+    if (
+      pedido.statusPagamento === "PAGO" &&
+      pedido.envio?.tipoEntrega !== "RETIRADA" &&
+      pedido.envio?.etiquetaPdfUrl &&
+      ["ETIQUETA_GERADA", "PREPARADO"].includes(pedido.envio.statusEnvio)
+    ) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO", origemTipo: "PEDIDO_ENVIO", origemId: pedido.envio.id, linkAcao: "/pedidos/etiquetas/lote" }));
+      await criarOuAtualizarNotificacao({
+        tipo: "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO",
+        categoria: "OPERACIONAL",
+        prioridade: "ALTA",
+        titulo: `Etiqueta pronta para impressao: ${pedido.codigo}`,
+        descricao: "A etiqueta ja foi gerada. Imprimir e preparar postagem.",
+        resumo: "Etiqueta pronta",
+        origemTipo: "PEDIDO_ENVIO",
+        origemId: pedido.envio.id,
+        linkAcao: "/pedidos/etiquetas/lote",
+        acaoLabel: "Imprimir etiqueta",
+        metadataJson: { codigo: pedido.codigo, statusEnvio: pedido.envio.statusEnvio },
+      });
+      total += 1;
+    }
+
+    if (
+      pedido.envio?.tipoEntrega === "RETIRADA" &&
+      pedido.statusPagamento === "PAGO" &&
+      pedido.status === "AGUARDANDO_RETIRADA" &&
+      !pedido.envio.entregueEm
+    ) {
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_RETIRADA_PENDENTE", origemTipo: "PEDIDO_ENVIO", origemId: pedido.envio.id, linkAcao }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_RETIRADA_PENDENTE",
         categoria: "OPERACIONAL",
@@ -398,10 +488,11 @@ async function sincronizarPedidos() {
     }
   }
 
-  return total;
+  return { total, ativas };
 }
 
 async function sincronizarRecomendacoes() {
+  const ativas = new Set<string>();
   const recomendacoes = await prisma.recomendacaoGerencial.findMany({
     where: {
       status: { in: ["NOVA", "ACEITA", "EM_EXECUCAO"] },
@@ -414,6 +505,13 @@ async function sincronizarRecomendacoes() {
 
   for (const recomendacao of recomendacoes) {
     if (recomendacao.prioridade !== "ALTA" && recomendacao.tipo !== "REPOSICAO") continue;
+    const linkAcao = recomendacao.tipo === "REPOSICAO" ? "/compras/reposicao" : "/compras/recomendacoes";
+    ativas.add(chaveNotificacao({
+      tipo: recomendacao.tipo === "REPOSICAO" ? "REPOSICAO_SUGERIDA" : "RECOMENDACAO_GERENCIAL_NOVA",
+      origemTipo: "RECOMENDACAO_GERENCIAL",
+      origemId: recomendacao.id,
+      linkAcao,
+    }));
 
     await criarOuAtualizarNotificacao({
       tipo: recomendacao.tipo === "REPOSICAO" ? "REPOSICAO_SUGERIDA" : "RECOMENDACAO_GERENCIAL_NOVA",
@@ -424,7 +522,7 @@ async function sincronizarRecomendacoes() {
       resumo: recomendacao.motivo || recomendacao.impactoEsperado,
       origemTipo: "RECOMENDACAO_GERENCIAL",
       origemId: recomendacao.id,
-      linkAcao: recomendacao.tipo === "REPOSICAO" ? "/compras/reposicao" : "/compras/recomendacoes",
+      linkAcao,
       acaoLabel: "Ver recomendacao",
       metadataJson: {
         tipo: recomendacao.tipo,
@@ -436,10 +534,43 @@ async function sincronizarRecomendacoes() {
     total += 1;
   }
 
-  return total;
+  const vencidas = await prisma.recomendacaoGerencial.findMany({
+    where: {
+      status: { in: ["ACEITA", "EM_EXECUCAO"] },
+      prazoSugerido: { lt: new Date() },
+    },
+    orderBy: { prazoSugerido: "asc" },
+    take: 20,
+  });
+
+  for (const recomendacao of vencidas) {
+    ativas.add(chaveNotificacao({ tipo: "RECOMENDACAO_VENCIDA", origemTipo: "RECOMENDACAO_GERENCIAL", origemId: recomendacao.id, linkAcao: "/compras/recomendacoes" }));
+    await criarOuAtualizarNotificacao({
+      tipo: "RECOMENDACAO_VENCIDA",
+      categoria: "RECOMENDACAO",
+      prioridade: recomendacao.prioridade === "ALTA" ? "ALTA" : "MEDIA",
+      titulo: `Recomendacao vencida: ${recomendacao.titulo}`,
+      descricao: "A recomendacao aceita ou em execucao passou do prazo sugerido e precisa de revisao.",
+      resumo: recomendacao.acaoSugerida || recomendacao.motivo,
+      origemTipo: "RECOMENDACAO_GERENCIAL",
+      origemId: recomendacao.id,
+      linkAcao: "/compras/recomendacoes",
+      acaoLabel: "Revisar recomendacao",
+      metadataJson: {
+        tipo: recomendacao.tipo,
+        prioridade: recomendacao.prioridade,
+        prazoSugerido: recomendacao.prazoSugerido?.toISOString(),
+      },
+      perfisDestino: [...PERFIS_ESTRATEGICOS],
+    });
+    total += 1;
+  }
+
+  return { total, ativas };
 }
 
 async function sincronizarCampanhas() {
+  const ativas = new Set<string>();
   const campanhas = await prisma.campanhaComercial.findMany({
     where: { status: { in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"] } },
     orderBy: { criadoEm: "desc" },
@@ -449,6 +580,7 @@ async function sincronizarCampanhas() {
 
   for (const campanha of campanhas) {
     if (campanha.status === "RASCUNHO" || campanha.status === "PLANEJADA") {
+      ativas.add(chaveNotificacao({ tipo: "CAMPANHA_AGUARDA_ACAO", origemTipo: "CAMPANHA_COMERCIAL", origemId: campanha.id, linkAcao: "/compras/campanhas" }));
       await criarOuAtualizarNotificacao({
         tipo: "CAMPANHA_AGUARDA_ACAO",
         categoria: "CAMPANHA",
@@ -467,10 +599,11 @@ async function sincronizarCampanhas() {
     }
   }
 
-  return total;
+  return { total, ativas };
 }
 
 async function sincronizarPrecificacao() {
+  const ativas = new Set<string>();
   const analise = await analisarPrecificacaoProdutos();
   const criticos = analise.produtos.filter(
     (produto) =>
@@ -481,6 +614,12 @@ async function sincronizarPrecificacao() {
   let total = 0;
 
   for (const produto of criticos.slice(0, 30)) {
+    ativas.add(chaveNotificacao({
+      tipo: produto.custoAusente ? "PRODUTO_SEM_CUSTO" : "PRECIFICACAO_ALERTA",
+      origemTipo: "PRECIFICACAO_PRODUTO",
+      origemId: produto.produtoId,
+      linkAcao: "/compras/precificacao",
+    }));
     await criarOuAtualizarNotificacao({
       tipo: produto.custoAusente ? "PRODUTO_SEM_CUSTO" : "PRECIFICACAO_ALERTA",
       categoria: "PRECIFICACAO",
@@ -500,7 +639,33 @@ async function sincronizarPrecificacao() {
     total += 1;
   }
 
-  return total;
+  return { total, ativas };
+}
+
+async function arquivarNotificacoesObsoletas(ativas: Set<string>) {
+  const abertas = await prisma.notificacaoSistema.findMany({
+    where: {
+      tipo: { in: TIPOS_SINCRONIZADOS },
+      status: { in: ["NOVA", "LIDA"] },
+    },
+    select: {
+      id: true,
+      tipo: true,
+      origemTipo: true,
+      origemId: true,
+      linkAcao: true,
+    },
+  });
+  const obsoletas = abertas.filter((item) => !ativas.has(chaveNotificacao(item)));
+
+  if (obsoletas.length > 0) {
+    await prisma.notificacaoSistema.updateMany({
+      where: { id: { in: obsoletas.map((item) => item.id) } },
+      data: { status: "ARQUIVADA" },
+    });
+  }
+
+  return obsoletas.length;
 }
 
 export async function sincronizarNotificacoesOperacionais() {
@@ -511,14 +676,22 @@ export async function sincronizarNotificacoesOperacionais() {
     sincronizarCampanhas(),
     sincronizarPrecificacao(),
   ]);
+  const ativas = new Set<string>([
+    ...pedidos.ativas,
+    ...recomendacoes.ativas,
+    ...campanhas.ativas,
+    ...precificacao.ativas,
+  ]);
+  const arquivadas = await arquivarNotificacoesObsoletas(ativas);
 
   return {
-    total: pedidos + recomendacoes + campanhas + precificacao,
+    total: pedidos.total + recomendacoes.total + campanhas.total + precificacao.total,
+    arquivadas,
     porCategoria: {
-      PEDIDO_OPERACIONAL: pedidos,
-      RECOMENDACAO_REPOSICAO: recomendacoes,
-      CAMPANHA: campanhas,
-      PRECIFICACAO: precificacao,
+      PEDIDO_OPERACIONAL: pedidos.total,
+      RECOMENDACAO_REPOSICAO: recomendacoes.total,
+      CAMPANHA: campanhas.total,
+      PRECIFICACAO: precificacao.total,
     },
   };
 }

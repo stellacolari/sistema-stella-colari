@@ -13,28 +13,35 @@ export async function POST(request: NextRequest) {
   const acao = String(body.acao || "").toUpperCase();
   const ids: string[] = Array.isArray(body.ids) ? body.ids.filter(Boolean).map(String) : [];
 
-  if (acao === "EXCLUIR_TUDO") {
-    const resultado = await excluirTodasNotificacoes(usuario.id, usuario.perfil);
-    return NextResponse.json({ ok: true, resultado });
-  }
+  try {
+    if (acao === "EXCLUIR_TUDO") {
+      const resultado = await excluirTodasNotificacoes(usuario.id, usuario.perfil);
+      return NextResponse.json({ ok: true, resultado });
+    }
 
-  if (!ids.length) {
-    return NextResponse.json({ error: "Selecione ao menos uma notificacao." }, { status: 400 });
-  }
+    if (!ids.length) {
+      return NextResponse.json({ error: "Selecione ao menos uma notificacao." }, { status: 400 });
+    }
 
-  if (acao === "EXCLUIR") {
-    const resultado = await excluirVariasNotificacoes(ids, usuario.id, usuario.perfil);
-    return NextResponse.json({ ok: true, resultado });
-  }
+    if (acao === "EXCLUIR") {
+      const resultado = await excluirVariasNotificacoes(ids, usuario.id, usuario.perfil);
+      return NextResponse.json({ ok: true, resultado });
+    }
 
-  if (acao === "LIDA") {
-    await Promise.all(ids.map((id) => marcarComoLida(id, usuario.id, usuario.perfil)));
-    return NextResponse.json({ ok: true, resultado: { total: ids.length } });
-  }
+    if (acao === "LIDA") {
+      await Promise.all(ids.map((id) => marcarComoLida(id, usuario.id, usuario.perfil)));
+      return NextResponse.json({ ok: true, resultado: { total: ids.length } });
+    }
 
-  if (acao === "ARQUIVAR") {
-    await Promise.all(ids.map((id) => arquivarNotificacao(id, usuario.id, usuario.perfil)));
-    return NextResponse.json({ ok: true, resultado: { total: ids.length } });
+    if (acao === "ARQUIVAR") {
+      await Promise.all(ids.map((id) => arquivarNotificacao(id, usuario.id, usuario.perfil)));
+      return NextResponse.json({ ok: true, resultado: { total: ids.length } });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Nao foi possivel executar a acao." },
+      { status: 403 },
+    );
   }
 
   return NextResponse.json({ error: "Acao invalida." }, { status: 400 });
