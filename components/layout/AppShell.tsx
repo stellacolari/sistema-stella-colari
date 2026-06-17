@@ -122,6 +122,15 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes/loja/colecoes-inteligentes")) {
+    return {
+      eyebrow: "Loja online / Builder",
+      title: "Colecoes Inteligentes",
+      description: "Grupos aprovados de produtos para usar no editor visual.",
+      showLojaButton: true,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes/loja")) {
     return {
       eyebrow: "Loja online",
@@ -137,15 +146,6 @@ function getPageInfo(pathname: string) {
       title: "Integracoes",
       description: "Canais, importacoes e produtos vinculados.",
       showLojaButton: false,
-    };
-  }
-
-  if (pathname.startsWith("/configuracoes/loja/colecoes-inteligentes")) {
-    return {
-      eyebrow: "Loja online / Builder",
-      title: "Colecoes Inteligentes",
-      description: "Grupos aprovados de produtos para usar no editor visual.",
-      showLojaButton: true,
     };
   }
 

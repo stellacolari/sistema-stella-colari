@@ -186,6 +186,20 @@ export default async function ConfiguracoesPage() {
               icon={Store}
               tone="site"
             />
+            <HubCard
+              href="/configuracoes/loja/paginas"
+              title="Paginas e Builder"
+              description="Home, paginas publicas e blocos do editor visual da loja."
+              icon={Store}
+              tone="site"
+            />
+            <HubCard
+              href="/configuracoes/loja/menu-rodape"
+              title="Menu e Rodape"
+              description="Navegacao publica, links do menu e referencias do rodape."
+              icon={Store}
+              tone="site"
+            />
           </div>
         </section>
       ) : null}

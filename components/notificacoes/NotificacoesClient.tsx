@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Archive,
   ArrowRight,
@@ -98,14 +99,23 @@ function label(value: string) {
 }
 
 export default function NotificacoesClient({ perfil, notificacoes, contadores }: Props) {
+  const searchParams = useSearchParams();
+  const categoriaInicial = searchParams.get("categoria") || "TODAS";
   const [items, setItems] = useState(notificacoes);
-  const [categoria, setCategoria] = useState("TODAS");
+  const [categoria, setCategoria] = useState(
+    tabs.some((tab) => tab.value === categoriaInicial) ? categoriaInicial : "TODAS"
+  );
   const [prioridade, setPrioridade] = useState("TODAS");
   const [status, setStatus] = useState("TODAS");
   const [busca, setBusca] = useState("");
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [isPending, startTransition] = useTransition();
+  const sistemaNaoLidas = items.filter(
+    (item) =>
+      item.status === "NOVA" &&
+      (item.categoria === "SISTEMA" || item.categoria === "OPERACIONAL")
+  ).length;
 
   const filtradas = useMemo(() => {
     const termo = normalizar(busca);
@@ -200,13 +210,14 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
         <Resumo label="Novas" value={contadores.total} tone="slate" />
         <Resumo label="Pedidos" value={contadores.pedidos} tone="red" />
         <Resumo label="Reposicao" value={contadores.reposicao} tone="amber" />
         <Resumo label="Recomendacoes" value={contadores.recomendacoes} tone="blue" />
         <Resumo label="Campanhas" value={contadores.campanhas} tone="emerald" />
         <Resumo label="Precificacao" value={contadores.precificacao} tone="violet" />
+        <Resumo label="Sistema" value={sistemaNaoLidas} tone="slate" />
       </section>
 
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
@@ -244,6 +255,12 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
               label="Campanhas"
               value={contadores.campanhas}
               tone="emerald"
+            />
+            <AtencaoLink
+              href="/notificacoes?categoria=SISTEMA"
+              label="Sistema"
+              value={sistemaNaoLidas}
+              tone="slate"
             />
           </div>
         </div>
@@ -391,6 +408,7 @@ function AtencaoLink({
     amber: value > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-500",
     blue: value > 0 ? "border-blue-200 bg-blue-50 text-blue-800" : "border-slate-200 bg-slate-50 text-slate-500",
     emerald: value > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-50 text-slate-500",
+    slate: value > 0 ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-50 text-slate-500",
   };
 
   return (

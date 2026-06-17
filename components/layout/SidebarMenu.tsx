@@ -846,6 +846,9 @@ export default function SidebarMenu({
                       )
                     );
                   const isOpen = openGroups[item.href] ?? false;
+                  const shouldShowSubItems =
+                    (!compacto && isOpen) ||
+                    (compacto && (groupIsActive || groupBadge > 0));
 
                   return (
                     <div
@@ -922,7 +925,7 @@ export default function SidebarMenu({
                         ) : null}
                       </div>
 
-                      {isOpen && !compacto ? (
+                      {shouldShowSubItems ? (
                         <div className={subItemsWrap}>
                           {item.links.length > 0 ? (
                             item.links.map((link) => {
@@ -940,8 +943,11 @@ export default function SidebarMenu({
                                 <Link
                                   key={link.href}
                                   href={link.href}
+                                  title={link.label}
                                   onClick={onNavigate}
-                                  className={`flex items-center gap-3 rounded-2xl text-sm transition ${subItemPadding} ${getSubItemClass(
+                                  className={`relative flex items-center rounded-2xl text-sm transition ${
+                                    compacto ? "justify-center gap-0" : "gap-3"
+                                  } ${subItemPadding} ${getSubItemClass(
                                     {
                                       active: subActive,
                                       tone: subTone,
@@ -954,10 +960,16 @@ export default function SidebarMenu({
                                     <span className="h-2 w-2 shrink-0 rounded-full bg-current opacity-60" />
                                   )}
 
-                                  <span className="truncate font-medium">
+                                  <span className={compacto ? "sr-only" : "truncate font-medium"}>
                                     {link.label}
                                   </span>
-                                  <Badge total={subBadge} forte={link.href === "/pedidos"} />
+                                  {compacto ? (
+                                    subBadge > 0 && (
+                                      <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-900" />
+                                    )
+                                  ) : (
+                                    <Badge total={subBadge} forte={link.href === "/pedidos"} />
+                                  )}
                                 </Link>
                               );
                             })
