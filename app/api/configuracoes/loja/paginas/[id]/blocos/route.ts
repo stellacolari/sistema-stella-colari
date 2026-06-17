@@ -11,6 +11,8 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "DESTAQUES_CARDS",
   "COLECOES_CATEGORIAS",
   "MOSAICO_COLECOES",
+  "HERO_EDITORIAL_PNG",
+  "GALERIA_EDITORIAL_FULL_BLEED",
   "VITRINE_EDITORIAL",
   "CTA",
   "CTA_SIMPLES",
@@ -39,6 +41,8 @@ function getTituloPadrao(tipo: string) {
     DESTAQUES_CARDS: "Destaques / cards",
     COLECOES_CATEGORIAS: "Coleções / categorias",
     MOSAICO_COLECOES: "Mosaico de coleções",
+    HERO_EDITORIAL_PNG: "Hero Editorial com PNG",
+    GALERIA_EDITORIAL_FULL_BLEED: "Galeria Editorial",
     VITRINE_EDITORIAL: "Vitrine editorial",
     CTA: "Chamada para ação",
     CTA_SIMPLES: "CTA simples",
@@ -460,6 +464,111 @@ function getConfigPadrao(tipo: string) {
       alturaVisual: "PADRAO",
       animacaoBloco: "SUBINDO_EM_SEQUENCIA",
       itens: [1, 2, 3].map(criarItem),
+    };
+  }
+
+  if (tipo === "HERO_EDITORIAL_PNG") {
+    return {
+      variante: "COMPACTO",
+      fundo: {
+        tipo: "COR",
+        cor: "#223846",
+      },
+      texto: {
+        conteudo: "STELLA COLARI",
+        linhas: "AUTO",
+        alinhamento: "CENTRO",
+        margemSeguraPercentual: 8,
+        cor: "#f8fafc",
+        preset: "EDITORIAL",
+        peso: "BOLD",
+        tracking: -0.04,
+        lineHeight: 0.86,
+        escalaAuto: true,
+      },
+      png: {
+        imagemDesktop: "",
+        imagemMobile: "",
+        alt: "",
+        escalaDesktop: 68,
+        escalaMobile: 96,
+        posicaoXDesktop: 58,
+        posicaoYDesktop: 50,
+        posicaoXMobile: 50,
+        posicaoYMobile: 52,
+        sombra: true,
+        opacidade: 100,
+      },
+      cta: {
+        mostrar: false,
+        label: "Nova coleção",
+        titulo: "Peças para atravessar o tempo.",
+        textoBotao: "Conhecer",
+        linkTipo: "URL",
+        linkValor: "/loja",
+        posicao: "INFERIOR_ESQUERDA",
+      },
+      animacao: {
+        entradaTexto: "FADE_UP",
+        entradaPng: "FLOAT_UP",
+        hover: "PNG_FLOAT",
+      },
+      responsivo: {
+        comportamentoMobile: "COMPACTAR",
+      },
+    };
+  }
+
+  if (tipo === "GALERIA_EDITORIAL_FULL_BLEED") {
+    const criarItem = (index: number) => ({
+      id: `galeria-${index}`,
+      imagemDesktop: "",
+      imagemMobile: "",
+      alt: "",
+      produtoId: "",
+      titulo: "",
+      subtitulo: "",
+      mostrarTexto: false,
+      botaoTexto: "Explorar",
+      mostrarBotao: false,
+      botaoApenasHover: false,
+      linkTipo: "URL",
+      linkValor: "",
+      posicaoTexto: "INFERIOR_ESQUERDO",
+      focoX: 50,
+      focoY: 50,
+      zoom: 100,
+      overlayOpacidade: 18,
+    });
+
+    return {
+      layout: {
+        colunas: 4,
+        varianteAltura: "PADRAO",
+        gap: 8,
+        fullBleed: true,
+        comportamentoMobile: "CARROSSEL",
+      },
+      fonte: {
+        tipo: "MANUAL",
+        produtosIds: [],
+        colecaoId: "",
+        colecaoSlug: "",
+        campanhaId: "",
+        incluirSugeridos: false,
+        quantidade: 4,
+        ordem: "ORDEM_APROVADA",
+      },
+      itens: [1, 2, 3, 4].map(criarItem),
+      hover: {
+        tipo: "ZOOM_LEVE",
+        intensidade: 1,
+      },
+      design: {
+        fundo: "#ffffff",
+        raio: 0,
+        espacamentoVertical: 0,
+      },
     };
   }
 

@@ -68,6 +68,7 @@ import BannerRenderer, {
   normalizeBannerModelo,
   type BannerDevicePreview,
 } from "@/components/loja/paginas/blocos/BannerRenderer";
+import GaleriaEditorialFullBleedPublico from "@/components/loja/paginas/blocos/GaleriaEditorialFullBleedPublico";
 import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
 
 export type EditorVisualPagina = {
@@ -131,6 +132,16 @@ export type EditorVisualColecaoInteligente = {
   tipo: string;
   status: string;
   produtosAprovados: number;
+  produtoIdsAprovados: string[];
+  produtoIdsSugeridos: string[];
+};
+
+export type EditorVisualCampanhaComercial = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  status: string;
+  produtoIds: string[];
 };
 
 type EditorVisualPaginaClientProps = {
@@ -140,6 +151,7 @@ type EditorVisualPaginaClientProps = {
   paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
   colecoesInteligentes: EditorVisualColecaoInteligente[];
+  campanhasDisponiveis: EditorVisualCampanhaComercial[];
 };
 
 type DadosSeoPaginaForm = {
@@ -160,6 +172,7 @@ type EditorSelectionContext =
 type TipoBlocoAdicionar =
   | "BANNER"
   | "HERO_EDITORIAL_PNG"
+  | "GALERIA_EDITORIAL_FULL_BLEED"
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
@@ -1001,6 +1014,173 @@ const HERO_HOVER_PRESETS = [
   { value: "ZOOM_SUAVE", label: "Zoom suave do PNG" },
 ] as const;
 
+type GaleriaEditorialLinkTipo =
+  | "PRODUTO"
+  | "CATEGORIA"
+  | "PAGINA"
+  | "COLECAO"
+  | "URL";
+
+type GaleriaEditorialItemConfig = {
+  id: string;
+  imagemDesktop: string;
+  imagemMobile: string;
+  alt: string;
+  produtoId: string;
+  titulo: string;
+  subtitulo: string;
+  mostrarTexto: boolean;
+  botaoTexto: string;
+  mostrarBotao: boolean;
+  botaoApenasHover: boolean;
+  linkTipo: GaleriaEditorialLinkTipo;
+  linkValor: string;
+  posicaoTexto:
+    | "INFERIOR_ESQUERDO"
+    | "INFERIOR_CENTRO"
+    | "CENTRO"
+    | "SUPERIOR_ESQUERDO";
+  focoX: number;
+  focoY: number;
+  zoom: number;
+  overlayOpacidade: number;
+};
+
+type GaleriaEditorialConfig = {
+  layout: {
+    colunas: 3 | 4;
+    varianteAltura: "PADRAO" | "COMPACTA";
+    gap: number;
+    fullBleed: boolean;
+    comportamentoMobile: "CARROSSEL" | "EMPILHADO";
+  };
+  fonte: {
+    tipo: "MANUAL" | "PRODUTOS" | "COLECAO_INTELIGENTE" | "CAMPANHA";
+    produtosIds: string[];
+    colecaoId: string;
+    colecaoSlug: string;
+    campanhaId: string;
+    incluirSugeridos: boolean;
+    quantidade: number;
+    ordem: "MANUAL" | "SCORE" | "RECENTES" | "ORDEM_APROVADA";
+  };
+  itens: GaleriaEditorialItemConfig[];
+  hover: {
+    tipo: "NENHUM" | "ZOOM_LEVE" | "ESCURECER" | "REVELAR_TEXTO" | "REVELAR_BOTAO";
+    intensidade: number;
+  };
+  design: {
+    fundo: string;
+    raio: number;
+    espacamentoVertical: number;
+  };
+};
+
+function criarGaleriaEditorialItemPadrao(index: number): GaleriaEditorialItemConfig {
+  return {
+    id: `galeria-${index}`,
+    imagemDesktop: "",
+    imagemMobile: "",
+    alt: "",
+    produtoId: "",
+    titulo: "",
+    subtitulo: "",
+    mostrarTexto: false,
+    botaoTexto: "Explorar",
+    mostrarBotao: false,
+    botaoApenasHover: false,
+    linkTipo: "URL",
+    linkValor: "",
+    posicaoTexto: "INFERIOR_ESQUERDO",
+    focoX: 50,
+    focoY: 50,
+    zoom: 100,
+    overlayOpacidade: 18,
+  };
+}
+
+const GALERIA_EDITORIAL_FULL_BLEED_DEFAULT: GaleriaEditorialConfig = {
+  layout: {
+    colunas: 4,
+    varianteAltura: "PADRAO",
+    gap: 8,
+    fullBleed: true,
+    comportamentoMobile: "CARROSSEL",
+  },
+  fonte: {
+    tipo: "MANUAL",
+    produtosIds: [],
+    colecaoId: "",
+    colecaoSlug: "",
+    campanhaId: "",
+    incluirSugeridos: false,
+    quantidade: 4,
+    ordem: "ORDEM_APROVADA",
+  },
+  itens: [1, 2, 3, 4].map(criarGaleriaEditorialItemPadrao),
+  hover: {
+    tipo: "ZOOM_LEVE",
+    intensidade: 1,
+  },
+  design: {
+    fundo: "#ffffff",
+    raio: 0,
+    espacamentoVertical: 0,
+  },
+};
+
+const GALERIA_LAYOUT_COLUNAS_PRESETS = [
+  { value: 4, label: "4 imagens" },
+  { value: 3, label: "3 imagens" },
+] as const;
+
+const GALERIA_ALTURA_PRESETS = [
+  { value: "PADRAO", label: "Padrão editorial" },
+  { value: "COMPACTA", label: "Compacta" },
+] as const;
+
+const GALERIA_MOBILE_PRESETS = [
+  { value: "CARROSSEL", label: "Carrossel horizontal" },
+  { value: "EMPILHADO", label: "Empilhado" },
+] as const;
+
+const GALERIA_FONTE_PRESETS = [
+  { value: "MANUAL", label: "Manual" },
+  { value: "PRODUTOS", label: "Produtos" },
+  { value: "COLECAO_INTELIGENTE", label: "Coleção inteligente" },
+  { value: "CAMPANHA", label: "Campanha" },
+] as const;
+
+const GALERIA_ORDEM_PRESETS = [
+  { value: "ORDEM_APROVADA", label: "Ordem aprovada" },
+  { value: "SCORE", label: "Score" },
+  { value: "RECENTES", label: "Recentes" },
+  { value: "MANUAL", label: "Manual" },
+] as const;
+
+const GALERIA_LINK_TIPO_PRESETS = [
+  { value: "PRODUTO", label: "Produto" },
+  { value: "CATEGORIA", label: "Categoria" },
+  { value: "PAGINA", label: "Página" },
+  { value: "COLECAO", label: "Coleção inteligente" },
+  { value: "URL", label: "URL personalizada" },
+] as const;
+
+const GALERIA_TEXTO_POSICAO_PRESETS = [
+  { value: "INFERIOR_ESQUERDO", label: "Inferior esquerdo" },
+  { value: "INFERIOR_CENTRO", label: "Inferior central" },
+  { value: "CENTRO", label: "Centro" },
+  { value: "SUPERIOR_ESQUERDO", label: "Superior esquerdo" },
+] as const;
+
+const GALERIA_HOVER_PRESETS = [
+  { value: "NENHUM", label: "Nenhum" },
+  { value: "ZOOM_LEVE", label: "Zoom leve" },
+  { value: "ESCURECER", label: "Escurecer" },
+  { value: "REVELAR_TEXTO", label: "Revelar texto" },
+  { value: "REVELAR_BOTAO", label: "Revelar botão" },
+] as const;
+
 const TIPOS_BLOCO_ADICIONAR: {
   tipo: TipoBlocoAdicionar;
   nome: string;
@@ -1035,6 +1215,24 @@ const TIPOS_BLOCO_ADICIONAR: {
           <span>Compacto</span>
           <span>Tela cheia</span>
         </span>
+      </span>
+    ),
+  },
+  {
+    tipo: "GALERIA_EDITORIAL_FULL_BLEED",
+    nome: "Galeria Editorial",
+    descricao:
+      "Display full width com 3 ou 4 imagens para campanhas e coleções.",
+    tituloInicial: "Galeria Editorial",
+    icon: LayoutGrid,
+    preview: (
+      <span className="mt-3 grid grid-cols-4 gap-1 overflow-hidden rounded-xl bg-slate-950 p-1">
+        {[0, 1, 2, 3].map((index) => (
+          <span
+            key={index}
+            className="block h-16 bg-gradient-to-b from-slate-200 to-slate-400"
+          />
+        ))}
       </span>
     ),
   },
@@ -1663,6 +1861,7 @@ const RichTextTypography = Extension.create({
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
   if (tipo === "HERO_EDITORIAL_PNG") return "Hero Editorial com PNG";
+  if (tipo === "GALERIA_EDITORIAL_FULL_BLEED") return "Galeria Editorial";
   if (tipo === "BANNER") return "Banner";
   if (tipo === "CTA_SIMPLES") return "CTA simples";
   if (tipo === "CTA") return "CTA";
@@ -1693,7 +1892,8 @@ function getBlocoIcon(tipo: string) {
     tipo.includes("IMAGEM") ||
     tipo === "HERO" ||
     tipo === "BANNER" ||
-    isHeroEditorialPngTipo(tipo)
+    isHeroEditorialPngTipo(tipo) ||
+    isGaleriaEditorialTipo(tipo)
   ) {
     return ImageIcon;
   }
@@ -1715,6 +1915,10 @@ function isBannerTipo(tipo: string) {
 
 function isHeroEditorialPngTipo(tipo: string) {
   return tipo === "HERO_EDITORIAL_PNG";
+}
+
+function isGaleriaEditorialTipo(tipo: string) {
+  return tipo === "GALERIA_EDITORIAL_FULL_BLEED";
 }
 
 function isTextoImagemTipo(tipo: string) {
@@ -1865,6 +2069,124 @@ function getHeroEditorialPngConfig(value: unknown): HeroEditorialPngConfig {
     responsivo: {
       comportamentoMobile: (getStringConfig(responsivo, "comportamentoMobile") ||
         HERO_EDITORIAL_PNG_DEFAULT.responsivo.comportamentoMobile) as HeroEditorialPngConfig["responsivo"]["comportamentoMobile"],
+    },
+  };
+}
+
+function getGaleriaEditorialItemConfig(
+  value: unknown,
+  index: number
+): GaleriaEditorialItemConfig {
+  const item = getConfigObject(value);
+  const fallback = criarGaleriaEditorialItemPadrao(index + 1);
+  const posicaoTexto = getStringConfig(item, "posicaoTexto");
+  const linkTipo = getStringConfig(item, "linkTipo");
+
+  return {
+    id: getStringConfig(item, "id") || fallback.id,
+    imagemDesktop:
+      getStringConfig(item, "imagemDesktop") ||
+      getStringConfig(item, "imagemDesktopUrl") ||
+      getStringConfig(item, "imagemUrl"),
+    imagemMobile:
+      getStringConfig(item, "imagemMobile") ||
+      getStringConfig(item, "imagemMobileUrl"),
+    alt: getStringConfig(item, "alt") || getStringConfig(item, "altText"),
+    produtoId: getStringConfig(item, "produtoId"),
+    titulo: getStringConfig(item, "titulo"),
+    subtitulo: getStringConfig(item, "subtitulo"),
+    mostrarTexto: getBooleanConfig(item, "mostrarTexto", fallback.mostrarTexto),
+    botaoTexto:
+      getStringConfig(item, "botaoTexto") ||
+      getStringConfig(item, "textoBotao") ||
+      fallback.botaoTexto,
+    mostrarBotao: getBooleanConfig(item, "mostrarBotao", fallback.mostrarBotao),
+    botaoApenasHover: getBooleanConfig(
+      item,
+      "botaoApenasHover",
+      fallback.botaoApenasHover
+    ),
+    linkTipo: GALERIA_LINK_TIPO_PRESETS.some((preset) => preset.value === linkTipo)
+      ? (linkTipo as GaleriaEditorialLinkTipo)
+      : fallback.linkTipo,
+    linkValor:
+      getStringConfig(item, "linkValor") || getStringConfig(item, "linkUrl"),
+    posicaoTexto: GALERIA_TEXTO_POSICAO_PRESETS.some(
+      (preset) => preset.value === posicaoTexto
+    )
+      ? (posicaoTexto as GaleriaEditorialItemConfig["posicaoTexto"])
+      : fallback.posicaoTexto,
+    focoX: getNumberConfig(item, "focoX", fallback.focoX),
+    focoY: getNumberConfig(item, "focoY", fallback.focoY),
+    zoom: getNumberConfig(item, "zoom", fallback.zoom),
+    overlayOpacidade: getNumberConfig(
+      item,
+      "overlayOpacidade",
+      fallback.overlayOpacidade
+    ),
+  };
+}
+
+function getGaleriaEditorialConfig(value: unknown): GaleriaEditorialConfig {
+  const config = getConfigObject(value);
+  const layout = getConfigSubobject(config, "layout");
+  const fonte = getConfigSubobject(config, "fonte");
+  const hover = getConfigSubobject(config, "hover");
+  const design = getConfigSubobject(config, "design");
+  const itensRaw = Array.isArray(config.itens) ? config.itens : [];
+  const colunas = getNumberConfig(
+    layout,
+    "colunas",
+    GALERIA_EDITORIAL_FULL_BLEED_DEFAULT.layout.colunas
+  );
+  const fonteTipo = getStringConfig(fonte, "tipo");
+  const fonteOrdem = getStringConfig(fonte, "ordem");
+  const hoverTipo = getStringConfig(hover, "tipo");
+
+  return {
+    layout: {
+      colunas: colunas === 3 ? 3 : 4,
+      varianteAltura:
+        getStringConfig(layout, "varianteAltura") === "COMPACTA"
+          ? "COMPACTA"
+          : "PADRAO",
+      gap: getNumberConfig(layout, "gap", 8),
+      fullBleed: getBooleanConfig(layout, "fullBleed", true),
+      comportamentoMobile:
+        getStringConfig(layout, "comportamentoMobile") === "EMPILHADO"
+          ? "EMPILHADO"
+          : "CARROSSEL",
+    },
+    fonte: {
+      tipo: GALERIA_FONTE_PRESETS.some((preset) => preset.value === fonteTipo)
+        ? (fonteTipo as GaleriaEditorialConfig["fonte"]["tipo"])
+        : "MANUAL",
+      produtosIds: getArrayConfig(fonte, "produtosIds"),
+      colecaoId: getStringConfig(fonte, "colecaoId"),
+      colecaoSlug: getStringConfig(fonte, "colecaoSlug"),
+      campanhaId: getStringConfig(fonte, "campanhaId"),
+      incluirSugeridos: getBooleanConfig(fonte, "incluirSugeridos", false),
+      quantidade: getNumberConfig(fonte, "quantidade", colunas === 3 ? 3 : 4),
+      ordem: GALERIA_ORDEM_PRESETS.some((preset) => preset.value === fonteOrdem)
+        ? (fonteOrdem as GaleriaEditorialConfig["fonte"]["ordem"])
+        : "ORDEM_APROVADA",
+    },
+    itens:
+      itensRaw.length > 0
+        ? itensRaw.map((item, index) => getGaleriaEditorialItemConfig(item, index))
+        : GALERIA_EDITORIAL_FULL_BLEED_DEFAULT.itens.map((item) => ({
+            ...item,
+          })),
+    hover: {
+      tipo: GALERIA_HOVER_PRESETS.some((preset) => preset.value === hoverTipo)
+        ? (hoverTipo as GaleriaEditorialConfig["hover"]["tipo"])
+        : "ZOOM_LEVE",
+      intensidade: getNumberConfig(hover, "intensidade", 1),
+    },
+    design: {
+      fundo: getStringConfig(design, "fundo") || "#ffffff",
+      raio: getNumberConfig(design, "raio", 0),
+      espacamentoVertical: getNumberConfig(design, "espacamentoVertical", 0),
     },
   };
 }
@@ -8676,6 +8998,906 @@ function VitrineEditorialEditor({
   );
 }
 
+function GaleriaEditorialEditor({
+  estado,
+  categoriasDisponiveis,
+  paginasDisponiveis,
+  produtosDisponiveis,
+  colecoesInteligentes,
+  campanhasDisponiveis,
+  selectedItemId,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  categoriasDisponiveis: EditorVisualCategoria[];
+  paginasDisponiveis: EditorVisualPaginaLink[];
+  produtosDisponiveis: EditorVisualProduto[];
+  colecoesInteligentes: EditorVisualColecaoInteligente[];
+  campanhasDisponiveis: EditorVisualCampanhaComercial[];
+  selectedItemId?: string;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  const configGaleria = getGaleriaEditorialConfig(estado.bloco.configJson);
+  const [itemSelecionadoId, setItemSelecionadoId] = useState(
+    selectedItemId || configGaleria.itens[0]?.id || "galeria-1"
+  );
+  const itemSelecionado =
+    configGaleria.itens.find((item) => item.id === itemSelecionadoId) ||
+    configGaleria.itens[0] ||
+    criarGaleriaEditorialItemPadrao(1);
+  const previewBloco = {
+    ...estado.bloco,
+    configJson: configGaleria,
+  };
+  const recomendacao =
+    configGaleria.layout.colunas === 4
+      ? {
+          desktop: "Desktop recomendado: 1200 x 1600 px por imagem.",
+          mobile: "Mobile recomendado: 1080 x 1350 px.",
+        }
+      : {
+          desktop: "Desktop recomendado: 1400 x 1800 px por imagem.",
+          mobile: "Mobile recomendado: 1080 x 1350 px.",
+        };
+
+  function aplicarConfig(patch: Partial<GaleriaEditorialConfig>) {
+    onChange({
+      bloco: {
+        ...estado.bloco,
+        configJson: {
+          ...configGaleria,
+          ...patch,
+        },
+      },
+    });
+  }
+
+  function atualizarSecao<Key extends keyof GaleriaEditorialConfig>(
+    key: Key,
+    patch: Partial<GaleriaEditorialConfig[Key]>
+  ) {
+    aplicarConfig({
+      [key]: {
+        ...(configGaleria[key] as Record<string, unknown>),
+        ...patch,
+      },
+    } as Partial<GaleriaEditorialConfig>);
+  }
+
+  function atualizarItens(itens: GaleriaEditorialItemConfig[]) {
+    aplicarConfig({ itens });
+  }
+
+  function atualizarItem(
+    itemId: string,
+    patch: Partial<GaleriaEditorialItemConfig>
+  ) {
+    atualizarItens(
+      configGaleria.itens.map((item) =>
+        item.id === itemId ? { ...item, ...patch } : item
+      )
+    );
+  }
+
+  function garantirQuantidadeItens(quantidade: number) {
+    const itens = Array.from({ length: quantidade }, (_, index) => {
+      return configGaleria.itens[index] || criarGaleriaEditorialItemPadrao(index + 1);
+    });
+
+    aplicarConfig({
+      layout: {
+        ...configGaleria.layout,
+        colunas: quantidade === 3 ? 3 : 4,
+      },
+      fonte: {
+        ...configGaleria.fonte,
+        quantidade,
+      },
+      itens,
+    });
+  }
+
+  function produtoParaItem(produtoId: string, index: number) {
+    const produto = produtosDisponiveis.find((item) => item.id === produtoId);
+    const atual = configGaleria.itens[index] || criarGaleriaEditorialItemPadrao(index + 1);
+
+    return {
+      ...atual,
+      produtoId,
+      imagemDesktop: atual.imagemDesktop || produto?.imagemUrl || "",
+      imagemMobile: atual.imagemMobile || produto?.imagemUrl || "",
+      alt: atual.alt || produto?.nome || "",
+      titulo: atual.titulo || produto?.nome || "",
+      subtitulo: atual.subtitulo || produto?.categoria || "",
+      linkTipo: "PRODUTO" as const,
+      linkValor: produtoId,
+    };
+  }
+
+  function atualizarProdutosFonte(produtosIds: string[]) {
+    const quantidade = Math.max(configGaleria.layout.colunas, produtosIds.length);
+    const itens = Array.from({ length: quantidade }, (_, index) => {
+      const produtoId = produtosIds[index];
+      return produtoId
+        ? produtoParaItem(produtoId, index)
+        : configGaleria.itens[index] || criarGaleriaEditorialItemPadrao(index + 1);
+    });
+
+    aplicarConfig({
+      fonte: {
+        ...configGaleria.fonte,
+        produtosIds,
+        quantidade: Math.max(configGaleria.layout.colunas, produtosIds.length),
+      },
+      itens,
+    });
+  }
+
+  function selecionarLink(
+    itemId: string,
+    tipo: GaleriaEditorialLinkTipo,
+    valor: string
+  ) {
+    if (tipo === "PRODUTO") {
+      const produto = produtosDisponiveis.find((item) => item.id === valor);
+      atualizarItem(itemId, {
+        linkTipo: tipo,
+        linkValor: produto?.id || "",
+        produtoId: produto?.id || "",
+        titulo: produto?.nome || itemSelecionado.titulo,
+        subtitulo: produto?.categoria || itemSelecionado.subtitulo,
+        imagemDesktop: itemSelecionado.imagemDesktop || produto?.imagemUrl || "",
+        imagemMobile: itemSelecionado.imagemMobile || produto?.imagemUrl || "",
+        alt: itemSelecionado.alt || produto?.nome || "",
+      });
+      return;
+    }
+
+    if (tipo === "CATEGORIA") {
+      const categoria = getCategoriaResumo(valor, categoriasDisponiveis);
+      atualizarItem(itemId, {
+        linkTipo: tipo,
+        linkValor: categoria?.slug || "",
+        titulo: itemSelecionado.titulo || categoria?.nome || "",
+      });
+      return;
+    }
+
+    if (tipo === "PAGINA") {
+      const paginaSelecionada = getPaginaResumo(valor, paginasDisponiveis);
+      atualizarItem(itemId, {
+        linkTipo: tipo,
+        linkValor: paginaSelecionada?.slug || "",
+        titulo: itemSelecionado.titulo || paginaSelecionada?.titulo || "",
+      });
+      return;
+    }
+
+    if (tipo === "COLECAO") {
+      const colecao = colecoesInteligentes.find((item) => item.id === valor);
+      atualizarItem(itemId, {
+        linkTipo: tipo,
+        linkValor: colecao?.slug || "",
+        titulo: itemSelecionado.titulo || colecao?.nome || "",
+      });
+      return;
+    }
+
+    atualizarItem(itemId, {
+      linkTipo: tipo,
+      linkValor: valor,
+    });
+  }
+
+  return (
+    <div className="grid gap-5 px-6 py-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="space-y-5">
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Nome interno
+          </span>
+          <input
+            value={estado.nomeInterno}
+            onChange={(event) => onChange({ nomeInterno: event.target.value })}
+            placeholder="Ex: Galeria editorial campanha"
+            className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+          />
+        </label>
+
+        <PainelSecao title="Layout">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Quantidade de imagens
+              </span>
+              <select
+                value={configGaleria.layout.colunas}
+                onChange={(event) =>
+                  garantirQuantidadeItens(Number(event.target.value))
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {GALERIA_LAYOUT_COLUNAS_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Altura
+              </span>
+              <select
+                value={configGaleria.layout.varianteAltura}
+                onChange={(event) =>
+                  atualizarSecao("layout", {
+                    varianteAltura:
+                      event.target.value as GaleriaEditorialConfig["layout"]["varianteAltura"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {GALERIA_ALTURA_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Gap entre imagens ({configGaleria.layout.gap}px)
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={24}
+                value={configGaleria.layout.gap}
+                onChange={(event) =>
+                  atualizarSecao("layout", { gap: Number(event.target.value) })
+                }
+                className="w-full"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Mobile
+              </span>
+              <select
+                value={configGaleria.layout.comportamentoMobile}
+                onChange={(event) =>
+                  atualizarSecao("layout", {
+                    comportamentoMobile:
+                      event.target.value as GaleriaEditorialConfig["layout"]["comportamentoMobile"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {GALERIA_MOBILE_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <CampoToggle
+            checked={configGaleria.layout.fullBleed}
+            label="Full bleed"
+            description="Ocupa toda a largura útil da página, sem moldura pesada."
+            className="mt-4"
+            onChange={(checked) => atualizarSecao("layout", { fullBleed: checked })}
+          />
+        </PainelSecao>
+
+        <PainelSecao title="Fonte">
+          <div className="space-y-4">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Origem do conteúdo
+              </span>
+              <select
+                value={configGaleria.fonte.tipo}
+                onChange={(event) =>
+                  atualizarSecao("fonte", {
+                    tipo: event.target.value as GaleriaEditorialConfig["fonte"]["tipo"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {GALERIA_FONTE_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {configGaleria.fonte.tipo === "PRODUTOS" && (
+              <div className="space-y-3">
+                <p className="text-sm leading-6 text-slate-500">
+                  Escolha produtos; a galeria usa a imagem principal e linka para o produto. Você ainda pode sobrescrever cada item abaixo.
+                </p>
+                <div className="grid max-h-72 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
+                  {produtosDisponiveis.map((produto) => {
+                    const checked = configGaleria.fonte.produtosIds.includes(produto.id);
+                    return (
+                      <label
+                        key={produto.id}
+                        className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            const next = event.target.checked
+                              ? [...configGaleria.fonte.produtosIds, produto.id]
+                              : configGaleria.fonte.produtosIds.filter(
+                                  (id) => id !== produto.id
+                                );
+                            atualizarProdutosFonte(next.slice(0, 8));
+                          }}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
+                        <span className="min-w-0 truncate">
+                          {produto.codigoInterno} · {produto.nome}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {configGaleria.fonte.tipo === "COLECAO_INTELIGENTE" && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Coleção
+                  </span>
+                  <select
+                    value={configGaleria.fonte.colecaoId}
+                    onChange={(event) => {
+                      const colecao = colecoesInteligentes.find(
+                        (item) => item.id === event.target.value
+                      );
+                      const produtosIds = colecao
+                        ? [
+                            ...colecao.produtoIdsAprovados,
+                            ...(configGaleria.fonte.incluirSugeridos
+                              ? colecao.produtoIdsSugeridos
+                              : []),
+                          ]
+                        : [];
+                      atualizarSecao("fonte", {
+                        colecaoId: colecao?.id || "",
+                        colecaoSlug: colecao?.slug || "",
+                        produtosIds: produtosIds.slice(0, 8),
+                      });
+                    }}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    <option value="">Selecione uma coleção</option>
+                    {colecoesInteligentes
+                      .filter((colecao) => colecao.status !== "ARQUIVADA")
+                      .map((colecao) => (
+                        <option key={colecao.id} value={colecao.id}>
+                          {colecao.nome} ({colecao.produtosAprovados} aprovados)
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Ordem
+                  </span>
+                  <select
+                    value={configGaleria.fonte.ordem}
+                    onChange={(event) =>
+                      atualizarSecao("fonte", {
+                        ordem:
+                          event.target.value as GaleriaEditorialConfig["fonte"]["ordem"],
+                      })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {GALERIA_ORDEM_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <CampoToggle
+                  checked={configGaleria.fonte.incluirSugeridos}
+                  label="Incluir sugeridos"
+                  description="Por padrão entram apenas produtos aprovados da coleção ativa."
+                  className="md:col-span-2"
+                  onChange={(checked) => {
+                    const colecao = colecoesInteligentes.find(
+                      (item) => item.id === configGaleria.fonte.colecaoId
+                    );
+                    const produtosIds = colecao
+                      ? [
+                          ...colecao.produtoIdsAprovados,
+                          ...(checked ? colecao.produtoIdsSugeridos : []),
+                        ]
+                      : configGaleria.fonte.produtosIds;
+
+                    atualizarSecao("fonte", {
+                      incluirSugeridos: checked,
+                      produtosIds: produtosIds.slice(0, 8),
+                    });
+                  }}
+                />
+              </div>
+            )}
+
+            {configGaleria.fonte.tipo === "CAMPANHA" && (
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  Campanha
+                </span>
+                <select
+                  value={configGaleria.fonte.campanhaId}
+                  onChange={(event) => {
+                    const campanha = campanhasDisponiveis.find(
+                      (item) => item.id === event.target.value
+                    );
+                    atualizarSecao("fonte", {
+                      campanhaId: campanha?.id || "",
+                      produtosIds: campanha?.produtoIds.slice(0, 8) || [],
+                    });
+                  }}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                >
+                  <option value="">Selecione uma campanha</option>
+                  {campanhasDisponiveis.map((campanha) => (
+                    <option key={campanha.id} value={campanha.id}>
+                      {campanha.codigo} · {campanha.titulo} ({campanha.status})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        </PainelSecao>
+
+        <PainelSecao title="Itens">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-900">
+              <p className="font-semibold">Recomendações de imagem</p>
+              <p>{recomendacao.desktop}</p>
+              <p>{recomendacao.mobile}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {configGaleria.itens.slice(0, configGaleria.layout.colunas).map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setItemSelecionadoId(item.id)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
+                    itemSelecionado.id === item.id
+                      ? "bg-slate-950 text-white ring-slate-950"
+                      : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  Imagem {index + 1}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadMidiaCampo
+                  label="Imagem desktop"
+                  value={itemSelecionado.imagemDesktop}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) =>
+                    atualizarItem(itemSelecionado.id, { imagemDesktop: url })
+                  }
+                  orientacao={recomendacao.desktop}
+                />
+                <UploadMidiaCampo
+                  label="Imagem mobile"
+                  value={itemSelecionado.imagemMobile}
+                  tipoMidia="IMAGEM"
+                  onChange={(url) =>
+                    atualizarItem(itemSelecionado.id, { imagemMobile: url })
+                  }
+                  orientacao={`${recomendacao.mobile} Opcional; vazio usa desktop.`}
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Alt text
+                  </span>
+                  <input
+                    value={itemSelecionado.alt}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, { alt: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Produto base opcional
+                  </span>
+                  <select
+                    value={itemSelecionado.produtoId}
+                    onChange={(event) => {
+                      const produto = produtosDisponiveis.find(
+                        (item) => item.id === event.target.value
+                      );
+                      atualizarItem(itemSelecionado.id, {
+                        ...produtoParaItem(event.target.value, 0),
+                        id: itemSelecionado.id,
+                        imagemDesktop:
+                          itemSelecionado.imagemDesktop || produto?.imagemUrl || "",
+                        imagemMobile:
+                          itemSelecionado.imagemMobile || produto?.imagemUrl || "",
+                      });
+                    }}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    <option value="">Sem produto base</option>
+                    {produtosDisponiveis.map((produto) => (
+                      <option key={produto.id} value={produto.id}>
+                        {produto.codigoInterno} · {produto.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                {[
+                  ["focoX", "Foco X", 0, 100],
+                  ["focoY", "Foco Y", 0, 100],
+                  ["zoom", "Zoom", 100, 150],
+                  ["overlayOpacidade", "Overlay", 0, 70],
+                ].map(([key, label, min, max]) => (
+                  <label key={String(key)}>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      {label}
+                    </span>
+                    <input
+                      type="range"
+                      min={Number(min)}
+                      max={Number(max)}
+                      value={Number(itemSelecionado[key as keyof GaleriaEditorialItemConfig])}
+                      onChange={(event) =>
+                        atualizarItem(itemSelecionado.id, {
+                          [key as string]: Number(event.target.value),
+                        } as Partial<GaleriaEditorialItemConfig>)
+                      }
+                      className="w-full"
+                    />
+                  </label>
+                ))}
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      atualizarItem(itemSelecionado.id, {
+                        focoX: 50,
+                        focoY: 50,
+                        zoom: 100,
+                      })
+                    }
+                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Resetar crop
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Título
+                  </span>
+                  <input
+                    value={itemSelecionado.titulo}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, { titulo: event.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Subtítulo
+                  </span>
+                  <input
+                    value={itemSelecionado.subtitulo}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, {
+                        subtitulo: event.target.value,
+                      })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Posição do texto
+                  </span>
+                  <select
+                    value={itemSelecionado.posicaoTexto}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, {
+                        posicaoTexto:
+                          event.target.value as GaleriaEditorialItemConfig["posicaoTexto"],
+                      })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {GALERIA_TEXTO_POSICAO_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Texto do botão
+                  </span>
+                  <input
+                    value={itemSelecionado.botaoTexto}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, {
+                        botaoTexto: event.target.value,
+                      })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <CampoToggle
+                  checked={itemSelecionado.mostrarTexto}
+                  label="Mostrar texto"
+                  onChange={(checked) =>
+                    atualizarItem(itemSelecionado.id, { mostrarTexto: checked })
+                  }
+                />
+                <CampoToggle
+                  checked={itemSelecionado.mostrarBotao}
+                  label="Mostrar botão"
+                  onChange={(checked) =>
+                    atualizarItem(itemSelecionado.id, { mostrarBotao: checked })
+                  }
+                />
+                <CampoToggle
+                  checked={itemSelecionado.botaoApenasHover}
+                  label="Botão só no hover"
+                  onChange={(checked) =>
+                    atualizarItem(itemSelecionado.id, {
+                      botaoApenasHover: checked,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    Tipo de link
+                  </span>
+                  <select
+                    value={itemSelecionado.linkTipo}
+                    onChange={(event) =>
+                      atualizarItem(itemSelecionado.id, {
+                        linkTipo: event.target.value as GaleriaEditorialLinkTipo,
+                        linkValor: event.target.value === "URL" ? itemSelecionado.linkValor : "",
+                      })
+                    }
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  >
+                    {GALERIA_LINK_TIPO_PRESETS.map((preset) => (
+                      <option key={preset.value} value={preset.value}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {itemSelecionado.linkTipo === "URL" ? (
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      URL
+                    </span>
+                    <input
+                      value={itemSelecionado.linkValor}
+                      onChange={(event) =>
+                        selecionarLink(itemSelecionado.id, "URL", event.target.value)
+                      }
+                      placeholder="/loja/categoria/aneis ou https://..."
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    />
+                  </label>
+                ) : (
+                  <label>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">
+                      Destino
+                    </span>
+                    <select
+                      value=""
+                      onChange={(event) =>
+                        selecionarLink(
+                          itemSelecionado.id,
+                          itemSelecionado.linkTipo,
+                          event.target.value
+                        )
+                      }
+                      className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    >
+                      <option value="">
+                        {itemSelecionado.linkValor
+                          ? `Selecionado: ${itemSelecionado.linkValor}`
+                          : "Selecione o destino"}
+                      </option>
+                      {itemSelecionado.linkTipo === "PRODUTO" &&
+                        produtosDisponiveis.map((produto) => (
+                          <option key={produto.id} value={produto.id}>
+                            {produto.codigoInterno} · {produto.nome}
+                          </option>
+                        ))}
+                      {itemSelecionado.linkTipo === "CATEGORIA" &&
+                        categoriasDisponiveis.map((categoria) => (
+                          <option key={categoria.id} value={categoria.id}>
+                            {categoria.caminho}
+                          </option>
+                        ))}
+                      {itemSelecionado.linkTipo === "PAGINA" &&
+                        paginasDisponiveis.map((pagina) => (
+                          <option key={pagina.id} value={pagina.id}>
+                            {pagina.titulo}
+                          </option>
+                        ))}
+                      {itemSelecionado.linkTipo === "COLECAO" &&
+                        colecoesInteligentes.map((colecao) => (
+                          <option key={colecao.id} value={colecao.id}>
+                            {colecao.nome}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </PainelSecao>
+
+        <PainelSecao title="Hover e design">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Hover
+              </span>
+              <select
+                value={configGaleria.hover.tipo}
+                onChange={(event) =>
+                  atualizarSecao("hover", {
+                    tipo:
+                      event.target.value as GaleriaEditorialConfig["hover"]["tipo"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {GALERIA_HOVER_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Intensidade
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.1}
+                value={configGaleria.hover.intensidade}
+                onChange={(event) =>
+                  atualizarSecao("hover", {
+                    intensidade: Number(event.target.value),
+                  })
+                }
+                className="w-full"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Fundo
+              </span>
+              <input
+                type="color"
+                value={configGaleria.design.fundo}
+                onChange={(event) =>
+                  atualizarSecao("design", { fundo: event.target.value })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Raio ({configGaleria.design.raio}px)
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={24}
+                value={configGaleria.design.raio}
+                onChange={(event) =>
+                  atualizarSecao("design", { raio: Number(event.target.value) })
+                }
+                className="w-full"
+              />
+            </label>
+
+            <label className="md:col-span-2">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Espaçamento vertical ({configGaleria.design.espacamentoVertical}px)
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={96}
+                value={configGaleria.design.espacamentoVertical}
+                onChange={(event) =>
+                  atualizarSecao("design", {
+                    espacamentoVertical: Number(event.target.value),
+                  })
+                }
+                className="w-full"
+              />
+            </label>
+          </div>
+        </PainelSecao>
+      </div>
+
+      <aside className="h-fit rounded-3xl border border-slate-200 bg-slate-50 p-4 xl:sticky xl:top-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Preview
+        </p>
+        <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <GaleriaEditorialFullBleedPublico
+            bloco={previewBloco}
+            produtos={toBannerProdutosPublicos(produtosDisponiveis)}
+            modo="editor"
+          />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function HeroEditorialPngEditor({
   estado,
   categoriasDisponiveis,
@@ -9360,6 +10582,8 @@ function EditorConteudoBlocoModal({
   paginasDisponiveis,
   produtosDisponiveis,
   colecoesInteligentes,
+  campanhasDisponiveis,
+  selectedGalleryItemId,
   onChange,
   onClose,
   onSave,
@@ -9371,6 +10595,8 @@ function EditorConteudoBlocoModal({
   paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
   colecoesInteligentes: EditorVisualColecaoInteligente[];
+  campanhasDisponiveis: EditorVisualCampanhaComercial[];
+  selectedGalleryItemId?: string;
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onClose: () => void;
   onSave: () => void;
@@ -9395,6 +10621,7 @@ function EditorConteudoBlocoModal({
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
   const isHeroEditorialPng = isHeroEditorialPngTipo(estado.bloco.tipo);
+  const isGaleriaEditorial = isGaleriaEditorialTipo(estado.bloco.tipo);
   const isVitrineEditorial = isVitrineEditorialTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
   const modeloBannerInfo = getBannerModeloEditorInfo(estado.modeloBanner);
@@ -9575,7 +10802,7 @@ function EditorConteudoBlocoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div
         className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
-          isBanner || isHeroEditorialPng || isVitrineEditorial
+          isBanner || isHeroEditorialPng || isGaleriaEditorial || isVitrineEditorial
             ? "max-w-[min(96vw,1760px)]"
             : "max-w-3xl"
         }`}
@@ -9603,11 +10830,13 @@ function EditorConteudoBlocoModal({
                         ? "Configure mosaicos editoriais com coleções, categorias, mídia e links."
                         : isHeroEditorialPng
                           ? "Configure texto gigante, PNG frontal, variações responsivas, CTA e animações sutis."
-                          : isVitrineEditorial
-                            ? "Configure imagens grandes com links para categorias, páginas ou campanhas."
-                            : isCta
-                              ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
-                              : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
+                          : isGaleriaEditorial
+                            ? "Configure imagens editoriais full bleed, fontes dinâmicas, texto, botões e hover."
+                            : isVitrineEditorial
+                              ? "Configure imagens grandes com links para categorias, páginas ou campanhas."
+                              : isCta
+                                ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
+                                : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -10874,6 +12103,17 @@ function EditorConteudoBlocoModal({
             paginasDisponiveis={paginasDisponiveis}
             produtosDisponiveis={produtosDisponiveis}
             colecoesInteligentes={colecoesInteligentes}
+            onChange={onChange}
+          />
+        ) : isGaleriaEditorial ? (
+          <GaleriaEditorialEditor
+            estado={estado}
+            categoriasDisponiveis={categoriasDisponiveis}
+            paginasDisponiveis={paginasDisponiveis}
+            produtosDisponiveis={produtosDisponiveis}
+            colecoesInteligentes={colecoesInteligentes}
+            campanhasDisponiveis={campanhasDisponiveis}
+            selectedItemId={selectedGalleryItemId}
             onChange={onChange}
           />
         ) : isVitrineEditorial ? (
@@ -12366,6 +13606,7 @@ export default function EditorVisualPaginaClient({
   paginasDisponiveis,
   produtosDisponiveis,
   colecoesInteligentes,
+  campanhasDisponiveis,
 }: EditorVisualPaginaClientProps) {
   const [isPending] = useTransition();
   const [erro, setErro] = useState("");
@@ -12401,6 +13642,7 @@ export default function EditorVisualPaginaClient({
   const [modoPreviewPublico, setModoPreviewPublico] = useState(false);
   const [selectionContext, setSelectionContext] =
     useState<EditorSelectionContext>("BLOCO");
+  const [selectedGalleryItemId, setSelectedGalleryItemId] = useState("");
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
 
   const blocoSelecionado =
@@ -12410,10 +13652,12 @@ export default function EditorVisualPaginaClient({
 
   function selecionarBloco(
     blocoId: string,
-    context: EditorSelectionContext = "BLOCO"
+    context: EditorSelectionContext = "BLOCO",
+    itemId = ""
   ) {
     setBlocoSelecionadoId(blocoId);
     setSelectionContext(context);
+    setSelectedGalleryItemId(itemId);
     setModoPreviewPublico(false);
   }
 
@@ -12454,6 +13698,7 @@ export default function EditorVisualPaginaClient({
         pageId?: string;
         blockId?: string;
         context?: EditorSelectionContext;
+        itemId?: string;
       }>
     ) {
       if (event.origin !== window.location.origin) return;
@@ -12471,7 +13716,7 @@ export default function EditorVisualPaginaClient({
         data.type === "STELLA_BUILDER_STUDIO_SELECT" &&
         data.blockId
       ) {
-        selecionarBloco(data.blockId, data.context || "BLOCO");
+        selecionarBloco(data.blockId, data.context || "BLOCO", data.itemId || "");
         setPainelAberto(true);
       }
     }
@@ -13249,6 +14494,7 @@ export default function EditorVisualPaginaClient({
   }) {
     const usaConfigDireto =
       isHeroEditorialPngTipo(blocoAtual.tipo) ||
+      isGaleriaEditorialTipo(blocoAtual.tipo) ||
       isVitrineEditorialTipo(blocoAtual.tipo);
     const configAtual = getConfigObject(
       usaConfigDireto ? estado.bloco.configJson : blocoAtual.configJson
@@ -13583,6 +14829,7 @@ export default function EditorVisualPaginaClient({
     const blocoAtual = getBlocoEditorAtual(editando.bloco.id) || editando.bloco;
     const usaConfigDireto =
       isHeroEditorialPngTipo(blocoAtual.tipo) ||
+      isGaleriaEditorialTipo(blocoAtual.tipo) ||
       isVitrineEditorialTipo(blocoAtual.tipo);
 
     if (usaConfigDireto) {
@@ -14486,6 +15733,8 @@ export default function EditorVisualPaginaClient({
         paginasDisponiveis={paginasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
         colecoesInteligentes={colecoesInteligentes}
+        campanhasDisponiveis={campanhasDisponiveis}
+        selectedGalleryItemId={selectedGalleryItemId}
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}
         onSave={() => void salvarEdicaoBloco()}

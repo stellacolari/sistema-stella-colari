@@ -26,6 +26,20 @@ type StudioDraftMessage = {
   selectedBlockId?: string;
 };
 
+function getGalleryItemId(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return "";
+  }
+
+  const item = target.closest("[data-stella-editorial-gallery-item-id]");
+
+  if (!(item instanceof HTMLElement)) {
+    return "";
+  }
+
+  return item.dataset.stellaEditorialGalleryItemId || "";
+}
+
 function getSelectionContext(target: EventTarget | null): StudioSelectionContext {
   if (!(target instanceof HTMLElement)) {
     return "BLOCO";
@@ -136,6 +150,7 @@ export default function LojaPreviewPaginaClient({
 
       const handleClick = (event: MouseEvent) => {
         const context = getSelectionContext(event.target);
+        const itemId = getGalleryItemId(event.target);
 
         event.preventDefault();
         event.stopPropagation();
@@ -146,6 +161,7 @@ export default function LojaPreviewPaginaClient({
             pageId,
             blockId: bloco.id,
             context,
+            itemId,
           },
           window.location.origin
         );

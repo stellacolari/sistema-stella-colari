@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import EditorVisualPaginaClient, {
   type EditorVisualBloco,
   type EditorVisualCategoria,
+  type EditorVisualCampanhaComercial,
   type EditorVisualColecaoInteligente,
   type EditorVisualPagina,
   type EditorVisualPaginaLink,
@@ -91,10 +92,29 @@ function coletarIdsCategoriaComFilhas(
   return Array.from(ids);
 }
 
+function extrairProdutoIdsCampanha(produtoId: string | null, produtosJson: Prisma.JsonValue) {
+  const ids = new Set<string>();
+
+  if (produtoId) {
+    ids.add(produtoId);
+  }
+
+  if (Array.isArray(produtosJson)) {
+    for (const item of produtosJson) {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        const id = String((item as Record<string, unknown>).produtoId || "");
+        if (id) ids.add(id);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
 export default async function EditorVisualPaginaPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [paginaRaw, categoriasRaw, paginasBuilderRaw, colecoesRaw] = await Promise.all([
+  const [paginaRaw, categoriasRaw, paginasBuilderRaw, colecoesRaw, campanhasRaw] = await Promise.all([
     prisma.lojaPagina.findUnique({
       where: { id },
       include: {
@@ -163,8 +183,39 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
             },
           },
         },
+        produtos: {
+          where: {
+            status: {
+              in: ["APROVADO", "SUGERIDO"],
+            },
+          },
+          select: {
+            produtoId: true,
+            status: true,
+            ordem: true,
+          },
+          orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        },
       },
       orderBy: [{ status: "asc" }, { nome: "asc" }],
+    }),
+
+    prisma.campanhaComercial.findMany({
+      where: {
+        status: {
+          in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"],
+        },
+      },
+      select: {
+        id: true,
+        codigo: true,
+        titulo: true,
+        status: true,
+        produtoId: true,
+        produtosJson: true,
+      },
+      orderBy: [{ atualizadoEm: "desc" }],
+      take: 80,
     }),
   ]);
 
@@ -287,6 +338,24 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
       tipo: colecao.tipo,
       status: colecao.status,
       produtosAprovados: colecao._count.produtos,
+      produtoIdsAprovados: colecao.produtos
+        .filter((produto) => produto.status === "APROVADO")
+        .map((produto) => produto.produtoId),
+      produtoIdsSugeridos: colecao.produtos
+        .filter((produto) => produto.status === "SUGERIDO")
+        .map((produto) => produto.produtoId),
+    }));
+
+  const campanhasDisponiveis: EditorVisualCampanhaComercial[] =
+    campanhasRaw.map((campanha) => ({
+      id: campanha.id,
+      codigo: campanha.codigo,
+      titulo: campanha.titulo,
+      status: campanha.status,
+      produtoIds: extrairProdutoIdsCampanha(
+        campanha.produtoId,
+        campanha.produtosJson
+      ),
     }));
 
   return (
@@ -297,6 +366,7 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
       paginasDisponiveis={paginasDisponiveis}
       produtosDisponiveis={produtosDisponiveis}
       colecoesInteligentes={colecoesInteligentes}
+      campanhasDisponiveis={campanhasDisponiveis}
     />
   );
 }

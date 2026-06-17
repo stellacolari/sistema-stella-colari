@@ -409,13 +409,105 @@ export async function listarProdutosColecao(colecaoId: string) {
   });
 }
 
+function getConfigObject(value: unknown): Record<string, unknown> {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function getStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function extrairProdutoIdsDeJson(value: unknown) {
+  const ids: string[] = [];
+
+  if (!Array.isArray(value)) return ids;
+
+  for (const item of value) {
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      const produtoId = String((item as Record<string, unknown>).produtoId || "");
+      if (produtoId) ids.push(produtoId);
+    }
+  }
+
+  return ids;
+}
+
+async function resolverFonteCampanhaBuilder({
+  campanhaId,
+  produtosIds,
+  limite,
+}: {
+  campanhaId: string;
+  produtosIds: string[];
+  limite: number;
+}) {
+  if (produtosIds.length > 0) {
+    return produtosIds.slice(0, limite);
+  }
+
+  if (!campanhaId) return [];
+
+  const campanha = await prisma.campanhaComercial.findFirst({
+    where: {
+      id: campanhaId,
+      status: { in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"] },
+    },
+    select: {
+      produtoId: true,
+      produtosJson: true,
+    },
+  });
+
+  if (!campanha) return [];
+
+  return [
+    ...(campanha.produtoId ? [campanha.produtoId] : []),
+    ...extrairProdutoIdsDeJson(campanha.produtosJson),
+  ].slice(0, limite);
+}
+
 export async function resolverFonteProdutosBuilder(config: Record<string, unknown>) {
-  if (String(config.fonte || "") !== "COLECAO_INTELIGENTE") return [];
-  const colecaoId = String(config.colecaoInteligenteId || "");
-  const colecaoSlug = String(config.colecaoInteligenteSlug || "");
-  const incluirSugeridos = config.incluirSugeridosColecao === true;
-  const ordenacao = String(config.ordenacaoColecao || "ORDEM_APROVADA");
-  const limite = Math.max(1, Math.min(24, Number(config.limite || 12)));
+  const fonteConfig = getConfigObject(config.fonte);
+  const fonteAninhada = String(fonteConfig.tipo || "");
+  const fonte = fonteAninhada || String(config.fonte || "");
+  const limite = Math.max(
+    1,
+    Math.min(24, Number(fonteConfig.quantidade || config.limite || 12)),
+  );
+
+  if (fonte === "CAMPANHA") {
+    return resolverFonteCampanhaBuilder({
+      campanhaId: String(fonteConfig.campanhaId || config.campanhaId || ""),
+      produtosIds: getStringArray(fonteConfig.produtosIds || config.produtosIds),
+      limite,
+    });
+  }
+
+  if (fonte !== "COLECAO_INTELIGENTE") return [];
+
+  const colecaoId = String(
+    fonteConfig.colecaoId || config.colecaoInteligenteId || ""
+  );
+  const colecaoSlug = String(
+    fonteConfig.colecaoSlug || config.colecaoInteligenteSlug || ""
+  );
+  const incluirSugeridos =
+    fonteConfig.incluirSugeridos === true || config.incluirSugeridosColecao === true;
+  const ordenacao = String(
+    fonteConfig.ordem || config.ordenacaoColecao || "ORDEM_APROVADA"
+  );
+  const ordenacaoNormalizada =
+    ordenacao === "SCORE"
+      ? "MAIOR_SCORE"
+      : ordenacao === "RECENTES"
+        ? "MAIS_RECENTES"
+        : ordenacao;
 
   const colecao = await prisma.colecaoInteligente.findFirst({
     where: {
@@ -439,8 +531,8 @@ export async function resolverFonteProdutosBuilder(config: Record<string, unknow
 
   if (!colecao) return [];
   const itens = [...colecao.produtos].sort((a, b) => {
-    if (ordenacao === "MAIOR_SCORE") return b.score - a.score;
-    if (ordenacao === "MAIS_RECENTES") return b.produto.criadoEm.getTime() - a.produto.criadoEm.getTime();
+    if (ordenacaoNormalizada === "MAIOR_SCORE") return b.score - a.score;
+    if (ordenacaoNormalizada === "MAIS_RECENTES") return b.produto.criadoEm.getTime() - a.produto.criadoEm.getTime();
     return Number(b.fixado) - Number(a.fixado) || a.ordem - b.ordem || b.score - a.score;
   });
 
@@ -453,15 +545,32 @@ export async function aplicarColecoesEmBlocosBuilder<T extends { configJson: unk
       const config = typeof bloco.configJson === "object" && bloco.configJson !== null && !Array.isArray(bloco.configJson)
         ? (bloco.configJson as Record<string, unknown>)
         : {};
-      if (config.fonte !== "COLECAO_INTELIGENTE") return bloco;
+      const fonteConfig = getConfigObject(config.fonte);
+      const fonte = String(fonteConfig.tipo || config.fonte || "");
+
+      if (!["COLECAO_INTELIGENTE", "CAMPANHA"].includes(fonte)) return bloco;
+
       const produtosIds = await resolverFonteProdutosBuilder(config);
+      const configResolvido =
+        fonteConfig.tipo === fonte
+          ? {
+              ...config,
+              fonte: {
+                ...fonteConfig,
+                produtosIds,
+              },
+              produtosIds,
+              fonteResolvida: fonte,
+            }
+          : {
+              ...config,
+              produtosIds,
+              fonteResolvida: fonte,
+            };
+
       return {
         ...bloco,
-        configJson: {
-          ...config,
-          produtosIds,
-          fonteResolvida: "COLECAO_INTELIGENTE",
-        },
+        configJson: configResolvido,
       };
     }),
   );
