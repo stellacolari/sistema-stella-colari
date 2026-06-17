@@ -5,7 +5,7 @@ export type RichTextCssPreset = {
 };
 
 export const RICH_TEXT_FONT_PRESETS: RichTextCssPreset[] = [
-  { value: "PADRAO", label: "Padrão", css: "var(--font-primary)" },
+  { value: "PADRAO", label: "Fonte do tema", css: "var(--font-primary)" },
   { value: "SERIF_ELEGANTE", label: "Serif", css: "Georgia, 'Times New Roman', serif" },
   { value: "SANS_CLEAN", label: "Sans", css: "var(--font-primary)" },
   { value: "DISPLAY_LUXO", label: "Display", css: "Georgia, 'Times New Roman', serif" },
@@ -13,24 +13,24 @@ export const RICH_TEXT_FONT_PRESETS: RichTextCssPreset[] = [
 ];
 
 export const RICH_TEXT_SIZE_PRESETS: RichTextCssPreset[] = [
-  { value: "PP", label: "PP", css: "0.75rem" },
-  { value: "P", label: "P", css: "0.875rem" },
-  { value: "M", label: "M", css: "1rem" },
-  { value: "G", label: "G", css: "1.5rem" },
-  { value: "GG", label: "GG", css: "2.25rem" },
-  { value: "XG", label: "XG", css: "3rem" },
+  { value: "PP", label: "Micro", css: "0.75rem" },
+  { value: "P", label: "Pequeno", css: "0.875rem" },
+  { value: "M", label: "Médio", css: "1rem" },
+  { value: "G", label: "Grande", css: "1.5rem" },
+  { value: "GG", label: "Editorial", css: "2.25rem" },
+  { value: "XG", label: "Editorial amplo", css: "3rem" },
 ];
 
 export const RICH_TEXT_WEIGHT_PRESETS: RichTextCssPreset[] = [
-  { value: "LIGHT", label: "Light", css: "300" },
+  { value: "LIGHT", label: "Leve", css: "300" },
   { value: "REGULAR", label: "Regular", css: "400" },
-  { value: "MEDIUM", label: "Medium", css: "500" },
+  { value: "MEDIUM", label: "Médio", css: "500" },
   { value: "SEMIBOLD", label: "Semibold", css: "600" },
   { value: "BOLD", label: "Bold", css: "700" },
 ];
 
 export const RICH_TEXT_COLOR_PRESETS: RichTextCssPreset[] = [
-  { value: "PADRAO", label: "Padrão", css: "inherit" },
+  { value: "PADRAO", label: "Cor herdada", css: "inherit" },
   { value: "PRETO", label: "Preto", css: "#0f172a" },
   { value: "BRANCO", label: "Branco", css: "#ffffff" },
   { value: "CINZA", label: "Cinza", css: "#64748b" },
@@ -39,23 +39,23 @@ export const RICH_TEXT_COLOR_PRESETS: RichTextCssPreset[] = [
 ];
 
 export const RICH_TEXT_LETTER_SPACING_PRESETS: RichTextCssPreset[] = [
-  { value: "NORMAL", label: "Normal", css: "0" },
+  { value: "NORMAL", label: "Sem espaçamento", css: "0" },
   { value: "LEVE", label: "Leve", css: "0.02em" },
   { value: "MEDIO", label: "Médio", css: "0.08em" },
   { value: "ALTO", label: "Alto", css: "0.14em" },
 ];
 
 export const RICH_TEXT_LINE_HEIGHT_PRESETS: RichTextCssPreset[] = [
-  { value: "COMPACTO", label: "Linha compacta", css: "1" },
-  { value: "NORMAL", label: "Linha normal", css: "1.15" },
-  { value: "RESPIRADO", label: "Linha respirada", css: "1.35" },
-  { value: "AMPLO", label: "Linha ampla", css: "1.6" },
+  { value: "COMPACTO", label: "Compacta", css: "1" },
+  { value: "NORMAL", label: "Normal", css: "1.15" },
+  { value: "RESPIRADO", label: "Aberta", css: "1.35" },
+  { value: "AMPLO", label: "Ampla", css: "1.6" },
 ];
 
 export const RICH_TEXT_PARAGRAPH_SPACING_PRESETS: RichTextCssPreset[] = [
   { value: "NENHUM", label: "Parágrafo sem espaço", css: "0" },
   { value: "PEQUENO", label: "Parágrafo pequeno", css: "0.35em" },
-  { value: "PADRAO", label: "Parágrafo padrão", css: "0.65em" },
+  { value: "PADRAO", label: "Parágrafo médio", css: "0.65em" },
   { value: "GRANDE", label: "Parágrafo grande", css: "1em" },
 ];
 

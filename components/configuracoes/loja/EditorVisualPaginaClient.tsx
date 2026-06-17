@@ -8,7 +8,14 @@ import type {
   MouseEvent as ReactMouseEvent,
   ReactNode,
 } from "react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -5327,6 +5334,9 @@ function RenderBlocoPreview({
     </section>
   );
 }
+
+void PreviewShell;
+void RenderBlocoPreview;
 
 function ColecoesCategoriasModalFields({
   estado,
@@ -11382,9 +11392,12 @@ export default function EditorVisualPaginaClient({
   const [modoPreviewPublico, setModoPreviewPublico] = useState(false);
   const [selectionContext, setSelectionContext] =
     useState<EditorSelectionContext>("BLOCO");
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
 
   const blocoSelecionado =
     blocosOrdenados.find((bloco) => bloco.id === blocoSelecionadoId) || null;
+  const previewStudioMode = modoPreviewPublico ? "visualizar" : "1";
+  const previewIframeSrc = `/loja/preview/pagina/${pagina.id}?studio=${previewStudioMode}`;
 
   function selecionarBloco(
     blocoId: string,
@@ -11406,6 +11419,58 @@ export default function EditorVisualPaginaClient({
       return next;
     });
   }
+
+  const enviarDraftParaPreview = useCallback(() => {
+    previewIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "STELLA_BUILDER_STUDIO_DRAFT",
+        pageId: pagina.id,
+        blocos: blocosOrdenados,
+        selectedBlockId: blocoSelecionadoId,
+      },
+      window.location.origin
+    );
+  }, [blocoSelecionadoId, blocosOrdenados, pagina.id]);
+
+  useEffect(() => {
+    if (modoPreviewPublico) return;
+
+    enviarDraftParaPreview();
+  }, [enviarDraftParaPreview, modoPreviewPublico]);
+
+  useEffect(() => {
+    function handlePreviewMessage(
+      event: MessageEvent<{
+        type?: string;
+        pageId?: string;
+        blockId?: string;
+        context?: EditorSelectionContext;
+      }>
+    ) {
+      if (event.origin !== window.location.origin) return;
+
+      const data = event.data;
+
+      if (!data || data.pageId !== pagina.id) return;
+
+      if (data.type === "STELLA_BUILDER_STUDIO_READY") {
+        enviarDraftParaPreview();
+        return;
+      }
+
+      if (
+        data.type === "STELLA_BUILDER_STUDIO_SELECT" &&
+        data.blockId
+      ) {
+        selecionarBloco(data.blockId, data.context || "BLOCO");
+        setPainelAberto(true);
+      }
+    }
+
+    window.addEventListener("message", handlePreviewMessage);
+
+    return () => window.removeEventListener("message", handlePreviewMessage);
+  }, [enviarDraftParaPreview, pagina.id]);
 
   function getBlocoEditorAtual(blocoId: string) {
     return blocosEditor.find((bloco) => bloco.id === blocoId) || null;
@@ -12602,6 +12667,10 @@ export default function EditorVisualPaginaClient({
     }
   }
 
+  void atualizarTextoInline;
+  void atualizarCardInline;
+  void atualizarColecaoItemInline;
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-slate-100 text-slate-900">
       <header className="z-30 flex min-h-16 items-center gap-3 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4">
@@ -12817,41 +12886,33 @@ export default function EditorVisualPaginaClient({
 
         <main className="min-w-0 flex-1 overflow-auto bg-slate-100">
           <div className="min-h-full w-max p-4 sm:p-6">
-            <PreviewShell device={device} previewPublico={modoPreviewPublico}>
-              {blocosOrdenados.map((bloco) => (
-                <RenderBlocoPreview
-                  key={bloco.id}
-                  bloco={bloco}
-                  selecionado={bloco.id === blocoSelecionadoId}
-                  onSelect={() => selecionarBloco(bloco.id, "BLOCO")}
-                  onContextSelect={setSelectionContext}
-                  onEdit={() => abrirEdicaoBloco(bloco)}
-                  device={device}
-                  modoPreviewPublico={modoPreviewPublico}
-                  onInlineTextChange={atualizarTextoInline}
-                  onInlineCardChange={atualizarCardInline}
-                  onInlineColecaoItemChange={atualizarColecaoItemInline}
-                  categoriasDisponiveis={categoriasDisponiveis}
-                  produtosDisponiveis={produtosDisponiveis}
-                />
-              ))}
-
-              {blocosOrdenados.length === 0 && (
-                <div className="flex min-h-[420px] items-center justify-center bg-white p-8 text-center">
-                  <div>
-                    <LayoutGrid className="mx-auto h-8 w-8 text-slate-300" />
-
-                    <p className="mt-3 text-sm font-semibold text-slate-700">
-                      Página sem blocos
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      Adicione o primeiro bloco para começar a montar a página.
-                    </p>
+            <div className="min-w-0 bg-slate-100">
+              {!modoPreviewPublico && (
+                <div className="sticky left-0 top-0 z-20 flex min-h-10 items-center justify-between gap-3 border-b border-slate-200 bg-slate-100/95 px-4 py-2 backdrop-blur">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
+                    {device === "TABLET" && <Tablet className="h-4 w-4" />}
+                    {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
+                    Canvas real via iframe
                   </div>
+
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
+                    {getFrameWidth(device)} · 100%
+                  </span>
                 </div>
               )}
-            </PreviewShell>
+
+              <iframe
+                key={previewIframeSrc}
+                ref={previewIframeRef}
+                src={previewIframeSrc}
+                onLoad={enviarDraftParaPreview}
+                className={`block h-[calc(100vh-112px)] min-h-[640px] shrink-0 border-0 bg-white shadow-sm ring-1 ring-slate-200 ${getFrameClass(
+                  device
+                )}`}
+                title={`Preview da página ${pagina.titulo}`}
+              />
+            </div>
           </div>
         </main>
 

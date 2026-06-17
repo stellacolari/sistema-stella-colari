@@ -10,6 +10,7 @@ import LojaPaginaBuilderClient, {
   type LojaBuilderProduto,
   type LojaBuilderPagina,
 } from "@/components/loja/LojaPaginaBuilderClient";
+import LojaPreviewPaginaClient from "@/components/loja/LojaPreviewPaginaClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
@@ -35,6 +36,7 @@ type PageProps = {
   }>;
   searchParams?: Promise<{
     categoria?: string;
+    studio?: string;
   }>;
 };
 
@@ -289,6 +291,8 @@ export default async function LojaPreviewPaginaPage({
   const search = searchParams ? await searchParams : {};
   const categoriaSlugBusca =
     typeof search?.categoria === "string" ? search.categoria : null;
+  const studioMode = search?.studio === "1";
+  const studioEmbed = studioMode || search?.studio === "visualizar";
 
   const paginaRaw = await prisma.lojaPagina.findUnique({
     where: {
@@ -377,45 +381,60 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
 
   return (
     <>
-      <div className="sticky top-0 z-[100] border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <strong>Prévia de rascunho:</strong>{" "}
-            <span>{paginaRaw.titulo}</span>
-            <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
-              {paginaRaw.statusPublicacao}
-            </span>
-          </div>
+      {!studioEmbed && (
+        <div className="sticky top-0 z-[100] border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <strong>Prévia de rascunho:</strong>{" "}
+              <span>{paginaRaw.titulo}</span>
+              <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                {paginaRaw.statusPublicacao}
+              </span>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {urlPublica && paginaPublica ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {urlPublica && paginaPublica ? (
+                <Link
+                  href={urlPublica}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                >
+                  Ver página publicada
+                </Link>
+              ) : null}
+
               <Link
-                href={urlPublica}
+                href="/configuracoes/loja/paginas"
                 className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
               >
-                Ver página publicada
+                Voltar para páginas
               </Link>
-            ) : null}
-
-            <Link
-              href="/configuracoes/loja/paginas"
-              className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
-            >
-              Voltar para páginas
-            </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <LojaPaginaBuilderClient
-        pagina={pagina}
-        blocos={blocos}
-        produtos={produtos}
-        menus={menus}
-        categoriasMenu={categoriasMenu}
-        categoriaAtual={categoriaAtual}
-        configuracaoMenuRodape={configuracaoMenuRodape}
-      />
+      {studioEmbed ? (
+        <LojaPreviewPaginaClient
+          pagina={pagina}
+          blocos={blocos}
+          produtos={produtos}
+          menus={menus}
+          categoriasMenu={categoriasMenu}
+          categoriaAtual={categoriaAtual}
+          configuracaoMenuRodape={configuracaoMenuRodape}
+          studioMode={studioMode}
+        />
+      ) : (
+        <LojaPaginaBuilderClient
+          pagina={pagina}
+          blocos={blocos}
+          produtos={produtos}
+          menus={menus}
+          categoriasMenu={categoriasMenu}
+          categoriaAtual={categoriaAtual}
+          configuracaoMenuRodape={configuracaoMenuRodape}
+        />
+      )}
     </>
   );
 }
