@@ -40,6 +40,9 @@ type GaleriaEditorialItem = {
   focoX: number;
   focoY: number;
   zoom: number;
+  focoMobileX: number;
+  focoMobileY: number;
+  zoomMobile: number;
   overlayOpacidade: number;
 };
 
@@ -181,6 +184,9 @@ function criarItemPadrao(index: number): GaleriaEditorialItem {
     focoX: 50,
     focoY: 50,
     zoom: 100,
+    focoMobileX: 50,
+    focoMobileY: 50,
+    zoomMobile: 100,
     overlayOpacidade: 18,
   };
 }
@@ -216,6 +222,21 @@ function getItem(data: unknown, index: number): GaleriaEditorialItem {
     focoX: clamp(getNumber(config, "focoX", 50), 0, 100),
     focoY: clamp(getNumber(config, "focoY", 50), 0, 100),
     zoom: clamp(getNumber(config, "zoom", 100), 100, 150),
+    focoMobileX: clamp(
+      getNumber(config, "focoMobileX", getNumber(config, "focoX", 50)),
+      0,
+      100
+    ),
+    focoMobileY: clamp(
+      getNumber(config, "focoMobileY", getNumber(config, "focoY", 50)),
+      0,
+      100
+    ),
+    zoomMobile: clamp(
+      getNumber(config, "zoomMobile", getNumber(config, "zoom", 100)),
+      100,
+      150
+    ),
     overlayOpacidade: clamp(getNumber(config, "overlayOpacidade", 18), 0, 70),
   };
 }
@@ -364,7 +385,17 @@ export default function GaleriaEditorialFullBleedPublico({
       <div className="bg-[var(--gallery-bg)] py-[var(--gallery-py)]">
         <style>{`
           .stella-galeria-editorial-image {
+            object-position: var(--gallery-item-position-desktop);
             transform: scale(var(--gallery-item-zoom));
+            transform-origin: var(--gallery-item-position-desktop);
+          }
+
+          @media (max-width: 767px) {
+            .stella-galeria-editorial-image {
+              object-position: var(--gallery-item-position-mobile);
+              transform: scale(var(--gallery-item-zoom-mobile));
+              transform-origin: var(--gallery-item-position-mobile);
+            }
           }
 
           @media (prefers-reduced-motion: no-preference) {
@@ -389,10 +420,13 @@ export default function GaleriaEditorialFullBleedPublico({
               const label = item.titulo || item.alt || `Imagem ${index + 1}`;
               const alt = item.alt || label;
               const imageStyle: CSSProperties = {
-                objectPosition: `${item.focoX}% ${item.focoY}%`,
+                "--gallery-item-position-desktop": `${item.focoX}% ${item.focoY}%`,
+                "--gallery-item-position-mobile": `${item.focoMobileX}% ${item.focoMobileY}%`,
                 "--gallery-item-zoom": item.zoom / 100,
+                "--gallery-item-zoom-mobile": item.zoomMobile / 100,
                 "--gallery-item-hover-zoom":
-                  item.zoom / 100 + 0.035 * hoverIntensidade,
+                  (device === "MOBILE" ? item.zoomMobile : item.zoom) / 100 +
+                  0.035 * hoverIntensidade,
               } as CSSProperties;
 
               return (

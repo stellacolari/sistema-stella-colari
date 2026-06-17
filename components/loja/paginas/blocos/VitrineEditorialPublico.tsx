@@ -33,6 +33,9 @@ type VitrineEditorialItem = {
   focoHorizontal: number;
   focoVertical: number;
   zoom: number;
+  focoMobileHorizontal: number;
+  focoMobileVertical: number;
+  zoomMobile: number;
   ocultarNome: boolean;
   ocultarBotao: boolean;
   abrirNovaAba: boolean;
@@ -98,6 +101,9 @@ function criarItemPadrao(index: number): VitrineEditorialItem {
     focoHorizontal: 50,
     focoVertical: 50,
     zoom: 100,
+    focoMobileHorizontal: 50,
+    focoMobileVertical: 50,
+    zoomMobile: 100,
     ocultarNome: false,
     ocultarBotao: false,
     abrirNovaAba: false,
@@ -148,6 +154,29 @@ function getItem(data: unknown, index: number): VitrineEditorialItem {
       100,
     ),
     zoom: clampNumber(getNumber(config, "zoom", 100), 100, 160),
+    focoMobileHorizontal: clampNumber(
+      getNumber(
+        config,
+        "focoMobileHorizontal",
+        getNumber(config, "focoHorizontal", getNumber(config, "mediaCropDesktopX", 50))
+      ),
+      0,
+      100,
+    ),
+    focoMobileVertical: clampNumber(
+      getNumber(
+        config,
+        "focoMobileVertical",
+        getNumber(config, "focoVertical", getNumber(config, "mediaCropDesktopY", 50))
+      ),
+      0,
+      100,
+    ),
+    zoomMobile: clampNumber(
+      getNumber(config, "zoomMobile", getNumber(config, "zoom", 100)),
+      100,
+      160,
+    ),
     ocultarNome: getBoolean(config, "ocultarNome", false),
     ocultarBotao: getBoolean(config, "ocultarBotao", false),
     abrirNovaAba: getBoolean(config, "abrirNovaAba", false),
@@ -299,6 +328,10 @@ export default function VitrineEditorialPublico({
       <style>
         {`
           @media (prefers-reduced-motion: no-preference) {
+            .stella-vitrine-editorial-image {
+              transition: transform 500ms ease;
+            }
+
             .stella-vitrine-editorial-card[data-animation="SUBINDO_EM_SEQUENCIA"] {
               opacity: 0;
               animation: stella-vitrine-up 720ms cubic-bezier(.22, 1, .36, 1) forwards;
@@ -312,6 +345,20 @@ export default function VitrineEditorialPublico({
             .stella-vitrine-editorial-card[data-animation="FADE_EM_SEQUENCIA"] {
               opacity: 0;
               animation: stella-vitrine-fade 640ms ease forwards;
+            }
+          }
+
+          .stella-vitrine-editorial-image {
+            object-position: var(--vitrine-image-position-desktop);
+            transform: scale(var(--vitrine-image-zoom-desktop));
+            transform-origin: var(--vitrine-image-position-desktop);
+          }
+
+          @media (max-width: 767px) {
+            .stella-vitrine-editorial-image {
+              object-position: var(--vitrine-image-position-mobile);
+              transform: scale(var(--vitrine-image-zoom-mobile));
+              transform-origin: var(--vitrine-image-position-mobile);
             }
           }
 
@@ -362,11 +409,14 @@ export default function VitrineEditorialPublico({
             itemResolvido.paginaTitulo ||
             "Vitrine";
           const alt = item.altText || label;
-          const objectPosition = `${item.focoHorizontal}% ${item.focoVertical}%`;
           const imageStyle: CSSProperties = {
-            objectPosition,
-            transform: `scale(${item.zoom / 100})`,
-          };
+            "--vitrine-image-position-desktop": forceMobile
+              ? `${item.focoMobileHorizontal}% ${item.focoMobileVertical}%`
+              : `${item.focoHorizontal}% ${item.focoVertical}%`,
+            "--vitrine-image-position-mobile": `${item.focoMobileHorizontal}% ${item.focoMobileVertical}%`,
+            "--vitrine-image-zoom-desktop": (forceMobile ? item.zoomMobile : item.zoom) / 100,
+            "--vitrine-image-zoom-mobile": item.zoomMobile / 100,
+          } as CSSProperties;
           const cardStyle: CSSProperties =
             animacaoBloco === "SEM_ANIMACAO"
               ? {}
@@ -407,7 +457,7 @@ export default function VitrineEditorialPublico({
                       <img
                         src={imagemAtual}
                         alt={alt}
-                        className="h-full w-full object-cover transition-transform duration-500"
+                        className="stella-vitrine-editorial-image h-full w-full object-cover"
                         style={imageStyle}
                       />
                     ) : (
@@ -418,7 +468,7 @@ export default function VitrineEditorialPublico({
                         <img
                           src={imagemDesktop}
                           alt={alt}
-                          className="h-full w-full object-cover transition-transform duration-500"
+                          className="stella-vitrine-editorial-image h-full w-full object-cover"
                           style={imageStyle}
                         />
                       </picture>

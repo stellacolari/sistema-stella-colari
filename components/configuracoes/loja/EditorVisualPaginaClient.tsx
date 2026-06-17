@@ -70,6 +70,13 @@ import BannerRenderer, {
 } from "@/components/loja/paginas/blocos/BannerRenderer";
 import GaleriaEditorialFullBleedPublico from "@/components/loja/paginas/blocos/GaleriaEditorialFullBleedPublico";
 import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
+import VisualCropEditor, {
+  createResponsiveMediaConfig,
+  getMediaCropObjectPosition,
+  getRecommendedMediaSize,
+  type MediaCropContext,
+  type ResponsiveMediaConfig,
+} from "@/components/configuracoes/loja/VisualCropEditor";
 
 export type EditorVisualPagina = {
   id: string;
@@ -256,6 +263,9 @@ type VitrineEditorialItemEditando = {
   focoHorizontal: number;
   focoVertical: number;
   zoom: number;
+  focoMobileHorizontal?: number;
+  focoMobileVertical?: number;
+  zoomMobile?: number;
   ocultarNome: boolean;
   ocultarBotao: boolean;
   abrirNovaAba: boolean;
@@ -1064,6 +1074,9 @@ type GaleriaEditorialItemConfig = {
   focoX: number;
   focoY: number;
   zoom: number;
+  focoMobileX?: number;
+  focoMobileY?: number;
+  zoomMobile?: number;
   overlayOpacidade: number;
 };
 
@@ -1520,13 +1533,18 @@ function criarItemVitrineEditorialPadrao(
     focoHorizontal: 50,
     focoVertical: 50,
     zoom: 100,
+    focoMobileHorizontal: 50,
+    focoMobileVertical: 50,
+    zoomMobile: 100,
     ocultarNome: false,
     ocultarBotao: false,
     abrirNovaAba: false,
   };
 }
 
-function getItensVitrineEditorialConfig(config: Record<string, unknown>) {
+function getItensVitrineEditorialConfig(
+  config: Record<string, unknown>
+): VitrineEditorialItemEditando[] {
   const itensConfig = Array.isArray(config.itens) ? config.itens : [];
   const quantidade = normalizarQuantidadeVitrineEditorial(
     getNumberConfig(config, "quantidadeItens", 3)
@@ -1588,6 +1606,37 @@ function getItensVitrineEditorialConfig(config: Record<string, unknown>) {
               100
             ),
             zoom: clampEditorNumber(getNumberConfig(data, "zoom", 100), 100, 160),
+            focoMobileHorizontal: clampEditorNumber(
+              getNumberConfig(
+                data,
+                "focoMobileHorizontal",
+                getNumberConfig(
+                  data,
+                  "focoHorizontal",
+                  getNumberConfig(data, "mediaCropDesktopX", 50)
+                )
+              ),
+              0,
+              100
+            ),
+            focoMobileVertical: clampEditorNumber(
+              getNumberConfig(
+                data,
+                "focoMobileVertical",
+                getNumberConfig(
+                  data,
+                  "focoVertical",
+                  getNumberConfig(data, "mediaCropDesktopY", 50)
+                )
+              ),
+              0,
+              100
+            ),
+            zoomMobile: clampEditorNumber(
+              getNumberConfig(data, "zoomMobile", getNumberConfig(data, "zoom", 100)),
+              100,
+              160
+            ),
             ocultarNome: getBooleanConfig(data, "ocultarNome", false),
             ocultarBotao: getBooleanConfig(data, "ocultarBotao", false),
             abrirNovaAba: getBooleanConfig(data, "abrirNovaAba", false),
@@ -3616,6 +3665,83 @@ function VisualCropControl({
       </div>
     </div>
   );
+}
+
+function getResponsiveMediaFromEstado({
+  estado,
+  aspectRatioDesktop,
+  aspectRatioMobile,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  aspectRatioDesktop: string;
+  aspectRatioMobile: string;
+}): ResponsiveMediaConfig {
+  return createResponsiveMediaConfig({
+    desktopUrl: estado.imagemDesktopUrl,
+    mobileUrl: estado.imagemMobileUrl,
+    alt: estado.imagemAlt || estado.titulo,
+    aspectRatioDesktop,
+    aspectRatioMobile,
+    desktopPositionX: estado.mediaCropDesktopX,
+    desktopPositionY: estado.mediaCropDesktopY,
+    mobilePositionX: estado.mediaCropMobileX,
+    mobilePositionY: estado.mediaCropMobileY,
+    desktopZoom: estado.mediaZoomDesktop,
+    mobileZoom: estado.mediaZoomMobile,
+  });
+}
+
+function getEstadoPatchFromResponsiveMedia(
+  media: ResponsiveMediaConfig
+): Partial<NonNullable<BlocoEditandoState>> {
+  return {
+    imagemDesktopUrl: media.desktop.url || "",
+    imagemMobileUrl:
+      media.usarImagemMobileAlternativa && media.mobileUrl
+        ? media.mobileUrl
+        : "",
+    imagemAlt: media.desktop.alt || media.mobile.alt || "",
+    mediaCropDesktopX: media.desktop.positionX,
+    mediaCropDesktopY: media.desktop.positionY,
+    mediaCropMobileX: media.mobile.positionX,
+    mediaCropMobileY: media.mobile.positionY,
+    mediaZoomDesktop: media.desktop.zoom,
+    mediaZoomMobile: media.mobile.zoom,
+    mediaPositionDesktop: getMediaCropObjectPosition(media.desktop),
+    mediaPositionMobile: getMediaCropObjectPosition(media.mobile),
+  };
+}
+
+function getTextoImagemCropContext(
+  estado: NonNullable<BlocoEditandoState>
+): MediaCropContext {
+  return estado.larguraMidiaDesktop === "SANGRANDO_ATE_BORDA" ||
+    estado.larguraMidiaMobile === "SANGRANDO_ATE_BORDA"
+    ? "TEXTO_IMAGEM_SANGRADA"
+    : "TEXTO_IMAGEM_CONTIDA";
+}
+
+function getTextoImagemAspectRatio(
+  estado: NonNullable<BlocoEditandoState>,
+  device: "DESKTOP" | "MOBILE"
+) {
+  if (device === "MOBILE") {
+    return estado.larguraMidiaMobile === "SANGRANDO_ATE_BORDA"
+      ? "4:5"
+      : "4:5";
+  }
+
+  if (estado.larguraMidiaDesktop === "SANGRANDO_ATE_BORDA") {
+    return estado.alturaBlocoTextoImagem === "ALTO" ? "9:16" : "4:5";
+  }
+
+  return estado.layoutDesktopTextoImagem === "TEXTO_SOBRE_IMAGEM"
+    ? "16:9"
+    : "4:5";
+}
+
+function getBannerCropContext(estado: NonNullable<BlocoEditandoState>): MediaCropContext {
+  return estado.alturaBanner === "TELA_CHEIA" ? "BANNER_21_9" : "BANNER_16_9";
 }
 
 function TextoImagemStyleControls({
@@ -7660,6 +7786,11 @@ function BannerStudioEditor({
     device === "MOBILE" && estado.imagemFrenteMobileUrl
       ? estado.imagemFrenteMobileUrl
       : estado.imagemFrenteDesktopUrl || produtoFrenteFallback?.imagemUrl || "";
+  const bannerCropContext = getBannerCropContext(estado);
+  const bannerRecommendedSize = getRecommendedMediaSize(bannerCropContext);
+  const bannerAspectDesktop =
+    bannerCropContext === "BANNER_21_9" ? "21:9" : "16:9";
+  const bannerAspectMobile = "4:5";
   const [animacaoPreviewKey, setAnimacaoPreviewKey] = useState(0);
 
   function atualizarConfigInterno(patch: Record<string, unknown>) {
@@ -8435,12 +8566,37 @@ function BannerStudioEditor({
                   />
                 </>
               )}
-              <BannerMediaMiniPreview estado={estado} device={device} />
-              <BannerCropFocusControls
-                estado={estado}
-                device={device}
-                onChange={onChange}
-              />
+              {estado.tipoMidia === "VIDEO" ? (
+                <>
+                  <BannerMediaMiniPreview estado={estado} device={device} />
+                  <BannerCropFocusControls
+                    estado={estado}
+                    device={device}
+                    onChange={onChange}
+                  />
+                </>
+              ) : (
+                <VisualCropEditor
+                  label="Crop visual do banner"
+                  value={getResponsiveMediaFromEstado({
+                    estado,
+                    aspectRatioDesktop: bannerAspectDesktop,
+                    aspectRatioMobile: bannerAspectMobile,
+                  })}
+                  onChange={(media) =>
+                    onChange(getEstadoPatchFromResponsiveMedia(media))
+                  }
+                  device={device === "MOBILE" ? "MOBILE" : "DESKTOP"}
+                  onDeviceChange={(nextDevice) =>
+                    onDeviceChange(nextDevice === "MOBILE" ? "MOBILE" : "DESKTOP")
+                  }
+                  aspectRatioDesktop={bannerAspectDesktop}
+                  aspectRatioMobile={bannerAspectMobile}
+                  recommendedSizeDesktop={bannerRecommendedSize.desktop}
+                  recommendedSizeMobile={bannerRecommendedSize.mobile}
+                  contexto={bannerCropContext}
+                />
+              )}
             </>
           ) : null}
 
@@ -9233,38 +9389,53 @@ function VitrineEditorialEditor({
                   />
                 </label>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <RangeControl
-                    label="Foco horizontal"
-                    value={item.focoHorizontal}
-                    min={0}
-                    max={100}
-                    suffix="%"
-                    onChange={(value) =>
-                      atualizarItem(item.id, { focoHorizontal: value })
-                    }
-                  />
-
-                  <RangeControl
-                    label="Foco vertical"
-                    value={item.focoVertical}
-                    min={0}
-                    max={100}
-                    suffix="%"
-                    onChange={(value) =>
-                      atualizarItem(item.id, { focoVertical: value })
-                    }
-                  />
-
-                  <RangeControl
-                    label="Zoom"
-                    value={item.zoom}
-                    min={100}
-                    max={160}
-                    suffix="%"
-                    onChange={(value) => atualizarItem(item.id, { zoom: value })}
-                  />
-                </div>
+                <VisualCropEditor
+                  label="Crop visual do item"
+                  value={createResponsiveMediaConfig({
+                    desktopUrl:
+                      item.imagemDesktop ||
+                      item.categoriaImagemUrl ||
+                      item.imagemMobile,
+                    mobileUrl: item.imagemMobile,
+                    alt: item.altText || item.label,
+                    aspectRatioDesktop:
+                      configVitrine.alturaVisual === "COMPACTA" ? "4:5" : "9:16",
+                    aspectRatioMobile: "4:5",
+                    desktopPositionX: item.focoHorizontal,
+                    desktopPositionY: item.focoVertical,
+                    mobilePositionX:
+                      item.focoMobileHorizontal ?? item.focoHorizontal,
+                    mobilePositionY:
+                      item.focoMobileVertical ?? item.focoVertical,
+                    desktopZoom: item.zoom,
+                    mobileZoom: item.zoomMobile ?? item.zoom,
+                  })}
+                  onChange={(media) =>
+                    atualizarItem(item.id, {
+                      imagemDesktop: media.desktop.url || "",
+                      imagemMobile:
+                        media.usarImagemMobileAlternativa && media.mobileUrl
+                          ? media.mobileUrl
+                          : "",
+                      altText: media.desktop.alt || media.mobile.alt || item.altText,
+                      focoHorizontal: media.desktop.positionX,
+                      focoVertical: media.desktop.positionY,
+                      zoom: media.desktop.zoom,
+                      focoMobileHorizontal: media.mobile.positionX,
+                      focoMobileVertical: media.mobile.positionY,
+                      zoomMobile: media.mobile.zoom,
+                    })
+                  }
+                  aspectRatioDesktop={
+                    configVitrine.alturaVisual === "COMPACTA" ? "4:5" : "9:16"
+                  }
+                  aspectRatioMobile="4:5"
+                  contexto={
+                    configVitrine.alturaVisual === "COMPACTA"
+                      ? "GALERIA_4_5"
+                      : "GALERIA_9_16"
+                  }
+                />
 
                 <div className="grid gap-3 md:grid-cols-3">
                   <CampoToggle
@@ -9421,7 +9592,7 @@ function GaleriaEditorialEditor({
       ...atual,
       produtoId,
       imagemDesktop: atual.imagemDesktop || produto?.imagemUrl || "",
-      imagemMobile: atual.imagemMobile || produto?.imagemUrl || "",
+      imagemMobile: atual.imagemMobile || "",
       alt: atual.alt || produto?.nome || "",
       titulo: atual.titulo || produto?.nome || "",
       subtitulo: atual.subtitulo || produto?.categoria || "",
@@ -9463,7 +9634,7 @@ function GaleriaEditorialEditor({
         titulo: produto?.nome || itemSelecionado.titulo,
         subtitulo: produto?.categoria || itemSelecionado.subtitulo,
         imagemDesktop: itemSelecionado.imagemDesktop || produto?.imagemUrl || "",
-        imagemMobile: itemSelecionado.imagemMobile || produto?.imagemUrl || "",
+        imagemMobile: itemSelecionado.imagemMobile || "",
         alt: itemSelecionado.alt || produto?.nome || "",
       });
       return;
@@ -9863,7 +10034,7 @@ function GaleriaEditorialEditor({
                         imagemDesktop:
                           itemSelecionado.imagemDesktop || produto?.imagemUrl || "",
                         imagemMobile:
-                          itemSelecionado.imagemMobile || produto?.imagemUrl || "",
+                          itemSelecionado.imagemMobile || "",
                       });
                     }}
                     className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
@@ -9878,47 +10049,69 @@ function GaleriaEditorialEditor({
                 </label>
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                {[
-                  ["focoX", "Foco X", 0, 100],
-                  ["focoY", "Foco Y", 0, 100],
-                  ["zoom", "Zoom", 100, 150],
-                  ["overlayOpacidade", "Overlay", 0, 70],
-                ].map(([key, label, min, max]) => (
-                  <label key={String(key)}>
-                    <span className="mb-2 block text-sm font-medium text-slate-700">
-                      {label}
-                    </span>
-                    <input
-                      type="range"
-                      min={Number(min)}
-                      max={Number(max)}
-                      value={Number(itemSelecionado[key as keyof GaleriaEditorialItemConfig])}
-                      onChange={(event) =>
-                        atualizarItem(itemSelecionado.id, {
-                          [key as string]: Number(event.target.value),
-                        } as Partial<GaleriaEditorialItemConfig>)
-                      }
-                      className="w-full"
-                    />
-                  </label>
-                ))}
+              <div className="mt-4">
+                <VisualCropEditor
+                  label="Crop visual do item"
+                  value={createResponsiveMediaConfig({
+                    desktopUrl: itemSelecionado.imagemDesktop,
+                    mobileUrl: itemSelecionado.imagemMobile,
+                    alt: itemSelecionado.alt,
+                    aspectRatioDesktop:
+                      configGaleria.layout.varianteAltura === "COMPACTA"
+                        ? "4:5"
+                        : "9:16",
+                    aspectRatioMobile: "4:5",
+                    desktopPositionX: itemSelecionado.focoX,
+                    desktopPositionY: itemSelecionado.focoY,
+                    mobilePositionX:
+                      itemSelecionado.focoMobileX ?? itemSelecionado.focoX,
+                    mobilePositionY:
+                      itemSelecionado.focoMobileY ?? itemSelecionado.focoY,
+                    desktopZoom: itemSelecionado.zoom,
+                    mobileZoom:
+                      itemSelecionado.zoomMobile ?? itemSelecionado.zoom,
+                  })}
+                  onChange={(media) =>
+                    atualizarItem(itemSelecionado.id, {
+                      imagemDesktop: media.desktop.url || "",
+                      imagemMobile:
+                        media.usarImagemMobileAlternativa && media.mobileUrl
+                          ? media.mobileUrl
+                          : "",
+                      alt: media.desktop.alt || media.mobile.alt || itemSelecionado.alt,
+                      focoX: media.desktop.positionX,
+                      focoY: media.desktop.positionY,
+                      zoom: media.desktop.zoom,
+                      focoMobileX: media.mobile.positionX,
+                      focoMobileY: media.mobile.positionY,
+                      zoomMobile: media.mobile.zoom,
+                    })
+                  }
+                  aspectRatioDesktop={
+                    configGaleria.layout.varianteAltura === "COMPACTA"
+                      ? "4:5"
+                      : "9:16"
+                  }
+                  aspectRatioMobile="4:5"
+                  contexto={
+                    configGaleria.layout.varianteAltura === "COMPACTA"
+                      ? "GALERIA_4_5"
+                      : "GALERIA_9_16"
+                  }
+                />
+              </div>
 
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      atualizarItem(itemSelecionado.id, {
-                        focoX: 50,
-                        focoY: 50,
-                        zoom: 100,
-                      })
-                    }
-                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    Resetar crop
-                  </button>
-                </div>
+              <div className="mt-4">
+                <RangeControl
+                  label="Overlay"
+                  value={itemSelecionado.overlayOpacidade}
+                  min={0}
+                  max={70}
+                  suffix="%"
+                  onChange={(overlayOpacidade) =>
+                    atualizarItem(itemSelecionado.id, { overlayOpacidade })
+                  }
+                />
               </div>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -10693,35 +10886,58 @@ function HeroEditorialPngEditor({
             />
           </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {[
-              ["escalaDesktop", "Escala desktop (%)", 20, 130],
-              ["posicaoXDesktop", "Posição X desktop", 0, 100],
-              ["posicaoYDesktop", "Posição Y desktop", 0, 100],
-              ["escalaMobile", "Escala mobile (%)", 35, 150],
-              ["posicaoXMobile", "Posição X mobile", 0, 100],
-              ["posicaoYMobile", "Posição Y mobile", 0, 100],
-              ["opacidade", "Opacidade (%)", 0, 100],
-            ].map(([key, label, min, max]) => (
-              <label key={String(key)}>
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  {label}
-                </span>
-                <input
-                  type="range"
-                  min={Number(min)}
-                  max={Number(max)}
-                  value={Number(configHero.png[key as keyof typeof configHero.png])}
-                  onChange={(event) =>
-                    atualizarSecao("png", {
-                      [key as string]: Number(event.target.value),
-                    } as Partial<HeroEditorialPngConfig["png"]>)
-                  }
-                  className="w-full"
-                />
-              </label>
-            ))}
-          </div>
+          <VisualCropEditor
+            label="Crop visual do PNG"
+            value={createResponsiveMediaConfig({
+              desktopUrl: configHero.png.imagemDesktop,
+              mobileUrl: configHero.png.imagemMobile,
+              alt: configHero.png.alt,
+              aspectRatioDesktop: "1:1",
+              aspectRatioMobile: "1:1",
+              desktopPositionX: configHero.png.posicaoXDesktop,
+              desktopPositionY: configHero.png.posicaoYDesktop,
+              mobilePositionX: configHero.png.posicaoXMobile,
+              mobilePositionY: configHero.png.posicaoYMobile,
+              desktopZoom: configHero.png.escalaDesktop,
+              mobileZoom: configHero.png.escalaMobile,
+              minZoom: 20,
+              maxZoom: 150,
+            })}
+            onChange={(media) =>
+              atualizarSecao("png", {
+                imagemDesktop: media.desktop.url || "",
+                imagemMobile:
+                  media.usarImagemMobileAlternativa && media.mobileUrl
+                    ? media.mobileUrl
+                    : "",
+                alt: media.desktop.alt || media.mobile.alt || configHero.png.alt,
+                posicaoXDesktop: media.desktop.positionX,
+                posicaoYDesktop: media.desktop.positionY,
+                escalaDesktop: media.desktop.zoom,
+                posicaoXMobile: media.mobile.positionX,
+                posicaoYMobile: media.mobile.positionY,
+                escalaMobile: media.mobile.zoom,
+              })
+            }
+            aspectRatioDesktop="1:1"
+            aspectRatioMobile="1:1"
+            contexto={
+              configHero.variante === "TELA_CHEIA"
+                ? "HERO_PNG_FULLSCREEN"
+                : "HERO_PNG_COMPACTO"
+            }
+            minZoom={20}
+            maxZoom={150}
+          />
+
+          <RangeControl
+            label="Opacidade"
+            value={configHero.png.opacidade}
+            min={0}
+            max={100}
+            suffix="%"
+            onChange={(opacidade) => atualizarSecao("png", { opacidade })}
+          />
 
           <CampoToggle
             checked={configHero.png.sombra}
@@ -10900,7 +11116,12 @@ function TextoImagemEditor({
   selectedContext: EditorSelectionContext;
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
 }) {
-  function updateCrop(device: "DESKTOP" | "MOBILE", data: {
+  const cropContext = getTextoImagemCropContext(estado);
+  const recommendedSize = getRecommendedMediaSize(cropContext);
+  const aspectRatioDesktop = getTextoImagemAspectRatio(estado, "DESKTOP");
+  const aspectRatioMobile = getTextoImagemAspectRatio(estado, "MOBILE");
+
+  function updateVideoCrop(device: "DESKTOP" | "MOBILE", data: {
     focoX: number;
     focoY: number;
     zoom: number;
@@ -11207,31 +11428,51 @@ function TextoImagemEditor({
           />
         </label>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <VisualCropControl
-            label="Crop desktop"
-            imageUrl={estado.imagemDesktopUrl}
-            videoUrl={estado.videoDesktopUrl}
-            posterUrl={estado.videoPosterUrl}
-            tipoMidia={estado.tipoMidia}
-            focoX={estado.mediaCropDesktopX}
-            focoY={estado.mediaCropDesktopY}
-            zoom={estado.mediaZoomDesktop}
-            onChange={(data) => updateCrop("DESKTOP", data)}
-          />
-          <VisualCropControl
-            label="Crop mobile"
-            imageUrl={estado.imagemMobileUrl || estado.imagemDesktopUrl}
-            videoUrl={estado.videoMobileUrl || estado.videoDesktopUrl}
-            posterUrl={estado.videoPosterUrl}
-            tipoMidia={estado.tipoMidia}
-            focoX={estado.mediaCropMobileX}
-            focoY={estado.mediaCropMobileY}
-            zoom={estado.mediaZoomMobile}
-            aspectClass="aspect-[4/5]"
-            onChange={(data) => updateCrop("MOBILE", data)}
-          />
-        </div>
+        {estado.tipoMidia === "VIDEO" ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <VisualCropControl
+              label="Crop desktop"
+              imageUrl={estado.imagemDesktopUrl}
+              videoUrl={estado.videoDesktopUrl}
+              posterUrl={estado.videoPosterUrl}
+              tipoMidia={estado.tipoMidia}
+              focoX={estado.mediaCropDesktopX}
+              focoY={estado.mediaCropDesktopY}
+              zoom={estado.mediaZoomDesktop}
+              onChange={(data) => updateVideoCrop("DESKTOP", data)}
+            />
+            <VisualCropControl
+              label="Crop mobile"
+              imageUrl={estado.imagemMobileUrl || estado.imagemDesktopUrl}
+              videoUrl={estado.videoMobileUrl || estado.videoDesktopUrl}
+              posterUrl={estado.videoPosterUrl}
+              tipoMidia={estado.tipoMidia}
+              focoX={estado.mediaCropMobileX}
+              focoY={estado.mediaCropMobileY}
+              zoom={estado.mediaZoomMobile}
+              aspectClass="aspect-[4/5]"
+              onChange={(data) => updateVideoCrop("MOBILE", data)}
+            />
+          </div>
+        ) : (
+          <div>
+            <VisualCropEditor
+              label="Crop visual"
+              value={getResponsiveMediaFromEstado({
+                estado,
+                aspectRatioDesktop,
+                aspectRatioMobile,
+              })}
+              onChange={(media) => onChange(getEstadoPatchFromResponsiveMedia(media))}
+              aspectRatioDesktop={aspectRatioDesktop}
+              aspectRatioMobile={aspectRatioMobile}
+              recommendedSizeDesktop={recommendedSize.desktop}
+              recommendedSizeMobile={recommendedSize.mobile}
+              contexto={cropContext}
+              allowMobileAlternative={estado.tipoMidia !== "VIDEO"}
+            />
+          </div>
+        )}
       </SecaoRecolhivel>
 
       <SecaoRecolhivel

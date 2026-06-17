@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
@@ -126,6 +127,22 @@ function getItemMediaObjectPosition(
   }
 
   return `${clampMediaCropValue(desktopX)}% ${clampMediaCropValue(desktopY)}%`;
+}
+
+function getItemMediaZoom(item: Record<string, unknown>, device: "Desktop" | "Mobile") {
+  const desktopZoom = Math.min(
+    220,
+    Math.max(80, getNumber(item, "mediaZoomDesktop", 100))
+  );
+
+  if (device === "Mobile") {
+    return Math.min(
+      220,
+      Math.max(80, getNumber(item, "mediaZoomMobile", desktopZoom))
+    );
+  }
+
+  return desktopZoom;
 }
 
 function getTamanhoMosaicoPreset(preset: string, index: number) {
@@ -367,7 +384,15 @@ function ItemMedia({
   if (!itemHasMedia(item)) return null;
 
   return (
-    <div className={`overflow-hidden bg-slate-100 ${className}`}>
+    <div
+      className={`overflow-hidden bg-slate-100 ${className}`}
+      style={
+        {
+          "--colecao-media-zoom-desktop": getItemMediaZoom(item, "Desktop") / 100,
+          "--colecao-media-zoom-mobile": getItemMediaZoom(item, "Mobile") / 100,
+        } as CSSProperties
+      }
+    >
       <PublicMediaRenderer
         tipoMidia={getString(item, "tipoMidia", "IMAGEM")}
         imagemDesktopUrl={getImageDesktop(item)}
@@ -376,6 +401,7 @@ function ItemMedia({
         videoMobileUrl={getString(item, "videoMobileUrl")}
         objectPositionDesktop={getItemMediaObjectPosition(item, "Desktop")}
         objectPositionMobile={getItemMediaObjectPosition(item, "Mobile")}
+        mediaClassName="scale-[var(--colecao-media-zoom-mobile)] md:scale-[var(--colecao-media-zoom-desktop)]"
         alt={alt}
       />
     </div>
