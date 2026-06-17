@@ -113,6 +113,80 @@ function intencaoFromSnapshot(snapshot) {
   };
 }
 
+function avaliarEvidencia(evidencias) {
+  const vendas = numero(evidencias.vendasQuantidade || evidencias.vendas);
+  const sellThrough = numero(evidencias.sellThrough);
+  const visualizacoes = numero(evidencias.visualizacoes);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos);
+  const cliquesBusca = numero(evidencias.cliquesBusca);
+  const cliquesVitrine = numero(evidencias.cliquesVitrine);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+  const scoreValidacao = numero(evidencias.scoreValidacao);
+  const estoqueFinal = numero(evidencias.estoqueFinal || evidencias.estoqueTotal);
+
+  if (
+    vendas >= 2 ||
+    sellThrough >= 70 ||
+    favoritos >= 3 ||
+    carrinhos >= 2 ||
+    scoreInteresse >= 35 ||
+    scoreValidacao >= 70
+  ) {
+    return "EVIDENCIA_FORTE";
+  }
+
+  if (
+    vendas >= 1 ||
+    sellThrough >= 35 ||
+    visualizacoes >= 12 ||
+    favoritos >= 1 ||
+    carrinhos >= 1 ||
+    cliquesBusca >= 2 ||
+    cliquesVitrine >= 2 ||
+    scoreInteresse >= 18 ||
+    scoreValidacao >= 45
+  ) {
+    return "EVIDENCIA_MODERADA";
+  }
+
+  if (estoqueFinal > 0 || visualizacoes > 0) return "EVIDENCIA_FRACA";
+  return "SEM_EVIDENCIA";
+}
+
+function pesoEvidencia(nivel) {
+  if (nivel === "EVIDENCIA_FORTE") return 3;
+  if (nivel === "EVIDENCIA_MODERADA") return 2;
+  if (nivel === "EVIDENCIA_FRACA") return 1;
+  return 0;
+}
+
+function evidenciaSuficiente(nivel, minimo) {
+  return pesoEvidencia(nivel) >= pesoEvidencia(minimo);
+}
+
+function prioridadePorEvidencia(prioridade, nivel) {
+  if (nivel === "EVIDENCIA_FORTE") return prioridade;
+  if (nivel === "EVIDENCIA_MODERADA" && prioridade === "ALTA") return "MEDIA";
+  if (nivel === "EVIDENCIA_FRACA") return "BAIXA";
+  return prioridade;
+}
+
+function anexarEvidencia(evidencia, nivel) {
+  return {
+    ...evidencia,
+    nivelEvidencia: nivel,
+    leituraEvidencia:
+      nivel === "SEM_EVIDENCIA"
+        ? "Produto ainda nao testado. Aumente exposicao antes de tomar decisao de preco, desconto ou reposicao."
+        : nivel === "EVIDENCIA_FRACA"
+          ? "Amostra ainda pequena; manter observacao e exposicao leve."
+          : nivel === "EVIDENCIA_MODERADA"
+            ? "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
+            : "Ha sinal forte para acao seletiva.",
+  };
+}
+
 async function criarOuAtualizar(candidato) {
   const where = {
     status: { in: STATUS_ABERTOS },
@@ -227,24 +301,30 @@ async function candidatosDeProdutos(periodoReferencia) {
       estoqueFinal: snapshot.estoqueFinal,
       sellThrough: snapshot.sellThroughAcumulado,
       scoreValidacao: snapshot.scoreValidacao,
+      visualizacoes: intencao.visualizacoes,
+      favoritos: intencao.favoritos,
+      carrinhos: intencao.carrinhos,
       scoreInteresse: intencao.scoreInteresse,
     };
+    const nivelEvidencia = avaliarEvidencia(evidencia);
+    const evidenciasJson = anexarEvidencia(evidencia, nivelEvidencia);
 
     if (
       ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(
         snapshot.statusComercial,
       ) &&
-      snapshot.estoqueFinal <= 3
+      snapshot.estoqueFinal <= 3 &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Priorizar reposicao seletiva de ${produto.codigoInterno}`,
+        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
         descricao: `${produto.nome} tem sinal comercial forte e estoque baixo.`,
         motivo: "Repor sem assumir lote grande automaticamente preserva caixa e evita ruptura.",
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Manter produto validado disponivel com risco controlado.",
         risco: "Sem reposicao seletiva, a vitrine pode perder produto com demanda.",
-        prioridade: "ALTA",
+        prioridade: prioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: "Repor pequeno ou medio conforme caixa e ciclo confirmado.",
         linkAcao: "/compras/reposicao",
         origem: "Reposicao inteligente",
@@ -259,15 +339,16 @@ async function candidatosDeProdutos(periodoReferencia) {
       snapshot.vendasQuantidade <= 2 &&
       ["PROMISSOR", "CAMPEAO_PROVAVEL", "REPOSICAO_CONFIRMADA"].includes(
         snapshot.statusComercial,
-      )
+      ) &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Bloquear lote grande de ${produto.codigoInterno}`,
+        titulo: `Compra com cautela: ${produto.nome}`,
         descricao:
           "Amostra curta nao libera lote grande. Uma venda de poucas pecas ainda pede cautela.",
         motivo: "Lote grande so deve aparecer com segundo ciclo confirmado ou padrao forte.",
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Evitar estoque excessivo antes de validacao recorrente.",
         risco: "Comprar grande cedo demais pode travar caixa.",
         prioridade: "MEDIA",
@@ -282,18 +363,19 @@ async function candidatosDeProdutos(periodoReferencia) {
     }
 
     if (
-      snapshot.statusComercial === "INTERESSE_SEM_CONVERSAO" ||
-      snapshot.recomendacao === "REVISAR_OFERTA"
+      (snapshot.statusComercial === "INTERESSE_SEM_CONVERSAO" ||
+        snapshot.recomendacao === "REVISAR_OFERTA") &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "LOJA",
-        titulo: `Revisar oferta de ${produto.codigoInterno}`,
+        titulo: `Revisar oferta: ${produto.nome}`,
         descricao: `${produto.nome} recebe interesse, mas precisa converter melhor antes de recompra.`,
         motivo: intencao.interpretacao,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Melhorar conversao sem aumentar compra no escuro.",
         risco: "Recomprar antes de ajustar oferta pode aumentar estoque parado.",
-        prioridade: "ALTA",
+        prioridade: prioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: "Revisar preco, foto, descricao, frete ou oferta.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Intencao comercial",
@@ -305,19 +387,21 @@ async function candidatosDeProdutos(periodoReferencia) {
     }
 
     if (
-      snapshot.statusComercial === "NAO_TESTADO" ||
-      snapshot.recomendacao === "EXPOR_MAIS"
+      (snapshot.statusComercial === "NAO_TESTADO" ||
+        snapshot.recomendacao === "EXPOR_MAIS") &&
+      nivelEvidencia !== "SEM_EVIDENCIA"
     ) {
       candidatos.push({
         tipo: "LOJA",
-        titulo: `Expor produto pouco testado ${produto.codigoInterno}`,
+        titulo: `Produto ainda nao testado: ${produto.nome}`,
         descricao: `${produto.nome} ainda precisa de amostra real antes de decisao comercial.`,
-        motivo: "Produto pouco testado nao deve ser considerado ruim.",
-        evidenciasJson: evidencia,
+        motivo:
+          "Produto ainda nao testado. Aumente exposicao antes de tomar decisao de preco, desconto ou reposicao.",
+        evidenciasJson,
         impactoEsperado: "Gerar dados antes de comprar mais, descontar ou cortar.",
         risco: "Pouca exposicao pode levar a conclusao errada.",
         prioridade: "BAIXA",
-        acaoSugerida: "Colocar em Home, vitrine editorial, busca ou conteudo organico.",
+        acaoSugerida: "Aumentar exposicao leve e observar novos sinais.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Intencao comercial",
         origemTipo: "INTENCAO_PRODUTO",
@@ -328,15 +412,16 @@ async function candidatosDeProdutos(periodoReferencia) {
     }
 
     if (
-      snapshot.statusComercial === "ESTOQUE_PARADO" ||
-      snapshot.recomendacao === "LIQUIDAR_COM_CUIDADO"
+      (snapshot.statusComercial === "ESTOQUE_PARADO" ||
+        snapshot.recomendacao === "LIQUIDAR_COM_CUIDADO") &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "ESTOQUE",
         titulo: `Criar campanha controlada para ${produto.codigoInterno}`,
         descricao: `${produto.nome} deve girar antes de qualquer nova compra.`,
         motivo: "Estoque parado permite margem menor com objetivo claro de giro.",
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Liberar caixa parado em estoque.",
         risco: "Recomprar item parado aumenta capital imobilizado.",
         prioridade: "MEDIA",

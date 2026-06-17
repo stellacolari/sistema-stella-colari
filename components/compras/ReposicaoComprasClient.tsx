@@ -87,6 +87,10 @@ function labelAcaoLote(value: string | null | undefined) {
     NAO_REPOR: "Nao recomprar ainda",
     OBSERVAR: "Nao recomprar ainda",
     LIQUIDAR_COM_CUIDADO: "Liquidar com cuidado",
+    CAUTELA: "Compra com cautela",
+    BLOQUEADO: "Compra bloqueada",
+    LIBERADO: "Compra liberada",
+    LOTE_PEQUENO: "Compra pequena",
   };
 
   return labels[String(value || "")] || labelInteligencia(value);
@@ -451,7 +455,8 @@ export default function ReposicaoComprasClient({
                             {labelInteligencia(item.statusComercial)}
                           </span>
                           <p className="text-xs font-semibold text-slate-900">
-                            {labelInteligencia(item.recomendacaoReposicao)}
+                            Reposicao sugerida:{" "}
+                            {labelAcaoLote(item.recomendacaoReposicao)}
                           </p>
                           <p className="text-xs text-slate-500">
                             Confianca {numeroCurto(item.confiancaReposicao)}%
@@ -478,7 +483,7 @@ export default function ReposicaoComprasClient({
                                 Lote grande:{" "}
                                 {item.loteGrandeLiberado
                                   ? "liberado"
-                                  : labelInteligencia(item.loteDecisao)}
+                                  : labelAcaoLote(item.loteDecisao)}
                               </span>
                               <p className="mt-1 text-xs text-slate-500">
                                 {item.faseEmpresaLabel} -{" "}
@@ -504,7 +509,10 @@ export default function ReposicaoComprasClient({
                                   {item.cicloAtual || "-"}
                                 </span>
                               </p>
-                              <p>Sell-through: {percentualDireto(item.sellThrough)}</p>
+                              <p>
+                                Vendeu {percentualDireto(item.sellThrough)} do
+                                ciclo analisado
+                              </p>
                               {item.acaoSugerida && (
                                 <p className="leading-5 text-slate-500">
                                   {item.acaoSugerida}

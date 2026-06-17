@@ -26,6 +26,27 @@ function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
+function evidenciaCampanhaSuficiente(evidencias) {
+  const nivel = String(evidencias.nivelEvidencia || "");
+  if (nivel === "EVIDENCIA_MODERADA" || nivel === "EVIDENCIA_FORTE") return true;
+
+  const vendas = numero(evidencias.vendasQuantidade || evidencias.vendas);
+  const sellThrough = numero(evidencias.sellThrough);
+  const visualizacoes = numero(evidencias.visualizacoes);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos || evidencias.adicoesCarrinho);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+
+  return vendas >= 1 || sellThrough >= 35 || visualizacoes >= 12 || favoritos >= 1 || carrinhos >= 1 || scoreInteresse >= 18;
+}
+
+function recomendacaoPodeGerarCampanha(recomendacao) {
+  const evidencias = jsonRecord(recomendacao.evidenciasJson);
+  if (recomendacao.origemTipo === "INTENCAO_BUSCA") return true;
+  if (recomendacao.tipo === "MARKETING") return true;
+  return evidenciaCampanhaSuficiente(evidencias);
+}
+
 function normalizarTexto(value) {
   return String(value || "")
     .normalize("NFD")
@@ -202,7 +223,9 @@ async function main() {
     orderBy: [{ prioridade: "asc" }, { criadoEm: "desc" }],
     take: 80,
   });
-  const candidatos = recomendacoes.map(candidatoDeRecomendacao);
+  const candidatos = recomendacoes
+    .filter(recomendacaoPodeGerarCampanha)
+    .map(candidatoDeRecomendacao);
   const criadas = [];
   const existentes = [];
 

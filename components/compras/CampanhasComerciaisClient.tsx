@@ -317,6 +317,13 @@ export default function CampanhasComerciaisClient({
         </div>
       </section>
 
+      <section className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900 shadow-sm">
+        A empresa esta em fase inicial e muitos produtos ainda tem pouca
+        amostra. Por isso, campanhas por produto so devem nascer quando houver
+        sinais reais de venda, intencao, exposicao suficiente ou risco
+        comprovado.
+      </section>
+
       {(erro || mensagem) && (
         <div className="space-y-2">
           {erro && (

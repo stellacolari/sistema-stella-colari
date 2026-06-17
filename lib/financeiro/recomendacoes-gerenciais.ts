@@ -130,6 +130,12 @@ type GerarRecomendacoesParams = {
   ano?: number;
 };
 
+export type NivelEvidenciaRecomendacao =
+  | "SEM_EVIDENCIA"
+  | "EVIDENCIA_FRACA"
+  | "EVIDENCIA_MODERADA"
+  | "EVIDENCIA_FORTE";
+
 function numero(value: unknown) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -167,6 +173,98 @@ function normalizarTexto(value: string) {
 
 function unique<T>(items: T[]) {
   return Array.from(new Set(items));
+}
+
+function pesoNivelEvidencia(nivel: NivelEvidenciaRecomendacao) {
+  if (nivel === "EVIDENCIA_FORTE") return 3;
+  if (nivel === "EVIDENCIA_MODERADA") return 2;
+  if (nivel === "EVIDENCIA_FRACA") return 1;
+  return 0;
+}
+
+export function avaliarEvidenciaRecomendacao(
+  evidencias: Record<string, unknown>
+): NivelEvidenciaRecomendacao {
+  const vendas = numero(evidencias.vendasQuantidade ?? evidencias.vendas);
+  const sellThrough = numero(evidencias.sellThrough ?? evidencias.sellThroughAcumulado);
+  const visualizacoes = numero(evidencias.visualizacoes);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos ?? evidencias.adicoesCarrinho);
+  const cliquesBusca = numero(evidencias.cliquesBusca);
+  const cliquesVitrine = numero(evidencias.cliquesVitrine);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+  const scoreValidacao = numero(evidencias.scoreValidacao);
+  const campanhasAbertas = numero(evidencias.campanhasAbertas);
+  const estoqueFinal = numero(evidencias.estoqueFinal ?? evidencias.estoqueTotal);
+  const segundoCicloPositivo = Boolean(evidencias.segundoCicloPositivo);
+
+  if (
+    vendas >= 2 ||
+    sellThrough >= 70 ||
+    favoritos >= 3 ||
+    carrinhos >= 2 ||
+    scoreInteresse >= 35 ||
+    scoreValidacao >= 70 ||
+    segundoCicloPositivo
+  ) {
+    return "EVIDENCIA_FORTE";
+  }
+
+  if (
+    vendas >= 1 ||
+    sellThrough >= 35 ||
+    visualizacoes >= 12 ||
+    favoritos >= 1 ||
+    carrinhos >= 1 ||
+    cliquesBusca >= 2 ||
+    cliquesVitrine >= 2 ||
+    scoreInteresse >= 18 ||
+    scoreValidacao >= 45 ||
+    campanhasAbertas > 0
+  ) {
+    return "EVIDENCIA_MODERADA";
+  }
+
+  if (estoqueFinal > 0 || visualizacoes > 0) {
+    return "EVIDENCIA_FRACA";
+  }
+
+  return "SEM_EVIDENCIA";
+}
+
+function evidenciaSuficiente(
+  nivel: NivelEvidenciaRecomendacao,
+  minimo: NivelEvidenciaRecomendacao
+) {
+  return pesoNivelEvidencia(nivel) >= pesoNivelEvidencia(minimo);
+}
+
+function limitarPrioridadePorEvidencia(
+  prioridade: RecomendacaoPrioridade,
+  nivel: NivelEvidenciaRecomendacao
+): RecomendacaoPrioridade {
+  if (nivel === "EVIDENCIA_FORTE") return prioridade;
+  if (nivel === "EVIDENCIA_MODERADA" && prioridade === "ALTA") return "MEDIA";
+  if (nivel === "EVIDENCIA_FRACA") return "BAIXA";
+  return prioridade;
+}
+
+function anexarNivelEvidencia(
+  evidencias: Record<string, unknown>,
+  nivel: NivelEvidenciaRecomendacao
+) {
+  return {
+    ...evidencias,
+    nivelEvidencia: nivel,
+    leituraEvidencia:
+      nivel === "SEM_EVIDENCIA"
+        ? "Produto ainda nao testado. Aumente exposicao antes de tomar decisao de preco, desconto ou reposicao."
+        : nivel === "EVIDENCIA_FRACA"
+          ? "Amostra ainda pequena; manter observacao e exposicao leve."
+          : nivel === "EVIDENCIA_MODERADA"
+            ? "Ha sinal real suficiente para recomendacao de baixa ou media prioridade."
+            : "Ha sinal forte para acao seletiva.",
+  } satisfies Prisma.InputJsonObject;
 }
 
 function asArray(value: string | string[] | undefined) {
@@ -677,22 +775,31 @@ async function montarCandidatosProduto(periodoReferencia: string) {
       vendasQuantidade: snapshot.vendasQuantidade,
       estoqueFinal: snapshot.estoqueFinal,
       sellThrough: snapshot.sellThroughAcumulado,
+      visualizacoes: intencao.visualizacoes,
+      favoritos: intencao.favoritos,
+      carrinhos: intencao.adicoesCarrinho,
+      cliquesBusca: intencao.cliquesBusca,
+      cliquesVitrine: intencao.cliquesVitrine,
+      scoreInteresse: intencao.scoreInteresse,
       decisaoLote: decisao.decisao,
       loteGrandeLiberado: decisao.loteGrandeLiberado,
     };
+    const nivelEvidencia = avaliarEvidenciaRecomendacao(evidenciaBase);
+    const evidenciasJson = anexarNivelEvidencia(evidenciaBase, nivelEvidencia);
 
     if (
       ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(
         snapshot.statusComercial
       ) &&
-      snapshot.estoqueFinal <= 3
+      snapshot.estoqueFinal <= 3 &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Priorizar reposicao pequena de ${produto.codigoInterno}`,
+        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
         descricao: `${produto.nome} tem sinal comercial forte e estoque baixo.`,
         motivo: decisao.motivo,
-        evidenciasJson: evidenciaBase,
+        evidenciasJson,
         impactoEsperado: "Evitar ruptura sem assumir lote grande cedo demais.",
         risco: "Sem reposicao seletiva, a vitrine pode perder produto validado.",
         prioridade: "ALTA",
@@ -710,14 +817,15 @@ async function montarCandidatosProduto(periodoReferencia: string) {
 
     if (
       snapshot.statusComercial === "PROMISSOR" &&
-      snapshot.estoqueFinal <= 5
+      snapshot.estoqueFinal <= 5 &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Repor pequeno produto promissor ${produto.codigoInterno}`,
+        titulo: `Reposicao sugerida: pequena para ${produto.nome}`,
         descricao: `${produto.nome} tem sinal inicial e pede reposicao pequena, nao lote grande.`,
         motivo: decisao.motivo,
-        evidenciasJson: evidenciaBase,
+        evidenciasJson,
         impactoEsperado: "Preservar aprendizado com baixo risco de estoque.",
         risco: "Comprar grande com pouca amostra pode travar caixa em estoque.",
         prioridade: "MEDIA",
@@ -731,14 +839,19 @@ async function montarCandidatosProduto(periodoReferencia: string) {
       });
     }
 
-    if (!decisao.loteGrandeLiberado && snapshot.vendasQuantidade <= 2) {
+    if (
+      !decisao.loteGrandeLiberado &&
+      snapshot.vendasQuantidade <= 2 &&
+      snapshot.statusComercial !== "NAO_TESTADO" &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
+    ) {
       candidatos.push({
         tipo: "REPOSICAO",
-        titulo: `Nao comprar lote grande ainda de ${produto.codigoInterno}`,
+        titulo: `Compra com cautela: ${produto.nome}`,
         descricao:
           "A regra adaptativa bloqueia lote grande ate haver repeticao de ciclo ou padrao forte.",
         motivo: decisao.motivo,
-        evidenciasJson: evidenciaBase,
+        evidenciasJson,
         impactoEsperado: "Evitar excesso de estoque antes de validacao recorrente.",
         risco: "Uma venda de poucas pecas nao confirma lote grande.",
         prioridade: "MEDIA",
@@ -753,16 +866,18 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     }
 
     if (
-      snapshot.statusComercial === "INTERESSE_SEM_CONVERSAO" ||
-      snapshot.recomendacao === "REVISAR_OFERTA"
+      (snapshot.statusComercial === "INTERESSE_SEM_CONVERSAO" ||
+        snapshot.recomendacao === "REVISAR_OFERTA") &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "LOJA",
-        titulo: `Revisar oferta de ${produto.codigoInterno}`,
+        titulo: `Revisar oferta: ${produto.nome}`,
         descricao: `${produto.nome} desperta interesse, mas ainda nao converte como deveria.`,
         motivo: intencao.interpretacao,
         evidenciasJson: {
           ...evidenciaBase,
+          nivelEvidencia,
           visualizacoes: intencao.visualizacoes,
           favoritos: intencao.favoritos,
           carrinhos: intencao.adicoesCarrinho,
@@ -770,7 +885,7 @@ async function montarCandidatosProduto(periodoReferencia: string) {
         },
         impactoEsperado: "Melhorar conversao antes de recomprar.",
         risco: "Comprar mais pode repetir o gargalo de oferta.",
-        prioridade: "ALTA",
+        prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: "Revisar preco, foto, descricao, frete ou oferta.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Intencao comercial",
@@ -782,19 +897,21 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     }
 
     if (
-      snapshot.statusComercial === "NAO_TESTADO" ||
-      snapshot.recomendacao === "EXPOR_MAIS"
+      (snapshot.statusComercial === "NAO_TESTADO" ||
+        snapshot.recomendacao === "EXPOR_MAIS") &&
+      nivelEvidencia !== "SEM_EVIDENCIA"
     ) {
       candidatos.push({
         tipo: "LOJA",
-        titulo: `Expor produto pouco testado ${produto.codigoInterno}`,
+        titulo: `Produto ainda nao testado: ${produto.nome}`,
         descricao: `${produto.nome} ainda precisa de mais vitrine antes de conclusao comercial.`,
-        motivo: intencao.interpretacao,
-        evidenciasJson: evidenciaBase,
+        motivo:
+          "Produto ainda nao testado. Aumente exposicao antes de tomar decisao de preco, desconto ou reposicao.",
+        evidenciasJson,
         impactoEsperado: "Aumentar amostra real antes de comprar ou cortar margem.",
         risco: "Tratar pouca exposicao como produto ruim pode matar um item promissor.",
         prioridade: "BAIXA",
-        acaoSugerida: "Colocar em Home, vitrine editorial, busca ou conteudo organico.",
+        acaoSugerida: "Aumentar exposicao leve e observar novos sinais.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Intencao comercial",
         origemTipo: "INTENCAO_PRODUTO",
@@ -805,15 +922,16 @@ async function montarCandidatosProduto(periodoReferencia: string) {
     }
 
     if (
-      snapshot.statusComercial === "ESTOQUE_PARADO" ||
-      snapshot.recomendacao === "LIQUIDAR_COM_CUIDADO"
+      (snapshot.statusComercial === "ESTOQUE_PARADO" ||
+        snapshot.recomendacao === "LIQUIDAR_COM_CUIDADO") &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "ESTOQUE",
         titulo: `Criar campanha para estoque parado ${produto.codigoInterno}`,
         descricao: `${produto.nome} deve girar antes de nova recompra.`,
         motivo: decisao.margem.recomendacao,
-        evidenciasJson: evidenciaBase,
+        evidenciasJson,
         impactoEsperado: "Liberar capital parado com campanha controlada.",
         risco: "Recomprar item parado aumenta estoque sem giro.",
         prioridade: "MEDIA",
@@ -827,20 +945,24 @@ async function montarCandidatosProduto(periodoReferencia: string) {
       });
     }
 
-    if (decisao.margem.acao === "PROTEGER") {
+    if (
+      decisao.margem.acao === "PROTEGER" &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
+    ) {
       candidatos.push({
         tipo: "PRECIFICACAO",
-        titulo: `Proteger margem de ${produto.codigoInterno}`,
+        titulo: `Proteger margem: ${produto.nome}`,
         descricao: `${produto.nome} tem sinal comercial que pede preservar preco e margem.`,
         motivo: decisao.margem.recomendacao,
-        evidenciasJson: evidenciaBase,
+        evidenciasJson,
         impactoEsperado: "Preservar lucro em produto validado ou com ruptura.",
         risco: "Desconto em campeao pode reduzir margem sem necessidade.",
-        prioridade: ["RISCO_RUPTURA", "CAMPEAO_PROVAVEL"].includes(
-          snapshot.statusComercial
-        )
-          ? "ALTA"
-          : "MEDIA",
+        prioridade: limitarPrioridadePorEvidencia(
+          ["RISCO_RUPTURA", "CAMPEAO_PROVAVEL"].includes(snapshot.statusComercial)
+            ? "ALTA"
+            : "MEDIA",
+          nivelEvidencia
+        ),
         acaoSugerida: "Evitar desconto amplo; testar destaque, kit ou vitrine.",
         linkAcao: `/produtos/${produto.id}`,
         origem: "Precificacao adaptativa",
@@ -870,20 +992,28 @@ async function montarCandidatosIntencao(periodoReferencia: string) {
     .slice(0, 8);
 
   for (const produto of intencao.produtosTravados.slice(0, 8)) {
+    const evidencia = {
+      visualizacoes: produto.visualizacoes,
+      favoritos: produto.favoritos,
+      carrinhos: produto.adicoesCarrinho,
+      vendas: produto.vendasQuantidade,
+      scoreInteresse: produto.scoreInteresse,
+    };
+    const nivelEvidencia = avaliarEvidenciaRecomendacao(evidencia);
+    if (!evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")) continue;
+
     candidatos.push({
       tipo: "LOJA",
-      titulo: `Revisar oferta de produto com interesse ${produto.codigoInterno}`,
+      titulo: `Revisar oferta: ${produto.nome}`,
       descricao: `${produto.nome} recebeu sinais de interesse sem conversao suficiente.`,
       motivo: produto.diagnostico,
-      evidenciasJson: {
-        visualizacoes: produto.visualizacoes,
-        favoritos: produto.favoritos,
-        carrinhos: produto.adicoesCarrinho,
-        taxaConversao: produto.taxaConversao,
-      },
+      evidenciasJson: anexarNivelEvidencia(
+        { ...evidencia, taxaConversao: produto.taxaConversao },
+        nivelEvidencia
+      ),
       impactoEsperado: "Aumentar conversao antes de recompra.",
       risco: "Sem ajuste de oferta, a recompra pode aumentar estoque parado.",
-      prioridade: "ALTA",
+      prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
       acaoSugerida: "Revisar preco, foto, descricao, frete ou oferta.",
       linkAcao: `/produtos/${produto.produtoId}`,
       origem: "Intencao comercial",
@@ -895,21 +1025,27 @@ async function montarCandidatosIntencao(periodoReferencia: string) {
   }
 
   for (const produto of intencao.produtosPoucoTestados.slice(0, 8)) {
+    const evidencia = {
+      visualizacoes: produto.visualizacoes,
+      favoritos: produto.favoritos,
+      carrinhos: produto.adicoesCarrinho,
+      vendas: produto.vendasQuantidade,
+      scoreInteresse: produto.scoreInteresse,
+      estoqueTotal: produto.estoqueTotal,
+    };
+    const nivelEvidencia = avaliarEvidenciaRecomendacao(evidencia);
+    if (nivelEvidencia === "SEM_EVIDENCIA") continue;
+
     candidatos.push({
       tipo: "LOJA",
-      titulo: `Expor produto pouco testado ${produto.codigoInterno}`,
+      titulo: `Produto ainda nao testado: ${produto.nome}`,
       descricao: `${produto.nome} precisa de mais exposicao antes de decisao de compra.`,
       motivo: "Produto pouco testado nao deve ser considerado ruim; precisa de mais amostra.",
-      evidenciasJson: {
-        visualizacoes: produto.visualizacoes,
-        favoritos: produto.favoritos,
-        carrinhos: produto.adicoesCarrinho,
-        scoreInteresse: produto.scoreInteresse,
-      },
+      evidenciasJson: anexarNivelEvidencia(evidencia, nivelEvidencia),
       impactoEsperado: "Gerar dados reais antes de reposicao, desconto ou descarte.",
       risco: "Baixa amostra pode levar a decisao errada.",
       prioridade: "BAIXA",
-      acaoSugerida: "Expor na Home, vitrine editorial ou conteudo organico.",
+      acaoSugerida: "Aumentar exposicao leve e observar novos sinais.",
       linkAcao: `/produtos/${produto.produtoId}`,
       origem: "Intencao comercial",
       origemTipo: "INTENCAO_PRODUTO",
@@ -920,21 +1056,26 @@ async function montarCandidatosIntencao(periodoReferencia: string) {
   }
 
   for (const produto of produtosRiscoRuptura) {
+    const evidencia = {
+      estoqueTotal: produto.estoqueTotal,
+      visualizacoes: produto.visualizacoes,
+      favoritos: produto.favoritos,
+      carrinhos: produto.adicoesCarrinho,
+      vendas: produto.vendasQuantidade,
+      scoreInteresse: produto.scoreInteresse,
+    };
+    const nivelEvidencia = avaliarEvidenciaRecomendacao(evidencia);
+    if (!evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")) continue;
+
     candidatos.push({
       tipo: "REPOSICAO",
-      titulo: `Proteger margem e ruptura de ${produto.codigoInterno}`,
+      titulo: `Proteger margem e ruptura: ${produto.nome}`,
       descricao: `${produto.nome} tem estoque baixo e sinais de interesse/venda.`,
       motivo: produto.diagnostico,
-      evidenciasJson: {
-        estoqueTotal: produto.estoqueTotal,
-        visualizacoes: produto.visualizacoes,
-        favoritos: produto.favoritos,
-        carrinhos: produto.adicoesCarrinho,
-        vendas: produto.vendasQuantidade,
-      },
+      evidenciasJson: anexarNivelEvidencia(evidencia, nivelEvidencia),
       impactoEsperado: "Evitar ruptura e preservar margem de produto desejado.",
       risco: "Aumentar campanha sem estoque pode desperdiçar demanda.",
-      prioridade: "ALTA",
+      prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
       acaoSugerida: "Repor seletivamente e evitar desconto amplo.",
       linkAcao: "/compras/reposicao",
       origem: "Intencao comercial",
@@ -1014,7 +1155,13 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
       classificacao: produto.classificacao,
       statusComercial: produto.statusComercial,
       estoqueAtual: produto.estoqueAtual,
+      sellThrough: produto.sellThrough,
+      scoreInteresse: produto.scoreInteresse,
+      scoreConversao: produto.scoreConversao,
+      campanhasAbertas: produto.campanhasAbertas.length,
     } satisfies Prisma.InputJsonObject;
+    const nivelEvidencia = avaliarEvidenciaRecomendacao(evidencia);
+    const evidenciasJson = anexarNivelEvidencia(evidencia, nivelEvidencia);
 
     if (produto.custoAusente) {
       candidatos.push({
@@ -1022,10 +1169,10 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
         titulo: `Cadastrar custo de ${produto.codigoInterno}`,
         descricao: `${produto.nome} esta sem custo confiavel para calcular margem e desconto seguro.`,
         motivo: produto.motivo,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Permitir decisao segura de preco, margem e campanha.",
         risco: "Sem custo, descontos e campanhas podem destruir margem sem aviso.",
-        prioridade: "ALTA",
+        prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: "Cadastrar custo antes de autorizar desconto ou campanha.",
         linkAcao: `/produtos/${produto.produtoId}`,
         origem: "Precificacao inteligente",
@@ -1042,10 +1189,10 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
         titulo: `Revisar preco critico de ${produto.codigoInterno}`,
         descricao: `${produto.nome} esta com margem abaixo da faixa segura.`,
         motivo: produto.motivo,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Recuperar margem antes de ampliar exposicao ou desconto.",
         risco: "Manter preco atual pode transformar venda em margem insuficiente.",
-        prioridade: "ALTA",
+        prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: produto.acaoSugerida,
         linkAcao: `/produtos/${produto.produtoId}`,
         origem: "Precificacao inteligente",
@@ -1058,18 +1205,19 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
 
     if (
       produto.classificacao === "MARGEM_PROTEGIDA" &&
-      produto.campanhasAbertas.some((campanha) => campanha.alertaDesconto)
+      produto.campanhasAbertas.some((campanha) => campanha.alertaDesconto) &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
     ) {
       candidatos.push({
         tipo: "PRECIFICACAO",
-        titulo: `Bloquear desconto inseguro de ${produto.codigoInterno}`,
+        titulo: `Bloquear desconto inseguro: ${produto.nome}`,
         descricao: `${produto.nome} tem campanha com desconto que pode comprometer margem.`,
         motivo: produto.campanhasAbertas.find((campanha) => campanha.alertaDesconto)
           ?.alertaDesconto || produto.motivo,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Evitar campanha que reduza lucro abaixo do minimo seguro.",
         risco: "Desconto sugerido pode consumir margem de produto protegido.",
-        prioridade: "ALTA",
+        prioridade: limitarPrioridadePorEvidencia("ALTA", nivelEvidencia),
         acaoSugerida: "Trocar desconto por vitrine, combo ou conteudo organico.",
         linkAcao: "/compras/campanhas",
         origem: "Precificacao inteligente",
@@ -1080,16 +1228,19 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
       });
     }
 
-    if (produto.classificacao === "DESCONTO_CONTROLADO") {
+    if (
+      produto.classificacao === "DESCONTO_CONTROLADO" &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
+    ) {
       candidatos.push({
         tipo: "PRECIFICACAO",
-        titulo: `Testar desconto controlado de ${produto.codigoInterno}`,
+        titulo: `Testar desconto controlado: ${produto.nome}`,
         descricao: `${produto.nome} permite desconto pequeno sem ultrapassar o preco minimo seguro.`,
         motivo: produto.motivo,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Girar estoque ou validar campanha sem destruir margem.",
         risco: "Desconto acima do limite seguro compromete caixa e lucro.",
-        prioridade: "MEDIA",
+        prioridade: limitarPrioridadePorEvidencia("MEDIA", nivelEvidencia),
         acaoSugerida: produto.acaoSugerida,
         linkAcao: "/compras/precificacao",
         origem: "Precificacao inteligente",
@@ -1100,16 +1251,19 @@ async function montarCandidatosPrecificacao(periodoReferencia: string) {
       });
     }
 
-    if (produto.classificacao === "REVISAR_PRECO") {
+    if (
+      produto.classificacao === "REVISAR_PRECO" &&
+      evidenciaSuficiente(nivelEvidencia, "EVIDENCIA_MODERADA")
+    ) {
       candidatos.push({
         tipo: "PRECIFICACAO",
-        titulo: `Revisar preco e oferta de ${produto.codigoInterno}`,
+        titulo: `Revisar preco e oferta: ${produto.nome}`,
         descricao: `${produto.nome} tem sinal de interesse sem conversao ou friccao de oferta.`,
         motivo: produto.motivo,
-        evidenciasJson: evidencia,
+        evidenciasJson,
         impactoEsperado: "Melhorar conversao sem recorrer primeiro a desconto agressivo.",
         risco: "Desconto pode mascarar problema de foto, frete, descricao ou preco.",
-        prioridade: "MEDIA",
+        prioridade: limitarPrioridadePorEvidencia("MEDIA", nivelEvidencia),
         acaoSugerida: produto.acaoSugerida,
         linkAcao: `/produtos/${produto.produtoId}`,
         origem: "Precificacao inteligente",

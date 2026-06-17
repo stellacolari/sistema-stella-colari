@@ -118,6 +118,27 @@ function jsonRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function evidenciaCampanhaSuficiente(evidencias: Record<string, unknown>) {
+  const nivel = String(evidencias.nivelEvidencia || "");
+  if (nivel === "EVIDENCIA_MODERADA" || nivel === "EVIDENCIA_FORTE") return true;
+
+  const vendas = numero(evidencias.vendasQuantidade || evidencias.vendas);
+  const sellThrough = numero(evidencias.sellThrough);
+  const visualizacoes = numero(evidencias.visualizacoes);
+  const favoritos = numero(evidencias.favoritos);
+  const carrinhos = numero(evidencias.carrinhos || evidencias.adicoesCarrinho);
+  const scoreInteresse = numero(evidencias.scoreInteresse);
+
+  return (
+    vendas >= 1 ||
+    sellThrough >= 35 ||
+    visualizacoes >= 12 ||
+    favoritos >= 1 ||
+    carrinhos >= 1 ||
+    scoreInteresse >= 18
+  );
+}
+
 function normalizarTexto(value: string) {
   return value
     .normalize("NFD")
@@ -209,6 +230,17 @@ export function avaliarTipoCampanha(
   }
 
   return "VALIDACAO";
+}
+
+function recomendacaoPodeGerarCampanha(
+  recomendacao: Pick<RecomendacaoGerencial, "tipo" | "origemTipo" | "evidenciasJson">
+) {
+  const evidencias = jsonRecord(recomendacao.evidenciasJson);
+
+  if (recomendacao.origemTipo === "INTENCAO_BUSCA") return true;
+  if (recomendacao.tipo === "MARKETING") return true;
+
+  return evidenciaCampanhaSuficiente(evidencias);
 }
 
 export function montarMetasCampanha(tipo: CampanhaComercialTipo, evidencias: Record<string, unknown>) {
@@ -478,7 +510,9 @@ export async function gerarCampanhasComerciais() {
   ]);
 
   const candidatos = [
-    ...recomendacoes.map(montarCandidatoDeRecomendacao),
+    ...recomendacoes
+      .filter(recomendacaoPodeGerarCampanha)
+      .map(montarCandidatoDeRecomendacao),
     ...intencao.buscasSemResultado
       .filter((busca) => busca.quantidade >= 2)
       .slice(0, 8)

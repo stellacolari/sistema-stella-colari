@@ -187,14 +187,17 @@ export function avaliarProtecaoMargem(params: {
   estoqueAtual: number;
   margemBrutaPct: number;
   faseEmpresa: string;
+  sellThrough?: number;
 }) {
   return (
     ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(params.statusComercial) ||
     params.scoreInteresse >= 35 ||
     params.scoreConversao >= 45 ||
-    params.estoqueAtual <= 2 ||
+    (params.estoqueAtual <= 2 &&
+      (numero(params.sellThrough) >= 35 || params.scoreInteresse >= 18 || params.scoreConversao >= 20)) ||
     params.margemBrutaPct < 45 ||
-    ["VALIDACAO_INICIAL", "PRESSAO_CAIXA", "CRISE_DEFESA"].includes(params.faseEmpresa)
+    (["PRESSAO_CAIXA", "CRISE_DEFESA"].includes(params.faseEmpresa) &&
+      (params.scoreInteresse >= 18 || params.scoreConversao >= 20 || numero(params.sellThrough) >= 35))
   );
 }
 
@@ -391,6 +394,7 @@ function analisarProdutoBase(
     estoqueAtual,
     margemBrutaPct,
     faseEmpresa,
+    sellThrough: numero(snapshot?.sellThroughAcumulado),
   });
   const descontoPermitido = avaliarPermissaoDesconto({
     custoAusente,

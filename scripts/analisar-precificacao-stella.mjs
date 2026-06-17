@@ -58,11 +58,15 @@ function intencao(dadosJson) {
   };
 }
 
-function classificar({ custo, margemPct, statusComercial, scoreInteresse, scoreConversao, estoque, descontoMax }) {
+function classificar({ custo, margemPct, statusComercial, scoreInteresse, scoreConversao, estoque, descontoMax, sellThrough }) {
   if (custo <= 0) return "DADOS_INSUFICIENTES";
   if (margemPct < 25) return "PRECO_CRITICO";
   if (statusComercial === "INTERESSE_SEM_CONVERSAO" || (scoreInteresse >= 25 && scoreConversao <= 5)) return "REVISAR_PRECO";
-  if (["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(statusComercial) || estoque <= 2 || scoreInteresse >= 35) return "MARGEM_PROTEGIDA";
+  if (
+    ["CAMPEAO_PROVAVEL", "RISCO_RUPTURA", "REPOSICAO_CONFIRMADA"].includes(statusComercial) ||
+    scoreInteresse >= 35 ||
+    (estoque <= 2 && (numero(sellThrough) >= 35 || scoreInteresse >= 18 || scoreConversao >= 20))
+  ) return "MARGEM_PROTEGIDA";
   if (["ESTOQUE_PARADO", "TRAVADO"].includes(statusComercial) && descontoMax > 0 && margemPct >= 45) return "DESCONTO_CONTROLADO";
   if (["ESTOQUE_PARADO", "TRAVADO"].includes(statusComercial)) return "PODE_VIRAR_COMBO";
   return "DESCONTO_BLOQUEADO";
@@ -106,6 +110,7 @@ async function main() {
       scoreConversao: sinais.scoreConversao,
       estoque,
       descontoMax,
+      sellThrough: snapshot?.sellThroughAcumulado,
     });
 
     return {
