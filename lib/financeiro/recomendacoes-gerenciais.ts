@@ -7,6 +7,10 @@ import {
   type RecomendacaoImpactoSerializada,
 } from "@/lib/financeiro/impacto-recomendacoes";
 import {
+  serializarCampanhaComercial,
+  type CampanhaComercialSerializada,
+} from "@/lib/loja/campanhas-comerciais";
+import {
   calcularResultadoMensal,
   mesAnoAtual,
   montarCentralFinanceira,
@@ -88,6 +92,7 @@ export type RecomendacaoGerencialResumo = {
   ignoradaEm: string | null;
   adiadaEm: string | null;
   impactos?: RecomendacaoImpactoSerializada[];
+  campanhas?: CampanhaComercialSerializada[];
 };
 
 type CandidatoRecomendacao = {
@@ -186,6 +191,7 @@ function statusPeso(value: string) {
 export function serializarRecomendacaoGerencial(
   recomendacao: RecomendacaoGerencial & {
     impactos?: Parameters<typeof serializarImpactoRecomendacao>[0][];
+    campanhas?: Parameters<typeof serializarCampanhaComercial>[0][];
   }
 ): RecomendacaoGerencialResumo {
   return {
@@ -199,6 +205,7 @@ export function serializarRecomendacaoGerencial(
     ignoradaEm: recomendacao.ignoradaEm?.toISOString() || null,
     adiadaEm: recomendacao.adiadaEm?.toISOString() || null,
     impactos: recomendacao.impactos?.map(serializarImpactoRecomendacao) || [],
+    campanhas: recomendacao.campanhas?.map(serializarCampanhaComercial) || [],
   };
 }
 
@@ -222,6 +229,15 @@ export async function listarRecomendacoesGerenciais(
     include: {
       impactos: {
         orderBy: [{ avaliadoEm: "desc" }],
+        take: 3,
+      },
+      campanhas: {
+        where: {
+          status: {
+            in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"],
+          },
+        },
+        orderBy: [{ criadoEm: "desc" }],
         take: 3,
       },
     },

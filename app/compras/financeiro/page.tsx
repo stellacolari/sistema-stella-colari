@@ -13,6 +13,10 @@ import {
   listarRecomendacoesGerenciais,
   serializarRecomendacaoGerencial,
 } from "@/lib/financeiro/recomendacoes-gerenciais";
+import {
+  listarCampanhasComerciais,
+  serializarCampanhaComercial,
+} from "@/lib/loja/campanhas-comerciais";
 import CentralFinanceiraClient, {
   type CentralAlerta,
   type CentralCompraPendente,
@@ -191,11 +195,18 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
     reservaAtual,
     historico,
   });
-  const recomendacoesGerenciais = await listarRecomendacoesGerenciais({
-    status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
-    tipo: ["FINANCEIRO", "CAIXA", "PRO_LABORE", "MARKETING", "CRESCIMENTO"],
-    take: 3,
-  });
+  const [recomendacoesGerenciais, campanhasAbertas] = await Promise.all([
+    listarRecomendacoesGerenciais({
+      status: ["NOVA", "ACEITA", "EM_EXECUCAO"],
+      tipo: ["FINANCEIRO", "CAIXA", "PRO_LABORE", "MARKETING", "CRESCIMENTO"],
+      take: 3,
+    }),
+    listarCampanhasComerciais({
+      status: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"],
+      tipo: ["VALIDACAO", "MARGEM", "GIRO_ESTOQUE", "CUPOM_CONTROLADO", "REPOSICAO"],
+      take: 3,
+    }),
+  ]);
 
   return (
     <CentralFinanceiraClient
@@ -296,6 +307,7 @@ export default async function CentralFinanceiraPage({ searchParams }: PageProps)
       recomendacoesGerenciais={recomendacoesGerenciais.map(
         serializarRecomendacaoGerencial
       )}
+      campanhasAbertas={campanhasAbertas.map(serializarCampanhaComercial)}
     />
   );
 }

@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Filter,
   Lightbulb,
+  Megaphone,
   PauseCircle,
   PlayCircle,
   RefreshCcw,
@@ -48,6 +49,7 @@ export type RecomendacaoGerencialResumo = {
   ignoradaEm: string | null;
   adiadaEm: string | null;
   impactos?: RecomendacaoImpactoResumo[];
+  campanhas?: CampanhaComercialResumo[];
 };
 
 export type RecomendacaoImpactoResumo = {
@@ -64,6 +66,15 @@ export type RecomendacaoImpactoResumo = {
   avaliadoEm: string;
   criadoEm: string;
   atualizadoEm: string;
+};
+
+export type CampanhaComercialResumo = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  tipo: string;
+  status: string;
+  recomendacaoId: string | null;
 };
 
 type ResumoStatus = Record<string, number>;
@@ -190,6 +201,10 @@ function evidenciasResumo(value: unknown) {
 
 function latestImpacto(recomendacao: RecomendacaoGerencialResumo) {
   return recomendacao.impactos?.[0] || null;
+}
+
+function latestCampanha(recomendacao: RecomendacaoGerencialResumo) {
+  return recomendacao.campanhas?.[0] || null;
 }
 
 function metricasResumo(value: unknown) {
@@ -343,6 +358,26 @@ export default function RecomendacoesGerenciaisClient({
     }
 
     setMensagem("Impacto avaliado.");
+    refresh();
+  }
+
+  async function criarCampanha(recomendacao: RecomendacaoGerencialResumo) {
+    setErro("");
+    setMensagem("");
+
+    const response = await fetch("/api/compras/campanhas/gerar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recomendacaoId: recomendacao.id }),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      setErro(data.error || "Nao foi possivel criar campanha.");
+      return;
+    }
+
+    setMensagem(data.criada ? "Campanha criada." : "Campanha ja existia.");
     refresh();
   }
 
@@ -599,6 +634,7 @@ export default function RecomendacoesGerenciaisClient({
               recomendacao={recomendacao}
               onAcao={acionarRecomendacao}
               onAvaliarImpacto={avaliarImpacto}
+              onCriarCampanha={criarCampanha}
             />
           ))
         )}
@@ -611,12 +647,15 @@ function RecomendacaoCard({
   recomendacao,
   onAcao,
   onAvaliarImpacto,
+  onCriarCampanha,
 }: {
   recomendacao: RecomendacaoGerencialResumo;
   onAcao: (recomendacao: RecomendacaoGerencialResumo, acao: string) => void;
   onAvaliarImpacto: (recomendacao: RecomendacaoGerencialResumo) => void;
+  onCriarCampanha: (recomendacao: RecomendacaoGerencialResumo) => void;
 }) {
   const impacto = latestImpacto(recomendacao);
+  const campanha = latestCampanha(recomendacao);
 
   return (
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
@@ -700,6 +739,26 @@ function RecomendacaoCard({
                       variant="secondary"
                       onClick={() => onAvaliarImpacto(recomendacao)}
                     />
+                  )}
+                  {campanha ? (
+                    <Link
+                      href="/compras/campanhas"
+                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      Ver campanha
+                    </Link>
+                  ) : (
+                    ["NOVA", "ACEITA", "EM_EXECUCAO"].includes(
+                      recomendacao.status
+                    ) && (
+                      <AcaoButton
+                        icon={<Megaphone className="h-4 w-4" />}
+                        label="Criar campanha"
+                        variant="secondary"
+                        onClick={() => onCriarCampanha(recomendacao)}
+                      />
+                    )
                   )}
                   {recomendacao.status !== "CONCLUIDA" &&
                     recomendacao.status !== "IGNORADA" && (

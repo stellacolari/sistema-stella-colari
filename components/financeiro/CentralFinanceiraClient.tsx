@@ -95,6 +95,18 @@ export type CentralAlerta = {
   descricao: string;
 };
 
+type CampanhaFinanceiraResumo = {
+  id: string;
+  codigo: string;
+  titulo: string;
+  objetivo: string;
+  tipo: string;
+  status: string;
+  canalPrincipal: string;
+  orcamentoSugerido: number | null;
+  descontoSugerido: number | null;
+};
+
 type Props = {
   mes: number;
   ano: number;
@@ -121,6 +133,7 @@ type Props = {
   }[];
   diagnostico: DiagnosticoFinanceiro;
   recomendacoesGerenciais?: RecomendacaoGerencialResumo[];
+  campanhasAbertas?: CampanhaFinanceiraResumo[];
 };
 
 function moeda(valor: number) {
@@ -349,6 +362,7 @@ export default function CentralFinanceiraClient({
   gastosPorCategoria,
   diagnostico,
   recomendacoesGerenciais = [],
+  campanhasAbertas = [],
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -870,6 +884,66 @@ export default function CentralFinanceiraClient({
                 <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">
                   {recomendacao.acaoSugerida || recomendacao.descricao}
                 </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {campanhasAbertas.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+                <Megaphone className="h-4 w-4" />
+                Campanhas com impacto financeiro
+              </p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Planos abertos que podem afetar caixa, margem, marketing ou
+                giro de estoque. Nenhuma campanha ativa cupom ou vitrine
+                automaticamente.
+              </p>
+            </div>
+            <Link
+              href="/compras/campanhas"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Ver campanhas
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {campanhasAbertas.map((campanha) => (
+              <div
+                key={campanha.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {campanha.status.replaceAll("_", " ").toLowerCase()}
+                  </span>
+                  <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                    {campanha.tipo.replaceAll("_", " ").toLowerCase()}
+                  </span>
+                </div>
+                <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
+                  {campanha.titulo}
+                </p>
+                <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-600">
+                  {campanha.objetivo}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold text-slate-500">
+                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                    {campanha.canalPrincipal}
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                    Orcamento {moeda(campanha.orcamentoSugerido || 0)}
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200">
+                    Desconto {campanha.descontoSugerido || 0}%
+                  </span>
+                </div>
               </div>
             ))}
           </div>

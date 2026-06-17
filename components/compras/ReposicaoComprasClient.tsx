@@ -536,6 +536,12 @@ export default function ReposicaoComprasClient({
                                       )}
                                     </p>
                                   )}
+                                  {item.recomendacaoGerencial.campanhas?.[0] && (
+                                    <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+                                      Campanha{" "}
+                                      {item.recomendacaoGerencial.campanhas[0].status.toLowerCase()}
+                                    </p>
+                                  )}
                                   <p className="mt-1 leading-5 font-semibold text-blue-900">
                                     {item.recomendacaoGerencial.titulo}
                                   </p>
@@ -548,6 +554,14 @@ export default function ReposicaoComprasClient({
                                     className="mt-2 inline-flex min-h-8 items-center rounded-2xl bg-white px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200 transition hover:bg-blue-100"
                                   >
                                     Acompanhar decisao
+                                  </Link>
+                                  <Link
+                                    href="/compras/campanhas"
+                                    className="ml-2 mt-2 inline-flex min-h-8 items-center rounded-2xl bg-white px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200 transition hover:bg-blue-100"
+                                  >
+                                    {item.recomendacaoGerencial.campanhas?.[0]
+                                      ? "Ver campanha"
+                                      : "Planejar campanha"}
                                   </Link>
                                 </div>
                               )}

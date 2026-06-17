@@ -66,6 +66,8 @@ model Produto {
   ciclosEstoque                  ProdutoCicloEstoque[]
   metricasSnapshots              ProdutoMetricaSnapshot[]
   eventosComerciais              EventoComercial[]
+  campanhasComerciais            CampanhaComercial[]
+  recomendacoesGerenciais         RecomendacaoGerencial[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -649,6 +651,9 @@ model RecomendacaoGerencial {
   ignoradaEm         DateTime?
   adiadaEm           DateTime?
   impactos           RecomendacaoGerencialImpacto[]
+  campanhas          CampanhaComercial[]
+  produto            Produto?  @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria          CategoriaProduto? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
   @@index([tipo])
   @@index([prioridade])
@@ -682,6 +687,51 @@ model RecomendacaoGerencialImpacto {
   @@index([janelaDias])
   @@index([statusImpacto])
   @@index([avaliadoEm])
+}
+
+model CampanhaComercial {
+  id                  String                  @id @default(cuid())
+  codigo              String                  @unique
+  titulo              String
+  objetivo            String
+  tipo                String
+  status              String                  @default("RASCUNHO")
+  origem              String
+  recomendacaoId      String?
+  produtoId           String?
+  categoriaId         String?
+  descricao           String
+  estrategia          String
+  publicoAlvo         String?
+  canalPrincipal      String
+  canaisJson          Json?
+  produtosJson        Json?
+  acoesJson           Json?
+  metasJson           Json?
+  riscosJson          Json?
+  orcamentoSugerido   Float?
+  descontoSugerido    Float?
+  cupomSugerido       String?
+  dataInicioSugerida  DateTime?
+  dataFimSugerida     DateTime?
+  resultadoJson       Json?
+  criadoEm            DateTime                @default(now())
+  atualizadoEm        DateTime                @updatedAt
+  iniciadaEm          DateTime?
+  concluidaEm         DateTime?
+  canceladaEm         DateTime?
+  recomendacao        RecomendacaoGerencial?  @relation(fields: [recomendacaoId], references: [id], onDelete: SetNull)
+  produto             Produto?                @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  categoria           CategoriaProduto?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  @@index([codigo])
+  @@index([tipo])
+  @@index([status])
+  @@index([origem])
+  @@index([recomendacaoId])
+  @@index([produtoId])
+  @@index([categoriaId])
+  @@index([criadoEm])
 }
 
 model EstoqueProduto {
@@ -1229,6 +1279,8 @@ model CategoriaProduto {
   embalagensCompatibilidades EmbalagemModeloCompatibilidade[]
   produtos                   ProdutoCategoria[]
   eventosComerciais          EventoComercial[]
+  campanhasComerciais        CampanhaComercial[]
+  recomendacoesGerenciais     RecomendacaoGerencial[]
 
   @@index([categoriaMaeId])
   @@index([slug])

@@ -5,6 +5,7 @@ import {
   Boxes,
   CreditCard,
   Lightbulb,
+  Megaphone,
   MousePointerClick,
   Package,
   Plus,
@@ -190,6 +191,16 @@ export default async function ComprasPage() {
             description="Acompanhe ações sugeridas pela inteligência da plataforma e registre decisões."
             primaryLabel="Ver recomendacoes"
             primaryHref="/compras/recomendacoes"
+          />
+        )}
+
+        {podeVerRecomendacoes && (
+          <HubCard
+            icon={Megaphone}
+            title="Campanhas Comerciais"
+            description="Planeje acoes comerciais a partir das recomendacoes, intencao de compra e estoque."
+            primaryLabel="Ver campanhas"
+            primaryHref="/compras/campanhas"
           />
         )}
       </section>

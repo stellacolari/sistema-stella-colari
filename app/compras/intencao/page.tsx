@@ -250,6 +250,11 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
                       )}
                     </span>
                   )}
+                  {recomendacao.campanhas?.[0] && (
+                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-bold text-sky-700">
+                      Campanha {recomendacao.campanhas[0].status.toLowerCase()}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-3 line-clamp-2 text-sm font-bold text-slate-950">
                   {recomendacao.titulo}
@@ -260,6 +265,11 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
                 <div className="mt-3 flex flex-wrap gap-2">
                   {recomendacao.linkAcao && (
                     <AcaoLink href={recomendacao.linkAcao}>Ver acao</AcaoLink>
+                  )}
+                  {recomendacao.campanhas?.[0] ? (
+                    <AcaoLink href="/compras/campanhas">Ver campanha</AcaoLink>
+                  ) : (
+                    <AcaoLink href="/compras/campanhas">Sugerir campanha</AcaoLink>
                   )}
                   <AcaoLink href="/compras/recomendacoes">Acompanhar</AcaoLink>
                 </div>
