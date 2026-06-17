@@ -73,10 +73,6 @@ type BuscaAutocompleteProduto = {
   slug: string | null;
   categoria: string;
   imagemUrl?: string | null;
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueDisponivel: boolean;
   href: string;
   tipoResultado: "PRODUTO";
 };
@@ -136,28 +132,6 @@ function normalizarChaveAutocomplete(value: string) {
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function moeda(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(valor || 0);
-}
-
-function produtoTemDesconto(produto: BuscaAutocompleteProduto) {
-  return (
-    produto.descontoAtivo &&
-    produto.precoPromocional !== null &&
-    produto.precoPromocional > 0 &&
-    produto.precoPromocional < produto.precoVenda
-  );
-}
-
-function precoEfetivoProduto(produto: BuscaAutocompleteProduto) {
-  return produtoTemDesconto(produto) && produto.precoPromocional !== null
-    ? produto.precoPromocional
-    : produto.precoVenda;
 }
 
 function resultadoBuscaTemItens(resultado: BuscaAutocompleteResultado | null) {
@@ -265,14 +239,11 @@ function ProdutoSugestaoBusca({
   produto: BuscaAutocompleteProduto;
   onNavigate: () => void;
 }) {
-  const temDesconto = produtoTemDesconto(produto);
-  const preco = precoEfetivoProduto(produto);
-
   return (
     <Link
       href={produto.href}
       onClick={onNavigate}
-      className="grid grid-cols-[54px_minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-1 py-3 transition hover:bg-slate-50 last:border-b-0"
+      className="group grid grid-cols-[48px_minmax(0,1fr)] gap-3 px-1 py-3.5 transition hover:bg-slate-50/80 sm:grid-cols-[52px_minmax(0,1fr)]"
     >
       <div className="aspect-square overflow-hidden bg-slate-100">
         {produto.imagemUrl ? (
@@ -288,32 +259,13 @@ function ProdutoSugestaoBusca({
         )}
       </div>
 
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Produto
-          </span>
-          <span
-            className={`text-[11px] font-semibold ${
-              produto.estoqueDisponivel ? "text-emerald-700" : "text-amber-700"
-            }`}
-          >
-            {produto.estoqueDisponivel ? "Disponível" : "Estoque baixo"}
-          </span>
-        </div>
-
-        <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-slate-900">
+      <div className="min-w-0 self-center">
+        <p className="line-clamp-2 text-sm font-medium leading-5 text-slate-900">
           {produto.nome}
         </p>
-      </div>
-
-      <div className="self-center text-right">
-        <p className="text-sm font-semibold text-slate-950">{moeda(preco)}</p>
-        {temDesconto ? (
-          <p className="mt-1 text-[11px] text-slate-400 line-through">
-            {moeda(produto.precoVenda)}
-          </p>
-        ) : null}
+        <span className="mt-1.5 inline-flex text-[11px] font-medium text-slate-500 underline decoration-slate-300 underline-offset-4 transition group-hover:text-[var(--brand-blue)] group-hover:decoration-[var(--brand-blue)]">
+          Ver produto
+        </span>
       </div>
     </Link>
   );
@@ -321,20 +273,17 @@ function ProdutoSugestaoBusca({
 
 function SecaoAutocomplete({
   titulo,
-  subtitulo,
   children,
 }: {
   titulo: string;
-  subtitulo: string;
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
-      <div className="mb-1 px-1">
+    <section className="border-t border-slate-100/80 pt-3 first:border-t-0 first:pt-0">
+      <div className="mb-1.5 px-1">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
           {titulo}
         </p>
-        <p className="mt-0.5 text-xs text-slate-500">{subtitulo}</p>
       </div>
       {children}
     </section>
@@ -601,12 +550,10 @@ export default function MenuPublicoLoja({
     const grupos = {
       produtos: {
         titulo: "Produtos encontrados",
-        subtitulo: "Itens diretos com foto, preço e link para compra.",
         quantidade: resultadoBusca.produtos.length,
       },
       sugestoes: {
         titulo: "Sugestões",
-        subtitulo: "Termos para refinar a busca.",
         quantidade: resultadoBusca.sugestoes.length,
       },
     };
@@ -1025,7 +972,6 @@ export default function MenuPublicoLoja({
                       <SecaoAutocomplete
                         key={grupo.chave}
                         titulo={grupo.titulo}
-                        subtitulo={grupo.subtitulo}
                       >
                         {grupo.chave === "produtos"
                           ? sugestoesBusca.map((produto, index) => (
@@ -1061,7 +1007,7 @@ export default function MenuPublicoLoja({
                                   setBuscasRecentes(lerBuscasRecentes());
                                   fecharBusca();
                                 }}
-                                className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                                className="border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-[var(--brand-blue)]"
                               >
                                 {sugestao}
                               </Link>
@@ -1074,9 +1020,9 @@ export default function MenuPublicoLoja({
                     <button
                       type="button"
                       onClick={irParaResultadosBusca}
-                      className="mt-3 flex h-11 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      className="mx-auto mt-2 flex w-fit items-center justify-center px-2 py-1.5 text-sm font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition hover:text-[var(--brand-blue)] hover:decoration-[var(--brand-blue)]"
                     >
-                      Ver todos os resultados
+                      Ver todos os resultados →
                     </button>
                   </div>
                 ) : (
@@ -1087,7 +1033,6 @@ export default function MenuPublicoLoja({
 
                     <SecaoAutocomplete
                       titulo="Sugestões"
-                      subtitulo="Termos para tentar agora."
                     >
                       <div className="flex flex-wrap gap-2 px-1 py-2">
                         {(resultadoBusca?.sugestoes || [
@@ -1104,7 +1049,7 @@ export default function MenuPublicoLoja({
                               setBuscasRecentes(lerBuscasRecentes());
                               fecharBusca();
                             }}
-                            className="border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                            className="border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-[var(--brand-blue)]"
                           >
                             {sugestao}
                           </Link>

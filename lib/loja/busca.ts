@@ -16,10 +16,6 @@ export type BuscaLojaAutocompleteProduto = {
   slug: string | null;
   imagemUrl: string | null;
   categoria: string;
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueDisponivel: boolean;
   href: string;
   relevancia: number;
   tipoResultado: "PRODUTO";
@@ -948,13 +944,6 @@ function formatarProdutoAutocomplete(
     slug: null,
     imagemUrl: produto.imagemUrl,
     categoria: produto.categoria,
-    precoVenda: Number(produto.precoVenda || 0),
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional:
-      produto.precoPromocional === null
-        ? null
-        : Number(produto.precoPromocional || 0),
-    estoqueDisponivel: produtoAutocompleteTemEstoque(produto),
     href: `/loja/produto/${produto.id}`,
     relevancia,
     tipoResultado: "PRODUTO",
