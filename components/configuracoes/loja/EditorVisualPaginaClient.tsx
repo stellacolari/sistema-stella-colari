@@ -111,12 +111,22 @@ export type EditorVisualProduto = {
   categoriaNomes: string[];
 };
 
+export type EditorVisualColecaoInteligente = {
+  id: string;
+  nome: string;
+  slug: string;
+  tipo: string;
+  status: string;
+  produtosAprovados: number;
+};
+
 type EditorVisualPaginaClientProps = {
   pagina: EditorVisualPagina;
   blocos: EditorVisualBloco[];
   categoriasDisponiveis: EditorVisualCategoria[];
   paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
+  colecoesInteligentes: EditorVisualColecaoInteligente[];
 };
 
 type DadosSeoPaginaForm = {
@@ -257,6 +267,11 @@ type BlocoEditandoState = {
   categoriasProdutosSlugs: string[];
   categoriasProdutosNomes: string[];
   produtosSelecionadosIds: string[];
+  colecaoInteligenteId: string;
+  colecaoInteligenteSlug: string;
+  colecaoInteligenteNome: string;
+  ordenacaoColecao: string;
+  incluirSugeridosColecao: boolean;
   limiteProdutos: number;
   layoutDesktopProdutos: string;
   layoutMobileProdutos: string;
@@ -632,6 +647,16 @@ const FONTE_PRODUTOS_PRESETS = [
   { value: "MAIS_VENDIDOS", label: "Mais vendidos" },
   { value: "CATEGORIA", label: "Categoria" },
   { value: "CATEGORIAS_SELECIONADAS", label: "Categorias selecionadas" },
+  { value: "COLECAO_INTELIGENTE", label: "Colecao inteligente" },
+  { value: "CAMPANHA", label: "Campanha" },
+  { value: "FILTRO_PERSONALIZADO", label: "Filtro personalizado" },
+  { value: "MANUAL", label: "Manual" },
+];
+
+const ORDENACAO_COLECAO_PRESETS = [
+  { value: "ORDEM_APROVADA", label: "Ordem aprovada" },
+  { value: "MAIOR_SCORE", label: "Maior score" },
+  { value: "MAIS_RECENTES", label: "Mais recentes" },
   { value: "MANUAL", label: "Manual" },
 ];
 
@@ -8264,6 +8289,7 @@ function EditorConteudoBlocoModal({
   categoriasDisponiveis,
   paginasDisponiveis,
   produtosDisponiveis,
+  colecoesInteligentes,
   onChange,
   onClose,
   onSave,
@@ -8274,6 +8300,7 @@ function EditorConteudoBlocoModal({
   categoriasDisponiveis: EditorVisualCategoria[];
   paginasDisponiveis: EditorVisualPaginaLink[];
   produtosDisponiveis: EditorVisualProduto[];
+  colecoesInteligentes: EditorVisualColecaoInteligente[];
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
   onClose: () => void;
   onSave: () => void;
@@ -8352,6 +8379,16 @@ function EditorConteudoBlocoModal({
             categoriaProdutoNome: categoria.nome,
           }
         : {}),
+    });
+  }
+
+  function selecionarColecaoInteligente(colecaoId: string) {
+    const colecao = colecoesInteligentes.find((item) => item.id === colecaoId);
+
+    onChange({
+      colecaoInteligenteId: colecao?.id || "",
+      colecaoInteligenteSlug: colecao?.slug || "",
+      colecaoInteligenteNome: colecao?.nome || "",
     });
   }
 
@@ -9941,6 +9978,7 @@ function EditorConteudoBlocoModal({
 
             {(estado.fonteProdutos === "CATEGORIA" ||
               estado.fonteProdutos === "CATEGORIAS_SELECIONADAS" ||
+              estado.fonteProdutos === "COLECAO_INTELIGENTE" ||
               estado.fonteProdutos === "MANUAL") && (
               <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-4">
@@ -10009,6 +10047,71 @@ function EditorConteudoBlocoModal({
                         </label>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {estado.fonteProdutos === "COLECAO_INTELIGENTE" && (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Colecao inteligente ativa
+                        </span>
+                        <select
+                          value={estado.colecaoInteligenteId}
+                          onChange={(event) =>
+                            selecionarColecaoInteligente(event.target.value)
+                          }
+                          className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                        >
+                          <option value="">Selecione uma colecao</option>
+                          {colecoesInteligentes
+                            .filter((colecao) => colecao.status === "ATIVA")
+                            .map((colecao) => (
+                              <option key={colecao.id} value={colecao.id}>
+                                {colecao.nome} ({colecao.produtosAprovados})
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-slate-700">
+                          Ordem
+                        </span>
+                        <select
+                          value={estado.ordenacaoColecao}
+                          onChange={(event) =>
+                            onChange({ ordenacaoColecao: event.target.value })
+                          }
+                          className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+                        >
+                          {ORDENACAO_COLECAO_PRESETS.map((preset) => (
+                            <option key={preset.value} value={preset.value}>
+                              {preset.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <CampoToggle
+                      checked={estado.incluirSugeridosColecao}
+                      label="Incluir produtos sugeridos"
+                      description="Por padrao, a loja usa apenas produtos aprovados em colecoes ativas."
+                      onChange={(checked) =>
+                        onChange({ incluirSugeridosColecao: checked })
+                      }
+                    />
+
+                    {colecoesInteligentes.filter(
+                      (colecao) => colecao.status === "ATIVA"
+                    ).length === 0 && (
+                      <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                        Nenhuma colecao ativa disponivel. Gere, aprove produtos
+                        e ative uma colecao antes de publicar este bloco.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -11180,6 +11283,7 @@ export default function EditorVisualPaginaClient({
   categoriasDisponiveis,
   paginasDisponiveis,
   produtosDisponiveis,
+  colecoesInteligentes,
 }: EditorVisualPaginaClientProps) {
   const [isPending] = useTransition();
   const [erro, setErro] = useState("");
@@ -11675,6 +11779,16 @@ export default function EditorVisualPaginaClient({
       categoriasProdutosSlugs: getStringArrayConfig(config, ["categoriasSlugs"]),
       categoriasProdutosNomes: getStringArrayConfig(config, ["categoriasNomes"]),
       produtosSelecionadosIds: getStringArrayConfig(config, ["produtosIds"]),
+      colecaoInteligenteId: getStringConfig(config, "colecaoInteligenteId"),
+      colecaoInteligenteSlug: getStringConfig(config, "colecaoInteligenteSlug"),
+      colecaoInteligenteNome: getStringConfig(config, "colecaoInteligenteNome"),
+      ordenacaoColecao:
+        getStringConfig(config, "ordenacaoColecao") || "ORDEM_APROVADA",
+      incluirSugeridosColecao: getBooleanConfig(
+        config,
+        "incluirSugeridosColecao",
+        false
+      ),
       limiteProdutos: getNumberConfig(config, "limite", 8),
       layoutDesktopProdutos:
         getStringConfig(config, "layoutDesktop") ||
@@ -12139,6 +12253,11 @@ export default function EditorVisualPaginaClient({
               categoriasNomes: editando.categoriasProdutosNomes,
               categorias: editando.categoriasProdutosIds,
               produtosIds: editando.produtosSelecionadosIds,
+              colecaoInteligenteId: editando.colecaoInteligenteId,
+              colecaoInteligenteSlug: editando.colecaoInteligenteSlug,
+              colecaoInteligenteNome: editando.colecaoInteligenteNome,
+              ordenacaoColecao: editando.ordenacaoColecao,
+              incluirSugeridosColecao: editando.incluirSugeridosColecao,
               limite: Math.max(1, Number(editando.limiteProdutos) || 1),
               modo: editando.layoutDesktopProdutos,
               layoutDesktop: editando.layoutDesktopProdutos,
@@ -12755,6 +12874,7 @@ export default function EditorVisualPaginaClient({
         categoriasDisponiveis={categoriasDisponiveis}
         paginasDisponiveis={paginasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
+        colecoesInteligentes={colecoesInteligentes}
         onChange={atualizarEdicao}
         onClose={() => setEditando(null)}
         onSave={() => void salvarEdicaoBloco()}

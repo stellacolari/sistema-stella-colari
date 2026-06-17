@@ -13,6 +13,7 @@ import LojaPaginaBuilderClient, {
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
+import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import {
   buscarProdutosPublicos,
   buscarProdutosPublicosPorCategoriaIds,
@@ -352,7 +353,8 @@ export default async function LojaPreviewPaginaPage({
     tipo: paginaRaw.tipo,
   });
 
-const blocos = serializarBlocosBuilder(paginaRaw.blocos);
+const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(paginaRaw.blocos);
+const blocos = serializarBlocosBuilder(blocosResolvidos);
 
 const produtosPublicosSerializados = produtosPublicos.map((produto) => ({
   ...produto,

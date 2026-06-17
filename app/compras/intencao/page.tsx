@@ -146,6 +146,13 @@ export default async function IntencaoComercialPage({ searchParams }: PageProps)
               <Sparkles className="h-4 w-4" />
               Sugerir vitrine
             </Link>
+            <Link
+              href="/configuracoes/loja/colecoes-inteligentes"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+            >
+              <Sparkles className="h-4 w-4" />
+              Colecoes de intencao
+            </Link>
             {[7, 30, 60, 120].map((item) => (
               <Link
                 key={item}

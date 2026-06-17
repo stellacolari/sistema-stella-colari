@@ -110,7 +110,7 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
     });
   }
 
-  if (fonte === "MANUAL") {
+  if (fonte === "MANUAL" || fonte === "COLECAO_INTELIGENTE") {
     if (produtosIds.length === 0) return [];
 
     const ordem = new Map(produtosIds.map((id, index) => [id, index]));

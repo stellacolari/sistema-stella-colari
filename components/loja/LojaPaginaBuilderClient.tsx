@@ -231,7 +231,7 @@ function filtrarProdutosPorConfig(
     }
   }
 
-  if (fonte === "MANUAL") {
+  if (fonte === "MANUAL" || fonte === "COLECAO_INTELIGENTE") {
     if (produtosIds.length > 0) {
       const ordem = new Map(produtosIds.map((id, index) => [id, index]));
 

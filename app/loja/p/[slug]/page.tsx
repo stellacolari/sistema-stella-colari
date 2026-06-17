@@ -10,6 +10,7 @@ import LojaPaginaBuilderClient, {
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
+import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 
@@ -122,7 +123,11 @@ export default async function LojaPaginaPublicaPage({
     tipo: paginaRaw.tipo,
   };
 
-  const blocos: LojaBuilderBloco[] = paginaRaw.blocos.map((bloco) => ({
+  const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(
+    paginaRaw.blocos
+  );
+
+  const blocos: LojaBuilderBloco[] = blocosResolvidos.map((bloco) => ({
     id: bloco.id,
     tipo: bloco.tipo,
     titulo: bloco.titulo,

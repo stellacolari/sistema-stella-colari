@@ -69,6 +69,7 @@ model Produto {
   campanhasComerciais            CampanhaComercial[]
   recomendacoesGerenciais        RecomendacaoGerencial[]
   vitrinesInteligentesSugestoes  VitrineInteligenteSugestao[]
+  colecoesInteligentes           ColecaoInteligenteProduto[]
 
   @@index([familiaId])
   @@index([familiaMaterial])
@@ -821,6 +822,57 @@ model ProdutoMetricaSnapshot {
   @@index([periodoInicio])
   @@index([periodoFim])
   @@index([statusComercial])
+}
+
+model ColecaoInteligente {
+  id              String                      @id @default(cuid())
+  codigo          String                      @unique
+  nome            String
+  slug            String                      @unique
+  descricao       String?
+  tipo            String
+  status          String                      @default("RASCUNHO")
+  modoAtualizacao String                      @default("SUGERIDA")
+  criteriosJson   Json?
+  configJson      Json?
+  criadoEm        DateTime                    @default(now())
+  atualizadoEm    DateTime                    @updatedAt
+  geradaEm        DateTime?
+  aprovadaEm      DateTime?
+  desativadaEm    DateTime?
+  produtos        ColecaoInteligenteProduto[]
+
+  @@index([codigo])
+  @@index([slug])
+  @@index([tipo])
+  @@index([status])
+  @@index([modoAtualizacao])
+  @@index([geradaEm])
+}
+
+model ColecaoInteligenteProduto {
+  id                String              @id @default(cuid())
+  colecaoId         String
+  produtoId         String
+  ordem             Int                 @default(0)
+  score             Float               @default(0)
+  status            String              @default("SUGERIDO")
+  motivo            String?
+  metricasJson      Json?
+  fixado            Boolean             @default(false)
+  adicionadoManual  Boolean             @default(false)
+  criadoEm          DateTime            @default(now())
+  atualizadoEm      DateTime            @updatedAt
+  colecao           ColecaoInteligente  @relation(fields: [colecaoId], references: [id], onDelete: Cascade)
+  produto           Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([colecaoId, produtoId])
+  @@index([colecaoId])
+  @@index([produtoId])
+  @@index([ordem])
+  @@index([score])
+  @@index([status])
+  @@index([fixado])
 }
 
 model EventoComercial {

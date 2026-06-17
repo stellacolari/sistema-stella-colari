@@ -21,6 +21,7 @@ import {
 } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
+import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import { buscarProdutosPublicosPorCategoriaIds } from "@/lib/loja/produtos";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 
@@ -357,7 +358,10 @@ export default async function LojaCategoriaPage({
       tipo: paginaParaRenderizar.tipo,
     });
 
-const blocos = serializarBlocosBuilder(paginaParaRenderizar.blocos);
+const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(
+  paginaParaRenderizar.blocos
+);
+const blocos = serializarBlocosBuilder(blocosResolvidos);
 
 const produtosCategoriaSerializados = produtosCategoria.map((produto) => ({
   ...produto,

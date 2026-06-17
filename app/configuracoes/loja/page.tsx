@@ -188,6 +188,7 @@ export default async function LojaOnlineCentralPage() {
     freteConfig,
     modelosEmbalagem,
     vitrinesSugeridas,
+    colecoesInteligentes,
   ] = await Promise.all([
     prisma.menuLoja.count({
       where: {
@@ -265,6 +266,14 @@ export default async function LojaOnlineCentralPage() {
       where: {
         status: {
           in: ["SUGERIDA", "EM_REVISAO"],
+        },
+      },
+    }),
+
+    prisma.colecaoInteligente.count({
+      where: {
+        status: {
+          in: ["RASCUNHO", "ATIVA"],
         },
       },
     }),
@@ -388,6 +397,24 @@ export default async function LojaOnlineCentralPage() {
               {
                 href: "/configuracoes/loja/vitrines-inteligentes",
                 label: "Ver vitrines",
+                primary: true,
+              },
+            ]}
+          />
+        ) : null}
+
+        {podeVerVitrinesInteligentes ? (
+          <CentralCard
+            title="Colecoes Inteligentes"
+            description="Crie e aprove grupos inteligentes de produtos para usar no builder da loja."
+            icon={Sparkles}
+            metric={`${colecoesInteligentes}`}
+            metricLabel="colecoes abertas"
+            tone="site"
+            actions={[
+              {
+                href: "/configuracoes/loja/colecoes-inteligentes",
+                label: "Ver colecoes",
                 primary: true,
               },
             ]}

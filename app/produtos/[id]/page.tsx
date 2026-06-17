@@ -28,6 +28,7 @@ export default async function EditarProdutoPage({
     inteligenciaProduto,
     precificacaoProduto,
     vitrinesProduto,
+    colecoesProduto,
   ] =
     await Promise.all([
       prisma.produto.findUnique({
@@ -188,6 +189,35 @@ export default async function EditarProdutoPage({
             },
           })
         : Promise.resolve([]),
+      podeEditarBuscaSeo
+        ? prisma.colecaoInteligenteProduto.findMany({
+            where: {
+              produtoId: id,
+              status: {
+                in: ["SUGERIDO", "APROVADO"],
+              },
+              colecao: {
+                status: {
+                  not: "ARQUIVADA",
+                },
+              },
+            },
+            select: {
+              status: true,
+              fixado: true,
+              colecao: {
+                select: {
+                  nome: true,
+                  tipo: true,
+                  status: true,
+                  slug: true,
+                },
+              },
+            },
+            orderBy: [{ fixado: "desc" }, { atualizadoEm: "desc" }],
+            take: 8,
+          })
+        : Promise.resolve([]),
     ]);
 
   if (!produto) {
@@ -340,26 +370,72 @@ export default async function EditarProdutoPage({
   };
 
   return (
-    <EditarProdutoClient
-      produto={produtoSerializado}
-      inteligenciaProduto={inteligenciaProdutoSerializada}
-      precificacaoProduto={precificacaoProduto}
-      vitrinesProduto={vitrinesProduto}
-      categorias={categorias}
-      produtosDisponiveisKit={produtosKitSerializados}
-      regrasAdicionais={regrasAdicionaisSerializadas}
-      imagensIniciais={imagensIniciais}
-      categoriaPrincipalInicialId={categoriaPrincipalInicialId}
-      categoriasSelecionadasIniciaisIds={categoriasSelecionadasIniciaisIds}
-      componentesKitIniciais={componentesKitIniciais}
-      variacoesIniciais={variacoesIniciais}
-      embalagemOptions={{
-        classes: embalagemClasses,
-        modelos: embalagemModelos,
-      }}
-      podeEditarEmbalagem={podeEditarEmbalagem}
-      podeEditarBuscaSeo={podeEditarBuscaSeo}
-      atualizarProdutoAction={actionAtualizar}
-    />
+    <div className="space-y-6">
+      <EditarProdutoClient
+        produto={produtoSerializado}
+        inteligenciaProduto={inteligenciaProdutoSerializada}
+        precificacaoProduto={precificacaoProduto}
+        vitrinesProduto={vitrinesProduto}
+        categorias={categorias}
+        produtosDisponiveisKit={produtosKitSerializados}
+        regrasAdicionais={regrasAdicionaisSerializadas}
+        imagensIniciais={imagensIniciais}
+        categoriaPrincipalInicialId={categoriaPrincipalInicialId}
+        categoriasSelecionadasIniciaisIds={categoriasSelecionadasIniciaisIds}
+        componentesKitIniciais={componentesKitIniciais}
+        variacoesIniciais={variacoesIniciais}
+        embalagemOptions={{
+          classes: embalagemClasses,
+          modelos: embalagemModelos,
+        }}
+        podeEditarEmbalagem={podeEditarEmbalagem}
+        podeEditarBuscaSeo={podeEditarBuscaSeo}
+        atualizarProdutoAction={actionAtualizar}
+      />
+
+      {podeEditarBuscaSeo && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Colecoes inteligentes
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-950">
+                Presenca do produto em colecoes
+              </h2>
+            </div>
+          </div>
+
+          {colecoesProduto.length > 0 ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {colecoesProduto.map((item) => (
+                <div
+                  key={`${item.colecao.slug}-${item.status}`}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">
+                        {item.colecao.nome}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">
+                        {item.colecao.tipo} · {item.colecao.status}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                      {item.fixado ? "FIXADO" : item.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+              Este produto ainda nao aparece em colecoes inteligentes ativas ou em revisao.
+            </p>
+          )}
+        </section>
+      )}
+    </div>
   );
 }

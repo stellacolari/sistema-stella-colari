@@ -274,13 +274,22 @@ export default function ReposicaoComprasClient({
 
           <div className="flex flex-wrap gap-2">
             {exibirInteligenciaAdaptativa ? (
-              <Link
-                href="/configuracoes/loja/vitrines-inteligentes"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
-              >
-                <Sparkles className="h-4 w-4" />
-                Sugerir vitrine
-              </Link>
+              <>
+                <Link
+                  href="/configuracoes/loja/vitrines-inteligentes"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Sugerir vitrine
+                </Link>
+                <Link
+                  href="/configuracoes/loja/colecoes-inteligentes"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Colecao de giro
+                </Link>
+              </>
             ) : null}
             <Link
               href="/compras"

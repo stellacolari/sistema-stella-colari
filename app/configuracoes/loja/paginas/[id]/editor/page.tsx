@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import EditorVisualPaginaClient, {
   type EditorVisualBloco,
   type EditorVisualCategoria,
+  type EditorVisualColecaoInteligente,
   type EditorVisualPagina,
   type EditorVisualPaginaLink,
   type EditorVisualProduto,
@@ -95,7 +96,7 @@ function coletarIdsCategoriaComFilhas(
 export default async function EditorVisualPaginaPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [paginaRaw, categoriasRaw, paginasBuilderRaw] = await Promise.all([
+  const [paginaRaw, categoriasRaw, paginasBuilderRaw, colecoesRaw] = await Promise.all([
     prisma.lojaPagina.findUnique({
       where: { id },
       include: {
@@ -141,6 +142,31 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         tipo: true,
       },
       orderBy: [{ titulo: "asc" }],
+    }),
+
+    prisma.colecaoInteligente.findMany({
+      where: {
+        status: {
+          not: "ARQUIVADA",
+        },
+      },
+      select: {
+        id: true,
+        nome: true,
+        slug: true,
+        tipo: true,
+        status: true,
+        _count: {
+          select: {
+            produtos: {
+              where: {
+                status: "APROVADO",
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ status: "asc" }, { nome: "asc" }],
     }),
   ]);
 
@@ -255,6 +281,16 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
     })
   );
 
+  const colecoesInteligentes: EditorVisualColecaoInteligente[] =
+    colecoesRaw.map((colecao) => ({
+      id: colecao.id,
+      nome: colecao.nome,
+      slug: colecao.slug,
+      tipo: colecao.tipo,
+      status: colecao.status,
+      produtosAprovados: colecao._count.produtos,
+    }));
+
   return (
     <main className="space-y-6">
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -336,6 +372,7 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
         categoriasDisponiveis={categoriasDisponiveis}
         paginasDisponiveis={paginasDisponiveis}
         produtosDisponiveis={produtosDisponiveis}
+        colecoesInteligentes={colecoesInteligentes}
       />
     </main>
   );
