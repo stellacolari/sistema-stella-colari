@@ -39,6 +39,7 @@ export type BlocoPublicoProps = {
 export const TIPOS_BLOCOS_VISUAIS_PUBLICOS = new Set([
   "BANNER",
   "HERO",
+  "HERO_EDITORIAL_PNG",
   "TEXTO_IMAGEM",
   "IMAGEM_TEXTO",
   "DESTAQUES_CARDS",

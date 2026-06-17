@@ -159,6 +159,7 @@ type EditorSelectionContext =
 
 type TipoBlocoAdicionar =
   | "BANNER"
+  | "HERO_EDITORIAL_PNG"
   | "TEXTO_IMAGEM"
   | "LISTA_PRODUTOS"
   | "DESTAQUES_CARDS"
@@ -841,6 +842,165 @@ const MAX_VIDEO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const ACCEPT_IMAGEM_UPLOAD = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
 const ACCEPT_VIDEO_UPLOAD = ".mp4,.webm,video/mp4,video/webm";
 
+type HeroEditorialPngConfig = {
+  variante: "COMPACTO" | "TELA_CHEIA";
+  fundo: {
+    tipo: "COR";
+    cor: string;
+  };
+  texto: {
+    conteudo: string;
+    linhas: "AUTO" | "UMA_LINHA" | "DUAS_LINHAS";
+    alinhamento: "ESQUERDA" | "CENTRO";
+    margemSeguraPercentual: number;
+    cor: string;
+    preset: "PEQUENO" | "MEDIO" | "GRANDE" | "EDITORIAL" | "CUSTOMIZADO";
+    peso: "LEVE" | "REGULAR" | "SEMIBOLD" | "BOLD";
+    tracking: number;
+    lineHeight: number;
+    escalaAuto: boolean;
+  };
+  png: {
+    imagemDesktop: string;
+    imagemMobile: string;
+    alt: string;
+    escalaDesktop: number;
+    escalaMobile: number;
+    posicaoXDesktop: number;
+    posicaoYDesktop: number;
+    posicaoXMobile: number;
+    posicaoYMobile: number;
+    sombra: boolean;
+    opacidade: number;
+  };
+  cta: {
+    mostrar: boolean;
+    label: string;
+    titulo: string;
+    textoBotao: string;
+    linkTipo: "PRODUTO" | "CATEGORIA" | "PAGINA" | "COLECAO" | "URL";
+    linkValor: string;
+    posicao: "INFERIOR_ESQUERDA" | "INFERIOR_CENTRO" | "INFERIOR_DIREITA";
+  };
+  animacao: {
+    entradaTexto: "NENHUMA" | "LETRAS_SUAVE" | "FADE_UP" | "FADE";
+    entradaPng: "NENHUMA" | "FADE" | "FLOAT_UP";
+    hover: "NENHUM" | "PNG_FLOAT" | "ZOOM_SUAVE";
+  };
+  responsivo: {
+    comportamentoMobile: "EMPILHAR" | "COMPACTAR" | "CENTRALIZAR";
+  };
+};
+
+const HERO_EDITORIAL_PNG_DEFAULT: HeroEditorialPngConfig = {
+  variante: "COMPACTO",
+  fundo: {
+    tipo: "COR",
+    cor: "#223846",
+  },
+  texto: {
+    conteudo: "STELLA COLARI",
+    linhas: "AUTO",
+    alinhamento: "CENTRO",
+    margemSeguraPercentual: 8,
+    cor: "#f8fafc",
+    preset: "EDITORIAL",
+    peso: "BOLD",
+    tracking: -0.04,
+    lineHeight: 0.86,
+    escalaAuto: true,
+  },
+  png: {
+    imagemDesktop: "",
+    imagemMobile: "",
+    alt: "",
+    escalaDesktop: 68,
+    escalaMobile: 96,
+    posicaoXDesktop: 58,
+    posicaoYDesktop: 50,
+    posicaoXMobile: 50,
+    posicaoYMobile: 52,
+    sombra: true,
+    opacidade: 100,
+  },
+  cta: {
+    mostrar: false,
+    label: "Nova coleção",
+    titulo: "Peças para atravessar o tempo.",
+    textoBotao: "Conhecer",
+    linkTipo: "URL",
+    linkValor: "/loja",
+    posicao: "INFERIOR_ESQUERDA",
+  },
+  animacao: {
+    entradaTexto: "FADE_UP",
+    entradaPng: "FLOAT_UP",
+    hover: "PNG_FLOAT",
+  },
+  responsivo: {
+    comportamentoMobile: "COMPACTAR",
+  },
+};
+
+const HERO_VARIANTE_PRESETS = [
+  { value: "COMPACTO", label: "Compacto" },
+  { value: "TELA_CHEIA", label: "Tela cheia" },
+] as const;
+
+const HERO_LINHAS_PRESETS = [
+  { value: "AUTO", label: "Auto" },
+  { value: "UMA_LINHA", label: "Uma linha" },
+  { value: "DUAS_LINHAS", label: "Duas linhas" },
+] as const;
+
+const HERO_TEXTO_PRESETS = [
+  { value: "PEQUENO", label: "Pequeno" },
+  { value: "MEDIO", label: "Médio" },
+  { value: "GRANDE", label: "Grande" },
+  { value: "EDITORIAL", label: "Editorial" },
+  { value: "CUSTOMIZADO", label: "Customizado" },
+] as const;
+
+const HERO_PESO_PRESETS = [
+  { value: "LEVE", label: "Leve" },
+  { value: "REGULAR", label: "Regular" },
+  { value: "SEMIBOLD", label: "Semibold" },
+  { value: "BOLD", label: "Bold" },
+] as const;
+
+const HERO_LINK_TIPO_PRESETS = [
+  { value: "URL", label: "URL personalizada" },
+  { value: "PRODUTO", label: "Produto" },
+  { value: "CATEGORIA", label: "Categoria" },
+  { value: "PAGINA", label: "Página" },
+  { value: "COLECAO", label: "Coleção inteligente" },
+] as const;
+
+const HERO_CTA_POSICAO_PRESETS = [
+  { value: "INFERIOR_ESQUERDA", label: "Inferior esquerda" },
+  { value: "INFERIOR_CENTRO", label: "Inferior centro" },
+  { value: "INFERIOR_DIREITA", label: "Inferior direita" },
+] as const;
+
+const HERO_ENTRADA_TEXTO_PRESETS = [
+  { value: "NENHUMA", label: "Sem animação" },
+  { value: "FADE", label: "Fade" },
+  { value: "LETRAS_SUAVE", label: "Letras suaves" },
+  { value: "FADE_UP", label: "Subir suave" },
+] as const;
+
+const HERO_ENTRADA_PNG_PRESETS = [
+  { value: "NENHUMA", label: "Sem animação" },
+  { value: "FADE", label: "Fade" },
+  { value: "FLOAT_UP", label: "Subir suave" },
+] as const;
+
+const HERO_HOVER_PRESETS = [
+  { value: "NENHUM", label: "Sem hover" },
+  { value: "PNG_FLOAT", label: "Flutuação leve do PNG" },
+  { value: "ZOOM_SUAVE", label: "Zoom suave do PNG" },
+] as const;
+
 const TIPOS_BLOCO_ADICIONAR: {
   tipo: TipoBlocoAdicionar;
   nome: string;
@@ -855,6 +1015,28 @@ const TIPOS_BLOCO_ADICIONAR: {
     descricao: "Imagem de destaque com título, texto de apoio e botão.",
     tituloInicial: "Novo banner",
     icon: ImageIcon,
+  },
+  {
+    tipo: "HERO_EDITORIAL_PNG",
+    nome: "Hero Editorial com PNG",
+    descricao:
+      "Texto gigante em largura total com imagem PNG frontal para campanhas e coleções.",
+    tituloInicial: "Hero Editorial com PNG",
+    icon: ImageIcon,
+    preview: (
+      <span className="mt-3 block overflow-hidden rounded-xl bg-[#223846] p-3">
+        <span className="relative block h-16">
+          <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-[24px] font-black leading-none tracking-tighter text-white/85">
+            STELLA
+          </span>
+          <span className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 shadow-lg" />
+        </span>
+        <span className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-white/70">
+          <span>Compacto</span>
+          <span>Tela cheia</span>
+        </span>
+      </span>
+    ),
   },
   {
     tipo: "TEXTO_IMAGEM",
@@ -1480,6 +1662,7 @@ const RichTextTypography = Extension.create({
 
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
+  if (tipo === "HERO_EDITORIAL_PNG") return "Hero Editorial com PNG";
   if (tipo === "BANNER") return "Banner";
   if (tipo === "CTA_SIMPLES") return "CTA simples";
   if (tipo === "CTA") return "CTA";
@@ -1506,7 +1689,12 @@ function getBlocoIcon(tipo: string) {
     return MousePointer2;
   }
 
-  if (tipo.includes("IMAGEM") || tipo === "HERO" || tipo === "BANNER") {
+  if (
+    tipo.includes("IMAGEM") ||
+    tipo === "HERO" ||
+    tipo === "BANNER" ||
+    isHeroEditorialPngTipo(tipo)
+  ) {
     return ImageIcon;
   }
 
@@ -1523,6 +1711,10 @@ function getBlocoIcon(tipo: string) {
 
 function isBannerTipo(tipo: string) {
   return tipo === "BANNER" || tipo === "HERO";
+}
+
+function isHeroEditorialPngTipo(tipo: string) {
+  return tipo === "HERO_EDITORIAL_PNG";
 }
 
 function isTextoImagemTipo(tipo: string) {
@@ -1547,6 +1739,134 @@ function isVitrineEditorialTipo(tipo: string) {
 
 function isCtaTipo(tipo: string) {
   return tipo === "CTA" || tipo === "CTA_SIMPLES";
+}
+
+function getConfigSubobject(config: Record<string, unknown>, key: string) {
+  return getConfigObject(config[key]);
+}
+
+function getHeroEditorialPngConfig(value: unknown): HeroEditorialPngConfig {
+  const config = getConfigObject(value);
+  const fundo = getConfigSubobject(config, "fundo");
+  const texto = getConfigSubobject(config, "texto");
+  const png = getConfigSubobject(config, "png");
+  const cta = getConfigSubobject(config, "cta");
+  const animacao = getConfigSubobject(config, "animacao");
+  const responsivo = getConfigSubobject(config, "responsivo");
+
+  return {
+    variante:
+      getStringConfig(config, "variante") === "TELA_CHEIA"
+        ? "TELA_CHEIA"
+        : "COMPACTO",
+    fundo: {
+      tipo: "COR",
+      cor: getStringConfig(fundo, "cor") || HERO_EDITORIAL_PNG_DEFAULT.fundo.cor,
+    },
+    texto: {
+      conteudo:
+        getStringConfig(texto, "conteudo") ||
+        getStringConfig(config, "titulo") ||
+        HERO_EDITORIAL_PNG_DEFAULT.texto.conteudo,
+      linhas: (getStringConfig(texto, "linhas") ||
+        HERO_EDITORIAL_PNG_DEFAULT.texto.linhas) as HeroEditorialPngConfig["texto"]["linhas"],
+      alinhamento: (getStringConfig(texto, "alinhamento") ||
+        HERO_EDITORIAL_PNG_DEFAULT.texto.alinhamento) as HeroEditorialPngConfig["texto"]["alinhamento"],
+      margemSeguraPercentual: getNumberConfig(
+        texto,
+        "margemSeguraPercentual",
+        HERO_EDITORIAL_PNG_DEFAULT.texto.margemSeguraPercentual
+      ),
+      cor: getStringConfig(texto, "cor") || HERO_EDITORIAL_PNG_DEFAULT.texto.cor,
+      preset: (getStringConfig(texto, "preset") ||
+        HERO_EDITORIAL_PNG_DEFAULT.texto.preset) as HeroEditorialPngConfig["texto"]["preset"],
+      peso: (getStringConfig(texto, "peso") ||
+        HERO_EDITORIAL_PNG_DEFAULT.texto.peso) as HeroEditorialPngConfig["texto"]["peso"],
+      tracking: getNumberConfig(
+        texto,
+        "tracking",
+        HERO_EDITORIAL_PNG_DEFAULT.texto.tracking
+      ),
+      lineHeight: getNumberConfig(
+        texto,
+        "lineHeight",
+        HERO_EDITORIAL_PNG_DEFAULT.texto.lineHeight
+      ),
+      escalaAuto: getBooleanConfig(
+        texto,
+        "escalaAuto",
+        HERO_EDITORIAL_PNG_DEFAULT.texto.escalaAuto
+      ),
+    },
+    png: {
+      imagemDesktop: getStringConfig(png, "imagemDesktop"),
+      imagemMobile: getStringConfig(png, "imagemMobile"),
+      alt: getStringConfig(png, "alt"),
+      escalaDesktop: getNumberConfig(
+        png,
+        "escalaDesktop",
+        HERO_EDITORIAL_PNG_DEFAULT.png.escalaDesktop
+      ),
+      escalaMobile: getNumberConfig(
+        png,
+        "escalaMobile",
+        HERO_EDITORIAL_PNG_DEFAULT.png.escalaMobile
+      ),
+      posicaoXDesktop: getNumberConfig(
+        png,
+        "posicaoXDesktop",
+        HERO_EDITORIAL_PNG_DEFAULT.png.posicaoXDesktop
+      ),
+      posicaoYDesktop: getNumberConfig(
+        png,
+        "posicaoYDesktop",
+        HERO_EDITORIAL_PNG_DEFAULT.png.posicaoYDesktop
+      ),
+      posicaoXMobile: getNumberConfig(
+        png,
+        "posicaoXMobile",
+        HERO_EDITORIAL_PNG_DEFAULT.png.posicaoXMobile
+      ),
+      posicaoYMobile: getNumberConfig(
+        png,
+        "posicaoYMobile",
+        HERO_EDITORIAL_PNG_DEFAULT.png.posicaoYMobile
+      ),
+      sombra: getBooleanConfig(png, "sombra", HERO_EDITORIAL_PNG_DEFAULT.png.sombra),
+      opacidade: getNumberConfig(
+        png,
+        "opacidade",
+        HERO_EDITORIAL_PNG_DEFAULT.png.opacidade
+      ),
+    },
+    cta: {
+      mostrar: getBooleanConfig(cta, "mostrar", HERO_EDITORIAL_PNG_DEFAULT.cta.mostrar),
+      label: getStringConfig(cta, "label") || HERO_EDITORIAL_PNG_DEFAULT.cta.label,
+      titulo: getStringConfig(cta, "titulo") || HERO_EDITORIAL_PNG_DEFAULT.cta.titulo,
+      textoBotao:
+        getStringConfig(cta, "textoBotao") ||
+        HERO_EDITORIAL_PNG_DEFAULT.cta.textoBotao,
+      linkTipo: (getStringConfig(cta, "linkTipo") ||
+        HERO_EDITORIAL_PNG_DEFAULT.cta.linkTipo) as HeroEditorialPngConfig["cta"]["linkTipo"],
+      linkValor:
+        getStringConfig(cta, "linkValor") ||
+        HERO_EDITORIAL_PNG_DEFAULT.cta.linkValor,
+      posicao: (getStringConfig(cta, "posicao") ||
+        HERO_EDITORIAL_PNG_DEFAULT.cta.posicao) as HeroEditorialPngConfig["cta"]["posicao"],
+    },
+    animacao: {
+      entradaTexto: (getStringConfig(animacao, "entradaTexto") ||
+        HERO_EDITORIAL_PNG_DEFAULT.animacao.entradaTexto) as HeroEditorialPngConfig["animacao"]["entradaTexto"],
+      entradaPng: (getStringConfig(animacao, "entradaPng") ||
+        HERO_EDITORIAL_PNG_DEFAULT.animacao.entradaPng) as HeroEditorialPngConfig["animacao"]["entradaPng"],
+      hover: (getStringConfig(animacao, "hover") ||
+        HERO_EDITORIAL_PNG_DEFAULT.animacao.hover) as HeroEditorialPngConfig["animacao"]["hover"],
+    },
+    responsivo: {
+      comportamentoMobile: (getStringConfig(responsivo, "comportamentoMobile") ||
+        HERO_EDITORIAL_PNG_DEFAULT.responsivo.comportamentoMobile) as HeroEditorialPngConfig["responsivo"]["comportamentoMobile"],
+    },
+  };
 }
 
 function normalizarLayoutCta(value: string) {
@@ -8356,6 +8676,683 @@ function VitrineEditorialEditor({
   );
 }
 
+function HeroEditorialPngEditor({
+  estado,
+  categoriasDisponiveis,
+  paginasDisponiveis,
+  produtosDisponiveis,
+  colecoesInteligentes,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  categoriasDisponiveis: EditorVisualCategoria[];
+  paginasDisponiveis: EditorVisualPaginaLink[];
+  produtosDisponiveis: EditorVisualProduto[];
+  colecoesInteligentes: EditorVisualColecaoInteligente[];
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  const configHero = getHeroEditorialPngConfig(estado.bloco.configJson);
+
+  function aplicarConfig(patch: Partial<HeroEditorialPngConfig>) {
+    onChange({
+      bloco: {
+        ...estado.bloco,
+        configJson: {
+          ...configHero,
+          ...patch,
+        },
+      },
+    });
+  }
+
+  function atualizarSecao<Key extends keyof HeroEditorialPngConfig>(
+    key: Key,
+    patch: Partial<HeroEditorialPngConfig[Key]>
+  ) {
+    aplicarConfig({
+      [key]: {
+        ...(configHero[key] as Record<string, unknown>),
+        ...patch,
+      },
+    } as Partial<HeroEditorialPngConfig>);
+  }
+
+  function selecionarLink(tipo: HeroEditorialPngConfig["cta"]["linkTipo"], valor: string) {
+    if (tipo === "PRODUTO") {
+      const produto = produtosDisponiveis.find((item) => item.id === valor);
+      atualizarSecao("cta", {
+        linkTipo: tipo,
+        linkValor: produto?.id || "",
+        titulo: produto?.nome || configHero.cta.titulo,
+      });
+      return;
+    }
+
+    if (tipo === "CATEGORIA") {
+      const categoria = getCategoriaResumo(valor, categoriasDisponiveis);
+      atualizarSecao("cta", {
+        linkTipo: tipo,
+        linkValor: categoria?.slug || "",
+        titulo: categoria?.nome || configHero.cta.titulo,
+      });
+      return;
+    }
+
+    if (tipo === "PAGINA") {
+      const paginaSelecionada = getPaginaResumo(valor, paginasDisponiveis);
+      atualizarSecao("cta", {
+        linkTipo: tipo,
+        linkValor: paginaSelecionada?.slug || "",
+        titulo: paginaSelecionada?.titulo || configHero.cta.titulo,
+      });
+      return;
+    }
+
+    if (tipo === "COLECAO") {
+      const colecao = colecoesInteligentes.find((item) => item.id === valor);
+      atualizarSecao("cta", {
+        linkTipo: tipo,
+        linkValor: colecao?.slug || "",
+        titulo: colecao?.nome || configHero.cta.titulo,
+      });
+      return;
+    }
+
+    atualizarSecao("cta", {
+      linkTipo: tipo,
+      linkValor: valor,
+    });
+  }
+
+  const recomendacao =
+    configHero.variante === "TELA_CHEIA"
+      ? {
+          desktop: "Desktop recomendado: 2600 x 2600 px. Mínimo: 2200 x 2200 px.",
+          mobile: "Mobile recomendado: 1800 x 1800 px. Mínimo: 1400 x 1400 px.",
+        }
+      : {
+          desktop: "Desktop recomendado: 2200 x 2200 px. Mínimo: 1800 x 1800 px.",
+          mobile: "Mobile recomendado: 1600 x 1600 px. Mínimo: 1200 x 1200 px.",
+        };
+
+  return (
+    <div className="space-y-5 px-6 py-5">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Nome interno
+        </span>
+        <input
+          value={estado.nomeInterno}
+          onChange={(event) => onChange({ nomeInterno: event.target.value })}
+          placeholder="Ex: Hero editorial campanha"
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        />
+      </label>
+
+      <PainelSecao title="Conteúdo">
+        <div className="space-y-4">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Texto principal
+            </span>
+            <textarea
+              value={configHero.texto.conteudo}
+              onChange={(event) =>
+                atualizarSecao("texto", { conteudo: event.target.value })
+              }
+              rows={3}
+              placeholder="STELLA COLARI"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm leading-6 outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Linhas do texto
+              </span>
+              <select
+                value={configHero.texto.linhas}
+                onChange={(event) =>
+                  atualizarSecao("texto", {
+                    linhas: event.target.value as HeroEditorialPngConfig["texto"]["linhas"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {HERO_LINHAS_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Alinhamento
+              </span>
+              <select
+                value={configHero.texto.alinhamento}
+                onChange={(event) =>
+                  atualizarSecao("texto", {
+                    alinhamento: event.target.value as HeroEditorialPngConfig["texto"]["alinhamento"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                <option value="CENTRO">Centro</option>
+                <option value="ESQUERDA">Esquerda</option>
+              </select>
+            </label>
+          </div>
+
+          <CampoToggle
+            checked={configHero.cta.mostrar}
+            label="Mostrar CTA/box"
+            description="Quando desligado, o bloco inteiro pode usar o link configurado."
+            onChange={(checked) => atualizarSecao("cta", { mostrar: checked })}
+          />
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Label
+              </span>
+              <input
+                value={configHero.cta.label}
+                onChange={(event) =>
+                  atualizarSecao("cta", { label: event.target.value })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label className="md:col-span-2">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Título do CTA
+              </span>
+              <input
+                value={configHero.cta.titulo}
+                onChange={(event) =>
+                  atualizarSecao("cta", { titulo: event.target.value })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Texto do botão
+              </span>
+              <input
+                value={configHero.cta.textoBotao}
+                onChange={(event) =>
+                  atualizarSecao("cta", { textoBotao: event.target.value })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Tipo de link
+              </span>
+              <select
+                value={configHero.cta.linkTipo}
+                onChange={(event) =>
+                  atualizarSecao("cta", {
+                    linkTipo: event.target.value as HeroEditorialPngConfig["cta"]["linkTipo"],
+                    linkValor: event.target.value === "URL" ? configHero.cta.linkValor : "",
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {HERO_LINK_TIPO_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Posição do CTA
+              </span>
+              <select
+                value={configHero.cta.posicao}
+                onChange={(event) =>
+                  atualizarSecao("cta", {
+                    posicao: event.target.value as HeroEditorialPngConfig["cta"]["posicao"],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              >
+                {HERO_CTA_POSICAO_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {configHero.cta.linkTipo === "URL" ? (
+            <input
+              value={configHero.cta.linkValor}
+              onChange={(event) => selecionarLink("URL", event.target.value)}
+              placeholder="/loja/categoria/aneis ou https://..."
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          ) : (
+            <select
+              value=""
+              onChange={(event) =>
+                selecionarLink(configHero.cta.linkTipo, event.target.value)
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              <option value="">
+                {configHero.cta.linkValor
+                  ? `Selecionado: ${configHero.cta.linkValor}`
+                  : "Selecione o destino"}
+              </option>
+              {configHero.cta.linkTipo === "PRODUTO" &&
+                produtosDisponiveis.map((produto) => (
+                  <option key={produto.id} value={produto.id}>
+                    {produto.codigoInterno} · {produto.nome}
+                  </option>
+                ))}
+              {configHero.cta.linkTipo === "CATEGORIA" &&
+                categoriasDisponiveis.map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>
+                    {categoria.caminho}
+                  </option>
+                ))}
+              {configHero.cta.linkTipo === "PAGINA" &&
+                paginasDisponiveis.map((pagina) => (
+                  <option key={pagina.id} value={pagina.id}>
+                    {pagina.titulo}
+                  </option>
+                ))}
+              {configHero.cta.linkTipo === "COLECAO" &&
+                colecoesInteligentes.map((colecao) => (
+                  <option key={colecao.id} value={colecao.id}>
+                    {colecao.nome} · {colecao.produtosAprovados} aprovados
+                  </option>
+                ))}
+            </select>
+          )}
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Tipografia">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Preset de escala
+            </span>
+            <select
+              value={configHero.texto.preset}
+              onChange={(event) =>
+                atualizarSecao("texto", {
+                  preset: event.target.value as HeroEditorialPngConfig["texto"]["preset"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_TEXTO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Peso
+            </span>
+            <select
+              value={configHero.texto.peso}
+              onChange={(event) =>
+                atualizarSecao("texto", {
+                  peso: event.target.value as HeroEditorialPngConfig["texto"]["peso"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_PESO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor do texto
+            </span>
+            <input
+              type="color"
+              value={configHero.texto.cor}
+              onChange={(event) =>
+                atualizarSecao("texto", { cor: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Margem segura lateral (%)
+            </span>
+            <input
+              type="number"
+              min={4}
+              max={18}
+              value={configHero.texto.margemSeguraPercentual}
+              onChange={(event) =>
+                atualizarSecao("texto", {
+                  margemSeguraPercentual: Number(event.target.value) || 8,
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Tracking (em)
+            </span>
+            <input
+              type="number"
+              step={0.01}
+              min={-0.12}
+              max={0.08}
+              value={configHero.texto.tracking}
+              onChange={(event) =>
+                atualizarSecao("texto", {
+                  tracking: Number(event.target.value),
+                  preset: "CUSTOMIZADO",
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Altura de linha
+            </span>
+            <input
+              type="number"
+              step={0.01}
+              min={0.72}
+              max={1.25}
+              value={configHero.texto.lineHeight}
+              onChange={(event) =>
+                atualizarSecao("texto", {
+                  lineHeight: Number(event.target.value),
+                  preset: "CUSTOMIZADO",
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+        </div>
+
+        <CampoToggle
+          checked={configHero.texto.escalaAuto}
+          label="Escala automática"
+          description="Ajusta o texto expansivo com clamp responsivo para evitar overflow."
+          className="mt-4"
+          onChange={(checked) => atualizarSecao("texto", { escalaAuto: checked })}
+        />
+      </PainelSecao>
+
+      <PainelSecao title="PNG frontal">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-900">
+            <p className="font-semibold">Recomendações para PNG com fundo transparente</p>
+            <p className="mt-1">{recomendacao.desktop}</p>
+            <p>{recomendacao.mobile}</p>
+            <p className="mt-1 text-xs text-indigo-700">
+              Use objeto dentro de safe area de aproximadamente 85%, sem cortar bordas importantes. WebP com alpha também é aceito.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <UploadMidiaCampo
+              label="PNG desktop"
+              value={configHero.png.imagemDesktop}
+              tipoMidia="IMAGEM"
+              onChange={(url) => atualizarSecao("png", { imagemDesktop: url })}
+              orientacao={recomendacao.desktop}
+            />
+            <UploadMidiaCampo
+              label="PNG mobile"
+              value={configHero.png.imagemMobile}
+              tipoMidia="IMAGEM"
+              onChange={(url) => atualizarSecao("png", { imagemMobile: url })}
+              orientacao={`${recomendacao.mobile} Opcional; vazio usa desktop.`}
+            />
+          </div>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Alt text
+            </span>
+            <input
+              value={configHero.png.alt}
+              onChange={(event) => atualizarSecao("png", { alt: event.target.value })}
+              placeholder="Descrição do objeto em PNG"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              ["escalaDesktop", "Escala desktop (%)", 20, 130],
+              ["posicaoXDesktop", "Posição X desktop", 0, 100],
+              ["posicaoYDesktop", "Posição Y desktop", 0, 100],
+              ["escalaMobile", "Escala mobile (%)", 35, 150],
+              ["posicaoXMobile", "Posição X mobile", 0, 100],
+              ["posicaoYMobile", "Posição Y mobile", 0, 100],
+              ["opacidade", "Opacidade (%)", 0, 100],
+            ].map(([key, label, min, max]) => (
+              <label key={String(key)}>
+                <span className="mb-2 block text-sm font-medium text-slate-700">
+                  {label}
+                </span>
+                <input
+                  type="range"
+                  min={Number(min)}
+                  max={Number(max)}
+                  value={Number(configHero.png[key as keyof typeof configHero.png])}
+                  onChange={(event) =>
+                    atualizarSecao("png", {
+                      [key as string]: Number(event.target.value),
+                    } as Partial<HeroEditorialPngConfig["png"]>)
+                  }
+                  className="w-full"
+                />
+              </label>
+            ))}
+          </div>
+
+          <CampoToggle
+            checked={configHero.png.sombra}
+            label="Sombra editorial no PNG"
+            onChange={(checked) => atualizarSecao("png", { sombra: checked })}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                atualizarSecao("png", {
+                  imagemDesktop: "",
+                  imagemMobile: "",
+                })
+              }
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Limpar PNG
+            </button>
+          </div>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Layout">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Variante de altura
+            </span>
+            <select
+              value={configHero.variante}
+              onChange={(event) =>
+                aplicarConfig({
+                  variante: event.target.value as HeroEditorialPngConfig["variante"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_VARIANTE_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor de fundo
+            </span>
+            <input
+              type="color"
+              value={configHero.fundo.cor}
+              onChange={(event) =>
+                atualizarSecao("fundo", { cor: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+            />
+          </label>
+
+          <label className="md:col-span-2">
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Comportamento mobile
+            </span>
+            <select
+              value={configHero.responsivo.comportamentoMobile}
+              onChange={(event) =>
+                atualizarSecao("responsivo", {
+                  comportamentoMobile: event.target.value as HeroEditorialPngConfig["responsivo"]["comportamentoMobile"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              <option value="COMPACTAR">Compactar composição</option>
+              <option value="CENTRALIZAR">Centralizar camadas</option>
+              <option value="EMPILHAR">Empilhar visualmente</option>
+            </select>
+          </label>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Animação">
+        <div className="grid gap-4 md:grid-cols-3">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Entrada do texto
+            </span>
+            <select
+              value={configHero.animacao.entradaTexto}
+              onChange={(event) =>
+                atualizarSecao("animacao", {
+                  entradaTexto: event.target.value as HeroEditorialPngConfig["animacao"]["entradaTexto"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_ENTRADA_TEXTO_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Entrada do PNG
+            </span>
+            <select
+              value={configHero.animacao.entradaPng}
+              onChange={(event) =>
+                atualizarSecao("animacao", {
+                  entradaPng: event.target.value as HeroEditorialPngConfig["animacao"]["entradaPng"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_ENTRADA_PNG_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Hover
+            </span>
+            <select
+              value={configHero.animacao.hover}
+              onChange={(event) =>
+                atualizarSecao("animacao", {
+                  hover: event.target.value as HeroEditorialPngConfig["animacao"]["hover"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            >
+              {HERO_HOVER_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Avançado">
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              bloco: {
+                ...estado.bloco,
+                configJson: HERO_EDITORIAL_PNG_DEFAULT,
+              },
+            })
+          }
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Restaurar padrão do bloco
+        </button>
+      </PainelSecao>
+    </div>
+  );
+}
+
 function EditorConteudoBlocoModal({
   estado,
   pagina,
@@ -8397,6 +9394,7 @@ function EditorConteudoBlocoModal({
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
+  const isHeroEditorialPng = isHeroEditorialPngTipo(estado.bloco.tipo);
   const isVitrineEditorial = isVitrineEditorialTipo(estado.bloco.tipo);
   const isCta = isCtaTipo(estado.bloco.tipo);
   const modeloBannerInfo = getBannerModeloEditorInfo(estado.modeloBanner);
@@ -8577,7 +9575,7 @@ function EditorConteudoBlocoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
       <div
         className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
-          isBanner || isVitrineEditorial
+          isBanner || isHeroEditorialPng || isVitrineEditorial
             ? "max-w-[min(96vw,1760px)]"
             : "max-w-3xl"
         }`}
@@ -8603,11 +9601,13 @@ function EditorConteudoBlocoModal({
                       ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
                       : isColecoesCategorias
                         ? "Configure mosaicos editoriais com coleções, categorias, mídia e links."
-                        : isVitrineEditorial
-                          ? "Configure imagens grandes com links para categorias, páginas ou campanhas."
-                          : isCta
-                            ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
-                            : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
+                        : isHeroEditorialPng
+                          ? "Configure texto gigante, PNG frontal, variações responsivas, CTA e animações sutis."
+                          : isVitrineEditorial
+                            ? "Configure imagens grandes com links para categorias, páginas ou campanhas."
+                            : isCta
+                              ? "Configure uma chamada visual com texto rico, mídia opcional e botões."
+                              : "Primeira edição visual com campos universais. Depois vamos especializar por tipo de bloco."}
             </p>
           </div>
 
@@ -9867,6 +10867,15 @@ function EditorConteudoBlocoModal({
             </PainelSecao>
 
           </div>
+        ) : isHeroEditorialPng ? (
+          <HeroEditorialPngEditor
+            estado={estado}
+            categoriasDisponiveis={categoriasDisponiveis}
+            paginasDisponiveis={paginasDisponiveis}
+            produtosDisponiveis={produtosDisponiveis}
+            colecoesInteligentes={colecoesInteligentes}
+            onChange={onChange}
+          />
         ) : isVitrineEditorial ? (
           <VitrineEditorialEditor
             estado={estado}
@@ -12238,13 +13247,14 @@ export default function EditorVisualPaginaClient({
     estado: NonNullable<BlocoEditandoState>;
     blocoAtual: EditorVisualBloco;
   }) {
+    const usaConfigDireto =
+      isHeroEditorialPngTipo(blocoAtual.tipo) ||
+      isVitrineEditorialTipo(blocoAtual.tipo);
     const configAtual = getConfigObject(
-      isVitrineEditorialTipo(blocoAtual.tipo)
-        ? estado.bloco.configJson
-        : blocoAtual.configJson
+      usaConfigDireto ? estado.bloco.configJson : blocoAtual.configJson
     );
 
-    if (isVitrineEditorialTipo(blocoAtual.tipo)) {
+    if (usaConfigDireto) {
       return configAtual;
     }
 
@@ -12571,10 +13581,32 @@ export default function EditorVisualPaginaClient({
     setSalvando(true);
 
     const blocoAtual = getBlocoEditorAtual(editando.bloco.id) || editando.bloco;
-    const isVitrineEditorial = isVitrineEditorialTipo(blocoAtual.tipo);
-    const configAtual = getConfigObject(
-      isVitrineEditorial ? editando.bloco.configJson : blocoAtual.configJson
-    );
+    const usaConfigDireto =
+      isHeroEditorialPngTipo(blocoAtual.tipo) ||
+      isVitrineEditorialTipo(blocoAtual.tipo);
+
+    if (usaConfigDireto) {
+      try {
+        const salvo = await atualizarBloco(blocoAtual, {
+          titulo: editando.nomeInterno || blocoAtual.titulo,
+          configJson: getConfigObject(editando.bloco.configJson),
+        });
+
+        if (salvo) {
+          setBlocosComTextoPendente((current) =>
+            current.filter((blocoId) => blocoId !== editando.bloco.id)
+          );
+          setEditando(null);
+          setSucesso("Conteúdo do bloco salvo.");
+        }
+      } finally {
+        setSalvando(false);
+      }
+
+      return;
+    }
+
+    const configAtual = getConfigObject(blocoAtual.configJson);
     const isBanner = isBannerTipo(blocoAtual.tipo);
     const isTextoImagem = isTextoImagemTipo(blocoAtual.tipo);
     const isListaProdutos = isListaProdutosTipo(blocoAtual.tipo);

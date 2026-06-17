@@ -4,6 +4,7 @@ import ColecoesCategoriasPublico from "@/components/loja/paginas/blocos/Colecoes
 import CtaPublico from "@/components/loja/paginas/blocos/CtaPublico";
 import CtaSimplesPublico from "@/components/loja/paginas/blocos/CtaSimplesPublico";
 import DestaquesCardsPublico from "@/components/loja/paginas/blocos/DestaquesCardsPublico";
+import HeroEditorialPngPublico from "@/components/loja/paginas/blocos/HeroEditorialPngPublico";
 import ListaProdutosPublico from "@/components/loja/paginas/blocos/ListaProdutosPublico";
 import TextoImagemPublico from "@/components/loja/paginas/blocos/TextoImagemPublico";
 import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
@@ -28,6 +29,10 @@ export default function BlocoPublicoRenderer({
 }) {
   if (bloco.tipo === "BANNER" || bloco.tipo === "HERO") {
     return <BannerPublico bloco={bloco} produtos={produtos} />;
+  }
+
+  if (bloco.tipo === "HERO_EDITORIAL_PNG") {
+    return <HeroEditorialPngPublico bloco={bloco} produtos={produtos} />;
   }
 
   if (bloco.tipo === "TEXTO_IMAGEM" || bloco.tipo === "IMAGEM_TEXTO") {
