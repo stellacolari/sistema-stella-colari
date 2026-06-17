@@ -1,5 +1,6 @@
 "use client";
 
+import NextLink from "next/link";
 import type {
   CSSProperties,
   ChangeEvent,
@@ -17,13 +18,16 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
+import TiptapLink from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
+  CheckCircle2,
   ClipboardList,
+  Eye,
   GripVertical,
   HelpCircle,
   ImageIcon,
@@ -32,6 +36,8 @@ import {
   Monitor,
   MousePointer2,
   PanelRight,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   Rows3,
   Save,
@@ -136,6 +142,13 @@ type DadosSeoPaginaForm = {
 };
 
 type DevicePreview = "DESKTOP" | "TABLET" | "MOBILE";
+type EditorSelectionContext =
+  | "BLOCO"
+  | "TEXTO"
+  | "IMAGEM"
+  | "BOTAO"
+  | "DESIGN"
+  | "PRODUTOS";
 
 type TipoBlocoAdicionar =
   | "BANNER"
@@ -2076,16 +2089,28 @@ function getItensColecoesConfig(
   });
 }
 
-function getFrameClass(device: DevicePreview) {
+function getFrameWidth(device: DevicePreview) {
   if (device === "MOBILE") {
-    return "mx-auto max-w-[390px]";
+    return "390px";
   }
 
   if (device === "TABLET") {
-    return "mx-auto max-w-[820px]";
+    return "768px";
   }
 
-  return "mx-auto max-w-full";
+  return "1440px";
+}
+
+function getFrameClass(device: DevicePreview) {
+  if (device === "MOBILE") {
+    return "w-[390px]";
+  }
+
+  if (device === "TABLET") {
+    return "w-[768px]";
+  }
+
+  return "w-[1440px]";
 }
 
 function getFrameLabel(device: DevicePreview) {
@@ -2096,14 +2121,14 @@ function getFrameLabel(device: DevicePreview) {
 
 function getDeviceDescription(device: DevicePreview) {
   if (device === "MOBILE") {
-    return "Ajustes mobile serão separados nas próximas etapas. Por enquanto, estes campos continuam salvando o conteúdo base do bloco.";
+    return "Canvas em largura real aproximada de mobile, com scroll horizontal se a tela administrativa for menor.";
   }
 
   if (device === "TABLET") {
-    return "Ajustes tablet serão separados nas próximas etapas. Por enquanto, estes campos continuam salvando o conteúdo base do bloco.";
+    return "Canvas em largura real aproximada de tablet, sem reduzir fonte, crop ou espaçamentos.";
   }
 
-  return "Ajustes gerais e desktop. As alterações abaixo atualizam o conteúdo base usado no preview.";
+  return "Canvas em largura desktop real. Painéis podem ser recolhidos para visualizar 100%.";
 }
 
 function getBgClass(corFundo: string) {
@@ -2804,27 +2829,30 @@ function MediaWidthControls({
 function PreviewShell({
   children,
   device,
+  previewPublico = false,
 }: {
   children: ReactNode;
   device: DevicePreview;
+  previewPublico?: boolean;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
-          {device === "TABLET" && <Tablet className="h-4 w-4" />}
-          {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
-          Preview {getFrameLabel(device)}
+    <div className="min-w-0 bg-slate-100">
+      {!previewPublico && (
+        <div className="sticky left-0 top-0 z-20 flex min-h-10 items-center justify-between gap-3 border-b border-slate-200 bg-slate-100/95 px-4 py-2 backdrop-blur">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
+            {device === "TABLET" && <Tablet className="h-4 w-4" />}
+            {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
+            Canvas {getFrameLabel(device)}
+          </div>
+
+          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
+            {getFrameWidth(device)} sem escala
+          </span>
         </div>
-
-        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200">
-          Renderização simulada
-        </span>
-      </div>
-
+      )}
       <div
-        className={`loja-publica stella-storefront-render overflow-hidden bg-white text-slate-900 antialiased shadow-sm ring-1 ring-slate-200 ${getFrameClass(
+        className={`loja-publica stella-storefront-render min-h-screen shrink-0 overflow-hidden bg-white text-slate-900 antialiased shadow-sm ring-1 ring-slate-200 ${getFrameClass(
           device
         )}`}
       >
@@ -3152,7 +3180,7 @@ function RichTextInlineEditor({
       Color,
       FontFamily,
       Underline,
-      Link.configure({
+      TiptapLink.configure({
         openOnClick: false,
         autolink: false,
         linkOnPaste: true,
@@ -3302,7 +3330,9 @@ function RenderBlocoPreview({
   selecionado,
   onSelect,
   onEdit,
+  onContextSelect,
   device,
+  modoPreviewPublico = false,
   onInlineTextChange,
   onInlineCardChange,
   onInlineColecaoItemChange,
@@ -3313,7 +3343,9 @@ function RenderBlocoPreview({
   selecionado: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onContextSelect: (context: EditorSelectionContext) => void;
   device: DevicePreview;
+  modoPreviewPublico?: boolean;
   categoriasDisponiveis: EditorVisualCategoria[];
   produtosDisponiveis: EditorVisualProduto[];
   onInlineTextChange: (blocoId: string, patch: Record<string, unknown>) => void;
@@ -3333,6 +3365,7 @@ function RenderBlocoPreview({
     event.preventDefault();
     event.stopPropagation();
     onSelect();
+    onContextSelect("BLOCO");
     onEdit();
   }
 
@@ -4091,37 +4124,55 @@ function RenderBlocoPreview({
 
   return (
     <section
-      role="button"
-      tabIndex={0}
-      onClick={onSelect}
+      role={modoPreviewPublico ? undefined : "button"}
+      tabIndex={modoPreviewPublico ? undefined : 0}
+      onClick={
+        modoPreviewPublico
+          ? undefined
+          : () => {
+              onSelect();
+              onContextSelect("DESIGN");
+            }
+      }
       onKeyDown={(event) => {
+        if (modoPreviewPublico) return;
+
         if (event.key === "Enter" || event.key === " ") {
           onSelect();
+          onContextSelect("DESIGN");
         }
       }}
-      className={`group relative cursor-pointer border-2 transition ${
-        selecionado
+      className={`group relative border-2 transition ${
+        modoPreviewPublico
+          ? "border-transparent"
+          : selecionado
           ? "border-indigo-500 bg-indigo-50/40"
           : "border-transparent hover:border-indigo-200"
-      } ${bloco.ativo ? "" : "opacity-50"}`}
+      } ${modoPreviewPublico ? "" : "cursor-pointer"} ${
+        bloco.ativo ? "" : "opacity-50"
+      }`}
     >
-      <button
-        type="button"
-        onMouseDown={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-        }}
-        onClick={handleEditClick}
-        className="absolute right-3 top-3 z-30 hidden items-center gap-1.5 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur transition hover:bg-slate-50 group-hover:inline-flex focus:inline-flex"
-      >
-        <Type className="h-3.5 w-3.5" />
-        Editar
-      </button>
+      {!modoPreviewPublico && (
+        <>
+          <button
+            type="button"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onClick={handleEditClick}
+            className="absolute right-3 top-3 z-30 hidden items-center gap-1.5 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-lg backdrop-blur transition hover:bg-slate-50 group-hover:inline-flex focus:inline-flex"
+          >
+            <Type className="h-3.5 w-3.5" />
+            Editar
+          </button>
 
-      <div className="absolute left-3 top-3 z-10 hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm group-hover:flex">
-        <GripVertical className="h-3.5 w-3.5 text-slate-400" />
-        {getTipoLabel(bloco.tipo)}
-      </div>
+          <div className="absolute left-3 top-3 z-10 hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm group-hover:flex">
+            <GripVertical className="h-3.5 w-3.5 text-slate-400" />
+            {getTipoLabel(bloco.tipo)}
+          </div>
+        </>
+      )}
 
       {isVitrineEditorialTipo(bloco.tipo) ? (
         <VitrineEditorialPublico
@@ -4137,7 +4188,19 @@ function RenderBlocoPreview({
             produtos={toBannerProdutosPublicos(produtosDisponiveis)}
             device={device}
             modo="editor"
-            onElementSelect={() => onSelect()}
+            onElementSelect={(element) => {
+              if (modoPreviewPublico) return;
+              onSelect();
+              onContextSelect(
+                element === "CTA"
+                  ? "BOTAO"
+                  : element === "MIDIA" || element === "IMAGEM_FRENTE"
+                    ? "IMAGEM"
+                    : element === "PRODUTOS"
+                      ? "PRODUTOS"
+                      : "TEXTO"
+              );
+            }}
             titleSlot={({ className, style }) => (
               <RichTextInlineEditor
                 value={tituloRichText}
@@ -11315,9 +11378,34 @@ export default function EditorVisualPaginaClient({
   const [blocoSelecionadoId, setBlocoSelecionadoId] = useState(
     blocosOrdenados[0]?.id || ""
   );
+  const [painelAberto, setPainelAberto] = useState(true);
+  const [modoPreviewPublico, setModoPreviewPublico] = useState(false);
+  const [selectionContext, setSelectionContext] =
+    useState<EditorSelectionContext>("BLOCO");
 
   const blocoSelecionado =
     blocosOrdenados.find((bloco) => bloco.id === blocoSelecionadoId) || null;
+
+  function selecionarBloco(
+    blocoId: string,
+    context: EditorSelectionContext = "BLOCO"
+  ) {
+    setBlocoSelecionadoId(blocoId);
+    setSelectionContext(context);
+    setModoPreviewPublico(false);
+  }
+
+  function alternarPreviewPublico() {
+    setModoPreviewPublico((current) => {
+      const next = !current;
+
+      if (next) {
+        setPainelAberto(false);
+      }
+
+      return next;
+    });
+  }
 
   function getBlocoEditorAtual(blocoId: string) {
     return blocosEditor.find((bloco) => bloco.id === blocoId) || null;
@@ -11563,6 +11651,7 @@ export default function EditorVisualPaginaClient({
     if (blocoSelecionadoId === bloco.id) {
       const proximoBloco = blocosOrdenados.find((item) => item.id !== bloco.id);
       setBlocoSelecionadoId(proximoBloco?.id || "");
+      setSelectionContext("BLOCO");
     }
 
     try {
@@ -11695,7 +11784,7 @@ export default function EditorVisualPaginaClient({
         };
 
         setBlocosEditor((current) => ordenarBlocos([...current, novoBloco]));
-        setBlocoSelecionadoId(novoBloco.id);
+        selecionarBloco(novoBloco.id, "BLOCO");
         setModalAdicionarAberto(false);
         setSucesso("Bloco criado.");
       }
@@ -12514,349 +12603,419 @@ export default function EditorVisualPaginaClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="fixed inset-0 z-40 flex flex-col bg-slate-100 text-slate-900">
+      <header className="z-30 flex min-h-16 items-center gap-3 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4">
+        <NextLink
+          href="/configuracoes/loja/paginas"
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+          aria-label="Voltar para páginas"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </NextLink>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="truncate text-sm font-bold text-slate-950 sm:text-base">
+              {pagina.titulo}
+            </h1>
+
+            <span
+              className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold sm:inline-flex ${
+                pagina.ativo
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {pagina.ativo ? "Ativa" : "Inativa"}
+            </span>
+
+            <span className="hidden rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 md:inline-flex">
+              {pagina.statusPublicacao}
+            </span>
+          </div>
+
+          <p className="truncate text-xs text-slate-500">
+            {getFrameWidth(device)} sem escala · {pagina.slug}
+          </p>
+        </div>
+
+        <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 p-1 md:inline-flex">
+          {(["DESKTOP", "TABLET", "MOBILE"] as const).map((item) => {
+            const Icon =
+              item === "DESKTOP" ? Monitor : item === "TABLET" ? Tablet : Smartphone;
+
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setDevice(item)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                  device === item
+                    ? "bg-slate-950 text-white"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {getFrameLabel(item)}
+              </button>
+            );
+          })}
+        </div>
+
+        {blocoSelecionado &&
+          blocosComTextoPendente.includes(blocoSelecionado.id) && (
+            <button
+              type="button"
+              onClick={() => void salvarTextosInline(blocoSelecionado)}
+              disabled={salvando}
+              className="hidden items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
+            >
+              <Save className="h-4 w-4" />
+              {salvando ? "Salvando..." : "Salvar"}
+            </button>
+          )}
+
+        <button
+          type="button"
+          onClick={alternarPreviewPublico}
+          className={`inline-flex h-10 items-center justify-center gap-2 rounded-2xl border px-3 text-sm font-semibold transition ${
+            modoPreviewPublico
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          {modoPreviewPublico ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <Eye className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">
+            {modoPreviewPublico ? "Preview público" : "Ver página"}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setPainelAberto((current) => !current);
+            setModoPreviewPublico(false);
+          }}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+          aria-label={painelAberto ? "Recolher painel" : "Abrir painel"}
+        >
+          {painelAberto ? (
+            <PanelRightClose className="h-4 w-4" />
+          ) : (
+            <PanelRightOpen className="h-4 w-4" />
+          )}
+        </button>
+
+        <NextLink
+          href={pagina.urlPublica}
+          target="_blank"
+          className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 xl:inline-flex"
+        >
+          Página pública
+        </NextLink>
+      </header>
+
       {(erro || sucesso) && (
-        <div>
+        <div className="absolute left-1/2 top-20 z-40 w-[min(92vw,720px)] -translate-x-1/2">
           {erro && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-lg">
               {erro}
             </div>
           )}
 
           {sucesso && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-lg">
               {sucesso}
             </div>
           )}
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_340px]">
-        <aside className="h-fit rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 xl:sticky xl:top-6">
-          <div className="flex items-center gap-2">
-            <PanelRight className="h-5 w-5 text-slate-400" />
+      <div className="flex min-h-0 flex-1">
+        {!modoPreviewPublico && (
+          <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-4 lg:block">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-slate-400" />
+                <h2 className="text-sm font-bold text-slate-950">Blocos</h2>
+              </div>
 
-            <h2 className="text-sm font-bold text-slate-950">Blocos</h2>
-          </div>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
+                {blocosOrdenados.length}
+              </span>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setModalAdicionarAberto(true)}
-            disabled={salvando || isPending}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Plus className="h-4 w-4" />
-            {salvando ? "Criando..." : "Adicionar bloco"}
-          </button>
+            <button
+              type="button"
+              onClick={() => setModalAdicionarAberto(true)}
+              disabled={salvando || isPending}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              {salvando ? "Criando..." : "Adicionar bloco"}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setModalDadosSeoAberto(true)}
-            disabled={dadosSeoSalvando}
-            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <ClipboardList className="h-4 w-4" />
-            Dados/SEO
-          </button>
+            <button
+              type="button"
+              onClick={() => setModalDadosSeoAberto(true)}
+              disabled={dadosSeoSalvando}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Dados/SEO
+            </button>
 
-          <div className="mt-4 space-y-2">
-            {blocosOrdenados.map((bloco) => {
-              const Icon = getBlocoIcon(bloco.tipo);
-              const selecionado = bloco.id === blocoSelecionadoId;
+            <div className="mt-4 space-y-2">
+              {blocosOrdenados.map((bloco) => {
+                const Icon = getBlocoIcon(bloco.tipo);
+                const selecionado = bloco.id === blocoSelecionadoId;
 
-              return (
-                <button
-                  key={bloco.id}
-                  type="button"
-                  onClick={() => setBlocoSelecionadoId(bloco.id)}
-                  className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition ${
-                    selecionado
-                      ? "border-indigo-200 bg-indigo-50 text-indigo-900"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                return (
+                  <button
+                    key={bloco.id}
+                    type="button"
+                    onClick={() => selecionarBloco(bloco.id, "BLOCO")}
+                    className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                      selecionado
+                        ? "border-indigo-200 bg-indigo-50 text-indigo-900"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
 
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">
-                      {bloco.titulo || getTipoLabel(bloco.tipo)}
-                    </span>
-
-                    <span className="mt-0.5 block text-xs text-slate-500">
-                      {getTipoLabel(bloco.tipo)} · Ordem {bloco.ordem}
-                    </span>
-
-                    {!bloco.ativo && (
-                      <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                        Inativo
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {bloco.titulo || getTipoLabel(bloco.tipo)}
                       </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
 
-            {blocosOrdenados.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                Nenhum bloco nesta página.
-              </div>
-            )}
-          </div>
-        </aside>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {getTipoLabel(bloco.tipo)} · Ordem {bloco.ordem}
+                      </span>
 
-        <section className="min-w-0">
-          <div className="mb-4 flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-950">
-                Preview ao vivo
-              </p>
+                      {!bloco.ativo && (
+                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                          Inativo
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
 
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                Veja a estrutura da página por dispositivo enquanto ajusta
-                blocos, textos, mídias e aparência.
-              </p>
-            </div>
-
-            <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
-              <button
-                type="button"
-                onClick={() => setDevice("DESKTOP")}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                  device === "DESKTOP"
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-600 hover:bg-white"
-                }`}
-              >
-                <Monitor className="h-4 w-4" />
-                Desktop
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDevice("TABLET")}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                  device === "TABLET"
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-600 hover:bg-white"
-                }`}
-              >
-                <Tablet className="h-4 w-4" />
-                Tablet
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDevice("MOBILE")}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                  device === "MOBILE"
-                    ? "bg-slate-950 text-white"
-                    : "text-slate-600 hover:bg-white"
-                }`}
-              >
-                <Smartphone className="h-4 w-4" />
-                Mobile
-              </button>
-            </div>
-          </div>
-
-          <PreviewShell device={device}>
-            <div className="border-b border-slate-100 px-6 py-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-950">
-                  STELLA
+              {blocosOrdenados.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                  Nenhum bloco nesta página.
                 </div>
+              )}
+            </div>
+          </aside>
+        )}
 
-                {device !== "MOBILE" ? (
-                  <div className="flex gap-5 text-sm text-slate-500">
-                    <span>Home</span>
-                    <span>Categorias</span>
-                    <span>Descontos</span>
+        <main className="min-w-0 flex-1 overflow-auto bg-slate-100">
+          <div className="min-h-full w-max p-4 sm:p-6">
+            <PreviewShell device={device} previewPublico={modoPreviewPublico}>
+              {blocosOrdenados.map((bloco) => (
+                <RenderBlocoPreview
+                  key={bloco.id}
+                  bloco={bloco}
+                  selecionado={bloco.id === blocoSelecionadoId}
+                  onSelect={() => selecionarBloco(bloco.id, "BLOCO")}
+                  onContextSelect={setSelectionContext}
+                  onEdit={() => abrirEdicaoBloco(bloco)}
+                  device={device}
+                  modoPreviewPublico={modoPreviewPublico}
+                  onInlineTextChange={atualizarTextoInline}
+                  onInlineCardChange={atualizarCardInline}
+                  onInlineColecaoItemChange={atualizarColecaoItemInline}
+                  categoriasDisponiveis={categoriasDisponiveis}
+                  produtosDisponiveis={produtosDisponiveis}
+                />
+              ))}
+
+              {blocosOrdenados.length === 0 && (
+                <div className="flex min-h-[420px] items-center justify-center bg-white p-8 text-center">
+                  <div>
+                    <LayoutGrid className="mx-auto h-8 w-8 text-slate-300" />
+
+                    <p className="mt-3 text-sm font-semibold text-slate-700">
+                      Página sem blocos
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Adicione o primeiro bloco para começar a montar a página.
+                    </p>
                   </div>
-                ) : (
-                  <MousePointer2 className="h-5 w-5 text-slate-400" />
-                )}
+                </div>
+              )}
+            </PreviewShell>
+          </div>
+        </main>
+
+        {!modoPreviewPublico && painelAberto && (
+          <aside className="fixed inset-y-0 right-0 z-30 mt-16 w-[min(100vw,380px)] overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-2xl xl:static xl:mt-0 xl:w-[380px] xl:shadow-none">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <PanelRight className="h-5 w-5 text-slate-400" />
+                <h2 className="text-sm font-bold text-slate-950">
+                  Painel lateral
+                </h2>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setPainelAberto(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 xl:hidden"
+                aria-label="Fechar painel"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {blocosOrdenados.map((bloco) => (
-              <RenderBlocoPreview
-                key={bloco.id}
-                bloco={bloco}
-                selecionado={bloco.id === blocoSelecionadoId}
-                onSelect={() => setBlocoSelecionadoId(bloco.id)}
-                onEdit={() => abrirEdicaoBloco(bloco)}
-                device={device}
-                onInlineTextChange={atualizarTextoInline}
-                onInlineCardChange={atualizarCardInline}
-                onInlineColecaoItemChange={atualizarColecaoItemInline}
-                categoriasDisponiveis={categoriasDisponiveis}
-                produtosDisponiveis={produtosDisponiveis}
-              />
-            ))}
-
-            {blocosOrdenados.length === 0 && (
-              <div className="flex min-h-[420px] items-center justify-center bg-white p-8 text-center">
-                <div>
-                  <LayoutGrid className="mx-auto h-8 w-8 text-slate-300" />
-
-                  <p className="mt-3 text-sm font-semibold text-slate-700">
-                    Página sem blocos
+            {blocoSelecionado ? (
+              <div className="mt-5 space-y-5">
+                <PainelSecao title="Seleção">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    {selectionContext === "TEXTO"
+                      ? "Texto"
+                      : selectionContext === "IMAGEM"
+                        ? "Imagem"
+                        : selectionContext === "BOTAO"
+                          ? "Botão"
+                          : selectionContext === "PRODUTOS"
+                            ? "Produtos"
+                            : selectionContext === "DESIGN"
+                              ? "Design"
+                              : "Bloco selecionado"}
                   </p>
+
+                  <h3 className="mt-1 text-lg font-semibold text-slate-950">
+                    {blocoSelecionado.titulo ||
+                      getTipoLabel(blocoSelecionado.tipo)}
+                  </h3>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Adicione o primeiro bloco para começar a montar a página.
+                    {getTipoLabel(blocoSelecionado.tipo)} · Ordem{" "}
+                    {blocoSelecionado.ordem}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => abrirEdicaoBloco(blocoSelecionado)}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Type className="h-4 w-4" />
+                    Editar conteúdo básico
+                  </button>
+
+                  {blocosComTextoPendente.includes(blocoSelecionado.id) && (
+                    <button
+                      type="button"
+                      onClick={() => void salvarTextosInline(blocoSelecionado)}
+                      disabled={salvando}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Save className="h-4 w-4" />
+                      {salvando ? "Salvando..." : "Salvar textos do preview"}
+                    </button>
+                  )}
+                </PainelSecao>
+
+                <PainelSecao title="Dispositivo atual">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                    {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
+                    {device === "TABLET" && <Tablet className="h-4 w-4" />}
+                    {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
+                    {getFrameLabel(device)}
+                  </div>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {getDeviceDescription(device)}
+                  </p>
+                </PainelSecao>
+
+                <PainelSecao title="Ações do bloco">
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void atualizarBloco(blocoSelecionado, {
+                          ativo: !blocoSelecionado.ativo,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      {blocoSelecionado.ativo ? "Ocultar bloco" : "Ativar bloco"}
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void moverBlocoPorSeta(blocoSelecionado.id, "CIMA")
+                        }
+                        disabled={ordemSalvando}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                        Subir
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void moverBlocoPorSeta(blocoSelecionado.id, "BAIXO")
+                        }
+                        disabled={ordemSalvando}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                        Descer
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void excluirBloco(blocoSelecionado)}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir bloco
+                    </button>
+                  </div>
+                </PainelSecao>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Categorias disponíveis
+                  </p>
+
+                  <p className="mt-2 text-sm text-slate-600">
+                    {pagina.tipo === "CATEGORIA" && pagina.categoriaNome
+                      ? `Esta página está vinculada a ${pagina.categoriaNome}; produtos disponíveis no editor já estão limitados a essa categoria.`
+                      : `${categoriasDisponiveis.length} categorias carregadas para uso em blocos de produtos, categorias e campanhas.`}
                   </p>
                 </div>
               </div>
-            )}
-          </PreviewShell>
-        </section>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+                <PanelRight className="mx-auto h-8 w-8 text-slate-300" />
 
-        <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 xl:sticky xl:top-6">
-          <div className="flex items-center gap-2">
-            <PanelRight className="h-5 w-5 text-slate-400" />
-
-            <h2 className="text-sm font-bold text-slate-950">Painel lateral</h2>
-          </div>
-
-          {blocoSelecionado ? (
-            <div className="mt-5 space-y-5">
-              <PainelSecao title="Conteúdo">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Bloco selecionado
+                <p className="mt-3 text-sm font-semibold text-slate-700">
+                  Nenhum bloco selecionado
                 </p>
 
-                <h3 className="mt-1 text-lg font-semibold text-slate-950">
-                  {blocoSelecionado.titulo ||
-                    getTipoLabel(blocoSelecionado.tipo)}
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {getTipoLabel(blocoSelecionado.tipo)} · Ordem{" "}
-                  {blocoSelecionado.ordem}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => abrirEdicaoBloco(blocoSelecionado)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Type className="h-4 w-4" />
-                  Editar conteúdo básico
-                </button>
-
-                {blocosComTextoPendente.includes(blocoSelecionado.id) && (
-                  <button
-                    type="button"
-                    onClick={() => void salvarTextosInline(blocoSelecionado)}
-                    disabled={salvando}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Save className="h-4 w-4" />
-                    {salvando ? "Salvando..." : "Salvar textos do preview"}
-                  </button>
-                )}
-              </PainelSecao>
-
-              <PainelSecao title="Aparência">
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Cor de fundo e espaçamento ficam no modal de conteúdo nesta
-                  etapa. Eles são salvos junto com as configurações existentes do
-                  bloco.
-                </p>
-              </PainelSecao>
-
-              <PainelSecao title="Dispositivo atual">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-                  {device === "DESKTOP" && <Monitor className="h-4 w-4" />}
-                  {device === "TABLET" && <Tablet className="h-4 w-4" />}
-                  {device === "MOBILE" && <Smartphone className="h-4 w-4" />}
-                  {getFrameLabel(device)}
-                </div>
-
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {getDeviceDescription(device)}
-                </p>
-              </PainelSecao>
-
-              <PainelSecao title="Ações do bloco">
-                <div className="grid gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void atualizarBloco(blocoSelecionado, {
-                        ativo: !blocoSelecionado.ativo,
-                      })
-                    }
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    {blocoSelecionado.ativo ? "Ocultar bloco" : "Ativar bloco"}
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void moverBlocoPorSeta(blocoSelecionado.id, "CIMA")
-                      }
-                      disabled={ordemSalvando}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                      Subir
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void moverBlocoPorSeta(blocoSelecionado.id, "BAIXO")
-                      }
-                      disabled={ordemSalvando}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                      Descer
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void excluirBloco(blocoSelecionado)}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Excluir bloco
-                  </button>
-                </div>
-              </PainelSecao>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Categorias disponíveis
-                </p>
-
-                <p className="mt-2 text-sm text-slate-600">
-                  {pagina.tipo === "CATEGORIA" && pagina.categoriaNome
-                    ? `Esta página está vinculada a ${pagina.categoriaNome}; produtos disponíveis no editor já estão limitados a essa categoria.`
-                    : `${categoriasDisponiveis.length} categorias carregadas para uso em blocos de produtos, categorias e campanhas.`}
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Clique em um bloco no preview ou na lista para editar suas
+                  configurações.
                 </p>
               </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
-              <PanelRight className="mx-auto h-8 w-8 text-slate-300" />
-
-              <p className="mt-3 text-sm font-semibold text-slate-700">
-                Nenhum bloco selecionado
-              </p>
-
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Clique em um bloco no preview ou na lista para editar suas
-                configurações.
-              </p>
-            </div>
-          )}
-        </aside>
+            )}
+          </aside>
+        )}
       </div>
 
       <DadosSeoPaginaModal

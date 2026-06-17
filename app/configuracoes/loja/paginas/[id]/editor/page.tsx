@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import EditorVisualPaginaClient, {
   type EditorVisualBloco,
@@ -292,88 +290,13 @@ export default async function EditorVisualPaginaPage({ params }: PageProps) {
     }));
 
   return (
-    <main className="space-y-6">
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <Link
-              href="/configuracoes/loja/paginas"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar para páginas
-            </Link>
-
-            <p className="mt-5 text-sm font-medium uppercase tracking-wide text-slate-500">
-              Editor visual
-            </p>
-
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
-              {pagina.titulo}
-            </h1>
-
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Edite blocos, conteúdo, mídia e aparência com preview por
-              dispositivo em uma única experiência de edição.
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
-                Tipo: {pagina.tipo}
-              </span>
-
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
-                Slug: {pagina.slug}
-              </span>
-
-              <span
-                className={`rounded-full px-3 py-1 font-semibold ${
-                  pagina.ativo
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {pagina.ativo ? "Ativa" : "Inativa"}
-              </span>
-
-              <span className="rounded-full bg-indigo-50 px-3 py-1 font-semibold text-indigo-700">
-                {pagina.statusPublicacao}
-              </span>
-
-              {pagina.categoriaNome && (
-                <span className="rounded-full bg-violet-50 px-3 py-1 font-semibold text-violet-700">
-                  Categoria: {pagina.categoriaNome}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/configuracoes/loja/vitrines-inteligentes"
-              className="inline-flex items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
-            >
-              Vitrines Inteligentes
-            </Link>
-            <Link
-              href={pagina.urlPublica}
-              target="_blank"
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Ver página pública
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <EditorVisualPaginaClient
-        pagina={pagina}
-        blocos={blocos}
-        categoriasDisponiveis={categoriasDisponiveis}
-        paginasDisponiveis={paginasDisponiveis}
-        produtosDisponiveis={produtosDisponiveis}
-        colecoesInteligentes={colecoesInteligentes}
-      />
-    </main>
+    <EditorVisualPaginaClient
+      pagina={pagina}
+      blocos={blocos}
+      categoriasDisponiveis={categoriasDisponiveis}
+      paginasDisponiveis={paginasDisponiveis}
+      produtosDisponiveis={produtosDisponiveis}
+      colecoesInteligentes={colecoesInteligentes}
+    />
   );
 }
