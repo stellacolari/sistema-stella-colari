@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { criarSecaoColunasPadrao } from "@/components/loja/paginas/textElements";
 
 const TIPOS_BLOCO_VALIDOS = new Set([
   "BANNER",
@@ -16,6 +18,7 @@ const TIPOS_BLOCO_VALIDOS = new Set([
   "VITRINE_EDITORIAL",
   "CTA",
   "CTA_SIMPLES",
+  "SECAO_COLUNAS",
   "CATEGORIAS",
   "IMAGEM_TEXTO",
   "ESPACADOR",
@@ -46,6 +49,7 @@ function getTituloPadrao(tipo: string) {
     VITRINE_EDITORIAL: "Vitrine editorial",
     CTA: "Chamada para ação",
     CTA_SIMPLES: "CTA simples",
+    SECAO_COLUNAS: "Secao com Colunas",
     CATEGORIAS: "Categorias",
     IMAGEM_TEXTO: "Imagem + texto",
     ESPACADOR: "Espaçador",
@@ -109,6 +113,10 @@ function getTextStylePadrao(kind: string) {
 }
 
 function getConfigPadrao(tipo: string) {
+  if (tipo === "SECAO_COLUNAS") {
+    return criarSecaoColunasPadrao() as unknown as Prisma.InputJsonValue;
+  }
+
   if (tipo === "BANNER") {
     return {
       exibirMidia: true,

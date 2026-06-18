@@ -24,13 +24,17 @@ export type SectionColumnElement =
       id: string;
       tipo: "TITULO" | "TEXTO" | "BOTAO";
       texto: TextElementConfig;
+      link?: string;
+      abrirNovaAba?: boolean;
     }
   | {
       id: string;
       tipo: "IMAGEM";
       url: string;
+      mobileUrl?: string;
       alt: string;
       crop?: unknown;
+      link?: string;
     }
   | {
       id: string;
@@ -41,23 +45,39 @@ export type SectionColumnElement =
 export type SectionColumnsConfig = {
   tipo: "SECAO_COLUNAS";
   layout: {
-    colunas: 2;
+    colunas: 1 | 2;
     proporcaoDesktop: "50/50" | "40/60" | "60/40" | "CUSTOM";
+    proporcaoCustom?: number[];
     gap: number;
     altura: "AUTO" | "COMPACTA" | "PADRAO" | "ALTA" | "TELA_CHEIA";
-    alinhamentoVertical: "TOPO" | "CENTRO" | "BAIXO";
-    sangria: "NENHUMA" | "ESQUERDA" | "DIREITA";
+    alinhamentoVertical: "TOPO" | "CENTRO" | "BAIXO" | "ESTICAR";
+    largura: "CONTIDA" | "FULL_BLEED";
+    sangria: "NENHUMA" | "ESQUERDA" | "DIREITA" | "AMBAS";
+    paddingDesktop: number;
+    paddingMobile: number;
   };
   colunas: {
     id: string;
+    largura?: number;
     fundo: {
       tipo: "COR" | "IMAGEM" | "NENHUM";
       cor?: string;
       media?: unknown;
       crop?: unknown;
+      overlay?: number;
     };
+    padding: number;
     elementos: SectionColumnElement[];
   }[];
+  design: {
+    fundoSecao?: string;
+    corTextoPadrao?: string;
+    raio?: number;
+  };
+  responsivo: {
+    mobile: "EMPILHAR" | "MANTER_COLUNAS";
+    ordemMobile?: string[];
+  };
 };
 
 const DEFAULT_TEXT_STYLE: TextElementStyle = {
@@ -189,12 +209,47 @@ export function criarSecaoColunasPadrao(): SectionColumnsConfig {
       gap: 32,
       altura: "AUTO",
       alinhamentoVertical: "CENTRO",
-      sangria: "NENHUMA",
+      largura: "FULL_BLEED",
+      sangria: "ESQUERDA",
+      paddingDesktop: 72,
+      paddingMobile: 24,
     },
     colunas: [
       {
-        id: "coluna-texto",
+        id: "coluna-imagem",
+        largura: 50,
+        fundo: {
+          tipo: "IMAGEM",
+          media: {
+            desktop: {
+              url: "",
+              alt: "",
+              aspectRatio: "4:5",
+              zoom: 100,
+              positionX: 50,
+              positionY: 50,
+            },
+            mobile: {
+              url: "",
+              alt: "",
+              aspectRatio: "4:5",
+              zoom: 100,
+              positionX: 50,
+              positionY: 50,
+            },
+            mobileUrl: "",
+            usarImagemMobileAlternativa: false,
+          },
+          overlay: 0,
+        },
+        padding: 0,
+        elementos: [],
+      },
+      {
+        id: "coluna-conteudo",
+        largura: 50,
         fundo: { tipo: "NENHUM" },
+        padding: 48,
         elementos: [
           {
             id: "elemento-titulo",
@@ -214,13 +269,27 @@ export function criarSecaoColunasPadrao(): SectionColumnsConfig {
               conteudo: "Texto de apoio da secao.",
             }),
           },
+          {
+            id: "elemento-botao",
+            tipo: "BOTAO",
+            link: "/loja",
+            texto: normalizarElementoTexto(null, {
+              id: "botao",
+              tipo: "botaoLabel",
+              conteudo: "Conhecer",
+            }),
+          },
         ],
       },
-      {
-        id: "coluna-midia",
-        fundo: { tipo: "IMAGEM", media: null, crop: null },
-        elementos: [],
-      },
     ],
+    design: {
+      fundoSecao: "#ffffff",
+      corTextoPadrao: "#0f172a",
+      raio: 0,
+    },
+    responsivo: {
+      mobile: "EMPILHAR",
+      ordemMobile: ["coluna-imagem", "coluna-conteudo"],
+    },
   };
 }

@@ -7,6 +7,7 @@ import DestaquesCardsPublico from "@/components/loja/paginas/blocos/DestaquesCar
 import GaleriaEditorialFullBleedPublico from "@/components/loja/paginas/blocos/GaleriaEditorialFullBleedPublico";
 import HeroEditorialPngPublico from "@/components/loja/paginas/blocos/HeroEditorialPngPublico";
 import ListaProdutosPublico from "@/components/loja/paginas/blocos/ListaProdutosPublico";
+import SecaoColunasPublico from "@/components/loja/paginas/blocos/SecaoColunasPublico";
 import TextoImagemPublico from "@/components/loja/paginas/blocos/TextoImagemPublico";
 import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
 import {
@@ -80,6 +81,10 @@ export default function BlocoPublicoRenderer({
 
   if (bloco.tipo === "CTA_SIMPLES") {
     return <CtaSimplesPublico bloco={bloco} produtos={produtos} />;
+  }
+
+  if (bloco.tipo === "SECAO_COLUNAS") {
+    return <SecaoColunasPublico bloco={bloco} produtos={produtos} />;
   }
 
   if (isBlocoVisualPublico(bloco.tipo)) return null;

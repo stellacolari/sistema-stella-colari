@@ -187,6 +187,7 @@ type TipoBlocoAdicionar =
   | "VITRINE_EDITORIAL"
   | "CTA_SIMPLES"
   | "CTA"
+  | "SECAO_COLUNAS"
   | "CATEGORIAS"
   | "FAQ"
   | "FORMULARIO"
@@ -1325,6 +1326,25 @@ const TIPOS_BLOCO_ADICIONAR: {
     icon: MousePointer2,
   },
   {
+    tipo: "SECAO_COLUNAS",
+    nome: "Secao com Colunas",
+    descricao:
+      "Crie secoes flexiveis com colunas, textos, imagens, botoes e fundos editoriais.",
+    tituloInicial: "Secao com Colunas",
+    icon: LayoutGrid,
+    preview: (
+      <span className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-2">
+        <span className="block min-h-20 rounded-md bg-slate-300" />
+        <span className="flex min-h-20 flex-col justify-center gap-2 rounded-md bg-white p-2">
+          <span className="h-2 w-2/3 rounded bg-slate-900" />
+          <span className="h-1.5 w-full rounded bg-slate-300" />
+          <span className="h-1.5 w-4/5 rounded bg-slate-300" />
+          <span className="mt-1 h-3 w-12 rounded-full bg-slate-900" />
+        </span>
+      </span>
+    ),
+  },
+  {
     tipo: "CATEGORIAS",
     nome: "Categorias",
     descricao: "Grade visual para destacar categorias da loja.",
@@ -1961,6 +1981,7 @@ function getTipoLabel(tipo: string) {
   if (tipo === "BANNER") return "Banner";
   if (tipo === "CTA_SIMPLES") return "CTA simples";
   if (tipo === "CTA") return "CTA";
+  if (tipo === "SECAO_COLUNAS") return "Secao com Colunas";
   if (tipo === "TEXTO_IMAGEM") return "Texto + imagem";
   if (tipo === "PRODUTOS") return "Produtos";
   if (tipo === "LISTA_PRODUTOS") return "Lista de produtos";
@@ -14614,6 +14635,38 @@ export default function EditorVisualPaginaClient({
             };
           }
 
+          if (
+            data.field === "secaoTexto" &&
+            data.itemId &&
+            Array.isArray(config.colunas)
+          ) {
+            return {
+              colunas: config.colunas.map((coluna) => {
+                const colunaConfig = getConfigObject(coluna);
+                const elementos = Array.isArray(colunaConfig.elementos)
+                  ? colunaConfig.elementos
+                  : [];
+
+                return {
+                  ...colunaConfig,
+                  elementos: elementos.map((elemento) => {
+                    const elementoConfig = getConfigObject(elemento);
+
+                    if (elementoConfig.id !== data.itemId) return elemento;
+
+                    return {
+                      ...elementoConfig,
+                      texto: {
+                        ...getConfigObject(elementoConfig.texto),
+                        conteudo: data.value,
+                      },
+                    };
+                  }),
+                };
+              }),
+            };
+          }
+
           return null;
         };
         const inlineFieldSupported = [
@@ -14628,6 +14681,7 @@ export default function EditorVisualPaginaClient({
           "heroCtaTextoBotao",
           "vitrineLabel",
           "vitrineTextoBotao",
+          "secaoTexto",
         ].includes(data.field);
 
         if (inlineFieldSupported) {
@@ -14976,6 +15030,162 @@ export default function EditorVisualPaginaClient({
       );
       setSucesso("Textos do bloco salvos.");
     }
+  }
+
+  function atualizarSecaoColunasDraft(patch: Record<string, unknown>) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+
+    atualizarConfigBlocoDraft(blocoSelecionado.id, {
+      ...config,
+      ...patch,
+    });
+  }
+
+  function atualizarLayoutSecaoColunas(patch: Record<string, unknown>) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+
+    atualizarSecaoColunasDraft({
+      layout: {
+        ...getConfigObject(config.layout),
+        ...patch,
+      },
+    });
+  }
+
+  function atualizarDesignSecaoColunas(patch: Record<string, unknown>) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+
+    atualizarSecaoColunasDraft({
+      design: {
+        ...getConfigObject(config.design),
+        ...patch,
+      },
+    });
+  }
+
+  function atualizarResponsivoSecaoColunas(patch: Record<string, unknown>) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+
+    atualizarSecaoColunasDraft({
+      responsivo: {
+        ...getConfigObject(config.responsivo),
+        ...patch,
+      },
+    });
+  }
+
+  function atualizarColunaSecaoColunas(
+    colunaId: string,
+    patch: Record<string, unknown>
+  ) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+    const colunas = Array.isArray(config.colunas) ? config.colunas : [];
+
+    atualizarSecaoColunasDraft({
+      colunas: colunas.map((coluna) => {
+        const colunaConfig = getConfigObject(coluna);
+
+        return colunaConfig.id === colunaId
+          ? {
+              ...colunaConfig,
+              ...patch,
+            }
+          : coluna;
+      }),
+    });
+  }
+
+  function atualizarFundoColunaSecaoColunas(
+    colunaId: string,
+    patch: Record<string, unknown>
+  ) {
+    const config = getConfigObject(blocoSelecionado?.configJson);
+    const coluna = (Array.isArray(config.colunas) ? config.colunas : [])
+      .map(getConfigObject)
+      .find((item) => item.id === colunaId);
+
+    atualizarColunaSecaoColunas(colunaId, {
+      fundo: {
+        ...getConfigObject(coluna?.fundo),
+        ...patch,
+      },
+    });
+  }
+
+  function adicionarElementoSecaoColunas(colunaId: string, tipo: string) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "SECAO_COLUNAS") return;
+
+    const config = getConfigObject(blocoSelecionado.configJson);
+    const colunas = Array.isArray(config.colunas) ? config.colunas : [];
+    const id = `${tipo.toLowerCase()}-${Date.now()}`;
+
+    const novoElemento =
+      tipo === "ESPACADOR"
+        ? { id, tipo, altura: 32 }
+        : tipo === "IMAGEM"
+          ? { id, tipo, url: "", mobileUrl: "", alt: "", link: "" }
+          : {
+              id,
+              tipo,
+              link: tipo === "BOTAO" ? "/loja" : undefined,
+              texto: {
+                id: `${id}-texto`,
+                tipo:
+                  tipo === "TITULO"
+                    ? "titulo"
+                    : tipo === "BOTAO"
+                      ? "botaoLabel"
+                      : "paragrafo",
+                conteudo:
+                  tipo === "TITULO"
+                    ? "Novo titulo"
+                    : tipo === "BOTAO"
+                      ? "Conhecer"
+                      : "Novo texto",
+                estilo: {
+                  fonte: "PRINCIPAL",
+                  peso: tipo === "TITULO" ? "SEMIBOLD" : "REGULAR",
+                  tamanho: tipo === "TITULO" ? "2.25rem" : "1rem",
+                  cor: "inherit",
+                  alinhamento: "ESQUERDA",
+                  letterSpacing: "0",
+                  lineHeight: tipo === "TITULO" ? "1.05" : "1.5",
+                  link: "",
+                  preset:
+                    tipo === "TITULO"
+                      ? "TITULO"
+                      : tipo === "BOTAO"
+                        ? "BOTAO"
+                        : "PARAGRAFO",
+                },
+              },
+            };
+
+    atualizarSecaoColunasDraft({
+      colunas: colunas.map((coluna) => {
+        const colunaConfig = getConfigObject(coluna);
+        const elementos = Array.isArray(colunaConfig.elementos)
+          ? colunaConfig.elementos
+          : [];
+
+        return colunaConfig.id === colunaId
+          ? {
+              ...colunaConfig,
+              elementos: [...elementos, novoElemento],
+            }
+          : coluna;
+      }),
+    });
   }
 
   async function salvarDadosSeoPagina() {
@@ -16604,6 +16814,251 @@ export default function EditorVisualPaginaClient({
                     {getDeviceDescription(device)}
                   </p>
                 </PainelSecao>
+
+                {blocoSelecionado.tipo === "SECAO_COLUNAS" && (
+                  <PainelSecao title="Secao com colunas">
+                    <div className="space-y-4">
+                      {(() => {
+                        const config = getConfigObject(blocoSelecionado.configJson);
+                        const layout = getConfigObject(config.layout);
+                        const design = getConfigObject(config.design);
+                        const responsivo = getConfigObject(config.responsivo);
+                        const colunas = Array.isArray(config.colunas)
+                          ? config.colunas.map(getConfigObject)
+                          : [];
+
+                        return (
+                          <>
+                            <label className="block">
+                              <span className="mb-1 block text-sm font-medium text-slate-700">
+                                Colunas
+                              </span>
+                              <select
+                                value={String(getNumberConfig(layout, "colunas", 2))}
+                                onChange={(event) =>
+                                  atualizarLayoutSecaoColunas({
+                                    colunas: Number(event.target.value),
+                                  })
+                                }
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                              >
+                                <option value="1">1 coluna</option>
+                                <option value="2">2 colunas</option>
+                              </select>
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block text-sm font-medium text-slate-700">
+                                Proporcao desktop
+                              </span>
+                              <select
+                                value={getStringConfigWithDefault(
+                                  layout,
+                                  ["proporcaoDesktop"],
+                                  "50/50"
+                                )}
+                                onChange={(event) =>
+                                  atualizarLayoutSecaoColunas({
+                                    proporcaoDesktop: event.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                              >
+                                <option value="50/50">50 / 50</option>
+                                <option value="40/60">40 / 60</option>
+                                <option value="60/40">60 / 40</option>
+                              </select>
+                            </label>
+
+                            <RangeControl
+                              label="Espaco"
+                              value={getNumberConfig(layout, "gap", 0)}
+                              min={0}
+                              max={96}
+                              suffix="px"
+                              onChange={(value) =>
+                                atualizarLayoutSecaoColunas({ gap: value })
+                              }
+                            />
+
+                            <label className="block">
+                              <span className="mb-1 block text-sm font-medium text-slate-700">
+                                Sangria
+                              </span>
+                              <select
+                                value={getStringConfigWithDefault(
+                                  layout,
+                                  ["sangria"],
+                                  "ESQUERDA"
+                                )}
+                                onChange={(event) =>
+                                  atualizarLayoutSecaoColunas({
+                                    sangria: event.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                              >
+                                <option value="NENHUMA">Nenhuma</option>
+                                <option value="ESQUERDA">Esquerda</option>
+                                <option value="DIREITA">Direita</option>
+                                <option value="AMBAS">Ambas</option>
+                              </select>
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block text-sm font-medium text-slate-700">
+                                Mobile
+                              </span>
+                              <select
+                                value={getStringConfigWithDefault(
+                                  responsivo,
+                                  ["mobile"],
+                                  "EMPILHAR"
+                                )}
+                                onChange={(event) =>
+                                  atualizarResponsivoSecaoColunas({
+                                    mobile: event.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                              >
+                                <option value="EMPILHAR">Empilhar</option>
+                                <option value="MANTER_COLUNAS">Manter colunas</option>
+                              </select>
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-1 block text-sm font-medium text-slate-700">
+                                Fundo da secao
+                              </span>
+                              <input
+                                type="color"
+                                value={getStringConfigWithDefault(
+                                  design,
+                                  ["fundoSecao"],
+                                  "#ffffff"
+                                )}
+                                onChange={(event) =>
+                                  atualizarDesignSecaoColunas({
+                                    fundoSecao: event.target.value,
+                                  })
+                                }
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1"
+                              />
+                            </label>
+
+                            {colunas.map((coluna, index) => {
+                              const fundoColuna = getConfigObject(coluna.fundo);
+                              const colunaId = String(coluna.id || `coluna-${index + 1}`);
+
+                              return (
+                                <div
+                                  key={colunaId}
+                                  className="space-y-3 border-t border-slate-100 pt-4"
+                                >
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                    Coluna {index + 1}
+                                  </p>
+
+                                  <label className="block">
+                                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                                      Fundo
+                                    </span>
+                                    <select
+                                      value={getStringConfigWithDefault(
+                                        fundoColuna,
+                                        ["tipo"],
+                                        index === 0 ? "IMAGEM" : "NENHUM"
+                                      )}
+                                      onChange={(event) =>
+                                        atualizarFundoColunaSecaoColunas(colunaId, {
+                                          tipo: event.target.value,
+                                        })
+                                      }
+                                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                                    >
+                                      <option value="NENHUM">Nenhum</option>
+                                      <option value="COR">Cor</option>
+                                      <option value="IMAGEM">Imagem</option>
+                                    </select>
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                                      Cor
+                                    </span>
+                                    <input
+                                      type="color"
+                                      value={getStringConfigWithDefault(
+                                        fundoColuna,
+                                        ["cor"],
+                                        "#f8fafc"
+                                      )}
+                                      onChange={(event) =>
+                                        atualizarFundoColunaSecaoColunas(colunaId, {
+                                          cor: event.target.value,
+                                          tipo: "COR",
+                                        })
+                                      }
+                                      className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1"
+                                    />
+                                  </label>
+
+                                  <RangeControl
+                                    label="Overlay"
+                                    value={getNumberConfig(fundoColuna, "overlay", 0)}
+                                    min={0}
+                                    max={85}
+                                    suffix="%"
+                                    onChange={(value) =>
+                                      atualizarFundoColunaSecaoColunas(colunaId, {
+                                        overlay: value,
+                                      })
+                                    }
+                                  />
+
+                                  <RangeControl
+                                    label="Padding"
+                                    value={getNumberConfig(coluna, "padding", 32)}
+                                    min={0}
+                                    max={96}
+                                    suffix="px"
+                                    onChange={(value) =>
+                                      atualizarColunaSecaoColunas(colunaId, {
+                                        padding: value,
+                                      })
+                                    }
+                                  />
+
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                      "TITULO",
+                                      "TEXTO",
+                                      "BOTAO",
+                                      "IMAGEM",
+                                      "ESPACADOR",
+                                    ].map((tipo) => (
+                                      <button
+                                        key={tipo}
+                                        type="button"
+                                        onClick={() =>
+                                          adicionarElementoSecaoColunas(colunaId, tipo)
+                                        }
+                                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                      >
+                                        {tipo}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </PainelSecao>
+                )}
 
                 <PainelSecao title="Ações do bloco">
                   <div className="grid gap-2">
