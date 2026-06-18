@@ -4,8 +4,37 @@ export type RichTextCssPreset = {
   css: string;
 };
 
+export type RichTextFontFamilyToken = RichTextCssPreset & {
+  weights: string[];
+};
+
+export const RICH_TEXT_FONT_FAMILIES: RichTextFontFamilyToken[] = [
+  {
+    value: "PRINCIPAL",
+    label: "Fonte principal",
+    css: "var(--font-primary)",
+    weights: ["300", "400", "500", "600", "700"],
+  },
+  {
+    value: "EDITORIAL",
+    label: "Fonte editorial",
+    css: "Georgia, 'Times New Roman', serif",
+    weights: ["400", "600", "700", "900"],
+  },
+];
+
+export const RICH_TEXT_TYPE_PRESETS: RichTextCssPreset[] = [
+  { value: "TITULO", label: "Titulo", css: "2.25rem" },
+  { value: "SUBTITULO", label: "Subtitulo", css: "1.5rem" },
+  { value: "PARAGRAFO", label: "Paragrafo", css: "1rem" },
+  { value: "BOTAO", label: "Botao", css: "0.875rem" },
+  { value: "CUSTOMIZADO", label: "Customizado", css: "" },
+];
+
 export const RICH_TEXT_FONT_PRESETS: RichTextCssPreset[] = [
   { value: "PADRAO", label: "Fonte do tema", css: "var(--font-primary)" },
+  { value: "PRINCIPAL", label: "Fonte principal", css: "var(--font-primary)" },
+  { value: "EDITORIAL", label: "Fonte editorial", css: "Georgia, 'Times New Roman', serif" },
   { value: "SERIF_ELEGANTE", label: "Serif", css: "Georgia, 'Times New Roman', serif" },
   { value: "SANS_CLEAN", label: "Sans", css: "var(--font-primary)" },
   { value: "DISPLAY_LUXO", label: "Display", css: "Georgia, 'Times New Roman', serif" },
@@ -27,6 +56,7 @@ export const RICH_TEXT_WEIGHT_PRESETS: RichTextCssPreset[] = [
   { value: "MEDIUM", label: "Médio", css: "500" },
   { value: "SEMIBOLD", label: "Semibold", css: "600" },
   { value: "BOLD", label: "Bold", css: "700" },
+  { value: "BLACK", label: "Black", css: "900" },
 ];
 
 export const RICH_TEXT_COLOR_PRESETS: RichTextCssPreset[] = [

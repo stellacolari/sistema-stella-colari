@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import LojaPaginaBuilderClient, {
   type LojaBuilderBloco,
   type LojaBuilderCategoriaAtual,
@@ -10,6 +10,13 @@ import LojaPaginaBuilderClient, {
 } from "@/components/loja/LojaPaginaBuilderClient";
 import type { CategoriaMenuPublicoItem } from "@/components/loja/MenuPublicoLoja";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import {
+  RICH_TEXT_FONT_FAMILIES,
+  RICH_TEXT_LINE_HEIGHT_PRESETS,
+  RICH_TEXT_SIZE_PRESETS,
+  RICH_TEXT_TYPE_PRESETS,
+  RICH_TEXT_WEIGHT_PRESETS,
+} from "@/components/loja/paginas/richTextPresets";
 
 type StudioSelectionContext =
   | "BLOCO"
@@ -110,6 +117,11 @@ function getMarksForNode(node: Node) {
     if (styleMark) marks.push(styleMark);
 
     current = current.parentElement;
+  }
+
+  if (current?.dataset.stellaInlineField) {
+    const styleMark = getStyleMarkFromElement(current);
+    if (styleMark) marks.push(styleMark);
   }
 
   return marks;
@@ -225,6 +237,9 @@ export default function LojaPreviewPaginaClient({
 }) {
   const [blocosPreview, setBlocosPreview] = useState(blocos);
   const [selectedBlockId, setSelectedBlockId] = useState("");
+  const inlineEditingRef = useRef(false);
+  const pendingDraftRef = useRef<StudioDraftMessage | null>(null);
+  const inlineSyncTimerRef = useRef<number | null>(null);
   const pageId = pagina.id;
 
   const blocosAtivos = useMemo(() => {
@@ -247,7 +262,9 @@ export default function LojaPreviewPaginaClient({
         return;
       }
 
-      if (Array.isArray(data.blocos)) {
+      if (Array.isArray(data.blocos) && inlineEditingRef.current) {
+        pendingDraftRef.current = data;
+      } else if (Array.isArray(data.blocos)) {
         setBlocosPreview(data.blocos);
       }
 
@@ -368,7 +385,27 @@ export default function LojaPreviewPaginaClient({
       selection?.addRange(savedRange);
     }
 
-    function notifyInlineUpdate() {
+    function applyInlineStyle(patch: Partial<CSSStyleDeclaration>) {
+      restoreSelection();
+
+      const selection = window.getSelection();
+
+      if (
+        !selection ||
+        selection.rangeCount === 0 ||
+        selection.isCollapsed ||
+        !activeInlineElement?.contains(selection.anchorNode)
+      ) {
+        if (activeInlineElement) {
+          Object.assign(activeInlineElement.style, patch);
+        }
+        return;
+      }
+
+      applyInlineStyleToSelection(patch);
+    }
+
+    function postInlineUpdate(commit = false) {
       if (!activeInlineElement) return;
 
       const field = activeInlineElement.dataset.stellaInlineField || "";
@@ -388,9 +425,37 @@ export default function LojaPreviewPaginaClient({
           value: activeInlineElement.innerText.trim(),
           itemId: getGalleryItemId(activeInlineElement),
           richText: serializeInlineRichText(activeInlineElement),
+          commit,
         },
         window.location.origin
       );
+    }
+
+    function notifyInlineUpdate(commit = false) {
+      if (inlineSyncTimerRef.current) {
+        window.clearTimeout(inlineSyncTimerRef.current);
+        inlineSyncTimerRef.current = null;
+      }
+
+      if (commit) {
+        postInlineUpdate(true);
+        return;
+      }
+
+      inlineSyncTimerRef.current = window.setTimeout(() => {
+        inlineSyncTimerRef.current = null;
+        postInlineUpdate(false);
+      }, 500);
+    }
+
+    function applyPendingDraftAfterEditing() {
+      inlineEditingRef.current = false;
+
+      if (pendingDraftRef.current?.blocos) {
+        setBlocosPreview(pendingDraftRef.current.blocos);
+      }
+
+      pendingDraftRef.current = null;
     }
 
     function positionToolbar() {
@@ -426,24 +491,67 @@ export default function LojaPreviewPaginaClient({
 
     document.execCommand("styleWithCSS", false, "true");
     createToolbarSelect(
+      "Tipo de texto",
+      RICH_TEXT_TYPE_PRESETS.map((preset) => ({
+        value: preset.value,
+        label: preset.label,
+      })),
+      (value) => {
+        const preset = RICH_TEXT_TYPE_PRESETS.find((item) => item.value === value);
+
+        if (preset?.css) {
+          applyInlineStyle({ fontSize: preset.css });
+        }
+      }
+    );
+    let activeFontWeights = RICH_TEXT_FONT_FAMILIES[0]?.weights || [];
+    let weightSelect: HTMLSelectElement | null = null;
+    const refreshWeightOptions = () => {
+      if (!weightSelect) return;
+
+      weightSelect.innerHTML = "";
+      RICH_TEXT_WEIGHT_PRESETS.filter((preset) =>
+        activeFontWeights.includes(preset.css)
+      ).forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.css;
+        option.textContent = preset.label;
+        weightSelect?.appendChild(option);
+      });
+    };
+    createToolbarSelect(
       "Fonte",
-      [
-        { value: "", label: "Fonte" },
-        { value: "var(--font-primary)", label: "Tema" },
-        { value: "Georgia, 'Times New Roman', serif", label: "Serif" },
-        { value: "Arial, sans-serif", label: "Sans" },
-      ],
-      (value) => value && document.execCommand("fontName", false, value)
+      RICH_TEXT_FONT_FAMILIES.map((font) => ({
+        value: font.value,
+        label: font.label,
+      })),
+      (value) => {
+        const font = RICH_TEXT_FONT_FAMILIES.find((item) => item.value === value);
+
+        if (!font) return;
+
+        activeFontWeights = font.weights;
+        applyInlineStyle({ fontFamily: font.css });
+        refreshWeightOptions();
+      }
+    );
+    weightSelect = createToolbarSelect(
+      "Peso",
+      RICH_TEXT_WEIGHT_PRESETS.filter((preset) =>
+        activeFontWeights.includes(preset.css)
+      ).map((preset) => ({
+        value: preset.css,
+        label: preset.label,
+      })),
+      (value) => applyInlineStyle({ fontWeight: value })
     );
     createToolbarSelect(
       "Tamanho",
-      [
-        { value: "3", label: "Medio" },
-        { value: "2", label: "Pequeno" },
-        { value: "4", label: "Grande" },
-        { value: "5", label: "Editorial" },
-      ],
-      (value) => document.execCommand("fontSize", false, value)
+      RICH_TEXT_SIZE_PRESETS.map((preset) => ({
+        value: preset.css,
+        label: preset.label,
+      })),
+      (value) => applyInlineStyle({ fontSize: value })
     );
     createToolbarButton("B", "Negrito", () => document.execCommand("bold"));
     createToolbarButton("I", "Italico", () => document.execCommand("italic"));
@@ -464,16 +572,15 @@ export default function LojaPreviewPaginaClient({
         { value: "0.02em", label: "Leve" },
         { value: "0.08em", label: "Aberta" },
       ],
-      (value) => applyInlineStyleToSelection({ letterSpacing: value })
+      (value) => applyInlineStyle({ letterSpacing: value })
     );
     createToolbarSelect(
       "Altura de linha",
-      [
-        { value: "1", label: "Compacta" },
-        { value: "1.15", label: "Normal" },
-        { value: "1.35", label: "Aberta" },
-      ],
-      (value) => applyInlineStyleToSelection({ lineHeight: value })
+      RICH_TEXT_LINE_HEIGHT_PRESETS.map((preset) => ({
+        value: preset.css,
+        label: preset.label,
+      })),
+      (value) => applyInlineStyle({ lineHeight: value })
     );
     const colorInput = document.createElement("input");
     colorInput.type = "color";
@@ -486,7 +593,7 @@ export default function LojaPreviewPaginaClient({
     colorInput.addEventListener("mousedown", () => rememberSelection());
     colorInput.addEventListener("input", () => {
       restoreSelection();
-      document.execCommand("foreColor", false, colorInput.value);
+      applyInlineStyle({ color: colorInput.value });
       notifyInlineUpdate();
     });
     toolbar.appendChild(colorInput);
@@ -664,19 +771,8 @@ export default function LojaPreviewPaginaClient({
 
           if (!field) return;
           activeInlineElement = inlineElement;
-
-          window.parent.postMessage(
-            {
-              type: "STELLA_BUILDER_STUDIO_INLINE_UPDATE",
-              pageId,
-              blockId: bloco.id,
-              field,
-              value: inlineElement.innerText.trim(),
-              itemId: getGalleryItemId(inlineElement),
-              richText: serializeInlineRichText(inlineElement),
-            },
-            window.location.origin
-          );
+          inlineEditingRef.current = true;
+          notifyInlineUpdate(false);
         };
 
         const handleInlineClick = (event: MouseEvent) => {
@@ -708,7 +804,46 @@ export default function LojaPreviewPaginaClient({
           document.execCommand("insertText", false, text);
           handleInlineInput();
         };
-        const handleInlineFocus = () => showToolbar(inlineElement);
+        const handleInlineFocus = () => {
+          inlineEditingRef.current = true;
+          showToolbar(inlineElement);
+        };
+        const handleInlineBlur = () => {
+          activeInlineElement = inlineElement;
+          notifyInlineUpdate(true);
+          window.setTimeout(applyPendingDraftAfterEditing, 120);
+        };
+        const handleInlineKeydown = (event: KeyboardEvent) => {
+          const field = inlineElement.dataset.stellaInlineField || "";
+          const singleLine =
+            field.toLowerCase().includes("botao") ||
+            field.toLowerCase().includes("titulo") ||
+            field === "heroTexto";
+
+          if (event.key === "Escape") {
+            event.preventDefault();
+            inlineElement.blur();
+            return;
+          }
+
+          if ((event.metaKey || event.ctrlKey) && ["b", "i", "u"].includes(event.key.toLowerCase())) {
+            event.preventDefault();
+            document.execCommand(
+              event.key.toLowerCase() === "b"
+                ? "bold"
+                : event.key.toLowerCase() === "i"
+                  ? "italic"
+                  : "underline"
+            );
+            notifyInlineUpdate(false);
+            return;
+          }
+
+          if (event.key === "Enter" && singleLine) {
+            event.preventDefault();
+            inlineElement.blur();
+          }
+        };
         const handleInlineKeyup = () => {
           activeInlineElement = inlineElement;
           rememberSelection();
@@ -723,6 +858,8 @@ export default function LojaPreviewPaginaClient({
         inlineElement.addEventListener("input", handleInlineInput);
         inlineElement.addEventListener("click", handleInlineClick, true);
         inlineElement.addEventListener("focus", handleInlineFocus);
+        inlineElement.addEventListener("blur", handleInlineBlur);
+        inlineElement.addEventListener("keydown", handleInlineKeydown);
         inlineElement.addEventListener("keyup", handleInlineKeyup);
         inlineElement.addEventListener("mouseup", handleInlineMouseup);
         inlineElement.addEventListener("paste", handleInlinePaste);
@@ -730,6 +867,8 @@ export default function LojaPreviewPaginaClient({
           inlineElement.removeEventListener("input", handleInlineInput);
           inlineElement.removeEventListener("click", handleInlineClick, true);
           inlineElement.removeEventListener("focus", handleInlineFocus);
+          inlineElement.removeEventListener("blur", handleInlineBlur);
+          inlineElement.removeEventListener("keydown", handleInlineKeydown);
           inlineElement.removeEventListener("keyup", handleInlineKeyup);
           inlineElement.removeEventListener("mouseup", handleInlineMouseup);
           inlineElement.removeEventListener("paste", handleInlinePaste);
@@ -753,6 +892,10 @@ export default function LojaPreviewPaginaClient({
     });
 
     return () => {
+      if (inlineSyncTimerRef.current) {
+        window.clearTimeout(inlineSyncTimerRef.current);
+        inlineSyncTimerRef.current = null;
+      }
       cleanups.forEach((cleanup) => cleanup());
       document.removeEventListener("selectionchange", handleDocumentSelection);
       document.removeEventListener("pointerdown", handleDocumentPointerDown);
