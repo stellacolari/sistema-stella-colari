@@ -41,6 +41,16 @@ type InlineRichTextNode = {
   content?: InlineRichTextNode[];
 };
 
+type InlineTextStyleMessage = {
+  color?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  letterSpacing?: string;
+  lineHeight?: string;
+  textAlign?: string;
+};
+
 const INLINE_FONT_SIZES: Record<string, string> = {
   "1": "0.75rem",
   "2": "0.875rem",
@@ -174,6 +184,21 @@ function applyInlineStyleToSelection(patch: Partial<CSSStyleDeclaration>) {
   selection.addRange(nextRange);
 }
 
+function getInlineTextStyleMessage(element: HTMLElement): InlineTextStyleMessage {
+  const style = element.style;
+  const textStyle: InlineTextStyleMessage = {};
+
+  if (style.color) textStyle.color = style.color;
+  if (style.fontFamily) textStyle.fontFamily = style.fontFamily;
+  if (style.fontSize) textStyle.fontSize = style.fontSize;
+  if (style.fontWeight) textStyle.fontWeight = style.fontWeight;
+  if (style.letterSpacing) textStyle.letterSpacing = style.letterSpacing;
+  if (style.lineHeight) textStyle.lineHeight = style.lineHeight;
+  if (style.textAlign) textStyle.textAlign = style.textAlign;
+
+  return textStyle;
+}
+
 function getGalleryItemId(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return "";
@@ -296,6 +321,8 @@ export default function LojaPreviewPaginaClient({
     const linkRemove = document.createElement("button");
     let activeInlineElement: HTMLElement | null = null;
     let savedRange: Range | null = null;
+    let toolbarInteracting = false;
+    let toolbarInteractionTimer: number | null = null;
 
     toolbar.style.position = "fixed";
     toolbar.style.zIndex = "99999";
@@ -313,6 +340,43 @@ export default function LojaPreviewPaginaClient({
     toolbar.style.fontSize = "12px";
     toolbar.style.color = "#0f172a";
 
+    function beginToolbarInteraction() {
+      toolbarInteracting = true;
+
+      if (toolbarInteractionTimer) {
+        window.clearTimeout(toolbarInteractionTimer);
+        toolbarInteractionTimer = null;
+      }
+    }
+
+    function endToolbarInteraction() {
+      if (toolbarInteractionTimer) {
+        window.clearTimeout(toolbarInteractionTimer);
+      }
+
+      toolbarInteractionTimer = window.setTimeout(() => {
+        toolbarInteracting = false;
+        toolbarInteractionTimer = null;
+      }, 180);
+    }
+
+    function isToolbarInteraction(target: EventTarget | null) {
+      return (
+        toolbarInteracting ||
+        (target instanceof Node &&
+          (toolbar.contains(target) || linkPopover.contains(target)))
+      );
+    }
+
+    toolbar.addEventListener("pointerdown", (event) => {
+      beginToolbarInteraction();
+      rememberSelection();
+      event.stopPropagation();
+    });
+    toolbar.addEventListener("click", (event) => event.stopPropagation());
+    toolbar.addEventListener("focusin", beginToolbarInteraction);
+    toolbar.addEventListener("focusout", endToolbarInteraction);
+
     function createToolbarButton(label: string, title: string, action: () => void) {
       const button = document.createElement("button");
       button.type = "button";
@@ -325,13 +389,19 @@ export default function LojaPreviewPaginaClient({
       button.style.background = "#f8fafc";
       button.style.padding = "0 8px";
       button.style.fontWeight = "700";
-      button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("mousedown", (event) => {
+        beginToolbarInteraction();
+        rememberSelection();
+        event.preventDefault();
+        event.stopPropagation();
+      });
       button.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        action();
+        applyInlineTextPatch(action);
         notifyInlineUpdate();
         positionToolbar();
+        endToolbarInteraction();
       });
       toolbar.appendChild(button);
       return button;
@@ -356,14 +426,18 @@ export default function LojaPreviewPaginaClient({
         item.textContent = option.label;
         select.appendChild(item);
       });
-      select.addEventListener("mousedown", () => rememberSelection());
+      select.addEventListener("mousedown", (event) => {
+        beginToolbarInteraction();
+        rememberSelection();
+        event.stopPropagation();
+      });
       select.addEventListener("change", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        restoreSelection();
-        action(select.value);
+        applyInlineTextPatch(() => action(select.value));
         notifyInlineUpdate();
         positionToolbar();
+        endToolbarInteraction();
       });
       toolbar.appendChild(select);
       return select;
@@ -372,21 +446,41 @@ export default function LojaPreviewPaginaClient({
     function rememberSelection() {
       const selection = window.getSelection();
 
-      if (selection && selection.rangeCount > 0) {
-        savedRange = selection.getRangeAt(0).cloneRange();
+      if (!selection || selection.rangeCount === 0) return;
+
+      const range = selection.getRangeAt(0);
+
+      if (
+        activeInlineElement &&
+        !activeInlineElement.contains(range.commonAncestorContainer)
+      ) {
+        return;
       }
+
+      savedRange = range.cloneRange();
     }
 
     function restoreSelection() {
-      if (!savedRange) return;
+      if (!savedRange || !activeInlineElement) return;
 
       const selection = window.getSelection();
+      activeInlineElement.focus({ preventScroll: true });
       selection?.removeAllRanges();
       selection?.addRange(savedRange);
     }
 
+    function applyInlineTextPatch(action: () => void) {
+      restoreSelection();
+      action();
+      rememberSelection();
+    }
+
     function applyInlineStyle(patch: Partial<CSSStyleDeclaration>) {
       restoreSelection();
+
+      if (activeInlineElement) {
+        Object.assign(activeInlineElement.style, patch);
+      }
 
       const selection = window.getSelection();
 
@@ -396,13 +490,11 @@ export default function LojaPreviewPaginaClient({
         selection.isCollapsed ||
         !activeInlineElement?.contains(selection.anchorNode)
       ) {
-        if (activeInlineElement) {
-          Object.assign(activeInlineElement.style, patch);
-        }
         return;
       }
 
       applyInlineStyleToSelection(patch);
+      rememberSelection();
     }
 
     function postInlineUpdate(commit = false) {
@@ -425,6 +517,7 @@ export default function LojaPreviewPaginaClient({
           value: activeInlineElement.innerText.trim(),
           itemId: getGalleryItemId(activeInlineElement),
           richText: serializeInlineRichText(activeInlineElement),
+          textStyle: getInlineTextStyleMessage(activeInlineElement),
           commit,
         },
         window.location.origin
@@ -590,11 +683,15 @@ export default function LojaPreviewPaginaClient({
     colorInput.style.border = "1px solid rgba(203,213,225,0.85)";
     colorInput.style.borderRadius = "8px";
     colorInput.style.background = "#fff";
-    colorInput.addEventListener("mousedown", () => rememberSelection());
+    colorInput.addEventListener("mousedown", (event) => {
+      beginToolbarInteraction();
+      rememberSelection();
+      event.stopPropagation();
+    });
     colorInput.addEventListener("input", () => {
-      restoreSelection();
-      applyInlineStyle({ color: colorInput.value });
+      applyInlineTextPatch(() => applyInlineStyle({ color: colorInput.value }));
       notifyInlineUpdate();
+      endToolbarInteraction();
     });
     toolbar.appendChild(colorInput);
     createToolbarButton("Link", "Adicionar ou editar link", () => {
@@ -618,6 +715,11 @@ export default function LojaPreviewPaginaClient({
     linkInput.style.border = "1px solid rgba(203,213,225,0.85)";
     linkInput.style.borderRadius = "8px";
     linkInput.style.padding = "0 8px";
+    linkInput.addEventListener("mousedown", (event) => {
+      beginToolbarInteraction();
+      rememberSelection();
+      event.stopPropagation();
+    });
     linkApply.type = "button";
     linkApply.textContent = "Aplicar";
     linkRemove.type = "button";
@@ -631,20 +733,26 @@ export default function LojaPreviewPaginaClient({
       button.style.fontWeight = "700";
       button.addEventListener("mousedown", (event) => event.preventDefault());
     });
-    linkApply.addEventListener("click", () => {
+    linkApply.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const href = sanitizeInlineUrl(linkInput.value);
-      restoreSelection();
-      if (href) document.execCommand("createLink", false, href);
+      applyInlineTextPatch(() => {
+        if (href) document.execCommand("createLink", false, href);
+      });
       linkPopover.style.display = "none";
       linkInput.value = "";
       notifyInlineUpdate();
+      endToolbarInteraction();
     });
-    linkRemove.addEventListener("click", () => {
-      restoreSelection();
-      document.execCommand("unlink");
+    linkRemove.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      applyInlineTextPatch(() => document.execCommand("unlink"));
       linkPopover.style.display = "none";
       linkInput.value = "";
       notifyInlineUpdate();
+      endToolbarInteraction();
     });
     linkPopover.append(linkInput, linkApply, linkRemove);
     toolbar.appendChild(linkPopover);
@@ -666,9 +774,13 @@ export default function LojaPreviewPaginaClient({
       const target = event.target;
 
       if (!(target instanceof HTMLElement)) return;
-      if (toolbar.contains(target)) return;
+      if (isToolbarInteraction(target)) return;
       if (target.closest("[data-stella-inline-field]")) return;
 
+      if (activeInlineElement) {
+        notifyInlineUpdate(true);
+        window.setTimeout(applyPendingDraftAfterEditing, 120);
+      }
       hideToolbar();
     };
 
@@ -810,6 +922,18 @@ export default function LojaPreviewPaginaClient({
         };
         const handleInlineBlur = () => {
           activeInlineElement = inlineElement;
+          if (toolbarInteracting) {
+            window.setTimeout(() => {
+              if (toolbarInteracting || document.activeElement === inlineElement) {
+                return;
+              }
+
+              notifyInlineUpdate(true);
+              window.setTimeout(applyPendingDraftAfterEditing, 120);
+            }, 220);
+            return;
+          }
+
           notifyInlineUpdate(true);
           window.setTimeout(applyPendingDraftAfterEditing, 120);
         };
@@ -895,6 +1019,10 @@ export default function LojaPreviewPaginaClient({
       if (inlineSyncTimerRef.current) {
         window.clearTimeout(inlineSyncTimerRef.current);
         inlineSyncTimerRef.current = null;
+      }
+      if (toolbarInteractionTimer) {
+        window.clearTimeout(toolbarInteractionTimer);
+        toolbarInteractionTimer = null;
       }
       cleanups.forEach((cleanup) => cleanup());
       document.removeEventListener("selectionchange", handleDocumentSelection);

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
+import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
 import {
   criarSecaoColunasPadrao,
   normalizarElementoTexto,
@@ -288,22 +289,30 @@ function renderTextContent(element: Extract<SectionColumnElement, { texto: TextE
 
   if (element.tipo === "TITULO") {
     return (
-      <h2 {...commonProps} className="whitespace-pre-line text-3xl md:text-5xl">
-        {content}
-      </h2>
+      <PublicRichTextRenderer
+        value={element.texto.richText}
+        fallback={content}
+        {...commonProps}
+        className="whitespace-pre-line text-3xl md:text-5xl"
+      />
     );
   }
 
   if (element.tipo === "BOTAO") {
     const className =
       "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800";
+    const buttonContent = (
+      <PublicRichTextRenderer
+        value={element.texto.richText}
+        fallback={content}
+        {...commonProps}
+        inline
+        className={className}
+      />
+    );
 
     if (!element.link) {
-      return (
-        <span {...commonProps} className={className}>
-          {content}
-        </span>
-      );
+      return buttonContent;
     }
 
     return (
@@ -311,18 +320,20 @@ function renderTextContent(element: Extract<SectionColumnElement, { texto: TextE
         href={element.link}
         target={element.abrirNovaAba ? "_blank" : undefined}
         rel={element.abrirNovaAba ? "noreferrer" : undefined}
-        {...commonProps}
-        className={className}
+        className="inline-block w-fit"
       >
-        {content}
+        {buttonContent}
       </Link>
     );
   }
 
   return (
-    <p {...commonProps} className="whitespace-pre-line text-base md:text-lg">
-      {content}
-    </p>
+    <PublicRichTextRenderer
+      value={element.texto.richText}
+      fallback={content}
+      {...commonProps}
+      className="whitespace-pre-line text-base md:text-lg"
+    />
   );
 }
 

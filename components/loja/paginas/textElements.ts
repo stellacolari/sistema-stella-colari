@@ -17,6 +17,7 @@ export type TextElementConfig = {
   tipo: TextElementKind;
   conteudo: string;
   estilo: TextElementStyle;
+  richText?: unknown;
 };
 
 export type SectionColumnElement =
@@ -163,6 +164,7 @@ export function normalizarElementoTexto(
     id: getString(data.id, fallback.id || `texto-${Date.now()}`),
     tipo,
     conteudo: getString(data.conteudo, fallback.conteudo || ""),
+    richText: data.richText,
     estilo: aplicarPresetTexto(
       {
         fonte: getString(estilo.fonte, DEFAULT_TEXT_STYLE.fonte) as TextElementStyle["fonte"],

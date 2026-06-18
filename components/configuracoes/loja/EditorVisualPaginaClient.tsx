@@ -105,6 +105,16 @@ export type EditorVisualBloco = {
   atualizadoEm: string;
 };
 
+type InlineTextStyleMessage = {
+  color?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  letterSpacing?: string;
+  lineHeight?: string;
+  textAlign?: string;
+};
+
 export type EditorVisualCategoria = {
   id: string;
   nome: string;
@@ -1387,6 +1397,64 @@ function getConfigObject(value: unknown): Record<string, unknown> {
   }
 
   return {};
+}
+
+function getInlineTextStyleObject(value: unknown): InlineTextStyleMessage {
+  const data = getConfigObject(value);
+
+  return {
+    color: getStringConfig(data, "color"),
+    fontFamily: getStringConfig(data, "fontFamily"),
+    fontSize: getStringConfig(data, "fontSize"),
+    fontWeight: getStringConfig(data, "fontWeight"),
+    letterSpacing: getStringConfig(data, "letterSpacing"),
+    lineHeight: getStringConfig(data, "lineHeight"),
+    textAlign: getStringConfig(data, "textAlign"),
+  };
+}
+
+function getSectionTextWeight(value: string) {
+  const numeric = Number(value);
+
+  if (numeric >= 900) return "BLACK";
+  if (numeric >= 700) return "BOLD";
+  if (numeric >= 600) return "SEMIBOLD";
+  if (numeric >= 500) return "MEDIUM";
+  if (numeric <= 300 && numeric > 0) return "LIGHT";
+  return "";
+}
+
+function getSectionTextAlignment(value: string) {
+  const align = value.toLowerCase();
+
+  if (align === "center") return "CENTRO";
+  if (align === "right") return "DIREITA";
+  if (align === "left") return "ESQUERDA";
+  return "";
+}
+
+function getSectionTextStylePatch(value: unknown) {
+  const style = getInlineTextStyleObject(value);
+  const patch: Record<string, string> = {};
+  const weight = getSectionTextWeight(style.fontWeight || "");
+  const alignment = getSectionTextAlignment(style.textAlign || "");
+
+  if (style.fontFamily) {
+    patch.fonte = style.fontFamily.includes("Georgia") ? "EDITORIAL" : "PRINCIPAL";
+  }
+
+  if (weight) patch.peso = weight;
+  if (style.fontSize) patch.tamanho = style.fontSize;
+  if (style.color) patch.cor = style.color;
+  if (alignment) patch.alinhamento = alignment;
+  if (style.letterSpacing) patch.letterSpacing = style.letterSpacing;
+  if (style.lineHeight) patch.lineHeight = style.lineHeight;
+
+  if (Object.keys(patch).length > 0) {
+    patch.preset = "CUSTOMIZADO";
+  }
+
+  return patch;
 }
 
 function getStringConfig(config: Record<string, unknown>, key: string) {
@@ -14500,6 +14568,7 @@ export default function EditorVisualPaginaClient({
       field?: string;
       value?: string;
       richText?: RichTextValue | null;
+      textStyle?: InlineTextStyleMessage | null;
       }>
     ) {
       if (event.origin !== window.location.origin) return;
@@ -14640,6 +14709,8 @@ export default function EditorVisualPaginaClient({
             data.itemId &&
             Array.isArray(config.colunas)
           ) {
+            const textStylePatch = getSectionTextStylePatch(data.textStyle);
+
             return {
               colunas: config.colunas.map((coluna) => {
                 const colunaConfig = getConfigObject(coluna);
@@ -14659,6 +14730,13 @@ export default function EditorVisualPaginaClient({
                       texto: {
                         ...getConfigObject(elementoConfig.texto),
                         conteudo: data.value,
+                        ...(richTextPatch ? { richText: richTextPatch } : {}),
+                        estilo: {
+                          ...getConfigObject(
+                            getConfigObject(elementoConfig.texto).estilo
+                          ),
+                          ...textStylePatch,
+                        },
                       },
                     };
                   }),

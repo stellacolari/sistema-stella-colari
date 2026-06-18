@@ -35,7 +35,9 @@ type PublicRichTextRendererProps = {
   className?: string;
   style?: CSSProperties;
   paragraphClassName?: string;
+  inline?: boolean;
   "data-stella-inline-field"?: string;
+  "data-stella-editorial-gallery-item-id"?: string;
 };
 
 function resolvePreset(presets: RichTextCssPreset[], value: string) {
@@ -314,24 +316,66 @@ function renderNode(
   return <span key={key}>{children}</span>;
 }
 
+function renderInlineNode(node: PublicRichTextNode, key: string): ReactNode {
+  const children = Array.isArray(node.content)
+    ? node.content.map((child, index) => renderInlineNode(child, `${key}-${index}`))
+    : null;
+
+  if (node.type === "text") {
+    return renderWithMarks(node.text || "", node.marks, key);
+  }
+
+  if (node.type === "hardBreak") {
+    return <br key={key} />;
+  }
+
+  if (node.type === "paragraph" || node.type === "doc") {
+    return <span key={key}>{children}</span>;
+  }
+
+  return <span key={key}>{children}</span>;
+}
+
 export default function PublicRichTextRenderer({
   value,
   fallback,
   className,
   style,
   paragraphClassName,
+  inline = false,
   "data-stella-inline-field": dataStellaInlineField,
+  "data-stella-editorial-gallery-item-id": dataStellaEditorialGalleryItemId,
 }: PublicRichTextRendererProps) {
   if (isRichTextValue(value) && !isRichTextEmpty(value)) {
     const rendered = value.content?.map((node, index) =>
-      renderNode(node, `rt-${index}`, paragraphClassName)
+      inline
+        ? renderInlineNode(node, `rt-${index}`)
+        : renderNode(node, `rt-${index}`, paragraphClassName)
     );
+
+    if (inline) {
+      return (
+        <span
+          className={className}
+          style={style}
+          data-stella-inline-field={dataStellaInlineField || undefined}
+          data-stella-editorial-gallery-item-id={
+            dataStellaEditorialGalleryItemId || undefined
+          }
+        >
+          {rendered}
+        </span>
+      );
+    }
 
     return (
       <div
         className={className}
         style={style}
         data-stella-inline-field={dataStellaInlineField || undefined}
+        data-stella-editorial-gallery-item-id={
+          dataStellaEditorialGalleryItemId || undefined
+        }
       >
         {rendered}
       </div>
@@ -340,11 +384,29 @@ export default function PublicRichTextRenderer({
 
   if (!fallback?.trim()) return null;
 
+  if (inline) {
+    return (
+      <span
+        className={className}
+        style={style}
+        data-stella-inline-field={dataStellaInlineField || undefined}
+        data-stella-editorial-gallery-item-id={
+          dataStellaEditorialGalleryItemId || undefined
+        }
+      >
+        {fallback}
+      </span>
+    );
+  }
+
   return (
     <div
       className={className}
       style={style}
       data-stella-inline-field={dataStellaInlineField || undefined}
+      data-stella-editorial-gallery-item-id={
+        dataStellaEditorialGalleryItemId || undefined
+      }
     >
       <p className={paragraphClassName}>{fallback}</p>
     </div>
