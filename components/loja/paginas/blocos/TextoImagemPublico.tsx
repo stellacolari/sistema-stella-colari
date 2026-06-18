@@ -97,6 +97,7 @@ function getTextoImagemStyle(
     MEDIUM: 500,
     SEMIBOLD: 600,
     BOLD: 700,
+    BLACK: 900,
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
@@ -122,8 +123,13 @@ function getTextoImagemStyle(
   };
   const colorPreset = getStringWithDefault(style, "colorPreset", "PADRAO");
   const colorCustom = getString(style, "colorCustom");
+  const fontFamily = getStringWithDefault(style, "fontFamily", "PRINCIPAL");
 
   return {
+    fontFamily:
+      fontFamily === "EDITORIAL"
+        ? "Georgia, 'Times New Roman', serif"
+        : "var(--font-primary)",
     fontSize: fontSizeMap[getStringWithDefault(style, "fontSizePreset", "MEDIO")],
     fontWeight: fontWeightMap[getStringWithDefault(style, "fontWeight", "REGULAR")],
     color:

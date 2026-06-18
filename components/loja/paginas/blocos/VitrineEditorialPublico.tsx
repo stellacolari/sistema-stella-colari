@@ -27,6 +27,8 @@ type VitrineEditorialItem = {
   linkUrl: string;
   label: string;
   textoBotao: string;
+  labelStyle: CSSProperties;
+  textoBotaoStyle: CSSProperties;
   imagemDesktop: string;
   imagemMobile: string;
   altText: string;
@@ -95,6 +97,8 @@ function criarItemPadrao(index: number): VitrineEditorialItem {
     linkUrl: "",
     label: "",
     textoBotao: "Explorar",
+    labelStyle: {},
+    textoBotaoStyle: {},
     imagemDesktop: "",
     imagemMobile: "",
     altText: "",
@@ -107,6 +111,72 @@ function criarItemPadrao(index: number): VitrineEditorialItem {
     ocultarNome: false,
     ocultarBotao: false,
     abrirNovaAba: false,
+  };
+}
+
+function getTextStyle(value: unknown): CSSProperties {
+  const style = asConfig(value);
+  const fontFamily = getString(style, "fontFamily", "PRINCIPAL");
+  const fontSizePreset = getString(style, "fontSizePreset");
+  const fontWeight = getString(style, "fontWeight");
+  const colorPreset = getString(style, "colorPreset");
+  const colorCustom = getString(style, "colorCustom");
+  const letterSpacing = getString(style, "letterSpacing");
+  const lineHeight = getString(style, "lineHeight");
+  const textTransform = getString(style, "textTransform");
+
+  const fontSizeMap: Record<string, string> = {
+    PEQUENO: "0.875rem",
+    MEDIO: "1rem",
+    GRANDE: "1.5rem",
+    EXTRA_GRANDE: "2.75rem",
+    EDITORIAL: "3rem",
+  };
+  const fontWeightMap: Record<string, number> = {
+    LIGHT: 300,
+    REGULAR: 400,
+    MEDIUM: 500,
+    SEMIBOLD: 600,
+    BOLD: 700,
+    BLACK: 900,
+  };
+  const colorMap: Record<string, string> = {
+    CLARO: "#ffffff",
+    ESCURO: "#0f172a",
+    DOURADO: "#b8892e",
+  };
+  const letterSpacingMap: Record<string, string> = {
+    NORMAL: "0",
+    LEVE: "0.02em",
+    MEDIO: "0.08em",
+    ALTO: "0.14em",
+  };
+  const lineHeightMap: Record<string, string> = {
+    COMPACTO: "1",
+    NORMAL: "1.15",
+    RESPIRADO: "1.35",
+    AMPLO: "1.6",
+  };
+
+  return {
+    fontFamily:
+      fontFamily === "EDITORIAL"
+        ? "Georgia, 'Times New Roman', serif"
+        : "var(--font-primary)",
+    ...(fontSizeMap[fontSizePreset] ? { fontSize: fontSizeMap[fontSizePreset] } : {}),
+    ...(fontWeightMap[fontWeight] ? { fontWeight: fontWeightMap[fontWeight] } : {}),
+    ...(letterSpacingMap[letterSpacing]
+      ? { letterSpacing: letterSpacingMap[letterSpacing] }
+      : {}),
+    ...(lineHeightMap[lineHeight] ? { lineHeight: lineHeightMap[lineHeight] } : {}),
+    ...(textTransform && textTransform !== "NORMAL"
+      ? { textTransform: textTransform === "UPPERCASE" ? "uppercase" : "capitalize" }
+      : {}),
+    ...(colorPreset === "PERSONALIZADO" && colorCustom
+      ? { color: colorCustom }
+      : colorMap[colorPreset]
+        ? { color: colorMap[colorPreset] }
+        : {}),
   };
 }
 
@@ -135,6 +205,8 @@ function getItem(data: unknown, index: number): VitrineEditorialItem {
       getString(config, "textoBotao") ||
       getString(config, "textoLink") ||
       itemPadrao.textoBotao,
+    labelStyle: getTextStyle(config.labelStyle),
+    textoBotaoStyle: getTextStyle(config.textoBotaoStyle),
     imagemDesktop:
       getString(config, "imagemDesktop") ||
       getString(config, "imagemDesktopUrl") ||
@@ -487,6 +559,7 @@ export default function VitrineEditorialPublico({
                       <h3
                         data-stella-inline-field="vitrineLabel"
                         className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-950"
+                        style={item.labelStyle}
                       >
                         {label}
                       </h3>
@@ -496,6 +569,7 @@ export default function VitrineEditorialPublico({
                       <span
                         data-stella-inline-field="vitrineTextoBotao"
                         className="mt-2 inline-block border-b border-current pb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700"
+                        style={item.textoBotaoStyle}
                       >
                         {item.textoBotao}
                       </span>

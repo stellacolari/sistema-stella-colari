@@ -135,6 +135,7 @@ function getTextStyle(
   options: { ignoreFontSizePreset?: boolean } = {}
 ): CSSProperties {
   const style = getConfigStyle(config, key);
+  const fontFamily = getString(style, "fontFamily");
   const fontSizePreset = getString(style, "fontSizePreset");
   const fontWeight = getString(style, "fontWeight");
   const colorPreset = getString(style, "colorPreset");
@@ -154,6 +155,7 @@ function getTextStyle(
     MEDIUM: 500,
     SEMIBOLD: 600,
     BOLD: 700,
+    BLACK: 900,
   };
   const letterSpacingMap: Record<string, string> = {
     NORMAL: "0",
@@ -169,6 +171,11 @@ function getTextStyle(
 
   return {
     ...fallback,
+    ...(fontFamily === "EDITORIAL"
+      ? { fontFamily: "Georgia, 'Times New Roman', serif" }
+      : fontFamily === "PRINCIPAL"
+        ? { fontFamily: "var(--font-primary)" }
+        : {}),
     ...(!options.ignoreFontSizePreset && fontSizeMap[fontSizePreset]
       ? { fontSize: fontSizeMap[fontSizePreset] }
       : {}),

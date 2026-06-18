@@ -132,6 +132,23 @@ function getString(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 
+function normalizarFonteTexto(value: unknown): TextElementStyle["fonte"] {
+  return value === "EDITORIAL" ? "EDITORIAL" : "PRINCIPAL";
+}
+
+function normalizarPesoTexto(
+  value: unknown,
+  fonte: TextElementStyle["fonte"]
+): TextElementStyle["peso"] {
+  const peso = getString(value, DEFAULT_TEXT_STYLE.peso) as TextElementStyle["peso"];
+  const pesosValidos =
+    fonte === "EDITORIAL"
+      ? ["REGULAR", "SEMIBOLD", "BOLD", "BLACK"]
+      : ["LIGHT", "REGULAR", "MEDIUM", "SEMIBOLD", "BOLD"];
+
+  return pesosValidos.includes(peso) ? peso : "REGULAR";
+}
+
 export function aplicarPresetTexto(
   estilo: Partial<TextElementStyle>,
   preset: TextElementStyle["preset"]
@@ -159,6 +176,7 @@ export function normalizarElementoTexto(
         : tipo === "botaoLabel"
           ? "BOTAO"
           : "PARAGRAFO";
+  const fonte = normalizarFonteTexto(estilo.fonte);
 
   return {
     id: getString(data.id, fallback.id || `texto-${Date.now()}`),
@@ -167,8 +185,8 @@ export function normalizarElementoTexto(
     richText: data.richText,
     estilo: aplicarPresetTexto(
       {
-        fonte: getString(estilo.fonte, DEFAULT_TEXT_STYLE.fonte) as TextElementStyle["fonte"],
-        peso: getString(estilo.peso, DEFAULT_TEXT_STYLE.peso) as TextElementStyle["peso"],
+        fonte,
+        peso: normalizarPesoTexto(estilo.peso, fonte),
         tamanho: getString(estilo.tamanho, DEFAULT_TEXT_STYLE.tamanho),
         cor: getString(estilo.cor, DEFAULT_TEXT_STYLE.cor),
         alinhamento: getString(

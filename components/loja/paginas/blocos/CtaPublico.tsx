@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import PublicMediaRenderer from "@/components/loja/paginas/PublicMediaRenderer";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
@@ -51,6 +52,72 @@ function getLayout(value: string) {
   }
 
   return "TEXTO_CENTRALIZADO";
+}
+
+function getTextStyle(config: Record<string, unknown>, key: string): CSSProperties {
+  const style = asConfig(config[key]);
+  const fontFamily = getStringWithDefault(style, "fontFamily", "PRINCIPAL");
+  const fontSizePreset = getString(style, "fontSizePreset");
+  const fontWeight = getString(style, "fontWeight");
+  const colorPreset = getString(style, "colorPreset");
+  const colorCustom = getString(style, "colorCustom");
+  const letterSpacing = getString(style, "letterSpacing");
+  const lineHeight = getString(style, "lineHeight");
+  const textTransform = getString(style, "textTransform");
+
+  const fontSizeMap: Record<string, string> = {
+    PEQUENO: "0.875rem",
+    MEDIO: "1rem",
+    GRANDE: "1.5rem",
+    EXTRA_GRANDE: "2.75rem",
+    EDITORIAL: "3rem",
+  };
+  const fontWeightMap: Record<string, number> = {
+    LIGHT: 300,
+    REGULAR: 400,
+    MEDIUM: 500,
+    SEMIBOLD: 600,
+    BOLD: 700,
+    BLACK: 900,
+  };
+  const colorMap: Record<string, string> = {
+    CLARO: "#ffffff",
+    ESCURO: "#0f172a",
+    DOURADO: "#b8892e",
+  };
+  const letterSpacingMap: Record<string, string> = {
+    NORMAL: "0",
+    LEVE: "0.02em",
+    MEDIO: "0.08em",
+    ALTO: "0.14em",
+  };
+  const lineHeightMap: Record<string, string> = {
+    COMPACTO: "1",
+    NORMAL: "1.15",
+    RESPIRADO: "1.35",
+    AMPLO: "1.6",
+  };
+
+  return {
+    fontFamily:
+      fontFamily === "EDITORIAL"
+        ? "Georgia, 'Times New Roman', serif"
+        : "var(--font-primary)",
+    ...(fontSizeMap[fontSizePreset] ? { fontSize: fontSizeMap[fontSizePreset] } : {}),
+    ...(fontWeightMap[fontWeight] ? { fontWeight: fontWeightMap[fontWeight] } : {}),
+    ...(letterSpacingMap[letterSpacing]
+      ? { letterSpacing: letterSpacingMap[letterSpacing] }
+      : {}),
+    ...(lineHeightMap[lineHeight] ? { lineHeight: lineHeightMap[lineHeight] } : {}),
+    ...(textTransform && textTransform !== "NORMAL"
+      ? { textTransform: textTransform === "UPPERCASE" ? "uppercase" : "capitalize" }
+      : {}),
+    ...(colorPreset === "PERSONALIZADO" && colorCustom
+      ? { color: colorCustom }
+      : colorMap[colorPreset]
+        ? { color: colorMap[colorPreset] }
+        : {}),
+  };
 }
 
 export default function CtaPublico({ bloco }: BlocoPublicoProps) {
@@ -123,6 +190,10 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
     Boolean(textoBotaoSecundario && linkBotaoSecundario);
   const hasContent =
     hasTitulo || hasTexto || hasBotaoPrimario || hasBotaoSecundario;
+  const tituloStyle = getTextStyle(config, "tituloStyle");
+  const textoStyle = getTextStyle(config, "textoStyle");
+  const botaoPrimarioStyle = getTextStyle(config, "botaoPrimarioStyle");
+  const botaoSecundarioStyle = getTextStyle(config, "botaoSecundarioStyle");
 
   if (!hasContent && !hasMedia) return null;
 
@@ -180,6 +251,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             data-stella-inline-field="titulo"
             className={`text-3xl font-light leading-tight md:text-5xl ${displayColors.title}`}
             paragraphClassName="mb-0"
+            style={tituloStyle}
           />
         ) : null}
         {hasTexto ? (
@@ -189,6 +261,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             data-stella-inline-field="texto"
             className={`mt-4 text-base leading-7 md:text-lg ${displayColors.body}`}
             paragraphClassName="mb-0"
+            style={textoStyle}
           />
         ) : null}
         {hasBotaoPrimario || hasBotaoSecundario ? (
@@ -198,6 +271,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
                 href={linkBotaoPrimario}
                 data-stella-inline-field="textoBotao"
                 className={`inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
+                style={botaoPrimarioStyle}
               >
                 {textoBotaoPrimario}
               </Link>
@@ -207,6 +281,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
                 href={linkBotaoSecundario}
                 data-stella-inline-field="textoBotaoSecundario"
                 className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${displayColors.border} ${displayColors.title}`}
+                style={botaoSecundarioStyle}
               >
                 {textoBotaoSecundario}
               </Link>

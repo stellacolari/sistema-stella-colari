@@ -186,15 +186,16 @@ function applyInlineStyleToSelection(patch: Partial<CSSStyleDeclaration>) {
 
 function getInlineTextStyleMessage(element: HTMLElement): InlineTextStyleMessage {
   const style = element.style;
+  const computed = window.getComputedStyle(element);
   const textStyle: InlineTextStyleMessage = {};
 
-  if (style.color) textStyle.color = style.color;
-  if (style.fontFamily) textStyle.fontFamily = style.fontFamily;
-  if (style.fontSize) textStyle.fontSize = style.fontSize;
-  if (style.fontWeight) textStyle.fontWeight = style.fontWeight;
-  if (style.letterSpacing) textStyle.letterSpacing = style.letterSpacing;
-  if (style.lineHeight) textStyle.lineHeight = style.lineHeight;
-  if (style.textAlign) textStyle.textAlign = style.textAlign;
+  textStyle.color = style.color || computed.color;
+  textStyle.fontFamily = style.fontFamily || computed.fontFamily;
+  textStyle.fontSize = style.fontSize || computed.fontSize;
+  textStyle.fontWeight = style.fontWeight || computed.fontWeight;
+  textStyle.letterSpacing = style.letterSpacing || computed.letterSpacing;
+  textStyle.lineHeight = style.lineHeight || computed.lineHeight;
+  textStyle.textAlign = style.textAlign || computed.textAlign;
 
   return textStyle;
 }
@@ -497,6 +498,136 @@ export default function LojaPreviewPaginaClient({
       rememberSelection();
     }
 
+    function getFontTokenFromCss(value: string) {
+      const font = value.toLowerCase();
+      return font.includes("georgia") || font.includes("times")
+        ? "EDITORIAL"
+        : "PRINCIPAL";
+    }
+
+    function getNearestWeight(fontToken: string, value: string) {
+      const weights =
+        RICH_TEXT_FONT_FAMILIES.find((font) => font.value === fontToken)?.weights ||
+        RICH_TEXT_FONT_FAMILIES[0]?.weights ||
+        [];
+      const numeric = Number(value);
+
+      if (!Number.isFinite(numeric)) return weights[0] || "400";
+
+      return weights.reduce((nearest, current) =>
+        Math.abs(Number(current) - numeric) < Math.abs(Number(nearest) - numeric)
+          ? current
+          : nearest
+      );
+    }
+
+    function getNearestFontSize(value: string) {
+      const numeric = Number.parseFloat(value);
+      const presets = RICH_TEXT_SIZE_PRESETS.filter((preset) => preset.css);
+
+      if (!Number.isFinite(numeric)) return presets[2]?.css || "1rem";
+
+      return presets.reduce((nearest, current) => {
+        const currentValue = Number.parseFloat(current.css);
+        const nearestValue = Number.parseFloat(nearest.css);
+
+        return Math.abs(currentValue - numeric) < Math.abs(nearestValue - numeric)
+          ? current
+          : nearest;
+      }).css;
+    }
+
+    function getNearestLineHeight(value: string) {
+      const numeric = Number.parseFloat(value);
+      const presets = RICH_TEXT_LINE_HEIGHT_PRESETS.filter((preset) => preset.css);
+
+      if (!Number.isFinite(numeric)) return "1.15";
+
+      return presets.reduce((nearest, current) => {
+        const currentValue = Number.parseFloat(current.css);
+        const nearestValue = Number.parseFloat(nearest.css);
+
+        return Math.abs(currentValue - numeric) < Math.abs(nearestValue - numeric)
+          ? current
+          : nearest;
+      }).css;
+    }
+
+    function getNearestLetterSpacing(value: string) {
+      const normalized = value.trim();
+
+      if (normalized === "0px" || normalized === "normal") return "0";
+
+      const numeric = Number.parseFloat(normalized);
+      const presets = [
+        { css: "0" },
+        { css: "0.02em" },
+        { css: "0.08em" },
+      ];
+
+      if (!Number.isFinite(numeric)) return "0";
+
+      return presets.reduce((nearest, current) => {
+        const currentValue = Number.parseFloat(current.css);
+        const nearestValue = Number.parseFloat(nearest.css);
+
+        return Math.abs(currentValue - numeric) < Math.abs(nearestValue - numeric)
+          ? current
+          : nearest;
+      }).css;
+    }
+
+    function setSelectValue(label: string, value: string) {
+      const select = toolbar.querySelector(
+        `select[aria-label="${label}"]`
+      ) as HTMLSelectElement | null;
+
+      if (!select) return;
+
+      const hasOption = Array.from(select.options).some(
+        (option) => option.value === value
+      );
+
+      if (hasOption) select.value = value;
+    }
+
+    function syncToolbarFromElement(element: HTMLElement) {
+      const style = getInlineTextStyleMessage(element);
+      const fontToken = getFontTokenFromCss(style.fontFamily || "");
+      const weight = getNearestWeight(fontToken, style.fontWeight || "400");
+
+      activeFontWeights =
+        RICH_TEXT_FONT_FAMILIES.find((font) => font.value === fontToken)?.weights ||
+        activeFontWeights;
+      refreshWeightOptions();
+      setSelectValue("Fonte", fontToken);
+      setSelectValue("Peso", weight);
+      setSelectValue("Tamanho", getNearestFontSize(style.fontSize || "1rem"));
+      setSelectValue(
+        "Alinhamento",
+        style.textAlign === "center"
+          ? "center"
+          : style.textAlign === "right"
+            ? "right"
+            : "left"
+      );
+      setSelectValue("Altura de linha", getNearestLineHeight(style.lineHeight || "1.15"));
+      setSelectValue("Espacamento", getNearestLetterSpacing(style.letterSpacing || "0"));
+
+      if (style.color?.startsWith("rgb")) {
+        const match = style.color.match(/\d+/g);
+
+        if (match && match.length >= 3) {
+          colorInput.value = `#${match
+            .slice(0, 3)
+            .map((part) => Number(part).toString(16).padStart(2, "0"))
+            .join("")}`;
+        }
+      } else if (style.color?.startsWith("#")) {
+        colorInput.value = style.color.slice(0, 7);
+      }
+    }
+
     function postInlineUpdate(commit = false) {
       if (!activeInlineElement) return;
 
@@ -543,11 +674,6 @@ export default function LojaPreviewPaginaClient({
 
     function applyPendingDraftAfterEditing() {
       inlineEditingRef.current = false;
-
-      if (pendingDraftRef.current?.blocos) {
-        setBlocosPreview(pendingDraftRef.current.blocos);
-      }
-
       pendingDraftRef.current = null;
     }
 
@@ -572,6 +698,7 @@ export default function LojaPreviewPaginaClient({
     function showToolbar(element: HTMLElement) {
       activeInlineElement = element;
       rememberSelection();
+      syncToolbarFromElement(element);
       positionToolbar();
     }
 
@@ -626,6 +753,13 @@ export default function LojaPreviewPaginaClient({
         activeFontWeights = font.weights;
         applyInlineStyle({ fontFamily: font.css });
         refreshWeightOptions();
+        const currentWeight = weightSelect?.value || "400";
+        const safeWeight = activeFontWeights.includes(currentWeight)
+          ? currentWeight
+          : getNearestWeight(value, currentWeight);
+
+        if (weightSelect) weightSelect.value = safeWeight;
+        applyInlineStyle({ fontWeight: safeWeight });
       }
     );
     weightSelect = createToolbarSelect(
@@ -652,11 +786,11 @@ export default function LojaPreviewPaginaClient({
     createToolbarSelect(
       "Alinhamento",
       [
-        { value: "justifyLeft", label: "Esquerda" },
-        { value: "justifyCenter", label: "Centro" },
-        { value: "justifyRight", label: "Direita" },
+        { value: "left", label: "Esquerda" },
+        { value: "center", label: "Centro" },
+        { value: "right", label: "Direita" },
       ],
-      (value) => document.execCommand(value)
+      (value) => applyInlineStyle({ textAlign: value })
     );
     createToolbarSelect(
       "Espacamento",
@@ -700,7 +834,19 @@ export default function LojaPreviewPaginaClient({
         linkPopover.style.display === "flex" ? "none" : "flex";
       linkInput.focus();
     });
-    createToolbarButton("Limpar", "Limpar estilo", () => document.execCommand("removeFormat"));
+    createToolbarButton("Limpar", "Limpar estilo", () => {
+      document.execCommand("removeFormat");
+
+      if (activeInlineElement) {
+        activeInlineElement.style.color = "";
+        activeInlineElement.style.fontFamily = "";
+        activeInlineElement.style.fontSize = "";
+        activeInlineElement.style.fontWeight = "";
+        activeInlineElement.style.letterSpacing = "";
+        activeInlineElement.style.lineHeight = "";
+        activeInlineElement.style.textAlign = "";
+      }
+    });
 
     linkPopover.style.display = "none";
     linkPopover.style.alignItems = "center";

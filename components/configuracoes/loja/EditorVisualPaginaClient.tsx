@@ -290,6 +290,7 @@ type VitrineEditorialItemEditando = {
 };
 
 type TextStyleConfig = {
+  fontFamily: string;
   fontSizePreset: string;
   fontWeight: string;
   colorPreset: string;
@@ -496,6 +497,8 @@ const TEXT_FONT_SIZE_PRESETS = [
   { value: "MEDIO", label: "Médio" },
   { value: "GRANDE", label: "Grande" },
   { value: "EXTRA_GRANDE", label: "Extra grande" },
+  { value: "EDITORIAL", label: "Editorial" },
+  { value: "CUSTOMIZADO", label: "Customizado" },
 ];
 
 const TEXT_FONT_WEIGHT_PRESETS = [
@@ -504,6 +507,7 @@ const TEXT_FONT_WEIGHT_PRESETS = [
   { value: "MEDIUM", label: "Medium" },
   { value: "SEMIBOLD", label: "Semibold" },
   { value: "BOLD", label: "Bold" },
+  { value: "BLACK", label: "Black" },
 ];
 
 const TEXT_COLOR_PRESETS = [
@@ -538,6 +542,11 @@ const TEXT_ALIGN_PRESETS = [
   { value: "ESQUERDA", label: "Esquerda" },
   { value: "CENTRO", label: "Centro" },
   { value: "DIREITA", label: "Direita" },
+];
+
+const TEXT_FONT_FAMILY_PRESETS = [
+  { value: "PRINCIPAL", label: "Fonte principal" },
+  { value: "EDITORIAL", label: "Fonte editorial" },
 ];
 
 const ALINHAMENTO_BANNER_PRESETS = [
@@ -1420,6 +1429,128 @@ function getInlineTextStyleObject(value: unknown): InlineTextStyleMessage {
   };
 }
 
+function getInlineFontFamilyPreset(value: string) {
+  const font = value.toLowerCase();
+
+  if (font.includes("georgia") || font.includes("times")) return "EDITORIAL";
+
+  return "PRINCIPAL";
+}
+
+function getInlineFontWeightPreset(value: string) {
+  const numeric = Number(value);
+
+  if (numeric >= 900) return "BLACK";
+  if (numeric >= 700) return "BOLD";
+  if (numeric >= 600) return "SEMIBOLD";
+  if (numeric >= 500) return "MEDIUM";
+  if (numeric <= 300 && numeric > 0) return "LIGHT";
+
+  const normalized = value.toUpperCase();
+
+  if (TEXT_FONT_WEIGHT_PRESETS.some((preset) => preset.value === normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function getInlineFontSizePreset(value: string) {
+  const normalized = value.trim().toLowerCase();
+  const map: Record<string, string> = {
+    "0.75rem": "PEQUENO",
+    "12px": "PEQUENO",
+    "0.875rem": "PEQUENO",
+    "14px": "PEQUENO",
+    "1rem": "MEDIO",
+    "16px": "MEDIO",
+    "1.5rem": "GRANDE",
+    "24px": "GRANDE",
+    "2.25rem": "EXTRA_GRANDE",
+    "36px": "EXTRA_GRANDE",
+    "2.75rem": "EXTRA_GRANDE",
+    "44px": "EXTRA_GRANDE",
+    "3rem": "EDITORIAL",
+    "48px": "EDITORIAL",
+  };
+
+  return map[normalized] || "CUSTOMIZADO";
+}
+
+function getInlineColorPatch(value: string) {
+  if (!value) return {};
+
+  const color = value.trim().toLowerCase();
+  const named: Record<string, string> = {
+    "rgb(255, 255, 255)": "CLARO",
+    "#ffffff": "CLARO",
+    white: "CLARO",
+    "rgb(15, 23, 42)": "ESCURO",
+    "#0f172a": "ESCURO",
+    "rgb(184, 137, 46)": "DOURADO",
+    "#b8892e": "DOURADO",
+  };
+
+  const preset = named[color];
+
+  return preset
+    ? { colorPreset: preset, colorCustom: "" }
+    : { colorPreset: "PERSONALIZADO", colorCustom: value };
+}
+
+function getInlineLetterSpacingPreset(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "0px" || normalized === "normal" || normalized === "0") {
+    return "NORMAL";
+  }
+
+  if (normalized === "0.02em") return "LEVE";
+  if (normalized === "0.08em") return "MEDIO";
+  if (normalized === "0.14em") return "ALTO";
+
+  return "";
+}
+
+function getInlineLineHeightPreset(value: string) {
+  const numeric = Number(value);
+
+  if (numeric <= 1.05 && numeric > 0) return "COMPACTO";
+  if (numeric <= 1.2 && numeric > 0) return "NORMAL";
+  if (numeric <= 1.45 && numeric > 0) return "RESPIRADO";
+  if (numeric > 1.45) return "AMPLO";
+
+  return "";
+}
+
+function getInlineTextStylePatch(value: unknown): Partial<TextStyleConfig> {
+  const style = getInlineTextStyleObject(value);
+  const patch: Partial<TextStyleConfig> = {};
+  const fontFamily = style.fontFamily
+    ? getInlineFontFamilyPreset(style.fontFamily)
+    : "";
+  const rawWeight = getInlineFontWeightPreset(style.fontWeight || "");
+  const weight =
+    fontFamily === "PRINCIPAL" && rawWeight === "BLACK"
+      ? "BOLD"
+      : fontFamily === "EDITORIAL" && (rawWeight === "LIGHT" || rawWeight === "MEDIUM")
+        ? "REGULAR"
+        : rawWeight;
+  const alignment = getSectionTextAlignment(style.textAlign || "");
+  const letterSpacing = getInlineLetterSpacingPreset(style.letterSpacing || "");
+  const lineHeight = getInlineLineHeightPreset(style.lineHeight || "");
+
+  if (fontFamily) patch.fontFamily = fontFamily;
+  if (weight) patch.fontWeight = weight;
+  if (style.fontSize) patch.fontSizePreset = getInlineFontSizePreset(style.fontSize);
+  if (style.color) Object.assign(patch, getInlineColorPatch(style.color));
+  if (alignment) patch.textAlign = alignment;
+  if (letterSpacing) patch.letterSpacing = letterSpacing;
+  if (lineHeight) patch.lineHeight = lineHeight;
+
+  return patch;
+}
+
 function getSectionTextWeight(value: string) {
   const numeric = Number(value);
 
@@ -1443,12 +1574,19 @@ function getSectionTextAlignment(value: string) {
 function getSectionTextStylePatch(value: unknown) {
   const style = getInlineTextStyleObject(value);
   const patch: Record<string, string> = {};
-  const weight = getSectionTextWeight(style.fontWeight || "");
+  const fonte = style.fontFamily
+    ? getInlineFontFamilyPreset(style.fontFamily)
+    : "";
+  const rawWeight = getSectionTextWeight(style.fontWeight || "");
+  const weight =
+    fonte === "PRINCIPAL" && rawWeight === "BLACK"
+      ? "BOLD"
+      : fonte === "EDITORIAL" && (rawWeight === "LIGHT" || rawWeight === "MEDIUM")
+        ? "REGULAR"
+        : rawWeight;
   const alignment = getSectionTextAlignment(style.textAlign || "");
 
-  if (style.fontFamily) {
-    patch.fonte = style.fontFamily.includes("Georgia") ? "EDITORIAL" : "PRINCIPAL";
-  }
+  if (fonte) patch.fonte = fonte;
 
   if (weight) patch.peso = weight;
   if (style.fontSize) patch.tamanho = style.fontSize;
@@ -1795,6 +1933,7 @@ function getOpcoesCategoriasVitrine(categorias: EditorVisualCategoria[]) {
 function getTextStyleDefaults(kind: string): TextStyleConfig {
   if (kind.includes("botao") || kind.includes("Botao")) {
     return {
+      fontFamily: "PRINCIPAL",
       fontSizePreset: "PEQUENO",
       fontWeight: "SEMIBOLD",
       colorPreset: "PADRAO",
@@ -1810,6 +1949,7 @@ function getTextStyleDefaults(kind: string): TextStyleConfig {
 
   if (kind.includes("subtitulo") || kind.includes("texto") || kind.includes("Texto")) {
     return {
+      fontFamily: "PRINCIPAL",
       fontSizePreset: "MEDIO",
       fontWeight: "REGULAR",
       colorPreset: "PADRAO",
@@ -1824,6 +1964,7 @@ function getTextStyleDefaults(kind: string): TextStyleConfig {
   }
 
   return {
+    fontFamily: "PRINCIPAL",
     fontSizePreset: "GRANDE",
     fontWeight: "LIGHT",
     colorPreset: "PADRAO",
@@ -1842,6 +1983,7 @@ function normalizeTextStyle(
   defaults: TextStyleConfig
 ): TextStyleConfig {
   const style = getConfigObject(value);
+  const fontFamily = getStringConfig(style, "fontFamily");
   const fontSizePreset = getStringConfig(style, "fontSizePreset");
   const fontWeight = getStringConfig(style, "fontWeight");
   const colorPreset = getStringConfig(style, "colorPreset");
@@ -1851,6 +1993,11 @@ function normalizeTextStyle(
   const textAlign = getStringConfig(style, "textAlign");
 
   return {
+    fontFamily: TEXT_FONT_FAMILY_PRESETS.some(
+      (preset) => preset.value === fontFamily
+    )
+      ? fontFamily
+      : defaults.fontFamily,
     fontSizePreset: TEXT_FONT_SIZE_PRESETS.some(
       (preset) => preset.value === fontSizePreset
     )
@@ -1958,6 +2105,7 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
     MEDIO: "1rem",
     GRANDE: "1.5rem",
     EXTRA_GRANDE: "2.75rem",
+    EDITORIAL: "3rem",
   };
   const fontWeightMap: Record<string, number> = {
     LIGHT: 300,
@@ -1965,6 +2113,7 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
     MEDIUM: 500,
     SEMIBOLD: 600,
     BOLD: 700,
+    BLACK: 900,
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
@@ -1990,6 +2139,10 @@ function resolveTextStyle(style: TextStyleConfig): CSSProperties {
   };
 
   return {
+    fontFamily:
+      style.fontFamily === "EDITORIAL"
+        ? "Georgia, 'Times New Roman', serif"
+        : "var(--font-primary)",
     fontSize: fontSizeMap[style.fontSizePreset] || fontSizeMap.MEDIO,
     fontWeight: fontWeightMap[style.fontWeight] || fontWeightMap.REGULAR,
     color:
@@ -3863,14 +4016,48 @@ function TextoImagemStyleControls({
   value: TextStyleConfig;
   onChange: (value: TextStyleConfig) => void;
 }) {
+  const availableWeights =
+    value.fontFamily === "EDITORIAL"
+      ? ["REGULAR", "SEMIBOLD", "BOLD", "BLACK"]
+      : ["LIGHT", "REGULAR", "MEDIUM", "SEMIBOLD", "BOLD"];
+
   function update(patch: Partial<TextStyleConfig>) {
     onChange({ ...value, ...patch });
+  }
+
+  function updateFontFamily(fontFamily: string) {
+    const weights =
+      fontFamily === "EDITORIAL"
+        ? ["REGULAR", "SEMIBOLD", "BOLD", "BLACK"]
+        : ["LIGHT", "REGULAR", "MEDIUM", "SEMIBOLD", "BOLD"];
+
+    update({
+      fontFamily,
+      fontWeight: weights.includes(value.fontWeight) ? value.fontWeight : "REGULAR",
+    });
   }
 
   return (
     <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
       <p className="text-sm font-semibold text-slate-950">{label}</p>
       <div className="grid gap-4 md:grid-cols-2">
+        <label>
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Fonte
+          </span>
+          <select
+            value={value.fontFamily}
+            onChange={(event) => updateFontFamily(event.target.value)}
+            className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+          >
+            {TEXT_FONT_FAMILY_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label>
           <span className="mb-2 block text-sm font-medium text-slate-700">
             Tamanho
@@ -3897,7 +4084,9 @@ function TextoImagemStyleControls({
             onChange={(event) => update({ fontWeight: event.target.value })}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
           >
-            {TEXT_FONT_WEIGHT_PRESETS.map((preset) => (
+            {TEXT_FONT_WEIGHT_PRESETS.filter((preset) =>
+              availableWeights.includes(preset.value)
+            ).map((preset) => (
               <option key={preset.value} value={preset.value}>
                 {preset.label}
               </option>
@@ -14726,6 +14915,308 @@ export default function EditorVisualPaginaClient({
     );
   }, [blocoSelecionadoId, blocosOrdenados, pagina.id]);
 
+  const applyTextElementPatch = useCallback(({
+    blockId,
+    field,
+    value,
+    richText,
+    textStyle,
+    itemId,
+  }: {
+    blockId: string;
+    field: string;
+    value: string;
+    richText?: RichTextValue | null;
+    textStyle?: InlineTextStyleMessage | null;
+    itemId?: string;
+  }) => {
+    if (!blockId || !field) return;
+
+    const inlineTextStylePatch = getInlineTextStylePatch(textStyle);
+    const sectionTextStylePatch = getSectionTextStylePatch(textStyle);
+
+    function mergeTextStyle(
+      config: Record<string, unknown>,
+      key: string
+    ): TextStyleConfig {
+      return {
+        ...getTextStyleConfig(config, key),
+        ...inlineTextStylePatch,
+      };
+    }
+
+    function buildPatch(config: Record<string, unknown>) {
+      if (field === "titulo") {
+        return {
+          titulo: value,
+          tituloStyle: mergeTextStyle(config, "tituloStyle"),
+          ...(richText ? { tituloRichText: richText } : {}),
+        };
+      }
+
+      if (field === "texto") {
+        const textoStyle = mergeTextStyle(config, "textoStyle");
+
+        return {
+          texto: value,
+          descricao: value,
+          conteudo: value,
+          textoStyle,
+          subtituloStyle: mergeTextStyle(config, "subtituloStyle"),
+          ...(richText
+            ? {
+                textoRichText: richText,
+                subtituloRichText: richText,
+              }
+            : {}),
+        };
+      }
+
+      if (field === "subtitulo") {
+        return {
+          subtitulo: value,
+          texto: value,
+          descricao: value,
+          subtituloStyle: mergeTextStyle(config, "subtituloStyle"),
+          ...(richText
+            ? {
+                subtituloRichText: richText,
+                textoRichText: richText,
+              }
+            : {}),
+        };
+      }
+
+      if (field === "textoBotao") {
+        return {
+          textoBotao: value,
+          botaoTexto: value,
+          botaoStyle: mergeTextStyle(config, "botaoStyle"),
+          botaoPrimarioStyle: mergeTextStyle(config, "botaoPrimarioStyle"),
+        };
+      }
+
+      if (field === "textoBotaoSecundario") {
+        return {
+          textoBotaoSecundario: value,
+          botaoSecundarioTexto: value,
+          botaoSecundarioStyle: mergeTextStyle(config, "botaoSecundarioStyle"),
+        };
+      }
+
+      if (field === "heroTexto") {
+        const texto = getConfigObject(config.texto);
+        const nextTexto: Record<string, unknown> = {
+          ...texto,
+          conteudo: value,
+        };
+
+        if (sectionTextStylePatch.peso) nextTexto.peso = sectionTextStylePatch.peso;
+        if (sectionTextStylePatch.cor) nextTexto.cor = sectionTextStylePatch.cor;
+        if (sectionTextStylePatch.fonte) nextTexto.fonte = sectionTextStylePatch.fonte;
+        if (sectionTextStylePatch.lineHeight) {
+          const lineHeight = Number.parseFloat(sectionTextStylePatch.lineHeight);
+          if (Number.isFinite(lineHeight)) nextTexto.lineHeight = lineHeight;
+        }
+        if (sectionTextStylePatch.letterSpacing) {
+          const tracking = Number.parseFloat(sectionTextStylePatch.letterSpacing);
+          if (Number.isFinite(tracking)) nextTexto.tracking = tracking;
+        }
+
+        return {
+          texto: nextTexto,
+          titulo: value,
+        };
+      }
+
+      if (field === "heroCtaLabel") {
+        return {
+          cta: {
+            ...getConfigObject(config.cta),
+            label: value,
+          },
+        };
+      }
+
+      if (field === "heroCtaTitulo") {
+        return {
+          cta: {
+            ...getConfigObject(config.cta),
+            titulo: value,
+          },
+        };
+      }
+
+      if (field === "heroCtaTextoBotao") {
+        return {
+          cta: {
+            ...getConfigObject(config.cta),
+            textoBotao: value,
+          },
+          textoBotao: value,
+        };
+      }
+
+      if (
+        (field === "vitrineLabel" || field === "vitrineTextoBotao") &&
+        itemId &&
+        Array.isArray(config.itens)
+      ) {
+        return {
+          itens: config.itens.map((item) => {
+            const itemConfig = getConfigObject(item);
+
+            if (itemConfig.id !== itemId) return item;
+
+            return {
+              ...itemConfig,
+              ...(field === "vitrineLabel"
+                ? {
+                    label: value,
+                    titulo: value,
+                    labelStyle: {
+                      ...getConfigObject(itemConfig.labelStyle),
+                      ...inlineTextStylePatch,
+                    },
+                  }
+                : {
+                    textoBotao: value,
+                    textoLink: value,
+                    textoBotaoStyle: {
+                      ...getConfigObject(itemConfig.textoBotaoStyle),
+                      ...inlineTextStylePatch,
+                    },
+                  }),
+            };
+          }),
+        };
+      }
+
+      if (field === "secaoTexto" && itemId && Array.isArray(config.colunas)) {
+        return {
+          colunas: config.colunas.map((coluna) => {
+            const colunaConfig = getConfigObject(coluna);
+            const elementos = Array.isArray(colunaConfig.elementos)
+              ? colunaConfig.elementos
+              : [];
+
+            return {
+              ...colunaConfig,
+              elementos: elementos.map((elemento) => {
+                const elementoConfig = getConfigObject(elemento);
+
+                if (elementoConfig.id !== itemId) return elemento;
+
+                const texto = getConfigObject(elementoConfig.texto);
+
+                return {
+                  ...elementoConfig,
+                  texto: {
+                    ...texto,
+                    conteudo: value,
+                    ...(richText ? { richText } : {}),
+                    estilo: {
+                      ...getConfigObject(texto.estilo),
+                      ...sectionTextStylePatch,
+                    },
+                  },
+                };
+              }),
+            };
+          }),
+        };
+      }
+
+      return null;
+    }
+
+    const supportedFields = [
+      "titulo",
+      "texto",
+      "subtitulo",
+      "textoBotao",
+      "textoBotaoSecundario",
+      "heroTexto",
+      "heroCtaLabel",
+      "heroCtaTitulo",
+      "heroCtaTextoBotao",
+      "vitrineLabel",
+      "vitrineTextoBotao",
+      "secaoTexto",
+    ];
+
+    if (!supportedFields.includes(field)) return;
+
+    setSucesso("");
+    setBlocosComTextoPendente((current) =>
+      current.includes(blockId) ? current : [...current, blockId]
+    );
+    setBlocosEditor((current) =>
+      current.map((bloco) => {
+        if (bloco.id !== blockId) return bloco;
+
+        const config = getConfigObject(bloco.configJson);
+        const patch = buildPatch(config);
+
+        if (!patch) return bloco;
+
+        return {
+          ...bloco,
+          configJson: {
+            ...config,
+            ...patch,
+          },
+        };
+      })
+    );
+    setEditando((current) => {
+      if (!current || current.bloco.id !== blockId) return current;
+
+      if (field === "titulo") {
+        return {
+          ...current,
+          titulo: value,
+          tituloStyle: { ...current.tituloStyle, ...inlineTextStylePatch },
+        };
+      }
+
+      if (field === "texto" || field === "subtitulo") {
+        return {
+          ...current,
+          texto: value,
+          ...(field === "texto"
+            ? { textoStyle: { ...current.textoStyle, ...inlineTextStylePatch } }
+            : { subtituloStyle: { ...current.subtituloStyle, ...inlineTextStylePatch } }),
+        };
+      }
+
+      if (field === "textoBotao" || field === "heroCtaTextoBotao") {
+        return {
+          ...current,
+          textoBotao: value,
+          botaoStyle: { ...current.botaoStyle, ...inlineTextStylePatch },
+          botaoPrimarioStyle: {
+            ...current.botaoPrimarioStyle,
+            ...inlineTextStylePatch,
+          },
+        };
+      }
+
+      if (field === "textoBotaoSecundario") {
+        return {
+          ...current,
+          textoBotaoSecundario: value,
+          botaoSecundarioStyle: {
+            ...current.botaoSecundarioStyle,
+            ...inlineTextStylePatch,
+          },
+        };
+      }
+
+      return current;
+    });
+  }, []);
+
   useEffect(() => {
     if (modoPreviewPublico) return;
 
@@ -14771,218 +15262,21 @@ export default function EditorVisualPaginaClient({
         typeof data.field === "string" &&
         typeof data.value === "string"
       ) {
-        const richTextPatch = data.richText ? data.richText : null;
-        const buildPatch = (config: Record<string, unknown>) => {
-          if (data.field === "titulo") {
-            return {
-              titulo: data.value,
-              ...(richTextPatch ? { tituloRichText: richTextPatch } : {}),
-            };
-          }
-
-          if (data.field === "texto") {
-            return {
-              texto: data.value,
-              descricao: data.value,
-              conteudo: data.value,
-              ...(richTextPatch
-                ? {
-                    textoRichText: richTextPatch,
-                    subtituloRichText: richTextPatch,
-                  }
-                : {}),
-            };
-          }
-
-          if (data.field === "subtitulo") {
-            return {
-              subtitulo: data.value,
-              texto: data.value,
-              descricao: data.value,
-              ...(richTextPatch
-                ? {
-                    subtituloRichText: richTextPatch,
-                    textoRichText: richTextPatch,
-                  }
-                : {}),
-            };
-          }
-
-          if (data.field === "textoBotao") {
-            return { textoBotao: data.value, botaoTexto: data.value };
-          }
-
-          if (data.field === "textoBotaoSecundario") {
-            return {
-              textoBotaoSecundario: data.value,
-              botaoSecundarioTexto: data.value,
-            };
-          }
-
-          if (data.field === "heroTexto") {
-            return {
-              texto: {
-                ...getConfigObject(config.texto),
-                conteudo: data.value,
-              },
-              titulo: data.value,
-            };
-          }
-
-          if (data.field === "heroCtaLabel") {
-            return {
-              cta: {
-                ...getConfigObject(config.cta),
-                label: data.value,
-              },
-            };
-          }
-
-          if (data.field === "heroCtaTitulo") {
-            return {
-              cta: {
-                ...getConfigObject(config.cta),
-                titulo: data.value,
-              },
-            };
-          }
-
-          if (data.field === "heroCtaTextoBotao") {
-            return {
-              cta: {
-                ...getConfigObject(config.cta),
-                textoBotao: data.value,
-              },
-              textoBotao: data.value,
-            };
-          }
-
-          if (
-            (data.field === "vitrineLabel" ||
-              data.field === "vitrineTextoBotao") &&
-            data.itemId &&
-            Array.isArray(config.itens)
-          ) {
-            return {
-              itens: config.itens.map((item) => {
-                const itemConfig = getConfigObject(item);
-
-                if (itemConfig.id !== data.itemId) return item;
-
-                return {
-                  ...itemConfig,
-                  ...(data.field === "vitrineLabel"
-                    ? { label: data.value, titulo: data.value }
-                    : { textoBotao: data.value, textoLink: data.value }),
-                };
-              }),
-            };
-          }
-
-          if (
-            data.field === "secaoTexto" &&
-            data.itemId &&
-            Array.isArray(config.colunas)
-          ) {
-            const textStylePatch = getSectionTextStylePatch(data.textStyle);
-
-            return {
-              colunas: config.colunas.map((coluna) => {
-                const colunaConfig = getConfigObject(coluna);
-                const elementos = Array.isArray(colunaConfig.elementos)
-                  ? colunaConfig.elementos
-                  : [];
-
-                return {
-                  ...colunaConfig,
-                  elementos: elementos.map((elemento) => {
-                    const elementoConfig = getConfigObject(elemento);
-
-                    if (elementoConfig.id !== data.itemId) return elemento;
-
-                    return {
-                      ...elementoConfig,
-                      texto: {
-                        ...getConfigObject(elementoConfig.texto),
-                        conteudo: data.value,
-                        ...(richTextPatch ? { richText: richTextPatch } : {}),
-                        estilo: {
-                          ...getConfigObject(
-                            getConfigObject(elementoConfig.texto).estilo
-                          ),
-                          ...textStylePatch,
-                        },
-                      },
-                    };
-                  }),
-                };
-              }),
-            };
-          }
-
-          return null;
-        };
-        const inlineFieldSupported = [
-          "titulo",
-          "texto",
-          "subtitulo",
-          "textoBotao",
-          "textoBotaoSecundario",
-          "heroTexto",
-          "heroCtaLabel",
-          "heroCtaTitulo",
-          "heroCtaTextoBotao",
-          "vitrineLabel",
-          "vitrineTextoBotao",
-          "secaoTexto",
-        ].includes(data.field);
-
-        if (inlineFieldSupported) {
-          const inlineValue = data.value;
-          const inlineBlockId = data.blockId;
-
-          setSucesso("");
-          setBlocosComTextoPendente((current) =>
-            current.includes(inlineBlockId) ? current : [...current, inlineBlockId]
-          );
-          setBlocosEditor((current) =>
-            current.map((bloco) =>
-              bloco.id === inlineBlockId
-                ? {
-                    ...bloco,
-                    configJson: {
-                      ...getConfigObject(bloco.configJson),
-                      ...(buildPatch(getConfigObject(bloco.configJson)) || {}),
-                    },
-                  }
-                : bloco
-            )
-          );
-          setEditando((current) => {
-            if (!current || current.bloco.id !== inlineBlockId) return current;
-
-            if (data.field === "titulo") {
-              return { ...current, titulo: inlineValue };
-            }
-
-            if (data.field === "texto") {
-              return { ...current, texto: inlineValue };
-            }
-
-            if (data.field === "textoBotao") {
-              return { ...current, textoBotao: inlineValue };
-            }
-
-            return current;
-          });
-        }
+        applyTextElementPatch({
+          blockId: data.blockId,
+          field: data.field,
+          value: data.value,
+          richText: data.richText,
+          textStyle: data.textStyle,
+          itemId: data.itemId,
+        });
       }
     }
 
     window.addEventListener("message", handlePreviewMessage);
 
     return () => window.removeEventListener("message", handlePreviewMessage);
-  }, [enviarDraftParaPreview, pagina.id]);
+  }, [applyTextElementPatch, enviarDraftParaPreview, pagina.id]);
 
   function getBlocoEditorAtual(blocoId: string) {
     return blocosEditor.find((bloco) => bloco.id === blocoId) || null;
@@ -16267,7 +16561,7 @@ export default function EditorVisualPaginaClient({
       try {
         const salvo = await atualizarBloco(blocoAtual, {
           titulo: editando.nomeInterno || blocoAtual.titulo,
-          configJson: getConfigObject(editando.bloco.configJson),
+          configJson: getConfigObject(blocoAtual.configJson),
         });
 
         if (salvo) {

@@ -106,6 +106,7 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
   const escalaAuto = getBoolean(texto, "escalaAuto", true);
   const peso = getString(texto, "peso", "BOLD");
   const preset = getString(texto, "preset", "EDITORIAL");
+  const fonte = getString(texto, "fonte", "EDITORIAL");
 
   const pngDesktop = getString(png, "imagemDesktop");
   const pngMobile = getString(png, "imagemMobile") || pngDesktop;
@@ -191,6 +192,12 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
                 ? "line-clamp-2"
                 : ""
           }`}
+          style={{
+            fontFamily:
+              fonte === "EDITORIAL"
+                ? "Georgia, 'Times New Roman', serif"
+                : "var(--font-primary)",
+          }}
         >
           {conteudoTexto}
         </h2>
