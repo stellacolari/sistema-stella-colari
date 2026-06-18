@@ -469,6 +469,7 @@ function BlocoTexto({ config }: { config: Record<string, unknown> }) {
         <div className={`mx-auto max-w-5xl ${getAlignClass(alinhamento)}`}>
           {titulo && (
             <h2
+              data-stella-inline-field="titulo"
               className={`text-2xl font-semibold tracking-tight md:text-4xl ${fundoClasses.titulo}`}
             >
               {titulo}
@@ -477,6 +478,7 @@ function BlocoTexto({ config }: { config: Record<string, unknown> }) {
 
           {texto && (
             <p
+              data-stella-inline-field="texto"
               className={`mt-4 whitespace-pre-line text-sm font-medium leading-7 md:text-base ${fundoClasses.texto}`}
             >
               {texto}
@@ -518,13 +520,19 @@ function BlocoImagemTexto({ config }: { config: Record<string, unknown> }) {
     <div className="flex items-center px-6 py-8 sm:px-10 lg:px-14">
       <div className="max-w-xl">
         {titulo && (
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+          <h2
+            data-stella-inline-field="titulo"
+            className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl"
+          >
             {titulo}
           </h2>
         )}
 
         {texto && (
-          <p className="mt-4 whitespace-pre-line text-sm font-medium leading-7 text-slate-600 md:text-base">
+          <p
+            data-stella-inline-field="texto"
+            className="mt-4 whitespace-pre-line text-sm font-medium leading-7 text-slate-600 md:text-base"
+          >
             {texto}
           </p>
         )}
@@ -532,6 +540,7 @@ function BlocoImagemTexto({ config }: { config: Record<string, unknown> }) {
         {textoBotao && linkBotao && (
           <Link
             href={linkBotao}
+            data-stella-inline-field="textoBotao"
             className="mt-6 inline-flex brand-button px-6 py-3 text-sm font-semibold"
           >
             {textoBotao}

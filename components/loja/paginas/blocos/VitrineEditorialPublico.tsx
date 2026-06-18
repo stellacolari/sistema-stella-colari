@@ -426,6 +426,7 @@ export default function VitrineEditorialPublico({
             <article
               key={item.id || `${label}-${index}`}
               className="stella-vitrine-editorial-card min-w-0"
+              data-stella-editorial-gallery-item-id={item.id}
               data-animation={animacaoBloco}
               style={cardStyle}
             >
@@ -483,13 +484,19 @@ export default function VitrineEditorialPublico({
                 {!item.ocultarNome || !item.ocultarBotao ? (
                   <div className="pt-4 text-left">
                     {!item.ocultarNome ? (
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-950">
+                      <h3
+                        data-stella-inline-field="vitrineLabel"
+                        className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-950"
+                      >
                         {label}
                       </h3>
                     ) : null}
 
                     {!item.ocultarBotao && item.textoBotao ? (
-                      <span className="mt-2 inline-block border-b border-current pb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700">
+                      <span
+                        data-stella-inline-field="vitrineTextoBotao"
+                        className="mt-2 inline-block border-b border-current pb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-700"
+                      >
                         {item.textoBotao}
                       </span>
                     ) : null}

@@ -177,6 +177,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
           <PublicRichTextRenderer
             value={tituloRichText}
             fallback={titulo}
+            data-stella-inline-field="titulo"
             className={`text-3xl font-light leading-tight md:text-5xl ${displayColors.title}`}
             paragraphClassName="mb-0"
           />
@@ -185,6 +186,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
           <PublicRichTextRenderer
             value={textoRichText}
             fallback={texto}
+            data-stella-inline-field="texto"
             className={`mt-4 text-base leading-7 md:text-lg ${displayColors.body}`}
             paragraphClassName="mb-0"
           />
@@ -194,6 +196,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             {hasBotaoPrimario ? (
               <Link
                 href={linkBotaoPrimario}
+                data-stella-inline-field="textoBotao"
                 className={`inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
               >
                 {textoBotaoPrimario}
@@ -202,6 +205,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             {hasBotaoSecundario ? (
               <Link
                 href={linkBotaoSecundario}
+                data-stella-inline-field="textoBotaoSecundario"
                 className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${displayColors.border} ${displayColors.title}`}
               >
                 {textoBotaoSecundario}

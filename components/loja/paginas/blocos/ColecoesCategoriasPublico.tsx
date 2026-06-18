@@ -513,6 +513,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={tituloRichText}
           fallback={titulo}
+          data-stella-inline-field="titulo"
           className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
         />
       ) : null}
@@ -520,6 +521,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
         <PublicRichTextRenderer
           value={subtituloRichText}
           fallback={subtitulo}
+          data-stella-inline-field="subtitulo"
           className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
         />
       ) : null}
@@ -562,6 +564,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             <PublicRichTextRenderer
               value={subtituloRichText}
               fallback={subtitulo}
+              data-stella-inline-field="subtitulo"
               className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
             />
           ) : null}
@@ -573,6 +576,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             <PublicRichTextRenderer
               value={subtituloRichText}
               fallback={subtitulo}
+              data-stella-inline-field="subtitulo"
               className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
             />
           ) : null}

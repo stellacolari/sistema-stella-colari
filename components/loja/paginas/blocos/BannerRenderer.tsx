@@ -548,15 +548,21 @@ function renderCtaLink({
   className,
   novaAba,
   onClick,
+  inlineField,
 }: {
   href: string;
   children: ReactNode;
   className: string;
   novaAba: boolean;
   onClick?: () => void;
+  inlineField?: string;
 }) {
   if (!href) {
-    return <span className={className}>{children}</span>;
+    return (
+      <span className={className} data-stella-inline-field={inlineField}>
+        {children}
+      </span>
+    );
   }
 
   const isExternal = /^https?:\/\//.test(href);
@@ -564,7 +570,13 @@ function renderCtaLink({
     novaAba || isExternal ? { target: "_blank", rel: "noreferrer" } : {};
 
   return (
-    <Link href={href} className={className} onClick={onClick} {...targetProps}>
+    <Link
+      href={href}
+      className={className}
+      data-stella-inline-field={inlineField}
+      onClick={onClick}
+      {...targetProps}
+    >
       {children}
     </Link>
   );
@@ -1146,6 +1158,7 @@ export default function BannerRenderer({
       <PublicRichTextRenderer
         value={tituloRichText}
         fallback={titulo}
+        data-stella-inline-field="titulo"
         className={`font-light tracking-normal ${textClass.title}`}
         style={titleStyle}
         paragraphClassName="mb-0"
@@ -1156,6 +1169,7 @@ export default function BannerRenderer({
       <PublicRichTextRenderer
         value={subtituloRichText}
         fallback={subtitulo}
+        data-stella-inline-field="subtitulo"
         className={`text-base leading-7 md:text-lg ${textClass.body}`}
         style={subtitleStyle}
         paragraphClassName="mb-0"
@@ -1243,6 +1257,7 @@ export default function BannerRenderer({
                   novaAba: ctaNovaAba,
                   className: primaryCtaClass,
                   children: primaryCtaContent,
+                  inlineField: "textoBotao",
                   onClick: isEditor
                     ? undefined
                     : () =>
@@ -1264,6 +1279,7 @@ export default function BannerRenderer({
                   novaAba: ctaNovaAba,
                   className: secondaryCtaClass,
                   children: secondaryCtaContent,
+                  inlineField: "textoBotaoSecundario",
                   onClick: isEditor
                     ? undefined
                     : () =>

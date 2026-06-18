@@ -56,6 +56,16 @@ const ASPECT_RATIO_CLASS: Record<string, string> = {
   auto: "aspect-[4/3]",
 };
 
+const ASPECT_RATIO_VALUE: Record<string, number> = {
+  "1:1": 1,
+  "4:5": 4 / 5,
+  "9:16": 9 / 16,
+  "16:9": 16 / 9,
+  "21:9": 21 / 9,
+  "2:1": 2,
+  auto: 4 / 3,
+};
+
 const RECOMMENDED_SIZES: Record<MediaCropContext, RecommendedMediaSize> = {
   PRODUTO_CARD: {
     desktop: "1600 x 1600 px",
@@ -166,6 +176,10 @@ export function getMediaCropObjectPosition(crop: Pick<MediaCropConfig, "position
 
 export function getAspectRatioClass(aspectRatio: string) {
   return ASPECT_RATIO_CLASS[aspectRatio] || ASPECT_RATIO_CLASS.auto;
+}
+
+function getAspectRatioValue(aspectRatio: string) {
+  return ASPECT_RATIO_VALUE[aspectRatio] || ASPECT_RATIO_VALUE.auto;
 }
 
 export function getRecommendedMediaSize(contexto: MediaCropContext) {
@@ -349,6 +363,12 @@ export default function VisualCropEditor({
       ? naturalSize.width < recommendedParsed.width ||
         naturalSize.height < recommendedParsed.height
       : false;
+  const cropAspectRatioValue = getAspectRatioValue(crop.aspectRatio);
+  const compactFrameStyle = {
+    aspectRatio: String(cropAspectRatioValue),
+    maxWidth: cropAspectRatioValue < 0.75 ? "360px" : "640px",
+    maxHeight: "min(420px, 55vh)",
+  };
 
   function setDevice(nextDevice: MediaCropDevice) {
     if (onDeviceChange) {
@@ -454,7 +474,7 @@ export default function VisualCropEditor({
   }
 
   return (
-    <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-950">{label}</p>
@@ -552,50 +572,51 @@ export default function VisualCropEditor({
         </label>
       ) : null}
 
-      <div
-        ref={previewRef}
-        role="button"
-        tabIndex={0}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        className={`relative touch-none overflow-hidden rounded-2xl bg-slate-200 ring-1 ring-slate-200 ${getAspectRatioClass(
-          crop.aspectRatio
-        )}`}
-      >
-        {mediaUrl ? (
-          <img
-            src={mediaUrl}
-            alt={crop.alt || ""}
-            draggable={false}
-            onLoad={(event) =>
-              setNaturalSize({
-                width: event.currentTarget.naturalWidth,
-                height: event.currentTarget.naturalHeight,
-              })
-            }
-            className="h-full w-full select-none object-cover"
-            style={{
-              objectPosition: getMediaCropObjectPosition(crop),
-              transform: `scale(${crop.zoom / 100})`,
-              transformOrigin: getMediaCropObjectPosition(crop),
-            }}
+      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+        <div
+          ref={previewRef}
+          role="button"
+          tabIndex={0}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="relative mx-auto w-full touch-none overflow-hidden rounded-xl bg-slate-200 ring-1 ring-slate-200"
+          style={compactFrameStyle}
+        >
+          {mediaUrl ? (
+            <img
+              src={mediaUrl}
+              alt={crop.alt || ""}
+              draggable={false}
+              onLoad={(event) =>
+                setNaturalSize({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                })
+              }
+              className="h-full w-full select-none object-cover"
+              style={{
+                objectPosition: getMediaCropObjectPosition(crop),
+                transform: `scale(${crop.zoom / 100})`,
+                transformOrigin: getMediaCropObjectPosition(crop),
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm font-medium text-slate-500">
+              Adicionar imagem
+            </div>
+          )}
+
+          {showSafeArea ? (
+            <div className="pointer-events-none absolute inset-[8%] rounded-lg border border-white/70" />
+          ) : null}
+
+          <span
+            className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-lg ring-2 ring-slate-950/20"
+            style={{ left: `${crop.positionX}%`, top: `${crop.positionY}%` }}
           />
-        ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm font-medium text-slate-500">
-            Adicionar imagem
-          </div>
-        )}
-
-        {showSafeArea ? (
-          <div className="pointer-events-none absolute inset-[8%] rounded-xl border border-white/70" />
-        ) : null}
-
-        <span
-          className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-lg ring-2 ring-slate-950/20"
-          style={{ left: `${crop.positionX}%`, top: `${crop.positionY}%` }}
-        />
+        </div>
       </div>
 
       {imageTooSmall ? (
@@ -684,6 +705,10 @@ export default function VisualCropEditor({
           />
         </label>
       </div>
+
+      <p className="text-xs leading-5 text-slate-500">
+        O arquivo original nao sera cortado. Este ajuste vale apenas para este bloco.
+      </p>
     </div>
   );
 }

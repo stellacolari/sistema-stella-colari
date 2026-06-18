@@ -181,6 +181,7 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
         )}`}
       >
         <h2
+          data-stella-inline-field="heroTexto"
           className={`max-w-full whitespace-normal break-words uppercase text-[length:var(--hero-font-size)] leading-[var(--hero-line-height)] tracking-[var(--hero-letter-spacing)] text-[var(--hero-text)] ${getTextWeightClass(
             peso
           )} ${textAnimation} ${
@@ -215,13 +216,19 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
           )}`}
         >
           {ctaLabel ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
+            <p
+              data-stella-inline-field="heroCtaLabel"
+              className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70"
+            >
               {ctaLabel}
             </p>
           ) : null}
 
           {ctaTitulo ? (
-            <p className="text-lg font-semibold leading-tight md:text-2xl">
+            <p
+              data-stella-inline-field="heroCtaTitulo"
+              className="text-lg font-semibold leading-tight md:text-2xl"
+            >
               {ctaTitulo}
             </p>
           ) : null}
@@ -229,6 +236,7 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
           {ctaTextoBotao && ctaHref ? (
             <Link
               href={ctaHref}
+              data-stella-inline-field="heroCtaTextoBotao"
               className="inline-flex w-fit items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-white/90"
             >
               {ctaTextoBotao}

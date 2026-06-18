@@ -14478,6 +14478,7 @@ export default function EditorVisualPaginaClient({
       itemId?: string;
       field?: string;
       value?: string;
+      richText?: RichTextValue | null;
       }>
     ) {
       if (event.origin !== window.location.origin) return;
@@ -14505,20 +14506,131 @@ export default function EditorVisualPaginaClient({
         typeof data.field === "string" &&
         typeof data.value === "string"
       ) {
-        const patch =
-          data.field === "titulo"
-            ? { titulo: data.value }
-            : data.field === "texto"
-              ? {
-                  texto: data.value,
-                  descricao: data.value,
-                  conteudo: data.value,
-                }
-              : data.field === "textoBotao"
-                ? { textoBotao: data.value, botaoTexto: data.value }
-                : null;
+        const richTextPatch = data.richText ? data.richText : null;
+        const buildPatch = (config: Record<string, unknown>) => {
+          if (data.field === "titulo") {
+            return {
+              titulo: data.value,
+              ...(richTextPatch ? { tituloRichText: richTextPatch } : {}),
+            };
+          }
 
-        if (patch) {
+          if (data.field === "texto") {
+            return {
+              texto: data.value,
+              descricao: data.value,
+              conteudo: data.value,
+              ...(richTextPatch
+                ? {
+                    textoRichText: richTextPatch,
+                    subtituloRichText: richTextPatch,
+                  }
+                : {}),
+            };
+          }
+
+          if (data.field === "subtitulo") {
+            return {
+              subtitulo: data.value,
+              texto: data.value,
+              descricao: data.value,
+              ...(richTextPatch
+                ? {
+                    subtituloRichText: richTextPatch,
+                    textoRichText: richTextPatch,
+                  }
+                : {}),
+            };
+          }
+
+          if (data.field === "textoBotao") {
+            return { textoBotao: data.value, botaoTexto: data.value };
+          }
+
+          if (data.field === "textoBotaoSecundario") {
+            return {
+              textoBotaoSecundario: data.value,
+              botaoSecundarioTexto: data.value,
+            };
+          }
+
+          if (data.field === "heroTexto") {
+            return {
+              texto: {
+                ...getConfigObject(config.texto),
+                conteudo: data.value,
+              },
+              titulo: data.value,
+            };
+          }
+
+          if (data.field === "heroCtaLabel") {
+            return {
+              cta: {
+                ...getConfigObject(config.cta),
+                label: data.value,
+              },
+            };
+          }
+
+          if (data.field === "heroCtaTitulo") {
+            return {
+              cta: {
+                ...getConfigObject(config.cta),
+                titulo: data.value,
+              },
+            };
+          }
+
+          if (data.field === "heroCtaTextoBotao") {
+            return {
+              cta: {
+                ...getConfigObject(config.cta),
+                textoBotao: data.value,
+              },
+              textoBotao: data.value,
+            };
+          }
+
+          if (
+            (data.field === "vitrineLabel" ||
+              data.field === "vitrineTextoBotao") &&
+            data.itemId &&
+            Array.isArray(config.itens)
+          ) {
+            return {
+              itens: config.itens.map((item) => {
+                const itemConfig = getConfigObject(item);
+
+                if (itemConfig.id !== data.itemId) return item;
+
+                return {
+                  ...itemConfig,
+                  ...(data.field === "vitrineLabel"
+                    ? { label: data.value, titulo: data.value }
+                    : { textoBotao: data.value, textoLink: data.value }),
+                };
+              }),
+            };
+          }
+
+          return null;
+        };
+        const inlineFieldSupported = [
+          "titulo",
+          "texto",
+          "subtitulo",
+          "textoBotao",
+          "textoBotaoSecundario",
+          "heroTexto",
+          "heroCtaLabel",
+          "heroCtaTitulo",
+          "heroCtaTextoBotao",
+          "vitrineLabel",
+          "vitrineTextoBotao",
+        ].includes(data.field);
+
+        if (inlineFieldSupported) {
           const inlineValue = data.value;
           const inlineBlockId = data.blockId;
 
@@ -14533,7 +14645,7 @@ export default function EditorVisualPaginaClient({
                     ...bloco,
                     configJson: {
                       ...getConfigObject(bloco.configJson),
-                      ...patch,
+                      ...(buildPatch(getConfigObject(bloco.configJson)) || {}),
                     },
                   }
                 : bloco
