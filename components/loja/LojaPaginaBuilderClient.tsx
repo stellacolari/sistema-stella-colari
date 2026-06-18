@@ -3,7 +3,7 @@
 import Link from "next/link";
 import LojaFormularioBlock from "@/components/loja/blocos/LojaFormularioBlock";
 import LojaFaqBlock from "@/components/loja/blocos/LojaFaqBlock";
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import {
   ChevronLeft,
@@ -1534,49 +1534,36 @@ export default function LojaPaginaBuilderClient({
         ) : (
           blocos.map((bloco) => {
             const config = asConfig(bloco.configJson);
+            let rendered: ReactNode = null;
 
             if (isBlocoVisualPublico(bloco.tipo)) {
-              return (
+              rendered = (
                 <BlocoPublicoRenderer
-                  key={bloco.id}
                   bloco={bloco}
                   produtos={produtos}
                   categorias={categoriasMenu}
                   listaCompletaProdutos={Boolean(categoriaAtual)}
                 />
               );
-            }
-
-            if (bloco.tipo === "BANNER") {
-              return <BlocoBanner key={bloco.id} config={config} />;
-            }
-
-            if (bloco.tipo === "FAIXA_DIFERENCIAIS") {
-              return <BlocoFaixa key={bloco.id} config={config} />;
-            }
-
-            if (bloco.tipo === "TEXTO") {
-              return <BlocoTexto key={bloco.id} config={config} />;
-            }
-
-            if (bloco.tipo === "IMAGEM_TEXTO") {
-              return <BlocoImagemTexto key={bloco.id} config={config} />;
-            }
-
-            if (bloco.tipo === "PRODUTOS") {
-              return (
+            } else if (bloco.tipo === "BANNER") {
+              rendered = <BlocoBanner config={config} />;
+            } else if (bloco.tipo === "FAIXA_DIFERENCIAIS") {
+              rendered = <BlocoFaixa config={config} />;
+            } else if (bloco.tipo === "TEXTO") {
+              rendered = <BlocoTexto config={config} />;
+            } else if (bloco.tipo === "IMAGEM_TEXTO") {
+              rendered = <BlocoImagemTexto config={config} />;
+            } else if (bloco.tipo === "PRODUTOS") {
+              rendered = (
                 <BlocoProdutos
-                  key={bloco.id}
                   config={config}
                   produtos={produtos}
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-            if (bloco.tipo === "RECOMENDACOES") {
-              return (
+            } else if (bloco.tipo === "RECOMENDACOES") {
+              rendered = (
                 <BlocoProdutos
-                  key={bloco.id}
                   config={{
                     titulo: getString(
                       config,
@@ -1612,42 +1599,30 @@ export default function LojaPaginaBuilderClient({
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-
-            if (bloco.tipo === "CATEGORIA_HERO") {
-              return (
+            } else if (bloco.tipo === "CATEGORIA_HERO") {
+              rendered = (
                 <BlocoCategoriaHero
-                  key={bloco.id}
                   config={config}
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-
-            if (bloco.tipo === "CATEGORIA_DESCRICAO") {
-              return (
+            } else if (bloco.tipo === "CATEGORIA_DESCRICAO") {
+              rendered = (
                 <BlocoCategoriaDescricao
-                  key={bloco.id}
                   config={config}
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-
-            if (bloco.tipo === "CATEGORIA_SUBCATEGORIAS") {
-              return (
+            } else if (bloco.tipo === "CATEGORIA_SUBCATEGORIAS") {
+              rendered = (
                 <BlocoCategoriaSubcategorias
-                  key={bloco.id}
                   config={config}
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-
-            if (bloco.tipo === "CATEGORIA_PRODUTOS") {
-              return (
+            } else if (bloco.tipo === "CATEGORIA_PRODUTOS") {
+              rendered = (
                 <BlocoProdutos
-                  key={bloco.id}
                   config={{
                     ...config,
                     fonte: "CATEGORIA_ATUAL",
@@ -1659,24 +1634,18 @@ export default function LojaPaginaBuilderClient({
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-
-            if (bloco.tipo === "CATEGORIA_CTA") {
-              return (
+            } else if (bloco.tipo === "CATEGORIA_CTA") {
+              rendered = (
                 <BlocoCategoriaCTA
-                  key={bloco.id}
                   config={config}
                   categoriaAtual={categoriaAtual}
                 />
               );
-            }
-            if (bloco.tipo === "FAQ") {
-              return <LojaFaqBlock key={bloco.id} config={config} />;
-            }
-            if (bloco.tipo === "FORMULARIO") {
-              return (
+            } else if (bloco.tipo === "FAQ") {
+              rendered = <LojaFaqBlock config={config} />;
+            } else if (bloco.tipo === "FORMULARIO") {
+              rendered = (
                 <LojaFormularioBlock
-                  key={bloco.id}
                   config={config}
                   pagina={pagina}
                   bloco={{
@@ -1688,7 +1657,17 @@ export default function LojaPaginaBuilderClient({
               );
             }
 
-            return null;
+            if (!rendered) return null;
+
+            return (
+              <div
+                key={bloco.id}
+                data-studio-bloco-id={bloco.id}
+                data-studio-bloco-tipo={bloco.tipo}
+              >
+                {rendered}
+              </div>
+            );
           })
         )}
       </main>

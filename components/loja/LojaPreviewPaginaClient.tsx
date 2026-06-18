@@ -934,7 +934,10 @@ export default function LojaPreviewPaginaClient({
     document.addEventListener("pointerdown", handleDocumentPointerDown);
 
     blockElements.forEach((element, index) => {
-      const bloco = blocosAtivos[index];
+      const blockId = element.dataset.studioBlocoId || "";
+      const bloco =
+        blocosAtivos.find((blocoAtivo) => blocoAtivo.id === blockId) ||
+        blocosAtivos[index];
 
       if (!bloco) return;
 

@@ -14874,9 +14874,17 @@ export default function EditorVisualPaginaClient({
     useState<EditorSelectionContext>("BLOCO");
   const [selectedGalleryItemId, setSelectedGalleryItemId] = useState("");
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const inlineConfigDraftRef = useRef<Record<string, Record<string, unknown>>>({});
 
   const blocoSelecionado =
     blocosOrdenados.find((bloco) => bloco.id === blocoSelecionadoId) || null;
+  const blocoComTextoPendente =
+    blocosOrdenados.find((bloco) => blocosComTextoPendente.includes(bloco.id)) ||
+    null;
+  const blocoParaSalvarTextoInline =
+    blocoSelecionado && blocosComTextoPendente.includes(blocoSelecionado.id)
+      ? blocoSelecionado
+      : blocoComTextoPendente;
   const previewStudioMode = modoPreviewPublico ? "visualizar" : "1";
   const previewIframeSrc = `/loja/preview/pagina/${pagina.id}?studio=${previewStudioMode}`;
 
@@ -14949,6 +14957,9 @@ export default function EditorVisualPaginaClient({
       if (field === "titulo") {
         return {
           titulo: value,
+          ...(hasConfigKey(config, "textoPrincipal")
+            ? { textoPrincipal: value }
+            : {}),
           tituloStyle: mergeTextStyle(config, "tituloStyle"),
           ...(richText ? { tituloRichText: richText } : {}),
         };
@@ -15160,12 +15171,16 @@ export default function EditorVisualPaginaClient({
 
         if (!patch) return bloco;
 
+        const configJson = {
+          ...config,
+          ...patch,
+        };
+
+        inlineConfigDraftRef.current[blockId] = configJson;
+
         return {
           ...bloco,
-          configJson: {
-            ...config,
-            ...patch,
-          },
+          configJson,
         };
       })
     );
@@ -15262,6 +15277,8 @@ export default function EditorVisualPaginaClient({
         typeof data.field === "string" &&
         typeof data.value === "string"
       ) {
+        selecionarBloco(data.blockId, "TEXTO", data.itemId || "");
+        setPainelAberto(true);
         applyTextElementPatch({
           blockId: data.blockId,
           field: data.field,
@@ -15566,12 +15583,14 @@ export default function EditorVisualPaginaClient({
 
   async function salvarTextosInline(bloco: EditorVisualBloco) {
     const blocoAtual = getBlocoEditorAtual(bloco.id) || bloco;
+    const inlineConfigDraft = inlineConfigDraftRef.current[bloco.id];
 
     const salvo = await atualizarBloco(blocoAtual, {
-      configJson: getConfigObject(blocoAtual.configJson),
+      configJson: inlineConfigDraft || getConfigObject(blocoAtual.configJson),
     });
 
     if (salvo) {
+      delete inlineConfigDraftRef.current[bloco.id];
       setBlocosComTextoPendente((current) =>
         current.filter((blocoId) => blocoId !== bloco.id)
       );
@@ -17105,11 +17124,10 @@ export default function EditorVisualPaginaClient({
           })}
         </div>
 
-        {blocoSelecionado &&
-          blocosComTextoPendente.includes(blocoSelecionado.id) && (
+        {blocoParaSalvarTextoInline && (
             <button
               type="button"
-              onClick={() => void salvarTextosInline(blocoSelecionado)}
+              onClick={() => void salvarTextosInline(blocoParaSalvarTextoInline)}
               disabled={salvando}
               className="hidden items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
             >
@@ -17346,10 +17364,10 @@ export default function EditorVisualPaginaClient({
                     Editar conteúdo básico
                   </button>
 
-                  {blocosComTextoPendente.includes(blocoSelecionado.id) && (
+                  {blocoParaSalvarTextoInline && (
                     <button
                       type="button"
-                      onClick={() => void salvarTextosInline(blocoSelecionado)}
+                      onClick={() => void salvarTextosInline(blocoParaSalvarTextoInline)}
                       disabled={salvando}
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >

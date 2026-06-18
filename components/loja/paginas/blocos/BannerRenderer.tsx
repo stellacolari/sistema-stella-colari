@@ -141,6 +141,8 @@ function getTextStyle(
   const colorPreset = getString(style, "colorPreset");
   const colorCustom = getString(style, "colorCustom");
   const letterSpacing = getString(style, "letterSpacing");
+  const lineHeight = getString(style, "lineHeight");
+  const textAlign = getString(style, "textAlign");
   const textTransform = getString(style, "textTransform");
 
   const fontSizeMap: Record<string, string> = {
@@ -162,6 +164,17 @@ function getTextStyle(
     LEVE: "0.02em",
     MEDIO: "0.08em",
     ALTO: "0.14em",
+  };
+  const lineHeightMap: Record<string, string> = {
+    COMPACTO: "1",
+    NORMAL: "1.15",
+    RESPIRADO: "1.35",
+    AMPLO: "1.6",
+  };
+  const textAlignMap: Record<string, CSSProperties["textAlign"]> = {
+    ESQUERDA: "left",
+    CENTRO: "center",
+    DIREITA: "right",
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
@@ -185,6 +198,8 @@ function getTextStyle(
     ...(letterSpacingMap[letterSpacing]
       ? { letterSpacing: letterSpacingMap[letterSpacing] }
       : {}),
+    ...(lineHeightMap[lineHeight] ? { lineHeight: lineHeightMap[lineHeight] } : {}),
+    ...(textAlignMap[textAlign] ? { textAlign: textAlignMap[textAlign] } : {}),
     ...(textTransform && textTransform !== "NORMAL"
       ? {
           textTransform:
@@ -868,6 +883,9 @@ function BannerTipograficoExpandido({
     lines,
     isMobile
   );
+  const tituloStyle = getTextStyle(config, "tituloStyle");
+  const tituloFontSize =
+    typeof tituloStyle.fontSize === "string" ? tituloStyle.fontSize : "";
   let letterIndex = 0;
 
   return (
@@ -898,9 +916,11 @@ function BannerTipograficoExpandido({
           <span
             ref={textAreaRef}
             aria-hidden="true"
+            data-stella-inline-field="titulo"
             className="block w-full font-black uppercase leading-[0.86]"
             style={{
-              letterSpacing: 0,
+              ...tituloStyle,
+              letterSpacing: tituloStyle.letterSpacing ?? 0,
               textWrap: "balance",
             }}
           >
@@ -912,9 +932,9 @@ function BannerTipograficoExpandido({
                 }}
                 className="block w-full whitespace-nowrap"
                 style={{
-                  fontSize: fontSizes[lineIndex]
+                  fontSize: tituloFontSize || (fontSizes[lineIndex]
                     ? `${fontSizes[lineIndex]}px`
-                    : fallbackFontSize,
+                    : fallbackFontSize),
                 }}
               >
                 {Array.from(line).map((char, charIndex) => {
