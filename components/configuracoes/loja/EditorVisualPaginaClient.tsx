@@ -91,6 +91,7 @@ import {
   type BannerHeroV2Button,
   type BannerHeroV2Config,
   type BannerHeroV2LinkTipo,
+  type BannerHeroV2PosicaoConteudo,
   type BannerHeroV2Slide,
 } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 
@@ -130,6 +131,8 @@ type InlineTextStyleMessage = {
   lineHeight?: string;
   textAlign?: string;
 };
+
+type InlineUpdateScope = "CONTENT" | "ELEMENT" | "SELECTION";
 
 export type EditorVisualCategoria = {
   id: string;
@@ -2396,6 +2399,75 @@ const BANNER_HERO_V2_LINK_TYPES: {
   { value: "COLECAO", label: "Colecao" },
 ];
 
+const BANNER_HERO_V2_POSITION_OPTIONS: {
+  value: Exclude<BannerHeroV2PosicaoConteudo, "NENHUM">;
+  label: string;
+}[] = [
+  { value: "SUPERIOR_ESQUERDA", label: "Superior esquerda" },
+  { value: "SUPERIOR_CENTRO", label: "Superior centro" },
+  { value: "SUPERIOR_DIREITA", label: "Superior direita" },
+  { value: "CENTRO_ESQUERDA", label: "Centro esquerda" },
+  { value: "CENTRO", label: "Centro" },
+  { value: "CENTRO_DIREITA", label: "Centro direita" },
+  { value: "INFERIOR_ESQUERDA", label: "Inferior esquerda" },
+  { value: "INFERIOR_CENTRO", label: "Inferior centro" },
+  { value: "INFERIOR_DIREITA", label: "Inferior direita" },
+];
+
+function getBannerHeroV2PrimaryPosition(
+  desktop: BannerHeroV2PosicaoConteudo,
+  mobile: BannerHeroV2PosicaoConteudo
+): BannerHeroV2PosicaoConteudo {
+  return desktop !== "NENHUM" ? desktop : mobile;
+}
+
+function BannerHeroV2PositionGrid({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: BannerHeroV2PosicaoConteudo;
+  onChange: (value: BannerHeroV2PosicaoConteudo) => void;
+}) {
+  return (
+    <div>
+      <span className="mb-2 block text-sm font-medium text-slate-700">
+        {label}
+      </span>
+      <div className="grid grid-cols-3 gap-1.5">
+        {BANNER_HERO_V2_POSITION_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            title={option.label}
+            aria-label={option.label}
+            onClick={() => onChange(option.value)}
+            className={`flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition ${
+              value === option.value
+                ? "border-slate-950 bg-slate-950 text-white"
+                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full bg-current" />
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange("NENHUM")}
+        className={`mt-2 w-full rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+          value === "NENHUM"
+            ? "border-slate-950 bg-slate-950 text-white"
+            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+        }`}
+      >
+        Nenhum
+      </button>
+    </div>
+  );
+}
+
 function clonarBannerHeroV2Slide(
   slide: BannerHeroV2Slide,
   index: number
@@ -2657,6 +2729,73 @@ function BannerHeroV2SidebarPanel({
     }));
   }
 
+  function updateContentPosition(
+    device: "DESKTOP" | "MOBILE",
+    posicao: BannerHeroV2PosicaoConteudo
+  ) {
+    const posicaoDesktop =
+      device === "DESKTOP" ? posicao : activeSlide.conteudo.posicaoDesktop;
+    const posicaoMobile =
+      device === "MOBILE" ? posicao : activeSlide.conteudo.posicaoMobile;
+
+    updateActiveContent({
+      ativo: posicaoDesktop !== "NENHUM" || posicaoMobile !== "NENHUM",
+      posicao: getBannerHeroV2PrimaryPosition(posicaoDesktop, posicaoMobile),
+      posicaoDesktop,
+      posicaoMobile,
+    });
+  }
+
+  function toggleContentVisibility(checked: boolean) {
+    if (!checked) {
+      updateActiveContent({
+        ativo: false,
+        posicao: "NENHUM",
+        posicaoDesktop: "NENHUM",
+        posicaoMobile: "NENHUM",
+      });
+      return;
+    }
+
+    const fallback = criarBannerHeroV2Slide(1).conteudo;
+    const posicaoDesktop =
+      activeSlide.conteudo.posicaoDesktop === "NENHUM"
+        ? fallback.posicaoDesktop
+        : activeSlide.conteudo.posicaoDesktop;
+    const posicaoMobile =
+      activeSlide.conteudo.posicaoMobile === "NENHUM"
+        ? fallback.posicaoMobile
+        : activeSlide.conteudo.posicaoMobile;
+
+    updateActiveContent({
+      ativo: true,
+      posicao: getBannerHeroV2PrimaryPosition(posicaoDesktop, posicaoMobile),
+      posicaoDesktop,
+      posicaoMobile,
+    });
+  }
+
+  function updateContentAlignment(
+    alinhamento: BannerHeroV2Slide["conteudo"]["alinhamento"]
+  ) {
+    updateActiveSlide((slide) => ({
+      ...slide,
+      conteudo: {
+        ...slide.conteudo,
+        alinhamento,
+        eyebrow: atualizarElementoTexto(slide.conteudo.eyebrow, {
+          estilo: { ...slide.conteudo.eyebrow.estilo, alinhamento },
+        }),
+        titulo: atualizarElementoTexto(slide.conteudo.titulo, {
+          estilo: { ...slide.conteudo.titulo.estilo, alinhamento },
+        }),
+        texto: atualizarElementoTexto(slide.conteudo.texto, {
+          estilo: { ...slide.conteudo.texto.estilo, alinhamento },
+        }),
+      },
+    }));
+  }
+
   function updateText(field: BannerHeroV2TextField, value: string) {
     updateActiveSlide((slide) => ({
       ...slide,
@@ -2664,6 +2803,7 @@ function BannerHeroV2SidebarPanel({
         ...slide.conteudo,
         [field]: atualizarElementoTexto(slide.conteudo[field], {
           conteudo: value.slice(0, BANNER_HERO_V2_TEXT_LIMITS[field]),
+          richText: null,
         }),
       },
     }));
@@ -3113,31 +3253,27 @@ function BannerHeroV2SidebarPanel({
       <PainelSecao title="Conteudo">
         <div className="space-y-4">
           <CampoToggle
-            checked={activeSlide.conteudo.ativo}
+            checked={
+              activeSlide.conteudo.ativo &&
+              (activeSlide.conteudo.posicaoDesktop !== "NENHUM" ||
+                activeSlide.conteudo.posicaoMobile !== "NENHUM")
+            }
             label="Exibir conteudo"
-            onChange={(checked) => updateActiveContent({ ativo: checked })}
+            onChange={toggleContentVisibility}
           />
 
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">
-              Posicao
-            </span>
-            <select
-              value={activeSlide.conteudo.posicao}
-              onChange={(event) =>
-                updateActiveContent({
-                  posicao: event.target
-                    .value as BannerHeroV2Slide["conteudo"]["posicao"],
-                })
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-            >
-              <option value="ESQUERDA">Esquerda</option>
-              <option value="CENTRO">Centro</option>
-              <option value="DIREITA">Direita</option>
-              <option value="NENHUM">Nenhum</option>
-            </select>
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <BannerHeroV2PositionGrid
+              label="Posicao desktop"
+              value={activeSlide.conteudo.posicaoDesktop}
+              onChange={(posicao) => updateContentPosition("DESKTOP", posicao)}
+            />
+            <BannerHeroV2PositionGrid
+              label="Posicao mobile"
+              value={activeSlide.conteudo.posicaoMobile}
+              onChange={(posicao) => updateContentPosition("MOBILE", posicao)}
+            />
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
@@ -3166,10 +3302,10 @@ function BannerHeroV2SidebarPanel({
             <select
               value={activeSlide.conteudo.alinhamento}
               onChange={(event) =>
-                updateActiveContent({
-                  alinhamento: event.target
-                    .value as BannerHeroV2Slide["conteudo"]["alinhamento"],
-                })
+                updateContentAlignment(
+                  event.target
+                    .value as BannerHeroV2Slide["conteudo"]["alinhamento"]
+                )
               }
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
             >
@@ -3262,6 +3398,7 @@ function BannerHeroV2SidebarPanel({
                     updateButton(selectedButton.id, (botao) => ({
                       ...botao,
                       texto: event.target.value.slice(0, 24),
+                      richText: null,
                     }))
                   }
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
@@ -16276,6 +16413,7 @@ export default function EditorVisualPaginaClient({
     value,
     richText,
     textStyle,
+    scope,
     itemId,
   }: {
     blockId: string;
@@ -16283,12 +16421,18 @@ export default function EditorVisualPaginaClient({
     value: string;
     richText?: RichTextValue | null;
     textStyle?: InlineTextStyleMessage | null;
+    scope?: InlineUpdateScope;
     itemId?: string;
   }) => {
     if (!blockId || !field) return;
 
     const inlineTextStylePatch = getInlineTextStylePatch(textStyle);
     const sectionTextStylePatch = getSectionTextStylePatch(textStyle);
+    const resolvedScope: InlineUpdateScope =
+      scope || (textStyle ? "ELEMENT" : "CONTENT");
+    const shouldApplyElementStyle = resolvedScope === "ELEMENT";
+    const richTextPatch =
+      richText !== undefined ? ({ richText } as { richText: RichTextValue | null }) : {};
 
     function mergeTextStyle(
       config: Record<string, unknown>,
@@ -16320,9 +16464,10 @@ export default function EditorVisualPaginaClient({
                       ? {
                           ...botao,
                           texto: value.slice(0, 24),
+                          ...richTextPatch,
                           estilo: {
                             ...botao.estilo,
-                            ...(sectionTextStylePatch.cor
+                            ...(shouldApplyElementStyle && sectionTextStylePatch.cor
                               ? { corTexto: sectionTextStylePatch.cor }
                               : {}),
                           },
@@ -16341,6 +16486,9 @@ export default function EditorVisualPaginaClient({
               const max =
                 target === "eyebrow" ? 32 : target === "titulo" ? 80 : 180;
               const element = slide.conteudo[target];
+              const stylePatch = shouldApplyElementStyle
+                ? sectionTextStylePatch
+                : {};
 
               return {
                 ...slide,
@@ -16348,11 +16496,10 @@ export default function EditorVisualPaginaClient({
                   ...slide.conteudo,
                   [target]: atualizarElementoTexto(element, {
                     conteudo: value.slice(0, max),
-                    ...(richText ? { richText } : {}),
-                    estilo: {
-                      ...element.estilo,
-                      ...sectionTextStylePatch,
-                    },
+                    ...richTextPatch,
+                    ...(Object.keys(stylePatch).length > 0
+                      ? { estilo: { ...element.estilo, ...stylePatch } }
+                      : {}),
                   }),
                 },
               };
@@ -16661,6 +16808,7 @@ export default function EditorVisualPaginaClient({
       value?: string;
       richText?: RichTextValue | null;
       textStyle?: InlineTextStyleMessage | null;
+      scope?: InlineUpdateScope;
       }>
     ) {
       if (event.origin !== window.location.origin) return;
@@ -16696,6 +16844,7 @@ export default function EditorVisualPaginaClient({
           value: data.value,
           richText: data.richText,
           textStyle: data.textStyle,
+          scope: data.scope,
           itemId: data.itemId,
         });
       }

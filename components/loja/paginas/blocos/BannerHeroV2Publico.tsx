@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -9,6 +9,7 @@ import {
   type BannerHeroV2Button,
   type BannerHeroV2Config,
   type BannerHeroV2LinkTipo,
+  type BannerHeroV2PosicaoConteudo,
   type BannerHeroV2Slide,
 } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 import type {
@@ -22,10 +23,34 @@ function getHeightStyle(altura: BannerHeroV2Config["altura"]): CSSProperties {
   return { minHeight: "100svh" };
 }
 
-function getContentPositionClass(posicao: string) {
-  if (posicao === "CENTRO") return "items-center justify-center text-center";
-  if (posicao === "DIREITA") return "items-end justify-center text-right";
-  return "items-start justify-center text-left";
+type InlineRichTextNode = {
+  type?: string;
+  text?: string;
+  attrs?: Record<string, unknown>;
+  marks?: InlineRichTextNode[];
+  content?: InlineRichTextNode[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getContentPositionClass(
+  posicao: BannerHeroV2PosicaoConteudo,
+  prefix = ""
+) {
+  const p = prefix ? `${prefix}:` : "";
+
+  if (posicao === "SUPERIOR_CENTRO") return `${p}items-start ${p}justify-center`;
+  if (posicao === "SUPERIOR_DIREITA") return `${p}items-start ${p}justify-end`;
+  if (posicao === "CENTRO_ESQUERDA") return `${p}items-center ${p}justify-start`;
+  if (posicao === "CENTRO") return `${p}items-center ${p}justify-center`;
+  if (posicao === "CENTRO_DIREITA") return `${p}items-center ${p}justify-end`;
+  if (posicao === "INFERIOR_ESQUERDA") return `${p}items-end ${p}justify-start`;
+  if (posicao === "INFERIOR_CENTRO") return `${p}items-end ${p}justify-center`;
+  if (posicao === "INFERIOR_DIREITA") return `${p}items-end ${p}justify-end`;
+
+  return `${p}items-start ${p}justify-start`;
 }
 
 function getContentWidthClass(largura: string) {
@@ -42,6 +67,206 @@ function getJustifyClass(alinhamento: string) {
 
 function getObjectPosition(crop: { positionX: number; positionY: number }) {
   return `${crop.positionX}% ${crop.positionY}%`;
+}
+
+function getContentAlignStyle(alinhamento: string): CSSProperties {
+  return {
+    textAlign:
+      alinhamento === "CENTRO"
+        ? "center"
+        : alinhamento === "DIREITA"
+          ? "right"
+          : "left",
+  };
+}
+
+function getContentVisibilityClass(
+  desktop: BannerHeroV2PosicaoConteudo,
+  mobile: BannerHeroV2PosicaoConteudo
+) {
+  if (desktop === "NENHUM" && mobile === "NENHUM") return "hidden";
+  if (desktop === "NENHUM") return "flex md:hidden";
+  if (mobile === "NENHUM") return "hidden md:flex";
+  return "flex";
+}
+
+function sanitizeInlineUrl(value: unknown) {
+  const url = typeof value === "string" ? value.trim() : "";
+
+  if (!url) return "";
+  if (url.startsWith("/") || url.startsWith("#")) return url;
+
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : "";
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeCssColor(value: unknown) {
+  const color = typeof value === "string" ? value.trim() : "";
+
+  if (
+    /^#[0-9a-f]{3,8}$/i.test(color) ||
+    /^rgba?\([\d\s,.%]+\)$/i.test(color) ||
+    ["inherit", "currentColor", "transparent", "white", "black"].includes(color)
+  ) {
+    return color;
+  }
+
+  return "";
+}
+
+function sanitizeCssSize(value: unknown) {
+  const size = typeof value === "string" ? value.trim() : "";
+
+  return /^-?\d*\.?\d+(rem|em|px|%)$/i.test(size) || size === "0"
+    ? size
+    : "";
+}
+
+function sanitizeLineHeight(value: unknown) {
+  const lineHeight = typeof value === "string" ? value.trim() : "";
+
+  return /^\d*\.?\d+$/.test(lineHeight) || sanitizeCssSize(lineHeight)
+    ? lineHeight
+    : "";
+}
+
+function sanitizeFontFamily(value: unknown) {
+  const font = typeof value === "string" ? value.toLowerCase() : "";
+
+  if (font.includes("georgia") || font.includes("times")) {
+    return "Georgia, 'Times New Roman', serif";
+  }
+
+  if (
+    font.includes("var(--font-primary)") ||
+    font.includes("system") ||
+    font.includes("outfit")
+  ) {
+    return "var(--font-primary)";
+  }
+
+  return "";
+}
+
+function sanitizeFontWeight(value: unknown) {
+  const weight = typeof value === "string" ? value.trim() : "";
+
+  if (/^[1-9]00$/.test(weight)) return weight;
+  if (weight === "bold" || weight === "normal") return weight;
+
+  return "";
+}
+
+function getInlineStyle(attrs: unknown): CSSProperties {
+  const data = isRecord(attrs) ? attrs : {};
+  const style: CSSProperties = {};
+  const color = sanitizeCssColor(data.color);
+  const fontFamily = sanitizeFontFamily(data.fontFamily);
+  const fontSize = sanitizeCssSize(data.fontSize);
+  const fontWeight = sanitizeFontWeight(data.fontWeight);
+  const letterSpacing = sanitizeCssSize(data.letterSpacing);
+  const lineHeight = sanitizeLineHeight(data.lineHeight);
+
+  if (color) style.color = color;
+  if (fontFamily) style.fontFamily = fontFamily;
+  if (fontSize) style.fontSize = fontSize;
+  if (fontWeight) style.fontWeight = fontWeight;
+  if (letterSpacing) style.letterSpacing = letterSpacing;
+  if (lineHeight) style.lineHeight = lineHeight;
+
+  return style;
+}
+
+function getRichTextTextNodes(value: unknown): InlineRichTextNode[] {
+  const root = isRecord(value) ? value : {};
+  const blocks = Array.isArray(root.content) ? root.content : [];
+
+  return blocks.flatMap((block) => {
+    const data = isRecord(block) ? block : {};
+    const content = Array.isArray(data.content) ? data.content : [];
+
+    return content.filter(
+      (node): node is InlineRichTextNode =>
+        isRecord(node) && typeof node.text === "string"
+    );
+  });
+}
+
+function renderTextNode(
+  node: InlineRichTextNode,
+  key: string,
+  allowLinks: boolean
+) {
+  const marks = Array.isArray(node.marks) ? node.marks : [];
+  let content: ReactNode = node.text || "";
+
+  marks.forEach((mark, index) => {
+    if (!isRecord(mark)) return;
+
+    const markKey = `${key}-${index}`;
+
+    if (mark.type === "bold") {
+      content = <strong key={markKey}>{content}</strong>;
+      return;
+    }
+
+    if (mark.type === "italic") {
+      content = <em key={markKey}>{content}</em>;
+      return;
+    }
+
+    if (mark.type === "underline") {
+      content = <span key={markKey} className="underline">{content}</span>;
+      return;
+    }
+
+    if (mark.type === "link") {
+      const href = sanitizeInlineUrl(isRecord(mark.attrs) ? mark.attrs.href : "");
+
+      if (href && allowLinks) {
+        content = (
+          <a key={markKey} href={href} className="underline underline-offset-4">
+            {content}
+          </a>
+        );
+      } else if (href) {
+        content = (
+          <span key={markKey} className="underline underline-offset-4">
+            {content}
+          </span>
+        );
+      }
+      return;
+    }
+
+    if (mark.type === "textStyle") {
+      const style = getInlineStyle(mark.attrs);
+
+      if (Object.keys(style).length > 0) {
+        content = <span key={markKey} style={style}>{content}</span>;
+      }
+    }
+  });
+
+  return <Fragment key={key}>{content}</Fragment>;
+}
+
+function renderInlineRichText(
+  richText: unknown,
+  fallback: string,
+  allowLinks = true
+) {
+  const nodes = getRichTextTextNodes(richText);
+
+  if (nodes.length === 0) return fallback;
+
+  return nodes.map((node, index) =>
+    renderTextNode(node, `inline-${index}`, allowLinks)
+  );
 }
 
 function getLinkHref(
@@ -155,7 +380,7 @@ function SlideText({
       className={className}
       style={getTextStyle(slide, field)}
     >
-      {element.conteudo}
+      {renderInlineRichText(element.richText, element.conteudo)}
     </div>
   );
 }
@@ -324,7 +549,9 @@ export default function BannerHeroV2Publico({
     produtos
   );
   const contentVisible =
-    activeSlide.conteudo.ativo && activeSlide.conteudo.posicao !== "NENHUM";
+    activeSlide.conteudo.ativo &&
+    (activeSlide.conteudo.posicaoDesktop !== "NENHUM" ||
+      activeSlide.conteudo.posicaoMobile !== "NENHUM");
 
   return (
     <section
@@ -366,14 +593,21 @@ export default function BannerHeroV2Publico({
 
       {contentVisible ? (
         <div
-          className={`relative z-[3] flex min-h-[inherit] px-5 py-16 md:px-12 lg:px-20 ${getContentPositionClass(
-            activeSlide.conteudo.posicao
+          className={`relative z-[3] min-h-[inherit] px-5 py-16 md:px-12 lg:px-20 ${getContentVisibilityClass(
+            activeSlide.conteudo.posicaoDesktop,
+            activeSlide.conteudo.posicaoMobile
+          )} ${getContentPositionClass(
+            activeSlide.conteudo.posicaoMobile
+          )} ${getContentPositionClass(
+            activeSlide.conteudo.posicaoDesktop,
+            "md"
           )}`}
         >
           <div
             className={`space-y-5 ${getContentWidthClass(
               activeSlide.conteudo.largura
             )}`}
+            style={getContentAlignStyle(activeSlide.conteudo.alinhamento)}
           >
             {activeSlide.conteudo.mostrarEyebrow ? (
               <SlideText
@@ -422,7 +656,11 @@ export default function BannerHeroV2Publico({
                         if (href === "#") event.preventDefault();
                       }}
                     >
-                      {botao.texto || `Botao ${index + 1}`}
+                      {renderInlineRichText(
+                        botao.richText,
+                        botao.texto || `Botao ${index + 1}`,
+                        false
+                      )}
                     </Link>
                   );
                 })}

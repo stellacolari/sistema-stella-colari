@@ -7,9 +7,15 @@ export type BannerHeroV2Navegacao =
   | "SETA_PROXIMO_BLOCO"
   | "CONTROLES_SLIDER";
 export type BannerHeroV2PosicaoConteudo =
-  | "ESQUERDA"
+  | "SUPERIOR_ESQUERDA"
+  | "SUPERIOR_CENTRO"
+  | "SUPERIOR_DIREITA"
+  | "CENTRO_ESQUERDA"
   | "CENTRO"
-  | "DIREITA"
+  | "CENTRO_DIREITA"
+  | "INFERIOR_ESQUERDA"
+  | "INFERIOR_CENTRO"
+  | "INFERIOR_DIREITA"
   | "NENHUM";
 export type BannerHeroV2TipoMidia = "IMAGEM" | "VIDEO";
 export type BannerHeroV2LinkTipo =
@@ -32,6 +38,7 @@ export type BannerHeroV2Crop = {
 export type BannerHeroV2Button = {
   id: string;
   texto: string;
+  richText?: unknown;
   linkTipo: BannerHeroV2LinkTipo;
   linkValor: string;
   abrirNovaAba: boolean;
@@ -82,6 +89,8 @@ export type BannerHeroV2Slide = {
   conteudo: {
     ativo: boolean;
     posicao: BannerHeroV2PosicaoConteudo;
+    posicaoDesktop: BannerHeroV2PosicaoConteudo;
+    posicaoMobile: BannerHeroV2PosicaoConteudo;
     largura: "COMPACTA" | "MEDIA" | "LARGA";
     alinhamento: "ESQUERDA" | "CENTRO" | "DIREITA";
     mostrarEyebrow: boolean;
@@ -207,7 +216,9 @@ export function criarBannerHeroV2Slide(index = 1): BannerHeroV2Slide {
     },
     conteudo: {
       ativo: true,
-      posicao: "ESQUERDA",
+      posicao: "CENTRO_ESQUERDA",
+      posicaoDesktop: "CENTRO_ESQUERDA",
+      posicaoMobile: "INFERIOR_CENTRO",
       largura: "MEDIA",
       alinhamento: "ESQUERDA",
       mostrarEyebrow: false,
@@ -282,6 +293,7 @@ function normalizarBotao(value: unknown, index: number): BannerHeroV2Button {
   return {
     id: getString(data.id, fallback.id),
     texto: getString(data.texto, fallback.texto).slice(0, 24),
+    richText: data.richText,
     linkTipo: pick(data.linkTipo, ["URL", "PRODUTO", "CATEGORIA", "PAGINA", "COLECAO"] as const, fallback.linkTipo),
     linkValor: getString(data.linkValor, fallback.linkValor),
     abrirNovaAba: getBoolean(data.abrirNovaAba, false),
@@ -304,6 +316,37 @@ function normalizarBotao(value: unknown, index: number): BannerHeroV2Button {
   };
 }
 
+const BANNER_HERO_V2_POSICOES = [
+  "SUPERIOR_ESQUERDA",
+  "SUPERIOR_CENTRO",
+  "SUPERIOR_DIREITA",
+  "CENTRO_ESQUERDA",
+  "CENTRO",
+  "CENTRO_DIREITA",
+  "INFERIOR_ESQUERDA",
+  "INFERIOR_CENTRO",
+  "INFERIOR_DIREITA",
+  "NENHUM",
+] as const;
+
+function normalizarPosicaoConteudo(
+  value: unknown,
+  fallback: BannerHeroV2PosicaoConteudo
+): BannerHeroV2PosicaoConteudo {
+  const text = getString(value);
+
+  if (text === "ESQUERDA") return "CENTRO_ESQUERDA";
+  if (text === "DIREITA") return "CENTRO_DIREITA";
+  if (text === "CENTRO") return "CENTRO";
+  if (text === "NENHUM") return "NENHUM";
+
+  return BANNER_HERO_V2_POSICOES.includes(
+    text as BannerHeroV2PosicaoConteudo
+  )
+    ? (text as BannerHeroV2PosicaoConteudo)
+    : fallback;
+}
+
 export function normalizarBannerHeroV2Config(value: unknown): BannerHeroV2Config {
   const fallback = criarBannerHeroV2ConfigPadrao();
   const data = getObject(value);
@@ -322,6 +365,14 @@ export function normalizarBannerHeroV2Config(value: unknown): BannerHeroV2Config
       ? conteudo.botoes
       : fallbackSlide.conteudo.botoes;
     const avancarAoFim = getBoolean(video.avancarAoFim, false);
+    const posicaoDesktop = normalizarPosicaoConteudo(
+      conteudo.posicaoDesktop ?? conteudo.posicao,
+      fallbackSlide.conteudo.posicaoDesktop
+    );
+    const posicaoMobile = normalizarPosicaoConteudo(
+      conteudo.posicaoMobile ?? conteudo.posicao,
+      fallbackSlide.conteudo.posicaoMobile
+    );
 
     return {
       id: getString(slide.id, fallbackSlide.id),
@@ -351,11 +402,9 @@ export function normalizarBannerHeroV2Config(value: unknown): BannerHeroV2Config
       },
       conteudo: {
         ativo: getBoolean(conteudo.ativo, true),
-        posicao: pick(
-          conteudo.posicao,
-          ["ESQUERDA", "CENTRO", "DIREITA", "NENHUM"] as const,
-          "ESQUERDA"
-        ),
+        posicao: normalizarPosicaoConteudo(conteudo.posicao, posicaoDesktop),
+        posicaoDesktop,
+        posicaoMobile,
         largura: pick(conteudo.largura, ["COMPACTA", "MEDIA", "LARGA"] as const, "MEDIA"),
         alinhamento: pick(
           conteudo.alinhamento,

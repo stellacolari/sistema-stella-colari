@@ -51,6 +51,8 @@ type InlineTextStyleMessage = {
   textAlign?: string;
 };
 
+type InlineUpdateScope = "CONTENT" | "ELEMENT" | "SELECTION";
+
 const INLINE_FONT_SIZES: Record<string, string> = {
   "1": "0.75rem",
   "2": "0.875rem",
@@ -322,6 +324,7 @@ export default function LojaPreviewPaginaClient({
     const linkRemove = document.createElement("button");
     let activeInlineElement: HTMLElement | null = null;
     let savedRange: Range | null = null;
+    let lastInlineUpdateScope: InlineUpdateScope = "CONTENT";
     let toolbarInteracting = false;
     let toolbarInteractionTimer: number | null = null;
 
@@ -470,6 +473,51 @@ export default function LojaPreviewPaginaClient({
       selection?.addRange(savedRange);
     }
 
+    function getActiveSelectionRange() {
+      if (!activeInlineElement) return null;
+
+      const selection = window.getSelection();
+
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        return null;
+      }
+
+      const range = selection.getRangeAt(0);
+
+      if (
+        !activeInlineElement.contains(range.startContainer) ||
+        !activeInlineElement.contains(range.endContainer)
+      ) {
+        return null;
+      }
+
+      return range;
+    }
+
+    function hasActiveTextSelection() {
+      const range = getActiveSelectionRange();
+
+      return Boolean(range && normalizeInlineText(range.toString()).trim());
+    }
+
+    function selectActiveInlineContents() {
+      if (!activeInlineElement) return false;
+
+      const range = document.createRange();
+      range.selectNodeContents(activeInlineElement);
+
+      if (!normalizeInlineText(range.toString()).trim()) {
+        return false;
+      }
+
+      const selection = window.getSelection();
+      activeInlineElement.focus({ preventScroll: true });
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      savedRange = range.cloneRange();
+      return true;
+    }
+
     function applyInlineTextPatch(action: () => void) {
       restoreSelection();
       action();
@@ -479,22 +527,82 @@ export default function LojaPreviewPaginaClient({
     function applyInlineStyle(patch: Partial<CSSStyleDeclaration>) {
       restoreSelection();
 
-      if (activeInlineElement) {
+      if (!activeInlineElement) return;
+
+      if (hasActiveTextSelection()) {
+        applyInlineStyleToSelection(patch);
+        lastInlineUpdateScope = "SELECTION";
+      } else {
         Object.assign(activeInlineElement.style, patch);
+        lastInlineUpdateScope = "ELEMENT";
       }
 
-      const selection = window.getSelection();
+      rememberSelection();
+    }
 
-      if (
-        !selection ||
-        selection.rangeCount === 0 ||
-        selection.isCollapsed ||
-        !activeInlineElement?.contains(selection.anchorNode)
-      ) {
-        return;
+    function applyInlineCommand(command: "bold" | "italic" | "underline") {
+      restoreSelection();
+
+      if (!activeInlineElement) return;
+
+      const hadSelection = hasActiveTextSelection();
+
+      if (!hadSelection && !selectActiveInlineContents()) return;
+
+      document.execCommand(command);
+      lastInlineUpdateScope = hadSelection ? "SELECTION" : "ELEMENT";
+      rememberSelection();
+    }
+
+    function clearInlineFormatting() {
+      restoreSelection();
+
+      if (!activeInlineElement) return;
+
+      const hadSelection = hasActiveTextSelection();
+
+      if (!hadSelection) {
+        activeInlineElement.style.color = "";
+        activeInlineElement.style.fontFamily = "";
+        activeInlineElement.style.fontSize = "";
+        activeInlineElement.style.fontWeight = "";
+        activeInlineElement.style.letterSpacing = "";
+        activeInlineElement.style.lineHeight = "";
+        activeInlineElement.style.textAlign = "";
+
+        if (!selectActiveInlineContents()) return;
       }
 
-      applyInlineStyleToSelection(patch);
+      document.execCommand("removeFormat");
+      lastInlineUpdateScope = hadSelection ? "SELECTION" : "ELEMENT";
+      rememberSelection();
+    }
+
+    function applyInlineLink(href: string) {
+      restoreSelection();
+
+      if (!activeInlineElement || !href) return;
+
+      const hadSelection = hasActiveTextSelection();
+
+      if (!hadSelection && !selectActiveInlineContents()) return;
+
+      document.execCommand("createLink", false, href);
+      lastInlineUpdateScope = hadSelection ? "SELECTION" : "ELEMENT";
+      rememberSelection();
+    }
+
+    function removeInlineLink() {
+      restoreSelection();
+
+      if (!activeInlineElement) return;
+
+      const hadSelection = hasActiveTextSelection();
+
+      if (!hadSelection && !selectActiveInlineContents()) return;
+
+      document.execCommand("unlink");
+      lastInlineUpdateScope = hadSelection ? "SELECTION" : "ELEMENT";
       rememberSelection();
     }
 
@@ -649,6 +757,7 @@ export default function LojaPreviewPaginaClient({
           itemId: getGalleryItemId(activeInlineElement),
           richText: serializeInlineRichText(activeInlineElement),
           textStyle: getInlineTextStyleMessage(activeInlineElement),
+          scope: lastInlineUpdateScope,
           commit,
         },
         window.location.origin
@@ -780,9 +889,9 @@ export default function LojaPreviewPaginaClient({
       })),
       (value) => applyInlineStyle({ fontSize: value })
     );
-    createToolbarButton("B", "Negrito", () => document.execCommand("bold"));
-    createToolbarButton("I", "Italico", () => document.execCommand("italic"));
-    createToolbarButton("U", "Sublinhado", () => document.execCommand("underline"));
+    createToolbarButton("B", "Negrito", () => applyInlineCommand("bold"));
+    createToolbarButton("I", "Italico", () => applyInlineCommand("italic"));
+    createToolbarButton("U", "Sublinhado", () => applyInlineCommand("underline"));
     createToolbarSelect(
       "Alinhamento",
       [
@@ -835,17 +944,7 @@ export default function LojaPreviewPaginaClient({
       linkInput.focus();
     });
     createToolbarButton("Limpar", "Limpar estilo", () => {
-      document.execCommand("removeFormat");
-
-      if (activeInlineElement) {
-        activeInlineElement.style.color = "";
-        activeInlineElement.style.fontFamily = "";
-        activeInlineElement.style.fontSize = "";
-        activeInlineElement.style.fontWeight = "";
-        activeInlineElement.style.letterSpacing = "";
-        activeInlineElement.style.lineHeight = "";
-        activeInlineElement.style.textAlign = "";
-      }
+      clearInlineFormatting();
     });
 
     linkPopover.style.display = "none";
@@ -884,7 +983,7 @@ export default function LojaPreviewPaginaClient({
       event.stopPropagation();
       const href = sanitizeInlineUrl(linkInput.value);
       applyInlineTextPatch(() => {
-        if (href) document.execCommand("createLink", false, href);
+        applyInlineLink(href);
       });
       linkPopover.style.display = "none";
       linkInput.value = "";
@@ -894,7 +993,7 @@ export default function LojaPreviewPaginaClient({
     linkRemove.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      applyInlineTextPatch(() => document.execCommand("unlink"));
+      applyInlineTextPatch(removeInlineLink);
       linkPopover.style.display = "none";
       linkInput.value = "";
       notifyInlineUpdate();
@@ -1033,6 +1132,9 @@ export default function LojaPreviewPaginaClient({
           if (!field) return;
           activeInlineElement = inlineElement;
           inlineEditingRef.current = true;
+          if (!toolbarInteracting) {
+            lastInlineUpdateScope = "CONTENT";
+          }
           notifyInlineUpdate(false);
         };
 
@@ -1101,7 +1203,7 @@ export default function LojaPreviewPaginaClient({
 
           if ((event.metaKey || event.ctrlKey) && ["b", "i", "u"].includes(event.key.toLowerCase())) {
             event.preventDefault();
-            document.execCommand(
+            applyInlineCommand(
               event.key.toLowerCase() === "b"
                 ? "bold"
                 : event.key.toLowerCase() === "i"
