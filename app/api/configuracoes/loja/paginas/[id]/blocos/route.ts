@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { criarSecaoColunasPadrao } from "@/components/loja/paginas/textElements";
+import { criarBannerHeroV2ConfigPadrao } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 
 const TIPOS_BLOCO_VALIDOS = new Set([
   "BANNER",
+  "BANNER_HERO_V2",
   "FAIXA_DIFERENCIAIS",
   "TEXTO",
   "TEXTO_IMAGEM",
@@ -36,6 +38,7 @@ const TIPOS_BLOCO_VALIDOS = new Set([
 function getTituloPadrao(tipo: string) {
   const titulos: Record<string, string> = {
     BANNER: "Banner",
+    BANNER_HERO_V2: "Banner",
     FAIXA_DIFERENCIAIS: "Faixa de diferenciais",
     TEXTO: "Texto / título",
     TEXTO_IMAGEM: "Texto + imagem",
@@ -115,6 +118,10 @@ function getTextStylePadrao(kind: string) {
 function getConfigPadrao(tipo: string) {
   if (tipo === "SECAO_COLUNAS") {
     return criarSecaoColunasPadrao() as unknown as Prisma.InputJsonValue;
+  }
+
+  if (tipo === "BANNER_HERO_V2") {
+    return criarBannerHeroV2ConfigPadrao() as unknown as Prisma.InputJsonValue;
   }
 
   if (tipo === "BANNER") {

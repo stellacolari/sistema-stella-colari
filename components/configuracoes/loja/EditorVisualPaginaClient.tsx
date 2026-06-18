@@ -77,8 +77,22 @@ import VisualCropEditor, {
   type MediaCropContext,
   type ResponsiveMediaConfig,
 } from "@/components/configuracoes/loja/VisualCropEditor";
+import MediaField from "@/components/configuracoes/loja/MediaField";
 import MediaLibraryPicker from "@/components/configuracoes/loja/MediaLibraryPicker";
 import type { MidiaAssetBiblioteca } from "@/components/configuracoes/loja/MidiaBibliotecaClient";
+import {
+  atualizarElementoTexto,
+  type TextElementStyle,
+} from "@/components/loja/paginas/textElements";
+import {
+  criarBannerHeroV2Botao,
+  criarBannerHeroV2Slide,
+  normalizarBannerHeroV2Config,
+  type BannerHeroV2Button,
+  type BannerHeroV2Config,
+  type BannerHeroV2LinkTipo,
+  type BannerHeroV2Slide,
+} from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 
 export type EditorVisualPagina = {
   id: string;
@@ -189,6 +203,7 @@ type EditorSelectionContext =
   | "PRODUTOS";
 
 type TipoBlocoAdicionar =
+  | "BANNER_HERO_V2"
   | "BANNER"
   | "HERO_EDITORIAL_PNG"
   | "GALERIA_EDITORIAL_FULL_BLEED"
@@ -1251,9 +1266,10 @@ const TIPOS_BLOCO_ADICIONAR: {
   preview?: ReactNode;
 }[] = [
   {
-    tipo: "BANNER",
+    tipo: "BANNER_HERO_V2",
     nome: "Banner",
-    descricao: "Imagem de destaque com título, texto de apoio e botão.",
+    descricao:
+      "Banner com imagem ou video de fundo, conteudo opcional, carrossel e menu transparente.",
     tituloInicial: "Novo banner",
     icon: ImageIcon,
   },
@@ -1571,9 +1587,9 @@ function getSectionTextAlignment(value: string) {
   return "";
 }
 
-function getSectionTextStylePatch(value: unknown) {
+function getSectionTextStylePatch(value: unknown): Partial<TextElementStyle> {
   const style = getInlineTextStyleObject(value);
-  const patch: Record<string, string> = {};
+  const patch: Partial<TextElementStyle> = {};
   const fonte = style.fontFamily
     ? getInlineFontFamilyPreset(style.fontFamily)
     : "";
@@ -1586,12 +1602,12 @@ function getSectionTextStylePatch(value: unknown) {
         : rawWeight;
   const alignment = getSectionTextAlignment(style.textAlign || "");
 
-  if (fonte) patch.fonte = fonte;
+  if (fonte) patch.fonte = fonte as TextElementStyle["fonte"];
 
-  if (weight) patch.peso = weight;
+  if (weight) patch.peso = weight as TextElementStyle["peso"];
   if (style.fontSize) patch.tamanho = style.fontSize;
   if (style.color) patch.cor = style.color;
-  if (alignment) patch.alinhamento = alignment;
+  if (alignment) patch.alinhamento = alignment as TextElementStyle["alinhamento"];
   if (style.letterSpacing) patch.letterSpacing = style.letterSpacing;
   if (style.lineHeight) patch.lineHeight = style.lineHeight;
 
@@ -2204,6 +2220,7 @@ const RichTextTypography = Extension.create({
 
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
+  if (tipo === "BANNER_HERO_V2") return "Banner";
   if (tipo === "HERO_EDITORIAL_PNG") return "Hero Editorial com PNG";
   if (tipo === "GALERIA_EDITORIAL_FULL_BLEED") return "Galeria Editorial";
   if (tipo === "BANNER") return "Banner";
@@ -2237,6 +2254,7 @@ function getBlocoIcon(tipo: string) {
     tipo.includes("IMAGEM") ||
     tipo === "HERO" ||
     tipo === "BANNER" ||
+    tipo === "BANNER_HERO_V2" ||
     isHeroEditorialPngTipo(tipo) ||
     isGaleriaEditorialTipo(tipo)
   ) {
@@ -2256,6 +2274,10 @@ function getBlocoIcon(tipo: string) {
 
 function isBannerTipo(tipo: string) {
   return tipo === "BANNER" || tipo === "HERO";
+}
+
+function isBannerHeroV2Tipo(tipo: string) {
+  return tipo === "BANNER_HERO_V2";
 }
 
 function isHeroEditorialPngTipo(tipo: string) {
@@ -2292,6 +2314,1331 @@ function isCtaTipo(tipo: string) {
 
 function getConfigSubobject(config: Record<string, unknown>, key: string) {
   return getConfigObject(config[key]);
+}
+
+function getBannerHeroV2MediaConfig(slide: BannerHeroV2Slide): ResponsiveMediaConfig {
+  const mobile =
+    slide.midia.usarMidiaMobileAlternativa && slide.midia.mobileAlternativa
+      ? slide.midia.mobileAlternativa
+      : slide.midia.mobile;
+
+  return createResponsiveMediaConfig({
+    desktopUrl: slide.midia.desktop.url || "",
+    mobileUrl: mobile.url || slide.midia.desktop.url || "",
+    alt: slide.midia.desktop.alt || mobile.alt || "",
+    aspectRatioDesktop: slide.midia.desktop.aspectRatio || "16:9",
+    aspectRatioMobile: mobile.aspectRatio || "16:9",
+    desktopPositionX: slide.midia.desktop.positionX,
+    desktopPositionY: slide.midia.desktop.positionY,
+    mobilePositionX: mobile.positionX,
+    mobilePositionY: mobile.positionY,
+    desktopZoom: slide.midia.desktop.zoom,
+    mobileZoom: mobile.zoom,
+  });
+}
+
+function aplicarBannerHeroV2MediaConfig(
+  slide: BannerHeroV2Slide,
+  media: ResponsiveMediaConfig
+): BannerHeroV2Slide {
+  return {
+    ...slide,
+    midia: {
+      ...slide.midia,
+      desktop: {
+        ...slide.midia.desktop,
+        url: media.desktop.url || "",
+        alt: media.desktop.alt || media.mobile.alt || "",
+        aspectRatio: media.desktop.aspectRatio || "16:9",
+        zoom: media.desktop.zoom,
+        positionX: media.desktop.positionX,
+        positionY: media.desktop.positionY,
+      },
+      mobile: {
+        ...slide.midia.mobile,
+        url: media.mobile.url || media.desktop.url || "",
+        alt: media.mobile.alt || media.desktop.alt || "",
+        aspectRatio: media.mobile.aspectRatio || "16:9",
+        zoom: media.mobile.zoom,
+        positionX: media.mobile.positionX,
+        positionY: media.mobile.positionY,
+      },
+      usarMidiaMobileAlternativa: Boolean(media.usarImagemMobileAlternativa),
+      mobileAlternativa: {
+        ...(slide.midia.mobileAlternativa || slide.midia.mobile),
+        url: media.mobileUrl || media.mobile.url || "",
+        alt: media.mobile.alt || media.desktop.alt || "",
+        aspectRatio: media.mobile.aspectRatio || "16:9",
+        zoom: media.mobile.zoom,
+        positionX: media.mobile.positionX,
+        positionY: media.mobile.positionY,
+      },
+    },
+  };
+}
+
+type BannerHeroV2TextField = "eyebrow" | "titulo" | "texto";
+
+const BANNER_HERO_V2_TEXT_LIMITS: Record<BannerHeroV2TextField, number> = {
+  eyebrow: 32,
+  titulo: 80,
+  texto: 180,
+};
+
+const BANNER_HERO_V2_LINK_TYPES: {
+  value: BannerHeroV2LinkTipo;
+  label: string;
+}[] = [
+  { value: "URL", label: "URL" },
+  { value: "PRODUTO", label: "Produto" },
+  { value: "CATEGORIA", label: "Categoria" },
+  { value: "PAGINA", label: "Pagina" },
+  { value: "COLECAO", label: "Colecao" },
+];
+
+function clonarBannerHeroV2Slide(
+  slide: BannerHeroV2Slide,
+  index: number
+): BannerHeroV2Slide {
+  return {
+    ...slide,
+    id: `slide-${Date.now()}-${index}`,
+    conteudo: {
+      ...slide.conteudo,
+      eyebrow: {
+        ...slide.conteudo.eyebrow,
+        id: `slide-${Date.now()}-${index}-eyebrow`,
+      },
+      titulo: {
+        ...slide.conteudo.titulo,
+        id: `slide-${Date.now()}-${index}-titulo`,
+      },
+      texto: {
+        ...slide.conteudo.texto,
+        id: `slide-${Date.now()}-${index}-texto`,
+      },
+      botoes: slide.conteudo.botoes.map((botao, buttonIndex) => ({
+        ...botao,
+        id: `botao-${Date.now()}-${index}-${buttonIndex}`,
+      })),
+    },
+  };
+}
+
+function getBannerHeroV2SelectedSlideId(
+  config: BannerHeroV2Config,
+  selectedItemId: string
+) {
+  const selectedSlide = config.slides.find(
+    (slide) =>
+      slide.id === selectedItemId ||
+      slide.conteudo.botoes.some((botao) => botao.id === selectedItemId)
+  );
+
+  return selectedSlide?.id || config.slides[0]?.id || "";
+}
+
+function LinkValueControl({
+  label,
+  tipo,
+  value,
+  categorias,
+  paginas,
+  produtos,
+  colecoes,
+  onChange,
+}: {
+  label: string;
+  tipo: BannerHeroV2LinkTipo;
+  value: string;
+  categorias: EditorVisualCategoria[];
+  paginas: EditorVisualPaginaLink[];
+  produtos: EditorVisualProduto[];
+  colecoes: EditorVisualColecaoInteligente[];
+  onChange: (value: string) => void;
+}) {
+  if (tipo === "PRODUTO") {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          {label}
+        </span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="">Selecionar produto</option>
+          {produtos.map((produto) => (
+            <option key={produto.id} value={produto.id}>
+              {produto.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (tipo === "CATEGORIA") {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          {label}
+        </span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="">Selecionar categoria</option>
+          {categorias.map((categoria) => (
+            <option key={categoria.id} value={categoria.slug}>
+              {categoria.caminho || categoria.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (tipo === "PAGINA") {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          {label}
+        </span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="">Selecionar pagina</option>
+          {paginas.map((pagina) => (
+            <option key={pagina.id} value={pagina.urlPublica || pagina.slug}>
+              {pagina.titulo}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  if (tipo === "COLECAO") {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          {label}
+        </span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="">Selecionar colecao</option>
+          {colecoes.map((colecao) => (
+            <option key={colecao.id} value={colecao.slug}>
+              {colecao.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="/loja ou https://..."
+        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+      />
+    </label>
+  );
+}
+
+function BannerHeroV2SidebarPanel({
+  bloco,
+  selectedItemId,
+  categorias,
+  paginas,
+  produtos,
+  colecoes,
+  onChange,
+  onSave,
+  salvando,
+}: {
+  bloco: EditorVisualBloco;
+  selectedItemId: string;
+  categorias: EditorVisualCategoria[];
+  paginas: EditorVisualPaginaLink[];
+  produtos: EditorVisualProduto[];
+  colecoes: EditorVisualColecaoInteligente[];
+  onChange: (config: BannerHeroV2Config) => void;
+  onSave: () => void;
+  salvando: boolean;
+}) {
+  const config = normalizarBannerHeroV2Config(bloco.configJson);
+  const selectedSlideId = getBannerHeroV2SelectedSlideId(config, selectedItemId);
+  const [activeSlideId, setActiveSlideId] = useState(selectedSlideId);
+  const selectedButtonId = config.slides
+    .flatMap((slide) => slide.conteudo.botoes)
+    .some((botao) => botao.id === selectedItemId)
+    ? selectedItemId
+    : "";
+  const [activeButtonId, setActiveButtonId] = useState(selectedButtonId);
+
+  useEffect(() => {
+    if (selectedSlideId && selectedSlideId !== activeSlideId) {
+      setActiveSlideId(selectedSlideId);
+    }
+  }, [activeSlideId, selectedSlideId]);
+
+  useEffect(() => {
+    if (selectedButtonId && selectedButtonId !== activeButtonId) {
+      setActiveButtonId(selectedButtonId);
+    }
+  }, [activeButtonId, selectedButtonId]);
+
+  const activeSlide =
+    config.slides.find((slide) => slide.id === activeSlideId) ||
+    config.slides[0] ||
+    criarBannerHeroV2Slide(1);
+  const selectedButton =
+    activeSlide.conteudo.botoes.find((botao) => botao.id === activeButtonId) ||
+    activeSlide.conteudo.botoes[0] ||
+    null;
+  const recommendedHero = getRecommendedMediaSize("HERO_FULL");
+
+  function commit(nextConfig: BannerHeroV2Config) {
+    onChange(normalizarBannerHeroV2Config(nextConfig));
+  }
+
+  function updateConfig(patch: Partial<BannerHeroV2Config>) {
+    commit({
+      ...config,
+      ...patch,
+    });
+  }
+
+  function updateCarousel(patch: Partial<BannerHeroV2Config["carrossel"]>) {
+    commit({
+      ...config,
+      carrossel: {
+        ...config.carrossel,
+        ...patch,
+      },
+    });
+  }
+
+  function updateActiveSlide(
+    updater: (slide: BannerHeroV2Slide) => BannerHeroV2Slide
+  ) {
+    commit({
+      ...config,
+      slides: config.slides.map((slide) =>
+        slide.id === activeSlide.id ? updater(slide) : slide
+      ),
+    });
+  }
+
+  function updateActiveContent(
+    patch: Partial<BannerHeroV2Slide["conteudo"]>
+  ) {
+    updateActiveSlide((slide) => ({
+      ...slide,
+      conteudo: {
+        ...slide.conteudo,
+        ...patch,
+      },
+    }));
+  }
+
+  function updateText(field: BannerHeroV2TextField, value: string) {
+    updateActiveSlide((slide) => ({
+      ...slide,
+      conteudo: {
+        ...slide.conteudo,
+        [field]: atualizarElementoTexto(slide.conteudo[field], {
+          conteudo: value.slice(0, BANNER_HERO_V2_TEXT_LIMITS[field]),
+        }),
+      },
+    }));
+  }
+
+  function updateButton(
+    buttonId: string,
+    updater: (button: BannerHeroV2Button) => BannerHeroV2Button
+  ) {
+    updateActiveSlide((slide) => ({
+      ...slide,
+      conteudo: {
+        ...slide.conteudo,
+        botoes: slide.conteudo.botoes.map((botao) =>
+          botao.id === buttonId ? updater(botao) : botao
+        ),
+      },
+    }));
+  }
+
+  function addSlide() {
+    const novoSlide = clonarBannerHeroV2Slide(
+      criarBannerHeroV2Slide(config.slides.length + 1),
+      config.slides.length + 1
+    );
+    commit({
+      ...config,
+      slides: [...config.slides, novoSlide],
+    });
+    setActiveSlideId(novoSlide.id);
+  }
+
+  function duplicateSlide() {
+    const novoSlide = clonarBannerHeroV2Slide(activeSlide, config.slides.length + 1);
+    commit({
+      ...config,
+      slides: [...config.slides, novoSlide],
+    });
+    setActiveSlideId(novoSlide.id);
+  }
+
+  function removeSlide() {
+    if (config.slides.length <= 1) return;
+
+    const remaining = config.slides.filter((slide) => slide.id !== activeSlide.id);
+    commit({
+      ...config,
+      slides: remaining,
+    });
+    setActiveSlideId(remaining[0]?.id || "");
+  }
+
+  function moveSlide(direction: "UP" | "DOWN") {
+    const index = config.slides.findIndex((slide) => slide.id === activeSlide.id);
+    const nextIndex = direction === "UP" ? index - 1 : index + 1;
+
+    if (index < 0 || nextIndex < 0 || nextIndex >= config.slides.length) return;
+
+    const slides = [...config.slides];
+    const [slide] = slides.splice(index, 1);
+    slides.splice(nextIndex, 0, slide);
+    commit({
+      ...config,
+      slides,
+    });
+  }
+
+  function addButton() {
+    if (activeSlide.conteudo.botoes.length >= 2) return;
+
+    const novoBotao = {
+      ...criarBannerHeroV2Botao(activeSlide.conteudo.botoes.length + 1),
+      id: `botao-${Date.now()}`,
+    };
+
+    updateActiveContent({
+      botoes: [...activeSlide.conteudo.botoes, novoBotao],
+    });
+    setActiveButtonId(novoBotao.id);
+  }
+
+  function resetButton(buttonId: string) {
+    const index = activeSlide.conteudo.botoes.findIndex(
+      (botao) => botao.id === buttonId
+    );
+
+    updateButton(buttonId, () => ({
+      ...criarBannerHeroV2Botao(index + 1),
+      id: buttonId,
+    }));
+  }
+
+  function removeButton(buttonId: string) {
+    const remaining = activeSlide.conteudo.botoes.filter(
+      (botao) => botao.id !== buttonId
+    );
+
+    updateActiveContent({
+      botoes: remaining,
+    });
+    setActiveButtonId(remaining[0]?.id || "");
+  }
+
+  function resetMedia() {
+    const fallback = criarBannerHeroV2Slide(1);
+    updateActiveSlide((slide) => ({
+      ...slide,
+      tipoMidia: "IMAGEM",
+      midia: fallback.midia,
+      video: fallback.video,
+      linkSlide: fallback.linkSlide,
+    }));
+  }
+
+  function renderLinkTypeSelect(
+    value: BannerHeroV2LinkTipo,
+    onSelect: (value: BannerHeroV2LinkTipo) => void
+  ) {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">
+          Tipo de link
+        </span>
+        <select
+          value={value}
+          onChange={(event) => onSelect(event.target.value as BannerHeroV2LinkTipo)}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          {BANNER_HERO_V2_LINK_TYPES.map((tipo) => (
+            <option key={tipo.value} value={tipo.value}>
+              {tipo.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
+  return (
+    <>
+      <PainelSecao title="Banner">
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={salvando}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {salvando ? "Salvando..." : "Salvar banner"}
+          </button>
+
+          <p className="text-xs leading-5 text-slate-500">
+            Textos tambem podem ser editados direto no preview. Os ajustes abaixo
+            atualizam o iframe em tempo real e ficam pendentes ate salvar.
+          </p>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Slides">
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {config.slides.map((slide, index) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={() => setActiveSlideId(slide.id)}
+                className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                  slide.id === activeSlide.id
+                    ? "border-slate-950 bg-slate-950 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Slide {index + 1}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={addSlide}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Adicionar
+            </button>
+            <button
+              type="button"
+              onClick={duplicateSlide}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Duplicar
+            </button>
+            <button
+              type="button"
+              onClick={() => moveSlide("UP")}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Subir
+            </button>
+            <button
+              type="button"
+              onClick={() => moveSlide("DOWN")}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Descer
+            </button>
+          </div>
+
+          <RangeControl
+            label="Tempo do slide"
+            value={activeSlide.tempoMs}
+            min={1500}
+            max={30000}
+            step={500}
+            suffix="ms"
+            onChange={(value) =>
+              updateActiveSlide((slide) => ({
+                ...slide,
+                tempoMs: value,
+              }))
+            }
+          />
+
+          <button
+            type="button"
+            onClick={removeSlide}
+            disabled={config.slides.length <= 1}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Excluir slide
+          </button>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Midia">
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Tipo de midia
+            </span>
+            <select
+              value={activeSlide.tipoMidia}
+              onChange={(event) =>
+                updateActiveSlide((slide) => ({
+                  ...slide,
+                  tipoMidia: event.target.value === "VIDEO" ? "VIDEO" : "IMAGEM",
+                }))
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="IMAGEM">Imagem</option>
+              <option value="VIDEO">Video</option>
+            </select>
+          </label>
+
+          {activeSlide.tipoMidia === "IMAGEM" ? (
+            <MediaField
+              label="Imagem de fundo"
+              value={getBannerHeroV2MediaConfig(activeSlide)}
+              contexto="HERO_FULL"
+              recommendedSize={`${recommendedHero.desktop}; mobile ${recommendedHero.mobile}`}
+              onChange={(media) =>
+                updateActiveSlide((slide) =>
+                  aplicarBannerHeroV2MediaConfig(slide, media)
+                )
+              }
+            />
+          ) : (
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Video desktop
+                </span>
+                <input
+                  value={activeSlide.video.url}
+                  onChange={(event) =>
+                    updateActiveSlide((slide) => ({
+                      ...slide,
+                      video: {
+                        ...slide.video,
+                        url: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="https://..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Video mobile opcional
+                </span>
+                <input
+                  value={activeSlide.video.mobileUrl}
+                  onChange={(event) =>
+                    updateActiveSlide((slide) => ({
+                      ...slide,
+                      video: {
+                        ...slide.video,
+                        mobileUrl: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Usa o desktop se ficar vazio"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Poster/fallback
+                </span>
+                <input
+                  value={activeSlide.video.posterUrl}
+                  onChange={(event) =>
+                    updateActiveSlide((slide) => ({
+                      ...slide,
+                      video: {
+                        ...slide.video,
+                        posterUrl: event.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="URL da imagem"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </label>
+
+              <CampoToggle
+                checked={activeSlide.video.autoplay}
+                label="Autoplay"
+                onChange={(checked) =>
+                  updateActiveSlide((slide) => ({
+                    ...slide,
+                    video: {
+                      ...slide.video,
+                      autoplay: checked,
+                    },
+                  }))
+                }
+              />
+
+              <CampoToggle
+                checked={activeSlide.video.mutado}
+                label="Mutado"
+                onChange={(checked) =>
+                  updateActiveSlide((slide) => ({
+                    ...slide,
+                    video: {
+                      ...slide.video,
+                      mutado: checked,
+                    },
+                  }))
+                }
+              />
+
+              <CampoToggle
+                checked={activeSlide.video.loop}
+                label="Loop"
+                description="Se avancar ao fim estiver ativo, o loop e desligado."
+                onChange={(checked) =>
+                  updateActiveSlide((slide) => ({
+                    ...slide,
+                    video: {
+                      ...slide.video,
+                      loop: checked,
+                      avancarAoFim: checked ? false : slide.video.avancarAoFim,
+                    },
+                  }))
+                }
+              />
+
+              <CampoToggle
+                checked={activeSlide.video.avancarAoFim}
+                label="Avancar ao fim"
+                onChange={(checked) =>
+                  updateActiveSlide((slide) => ({
+                    ...slide,
+                    video: {
+                      ...slide.video,
+                      avancarAoFim: checked,
+                      loop: checked ? false : slide.video.loop,
+                    },
+                  }))
+                }
+              />
+            </div>
+          )}
+
+          {renderLinkTypeSelect(activeSlide.linkSlide.tipo, (value) =>
+            updateActiveSlide((slide) => ({
+              ...slide,
+              linkSlide: {
+                ...slide.linkSlide,
+                tipo: value,
+                valor: "",
+              },
+            }))
+          )}
+
+          <LinkValueControl
+            label="Link do slide"
+            tipo={activeSlide.linkSlide.tipo}
+            value={activeSlide.linkSlide.valor}
+            categorias={categorias}
+            paginas={paginas}
+            produtos={produtos}
+            colecoes={colecoes}
+            onChange={(value) =>
+              updateActiveSlide((slide) => ({
+                ...slide,
+                linkSlide: {
+                  ...slide.linkSlide,
+                  valor: value,
+                },
+              }))
+            }
+          />
+
+          <CampoToggle
+            checked={activeSlide.linkSlide.abrirNovaAba}
+            label="Abrir link em nova aba"
+            onChange={(checked) =>
+              updateActiveSlide((slide) => ({
+                ...slide,
+                linkSlide: {
+                  ...slide.linkSlide,
+                  abrirNovaAba: checked,
+                },
+              }))
+            }
+          />
+
+          <button
+            type="button"
+            onClick={resetMedia}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Resetar midia
+          </button>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Conteudo">
+        <div className="space-y-4">
+          <CampoToggle
+            checked={activeSlide.conteudo.ativo}
+            label="Exibir conteudo"
+            onChange={(checked) => updateActiveContent({ ativo: checked })}
+          />
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Posicao
+            </span>
+            <select
+              value={activeSlide.conteudo.posicao}
+              onChange={(event) =>
+                updateActiveContent({
+                  posicao: event.target
+                    .value as BannerHeroV2Slide["conteudo"]["posicao"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="ESQUERDA">Esquerda</option>
+              <option value="CENTRO">Centro</option>
+              <option value="DIREITA">Direita</option>
+              <option value="NENHUM">Nenhum</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Largura do conteudo
+            </span>
+            <select
+              value={activeSlide.conteudo.largura}
+              onChange={(event) =>
+                updateActiveContent({
+                  largura: event.target
+                    .value as BannerHeroV2Slide["conteudo"]["largura"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="COMPACTA">Compacta</option>
+              <option value="MEDIA">Media</option>
+              <option value="LARGA">Larga</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Alinhamento
+            </span>
+            <select
+              value={activeSlide.conteudo.alinhamento}
+              onChange={(event) =>
+                updateActiveContent({
+                  alinhamento: event.target
+                    .value as BannerHeroV2Slide["conteudo"]["alinhamento"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="ESQUERDA">Esquerda</option>
+              <option value="CENTRO">Centro</option>
+              <option value="DIREITA">Direita</option>
+            </select>
+          </label>
+
+          {([
+            ["mostrarEyebrow", "eyebrow", "Eyebrow"],
+            ["mostrarTitulo", "titulo", "Titulo"],
+            ["mostrarTexto", "texto", "Texto"],
+          ] as const).map(([toggleKey, field, label]) => (
+            <div key={field} className="space-y-2 rounded-2xl border border-slate-200 p-3">
+              <CampoToggle
+                checked={Boolean(activeSlide.conteudo[toggleKey])}
+                label={`Exibir ${label.toLowerCase()}`}
+                onChange={(checked) =>
+                  updateActiveContent({
+                    [toggleKey]: checked,
+                  } as Partial<BannerHeroV2Slide["conteudo"]>)
+                }
+              />
+              <label className="block">
+                <span className="mb-1 flex justify-between text-sm font-medium text-slate-700">
+                  {label}
+                  <span className="text-xs text-slate-400">
+                    {activeSlide.conteudo[field].conteudo.length}/
+                    {BANNER_HERO_V2_TEXT_LIMITS[field]}
+                  </span>
+                </span>
+                <textarea
+                  value={activeSlide.conteudo[field].conteudo}
+                  onChange={(event) => updateText(field, event.target.value)}
+                  rows={field === "texto" ? 3 : 2}
+                  maxLength={BANNER_HERO_V2_TEXT_LIMITS[field]}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Botoes">
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {activeSlide.conteudo.botoes.map((botao, index) => (
+              <button
+                key={botao.id}
+                type="button"
+                onClick={() => {
+                  setActiveSlideId(activeSlide.id);
+                  setActiveButtonId(botao.id);
+                }}
+                className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                  selectedButton?.id === botao.id || (!selectedButton && index === 0)
+                    ? "border-slate-950 bg-slate-950 text-white"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                Botao {index + 1}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={addButton}
+              disabled={activeSlide.conteudo.botoes.length >= 2}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Adicionar
+            </button>
+          </div>
+
+          {selectedButton ? (
+            <div className="space-y-3 rounded-2xl border border-slate-200 p-3">
+              <label className="block">
+                <span className="mb-1 flex justify-between text-sm font-medium text-slate-700">
+                  Texto do botao
+                  <span className="text-xs text-slate-400">
+                    {selectedButton.texto.length}/24
+                  </span>
+                </span>
+                <input
+                  value={selectedButton.texto}
+                  maxLength={24}
+                  onChange={(event) =>
+                    updateButton(selectedButton.id, (botao) => ({
+                      ...botao,
+                      texto: event.target.value.slice(0, 24),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </label>
+
+              {renderLinkTypeSelect(selectedButton.linkTipo, (value) =>
+                updateButton(selectedButton.id, (botao) => ({
+                  ...botao,
+                  linkTipo: value,
+                  linkValor: "",
+                }))
+              )}
+
+              <LinkValueControl
+                label="Link do botao"
+                tipo={selectedButton.linkTipo}
+                value={selectedButton.linkValor}
+                categorias={categorias}
+                paginas={paginas}
+                produtos={produtos}
+                colecoes={colecoes}
+                onChange={(value) =>
+                  updateButton(selectedButton.id, (botao) => ({
+                    ...botao,
+                    linkValor: value,
+                  }))
+                }
+              />
+
+              <CampoToggle
+                checked={selectedButton.abrirNovaAba}
+                label="Abrir em nova aba"
+                onChange={(checked) =>
+                  updateButton(selectedButton.id, (botao) => ({
+                    ...botao,
+                    abrirNovaAba: checked,
+                  }))
+                }
+              />
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Estilo
+                </span>
+                <select
+                  value={selectedButton.estilo.variante}
+                  onChange={(event) =>
+                    updateButton(selectedButton.id, (botao) => ({
+                      ...botao,
+                      estilo: {
+                        ...botao.estilo,
+                        variante: event.target
+                          .value as BannerHeroV2Button["estilo"]["variante"],
+                      },
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="PREENCHIDO">Preenchido</option>
+                  <option value="CONTORNADO">Contornado</option>
+                  <option value="PILL">Pill</option>
+                  <option value="SUAVE">Levemente arredondado</option>
+                  <option value="RETO">Reto</option>
+                  <option value="TEXTO">Apenas texto</option>
+                  <option value="TEXTO_LINHA">Texto com linha</option>
+                </select>
+              </label>
+
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["corFundo", "Fundo"],
+                  ["corTexto", "Texto"],
+                  ["corBorda", "Borda"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="block">
+                    <span className="mb-1 block text-xs font-medium text-slate-600">
+                      {label}
+                    </span>
+                    <input
+                      type="color"
+                      value={selectedButton.estilo[key]}
+                      onChange={(event) =>
+                        updateButton(selectedButton.id, (botao) => ({
+                          ...botao,
+                          estilo: {
+                            ...botao.estilo,
+                            [key]: event.target.value,
+                          },
+                        }))
+                      }
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1"
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Tamanho
+                </span>
+                <select
+                  value={selectedButton.estilo.tamanho}
+                  onChange={(event) =>
+                    updateButton(selectedButton.id, (botao) => ({
+                      ...botao,
+                      estilo: {
+                        ...botao.estilo,
+                        tamanho: event.target
+                          .value as BannerHeroV2Button["estilo"]["tamanho"],
+                      },
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="PEQUENO">Pequeno</option>
+                  <option value="MEDIO">Medio</option>
+                  <option value="GRANDE">Grande</option>
+                </select>
+              </label>
+
+              <RangeControl
+                label="Padding horizontal"
+                value={selectedButton.estilo.paddingX}
+                min={8}
+                max={48}
+                suffix="px"
+                onChange={(value) =>
+                  updateButton(selectedButton.id, (botao) => ({
+                    ...botao,
+                    estilo: {
+                      ...botao.estilo,
+                      paddingX: value,
+                    },
+                  }))
+                }
+              />
+
+              <RangeControl
+                label="Padding vertical"
+                value={selectedButton.estilo.paddingY}
+                min={6}
+                max={24}
+                suffix="px"
+                onChange={(value) =>
+                  updateButton(selectedButton.id, (botao) => ({
+                    ...botao,
+                    estilo: {
+                      ...botao.estilo,
+                      paddingY: value,
+                    },
+                  }))
+                }
+              />
+
+              <RangeControl
+                label="Hover"
+                value={selectedButton.hover.opacidade}
+                min={40}
+                max={100}
+                suffix="%"
+                onChange={(value) =>
+                  updateButton(selectedButton.id, (botao) => ({
+                    ...botao,
+                    hover: {
+                      ...botao.hover,
+                      opacidade: value,
+                    },
+                  }))
+                }
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => resetButton(selectedButton.id)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Resetar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeButton(selectedButton.id)}
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-3 text-sm text-slate-500">
+              Nenhum botao neste slide.
+            </p>
+          )}
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Layout">
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Altura
+            </span>
+            <select
+              value={config.altura}
+              onChange={(event) =>
+                updateConfig({
+                  altura: event.target.value as BannerHeroV2Config["altura"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="25VH">25% da tela</option>
+              <option value="50VH">50% da tela</option>
+              <option value="100VH">100% da tela</option>
+            </select>
+          </label>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Navegacao">
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Navegacao inferior
+            </span>
+            <select
+              value={config.navegacaoInferior}
+              onChange={(event) =>
+                updateConfig({
+                  navegacaoInferior: event.target
+                    .value as BannerHeroV2Config["navegacaoInferior"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="NENHUMA">Nenhuma</option>
+              <option value="SETA_PROXIMO_BLOCO">Seta para proximo bloco</option>
+              <option value="CONTROLES_SLIDER">Controles do slider</option>
+            </select>
+          </label>
+
+          <CampoToggle
+            checked={config.carrossel.ativo}
+            label="Carrossel ativo"
+            onChange={(checked) => updateCarousel({ ativo: checked })}
+          />
+
+          <CampoToggle
+            checked={config.carrossel.autoplay}
+            label="Autoplay"
+            onChange={(checked) => updateCarousel({ autoplay: checked })}
+          />
+
+          <CampoToggle
+            checked={config.carrossel.pausarAoHover}
+            label="Pausar ao passar o mouse"
+            onChange={(checked) => updateCarousel({ pausarAoHover: checked })}
+          />
+
+          <RangeControl
+            label="Tempo padrao"
+            value={config.carrossel.tempoPadraoMs}
+            min={1500}
+            max={30000}
+            step={500}
+            suffix="ms"
+            onChange={(value) => updateCarousel({ tempoPadraoMs: value })}
+          />
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Transicao
+            </span>
+            <select
+              value={config.carrossel.transicao}
+              onChange={(event) =>
+                updateCarousel({
+                  transicao: event.target
+                    .value as BannerHeroV2Config["carrossel"]["transicao"],
+                })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="FADE">Fade</option>
+              <option value="SLIDE">Slide</option>
+            </select>
+          </label>
+
+          <CampoToggle
+            checked={config.carrossel.mostrarControles}
+            label="Mostrar controles"
+            description="So aparecem quando a navegacao inferior for controles do slider."
+            onChange={(checked) => updateCarousel({ mostrarControles: checked })}
+          />
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Menu">
+        <div className="space-y-3">
+          <CampoToggle
+            checked={config.headerTransparente}
+            label="Menu transparente no topo"
+            description="Funciona apenas quando este banner for o primeiro bloco."
+            onChange={(checked) => updateConfig({ headerTransparente: checked })}
+          />
+          <CampoToggle
+            checked={config.headerTextoClaro}
+            label="Texto claro no topo"
+            onChange={(checked) => updateConfig({ headerTextoClaro: checked })}
+          />
+          <CampoToggle
+            checked={config.transicaoHeaderAoScroll}
+            label="Voltar ao menu padrao no scroll"
+            onChange={(checked) =>
+              updateConfig({ transicaoHeaderAoScroll: checked })
+            }
+          />
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Design">
+        <div className="space-y-4">
+          <CampoToggle
+            checked={activeSlide.overlay.ativo}
+            label="Overlay"
+            onChange={(checked) =>
+              updateActiveSlide((slide) => ({
+                ...slide,
+                overlay: {
+                  ...slide.overlay,
+                  ativo: checked,
+                },
+              }))
+            }
+          />
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">
+              Cor do overlay
+            </span>
+            <input
+              type="color"
+              value={activeSlide.overlay.cor}
+              onChange={(event) =>
+                updateActiveSlide((slide) => ({
+                  ...slide,
+                  overlay: {
+                    ...slide.overlay,
+                    cor: event.target.value,
+                  },
+                }))
+              }
+              className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1"
+            />
+          </label>
+
+          <RangeControl
+            label="Opacidade"
+            value={activeSlide.overlay.opacidade}
+            min={0}
+            max={90}
+            suffix="%"
+            onChange={(value) =>
+              updateActiveSlide((slide) => ({
+                ...slide,
+                overlay: {
+                  ...slide.overlay,
+                  opacidade: value,
+                },
+              }))
+            }
+          />
+        </div>
+      </PainelSecao>
+    </>
+  );
 }
 
 function getHeroEditorialPngConfig(value: unknown): HeroEditorialPngConfig {
@@ -14954,6 +16301,68 @@ export default function EditorVisualPaginaClient({
     }
 
     function buildPatch(config: Record<string, unknown>) {
+      if (field.startsWith("bannerHeroV2:")) {
+        const [, slideId, target, buttonId] = field.split(":");
+        const bannerConfig = normalizarBannerHeroV2Config(config);
+
+        return {
+          ...bannerConfig,
+          slides: bannerConfig.slides.map((slide) => {
+            if (slide.id !== slideId) return slide;
+
+            if (target === "botao" && buttonId) {
+              return {
+                ...slide,
+                conteudo: {
+                  ...slide.conteudo,
+                  botoes: slide.conteudo.botoes.map((botao) =>
+                    botao.id === buttonId
+                      ? {
+                          ...botao,
+                          texto: value.slice(0, 24),
+                          estilo: {
+                            ...botao.estilo,
+                            ...(sectionTextStylePatch.cor
+                              ? { corTexto: sectionTextStylePatch.cor }
+                              : {}),
+                          },
+                        }
+                      : botao
+                  ),
+                },
+              };
+            }
+
+            if (
+              target === "eyebrow" ||
+              target === "titulo" ||
+              target === "texto"
+            ) {
+              const max =
+                target === "eyebrow" ? 32 : target === "titulo" ? 80 : 180;
+              const element = slide.conteudo[target];
+
+              return {
+                ...slide,
+                conteudo: {
+                  ...slide.conteudo,
+                  [target]: atualizarElementoTexto(element, {
+                    conteudo: value.slice(0, max),
+                    ...(richText ? { richText } : {}),
+                    estilo: {
+                      ...element.estilo,
+                      ...sectionTextStylePatch,
+                    },
+                  }),
+                },
+              };
+            }
+
+            return slide;
+          }),
+        };
+      }
+
       if (field === "titulo") {
         return {
           titulo: value,
@@ -15156,7 +16565,9 @@ export default function EditorVisualPaginaClient({
       "secaoTexto",
     ];
 
-    if (!supportedFields.includes(field)) return;
+    if (!supportedFields.includes(field) && !field.startsWith("bannerHeroV2:")) {
+      return;
+    }
 
     setSucesso("");
     setBlocosComTextoPendente((current) =>
@@ -15351,6 +16762,17 @@ export default function EditorVisualPaginaClient({
           : bloco
       )
     );
+  }
+
+  function atualizarBannerHeroV2ConfigDraft(config: BannerHeroV2Config) {
+    if (!blocoSelecionado || blocoSelecionado.tipo !== "BANNER_HERO_V2") return;
+
+    const configJson = normalizarBannerHeroV2Config(
+      config
+    ) as unknown as Record<string, unknown>;
+
+    inlineConfigDraftRef.current[blocoSelecionado.id] = configJson;
+    atualizarConfigBlocoDraft(blocoSelecionado.id, configJson);
   }
 
   function atualizarTextoInline(
@@ -17355,14 +18777,16 @@ export default function EditorVisualPaginaClient({
                     {blocoSelecionado.ordem}
                   </p>
 
-                  <button
-                    type="button"
-                    onClick={() => abrirEdicaoBloco(blocoSelecionado)}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    <Type className="h-4 w-4" />
-                    Editar conteúdo básico
-                  </button>
+                  {!isBannerHeroV2Tipo(blocoSelecionado.tipo) && (
+                    <button
+                      type="button"
+                      onClick={() => abrirEdicaoBloco(blocoSelecionado)}
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <Type className="h-4 w-4" />
+                      Editar conteúdo básico
+                    </button>
+                  )}
 
                   {blocoParaSalvarTextoInline && (
                     <button
@@ -17372,7 +18796,11 @@ export default function EditorVisualPaginaClient({
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Save className="h-4 w-4" />
-                      {salvando ? "Salvando..." : "Salvar textos do preview"}
+                      {salvando
+                        ? "Salvando..."
+                        : isBannerHeroV2Tipo(blocoParaSalvarTextoInline.tipo)
+                          ? "Salvar banner"
+                          : "Salvar textos do preview"}
                     </button>
                   )}
                 </PainelSecao>
@@ -17389,6 +18817,20 @@ export default function EditorVisualPaginaClient({
                     {getDeviceDescription(device)}
                   </p>
                 </PainelSecao>
+
+                {blocoSelecionado.tipo === "BANNER_HERO_V2" && (
+                  <BannerHeroV2SidebarPanel
+                    bloco={blocoSelecionado}
+                    selectedItemId={selectedGalleryItemId}
+                    categorias={categoriasDisponiveis}
+                    paginas={paginasDisponiveis}
+                    produtos={produtosDisponiveis}
+                    colecoes={colecoesInteligentes}
+                    onChange={atualizarBannerHeroV2ConfigDraft}
+                    onSave={() => void salvarTextosInline(blocoSelecionado)}
+                    salvando={salvando}
+                  />
+                )}
 
                 {blocoSelecionado.tipo === "SECAO_COLUNAS" && (
                   <PainelSecao title="Secao com colunas">

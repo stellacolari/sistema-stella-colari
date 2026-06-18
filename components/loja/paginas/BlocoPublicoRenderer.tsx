@@ -1,4 +1,5 @@
 import BannerPublico from "@/components/loja/paginas/blocos/BannerPublico";
+import BannerHeroV2Publico from "@/components/loja/paginas/blocos/BannerHeroV2Publico";
 import type { CategoriaMenuPublicoItem } from "@/components/loja/MenuPublicoLoja";
 import ColecoesCategoriasPublico from "@/components/loja/paginas/blocos/ColecoesCategoriasPublico";
 import CtaPublico from "@/components/loja/paginas/blocos/CtaPublico";
@@ -31,6 +32,10 @@ export default function BlocoPublicoRenderer({
 }) {
   if (bloco.tipo === "BANNER" || bloco.tipo === "HERO") {
     return <BannerPublico bloco={bloco} produtos={produtos} />;
+  }
+
+  if (bloco.tipo === "BANNER_HERO_V2") {
+    return <BannerHeroV2Publico bloco={bloco} produtos={produtos} />;
   }
 
   if (bloco.tipo === "HERO_EDITORIAL_PNG") {

@@ -19,6 +19,7 @@ import MenuPublicoLoja, {
 import BlocoPublicoRenderer, {
   isBlocoVisualPublico,
 } from "@/components/loja/paginas/BlocoPublicoRenderer";
+import { normalizarBannerHeroV2Config } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 
@@ -1507,6 +1508,11 @@ export default function LojaPaginaBuilderClient({
     destaque: menu.destaque,
     corDestaque: menu.corDestaque,
   }));
+  const primeiroBloco = blocos[0] || null;
+  const bannerHeroV2Topo =
+    primeiroBloco?.tipo === "BANNER_HERO_V2"
+      ? normalizarBannerHeroV2Config(primeiroBloco.configJson)
+      : null;
 
   return (
     <div className="stella-storefront-render min-h-screen bg-white text-slate-950">
@@ -1518,6 +1524,13 @@ export default function LojaPaginaBuilderClient({
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        transparenteNoTopo={Boolean(
+          bannerHeroV2Topo?.headerTransparente
+        )}
+        textoClaroNoTopo={bannerHeroV2Topo?.headerTextoClaro ?? true}
+        transicaoTransparenteAoScroll={
+          bannerHeroV2Topo?.transicaoHeaderAoScroll ?? true
+        }
       />
 
       <main>

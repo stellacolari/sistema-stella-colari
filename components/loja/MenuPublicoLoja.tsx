@@ -112,6 +112,9 @@ type MenuPublicoLojaProps = {
   mostrarPerfil?: boolean;
   mostrarCarrinho?: boolean;
   mostrarFavoritos?: boolean;
+  transparenteNoTopo?: boolean;
+  textoClaroNoTopo?: boolean;
+  transicaoTransparenteAoScroll?: boolean;
 };
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
@@ -463,6 +466,9 @@ export default function MenuPublicoLoja({
   mostrarPerfil = true,
   mostrarCarrinho = true,
   mostrarFavoritos = true,
+  transparenteNoTopo = false,
+  textoClaroNoTopo = true,
+  transicaoTransparenteAoScroll = true,
 }: MenuPublicoLojaProps) {
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -479,6 +485,7 @@ export default function MenuPublicoLoja({
   const [buscando, setBuscando] = useState(false);
   const [buscasRecentes, setBuscasRecentes] = useState<string[]>([]);
   const [favoritosCount, setFavoritosCount] = useState(0);
+  const [passouTopoTransparente, setPassouTopoTransparente] = useState(false);
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
   const buscaContainerRef = useRef<HTMLDivElement | null>(null);
   const buscaAbortRef = useRef<AbortController | null>(null);
@@ -540,6 +547,16 @@ export default function MenuPublicoLoja({
     categoriasArvore.find(
       (categoria) => categoria.id === categoriaSelecionadaId
     ) ?? null;
+  const headerTransparenteAtivo =
+    transparenteNoTopo &&
+    (!transicaoTransparenteAoScroll || !passouTopoTransparente);
+  const headerTextClass =
+    headerTransparenteAtivo && textoClaroNoTopo
+      ? "text-white hover:text-white/80"
+      : "text-slate-900 hover:text-[var(--brand-blue)]";
+  const headerButtonSurfaceClass = headerTransparenteAtivo
+    ? "bg-transparent"
+    : "bg-white";
 
   const termoBusca = busca.trim();
   const sugestoesBusca = resultadoBusca?.produtos || [];
@@ -715,6 +732,22 @@ export default function MenuPublicoLoja({
     };
   }, [menuAberto, buscaAberta]);
 
+  useEffect(() => {
+    if (!transparenteNoTopo || !transicaoTransparenteAoScroll) {
+      setPassouTopoTransparente(false);
+      return;
+    }
+
+    function updateHeaderMode() {
+      setPassouTopoTransparente(window.scrollY > 48);
+    }
+
+    updateHeaderMode();
+    window.addEventListener("scroll", updateHeaderMode, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateHeaderMode);
+  }, [transparenteNoTopo, transicaoTransparenteAoScroll]);
+
   function abrirBusca() {
     setBuscaAberta(true);
     setMenuVisivel(false);
@@ -807,8 +840,22 @@ export default function MenuPublicoLoja({
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
-        <div className="hidden brand-bg px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-white md:block lg:text-[13px] lg:tracking-[0.28em]">
+      <header
+        className={`top-0 z-50 transition-colors duration-300 ${
+          transparenteNoTopo
+            ? "fixed inset-x-0"
+            : "sticky border-b border-slate-200 bg-white shadow-sm"
+        } ${
+          headerTransparenteAtivo
+            ? "border-transparent bg-transparent shadow-none"
+            : "border-b border-slate-200 bg-white shadow-sm"
+        }`}
+      >
+        <div
+          className={`hidden px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] md:block lg:text-[13px] lg:tracking-[0.28em] ${
+            headerTransparenteAtivo ? "bg-transparent text-white/80" : "brand-bg text-white"
+          }`}
+        >
           10% de cashback na primeira compra
         </div>
 
@@ -818,7 +865,7 @@ export default function MenuPublicoLoja({
               type="button"
               onClick={abrirMenu}
               aria-label="Abrir menu"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:h-11 sm:w-auto sm:justify-start sm:gap-2"
+              className={`inline-flex h-10 w-10 shrink-0 items-center justify-center transition sm:h-11 sm:w-auto sm:justify-start sm:gap-2 ${headerButtonSurfaceClass} ${headerTextClass}`}
             >
               <Menu className="h-5 w-5" />
               <span className="hidden text-xs font-light uppercase tracking-[0.14em] lg:inline">
@@ -834,7 +881,7 @@ export default function MenuPublicoLoja({
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-0.5 sm:gap-1 lg:gap-2">
             <Link
               href={CONTATO_URL}
-              className="hidden h-10 shrink-0 items-center justify-center gap-2 bg-white px-2 text-xs font-light text-slate-900 transition hover:text-[var(--brand-blue)] lg:inline-flex"
+              className={`hidden h-10 shrink-0 items-center justify-center gap-2 px-2 text-xs font-light transition lg:inline-flex ${headerButtonSurfaceClass} ${headerTextClass}`}
             >
               Fale Conosco
             </Link>
@@ -844,7 +891,7 @@ export default function MenuPublicoLoja({
                 type="button"
                 onClick={buscaAberta ? fecharBusca : abrirBusca}
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
-                className="inline-flex h-10 w-9 shrink-0 items-center justify-center bg-white text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
+                className={`inline-flex h-10 w-9 shrink-0 items-center justify-center transition sm:w-10 ${headerButtonSurfaceClass} ${headerTextClass}`}
               >
                 {buscaAberta ? (
                   <X className="h-5 w-5" />
@@ -858,7 +905,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/favoritos"
                 aria-label="Favoritos"
-                className="inline-flex h-10 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
+                className={`inline-flex h-10 w-9 shrink-0 items-center justify-center transition sm:w-10 ${headerTextClass}`}
               >
                 <div className="relative">
                   <Heart
@@ -888,7 +935,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/carrinho"
                 aria-label="Carrinho"
-                className="inline-flex h-10 w-9 shrink-0 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)] sm:w-10"
+                className={`inline-flex h-10 w-9 shrink-0 items-center justify-center transition sm:w-10 ${headerTextClass}`}
               >
                 <ShoppingBag className="h-5 w-5" />
               </Link>
