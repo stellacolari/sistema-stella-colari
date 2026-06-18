@@ -161,6 +161,36 @@ model ProdutoImagem {
   @@index([ordem])
 }
 
+model MidiaAsset {
+  id           String   @id @default(cuid())
+  nome         String
+  nomeOriginal String
+  url          String
+  urlThumb     String?
+  tipo         String   @default("IMAGEM")
+  mimeType     String
+  tamanhoBytes Int
+  largura      Int?
+  altura       Int?
+  alt          String?
+  descricao    String?
+  tagsJson     Json?
+  origem       String   @default("BUILDER")
+  provider     String   @default("VERCEL_BLOB")
+  providerKey  String?
+  pasta        String?
+  status       String   @default("ATIVO")
+  criadoPorId  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([status])
+  @@index([origem])
+  @@index([pasta])
+  @@index([criadoEm])
+}
+
 model ProdutoVariacao {
   id                String                   @id @default(cuid())
   produtoId         String

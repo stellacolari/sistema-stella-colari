@@ -381,7 +381,14 @@ function ItemMedia({
   alt: string;
   className: string;
 }) {
-  if (!itemHasMedia(item)) return null;
+  if (!itemHasMedia(item)) {
+    return (
+      <div
+        className={`overflow-hidden bg-[linear-gradient(135deg,#f8fafc,#e2e8f0_45%,#f8fafc)] ${className}`}
+        aria-label={alt}
+      />
+    );
+  }
 
   return (
     <div
@@ -496,7 +503,7 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
   const itens = getArray(config, "itens")
     .map(asConfig)
     .filter(itemHasPublicContent)
-    .filter((item) => estiloEtiqueta !== "OCULTA" || itemHasMedia(item))
+    .filter(itemHasPublicContent)
     .sort(
       (a, b) =>
         getNumber(a, "ordem", 0) - getNumber(b, "ordem", 0)

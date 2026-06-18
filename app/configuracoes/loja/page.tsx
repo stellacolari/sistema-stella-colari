@@ -199,6 +199,7 @@ export default async function LojaOnlineCentralPage() {
     paginasPublicadas,
     paginasNaoPublicadas,
     paginasCategoria,
+    midiasAtivas,
     formulariosNovos,
     cuponsAtivos,
     cashbackConfig,
@@ -245,6 +246,13 @@ export default async function LojaOnlineCentralPage() {
         statusPublicacao: {
           not: "ARQUIVADA",
         },
+      },
+    }),
+
+    prisma.midiaAsset.count({
+      where: {
+        status: "ATIVO",
+        tipo: "IMAGEM",
       },
     }),
 
@@ -401,6 +409,22 @@ export default async function LojaOnlineCentralPage() {
             {
               href: "/configuracoes/loja/paginas",
               label: "Gerenciar páginas",
+              primary: true,
+            },
+          ]}
+        />
+
+        <CentralCard
+          title="Biblioteca de Midia"
+          description="Organize imagens reutilizaveis do builder com busca, upload em lote e metadados."
+          icon={GalleryVerticalEnd}
+          metric={`${midiasAtivas}`}
+          metricLabel="imagens ativas"
+          tone="site"
+          actions={[
+            {
+              href: "/configuracoes/loja/midias",
+              label: "Abrir biblioteca",
               primary: true,
             },
           ]}

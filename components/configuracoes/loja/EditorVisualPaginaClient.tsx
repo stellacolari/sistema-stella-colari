@@ -77,6 +77,8 @@ import VisualCropEditor, {
   type MediaCropContext,
   type ResponsiveMediaConfig,
 } from "@/components/configuracoes/loja/VisualCropEditor";
+import MediaLibraryPicker from "@/components/configuracoes/loja/MediaLibraryPicker";
+import type { MidiaAssetBiblioteca } from "@/components/configuracoes/loja/MidiaBibliotecaClient";
 
 export type EditorVisualPagina = {
   id: string;
@@ -240,8 +242,11 @@ type ColecaoCategoriaItemEditando = {
   subtituloRichText: RichTextValue | null;
   textoLink: string;
   linkUrl: string;
+  assetId: string;
+  mobileAssetId: string;
   imagemDesktopUrl: string;
   imagemMobileUrl: string;
+  usarImagemMobileAlternativa: boolean;
   tipoMidia: string;
   videoDesktopUrl: string;
   videoMobileUrl: string;
@@ -251,6 +256,8 @@ type ColecaoCategoriaItemEditando = {
   mediaCropDesktopY: number;
   mediaCropMobileX: number;
   mediaCropMobileY: number;
+  mediaZoomDesktop: number;
+  mediaZoomMobile: number;
   tamanhoMosaico: string;
   ordem: number;
 };
@@ -2586,8 +2593,11 @@ function criarItemColecaoPadrao(index: number): ColecaoCategoriaItemEditando {
     subtituloRichText: null,
     textoLink: "Explorar",
     linkUrl: "",
+    assetId: "",
+    mobileAssetId: "",
     imagemDesktopUrl: "",
     imagemMobileUrl: "",
+    usarImagemMobileAlternativa: false,
     tipoMidia: "IMAGEM",
     videoDesktopUrl: "",
     videoMobileUrl: "",
@@ -2597,6 +2607,8 @@ function criarItemColecaoPadrao(index: number): ColecaoCategoriaItemEditando {
     mediaCropDesktopY: 50,
     mediaCropMobileX: 50,
     mediaCropMobileY: 50,
+    mediaZoomDesktop: 100,
+    mediaZoomMobile: 100,
     tamanhoMosaico: "AUTO",
     ordem: index - 1,
   };
@@ -2907,10 +2919,17 @@ function getItensColecoesConfig(
         getRichTextConfig(data, "textoRichText"),
       textoLink: getStringConfig(data, "textoLink") || "Explorar",
       linkUrl: getStringConfig(data, "linkUrl") || getStringConfig(data, "linkBotao"),
+      assetId: getStringConfig(data, "assetId"),
+      mobileAssetId: getStringConfig(data, "mobileAssetId"),
       imagemDesktopUrl: imagemUrl,
       imagemMobileUrl:
         getStringConfig(data, "imagemMobileUrl") ||
         getStringConfig(data, "imagemMobile"),
+      usarImagemMobileAlternativa: getBooleanConfig(
+        data,
+        "usarImagemMobileAlternativa",
+        Boolean(getStringConfig(data, "imagemMobileUrl") || getStringConfig(data, "imagemMobile"))
+      ),
       tipoMidia: getStringConfig(data, "tipoMidia") === "VIDEO" ? "VIDEO" : "IMAGEM",
       videoDesktopUrl: getStringConfig(data, "videoDesktopUrl"),
       videoMobileUrl: getStringConfig(data, "videoMobileUrl"),
@@ -2928,6 +2947,8 @@ function getItensColecoesConfig(
         "mediaCropMobileY",
         mediaCropDesktopY
       ),
+      mediaZoomDesktop: getNumberConfig(data, "mediaZoomDesktop", 100),
+      mediaZoomMobile: getNumberConfig(data, "mediaZoomMobile", 100),
       tamanhoMosaico: normalizarTamanhoMosaicoColecoes(
         getStringConfig(data, "tamanhoMosaico")
       ),
@@ -6520,6 +6541,9 @@ function ColecoesCategoriasModalFields({
   categoriasDisponiveis: EditorVisualCategoria[];
   onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTargetItemId, setPickerTargetItemId] = useState<string | null>(null);
+
   function updateItem(itemId: string, data: Partial<ColecaoCategoriaItemEditando>) {
     onChange({
       itensColecoes: estado.itensColecoes.map((item) =>
@@ -6600,6 +6624,91 @@ function ColecoesCategoriasModalFields({
         ? { mediaCropMobileX: crop }
         : { mediaCropMobileY: crop }
     );
+  }
+
+  function getItemMediaConfig(item: ColecaoCategoriaItemEditando): ResponsiveMediaConfig {
+    const media = createResponsiveMediaConfig({
+      desktopUrl: item.imagemDesktopUrl,
+      mobileUrl: item.usarImagemMobileAlternativa ? item.imagemMobileUrl : "",
+      alt: item.titulo || item.categoriaNome,
+      aspectRatioDesktop: "4:5",
+      aspectRatioMobile: "4:5",
+      desktopPositionX: item.mediaCropDesktopX,
+      desktopPositionY: item.mediaCropDesktopY,
+      mobilePositionX: item.mediaCropMobileX,
+      mobilePositionY: item.mediaCropMobileY,
+      desktopZoom: item.mediaZoomDesktop,
+      mobileZoom: item.mediaZoomMobile,
+    });
+
+    return {
+      ...media,
+      desktop: {
+        ...media.desktop,
+        assetId: item.assetId,
+      },
+      mobileAssetId: item.mobileAssetId,
+    };
+  }
+
+  function getItemPatchFromMedia(
+    media: ResponsiveMediaConfig
+  ): Partial<ColecaoCategoriaItemEditando> {
+    return {
+      assetId: media.desktop.assetId || "",
+      mobileAssetId: media.mobileAssetId || "",
+      imagemDesktopUrl: media.desktop.url || "",
+      imagemMobileUrl:
+        media.usarImagemMobileAlternativa && media.mobileUrl
+          ? media.mobileUrl
+          : "",
+      usarImagemMobileAlternativa: Boolean(
+        media.usarImagemMobileAlternativa && media.mobileUrl
+      ),
+      mediaCropDesktopX: media.desktop.positionX,
+      mediaCropDesktopY: media.desktop.positionY,
+      mediaCropMobileX: media.mobile.positionX,
+      mediaCropMobileY: media.mobile.positionY,
+      mediaZoomDesktop: media.desktop.zoom,
+      mediaZoomMobile: media.mobile.zoom,
+      mediaPositionDesktop: getMediaCropObjectPosition(media.desktop),
+      mediaPositionMobile: getMediaCropObjectPosition(media.mobile),
+    };
+  }
+
+  function getItemPatchFromAsset(
+    asset: MidiaAssetBiblioteca
+  ): Partial<ColecaoCategoriaItemEditando> {
+    return {
+      assetId: asset.id,
+      imagemDesktopUrl: asset.url,
+      tipoMidia: "IMAGEM",
+      mediaCropDesktopX: 50,
+      mediaCropDesktopY: 50,
+      mediaCropMobileX: 50,
+      mediaCropMobileY: 50,
+      mediaZoomDesktop: 100,
+      mediaZoomMobile: 100,
+      mediaPositionDesktop: "center center",
+      mediaPositionMobile: "center center",
+    };
+  }
+
+  function applyAssetsToItems(assets: MidiaAssetBiblioteca[]) {
+    if (assets.length === 0) return;
+
+    if (pickerTargetItemId) {
+      updateItem(pickerTargetItemId, getItemPatchFromAsset(assets[0]));
+      setPickerTargetItemId(null);
+      return;
+    }
+
+    onChange({
+      itensColecoes: estado.itensColecoes.map((item, index) => {
+        const asset = assets[index];
+        return asset ? { ...item, ...getItemPatchFromAsset(asset) } : item;
+      }),
+    });
   }
 
   return (
@@ -6983,9 +7092,21 @@ function ColecoesCategoriasModalFields({
       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-950">Itens</h3>
-          <button type="button" onClick={addItem} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
-            <Plus className="h-4 w-4" /> Adicionar item
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPickerTargetItemId(null);
+                setPickerOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              Selecionar imagens
+            </button>
+            <button type="button" onClick={addItem} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
+              <Plus className="h-4 w-4" /> Adicionar item
+            </button>
+          </div>
         </div>
         <div className="mt-4 space-y-4">
           {estado.itensColecoes.map((item, index) => (
@@ -7031,6 +7152,33 @@ function ColecoesCategoriasModalFields({
                 <option value="IMAGEM">Imagem</option>
                 <option value="VIDEO">Vídeo</option>
               </select>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickerTargetItemId(item.id);
+                    setPickerOpen(true);
+                  }}
+                  className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Selecionar da biblioteca
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateItem(item.id, {
+                      assetId: "",
+                      mobileAssetId: "",
+                      imagemDesktopUrl: "",
+                      imagemMobileUrl: "",
+                      usarImagemMobileAlternativa: false,
+                    })
+                  }
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  Remover imagem
+                </button>
+              </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <UploadMidiaCampo
                   label={
@@ -7077,6 +7225,19 @@ function ColecoesCategoriasModalFields({
                   orientacao="Opcional. Quando vazio, usa a mídia desktop."
                 />
               </div>
+              {item.tipoMidia === "IMAGEM" ? (
+                <div className="mt-4">
+                  <VisualCropEditor
+                    label="Crop visual do item"
+                    value={getItemMediaConfig(item)}
+                    onChange={(media) =>
+                      updateItem(item.id, getItemPatchFromMedia(media))
+                    }
+                    contexto="COLECOES_CATEGORIAS"
+                    showUrlFields
+                  />
+                </div>
+              ) : null}
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-medium leading-5 text-slate-500">
                   Use o enquadramento para escolher qual parte da imagem aparece dentro do card.
@@ -7181,6 +7342,20 @@ function ColecoesCategoriasModalFields({
           ))}
         </div>
       </div>
+      <MediaLibraryPicker
+        open={pickerOpen}
+        mode={pickerTargetItemId ? "single" : "multiple"}
+        title={
+          pickerTargetItemId
+            ? "Selecionar imagem do item"
+            : "Aplicar imagens em sequencia"
+        }
+        onClose={() => {
+          setPickerOpen(false);
+          setPickerTargetItemId(null);
+        }}
+        onSelect={applyAssetsToItems}
+      />
     </div>
   );
 }
@@ -16005,9 +16180,12 @@ export default function EditorVisualPaginaClient({
         subtituloRichText: item.subtituloRichText,
         textoLink: item.textoLink,
         linkUrl: item.linkUrl,
+        assetId: item.assetId,
+        mobileAssetId: item.mobileAssetId,
         imagemDesktopUrl: item.imagemDesktopUrl,
         imagemUrl: item.imagemDesktopUrl,
         imagemMobileUrl: item.imagemMobileUrl,
+        usarImagemMobileAlternativa: item.usarImagemMobileAlternativa,
         tipoMidia: item.tipoMidia,
         videoDesktopUrl: item.videoDesktopUrl,
         videoMobileUrl: item.videoMobileUrl,
@@ -16017,6 +16195,8 @@ export default function EditorVisualPaginaClient({
         mediaCropDesktopY: item.mediaCropDesktopY,
         mediaCropMobileX: item.mediaCropMobileX,
         mediaCropMobileY: item.mediaCropMobileY,
+        mediaZoomDesktop: item.mediaZoomDesktop,
+        mediaZoomMobile: item.mediaZoomMobile,
         tamanhoMosaico: item.tamanhoMosaico,
         ordem: index,
       })),
@@ -16456,9 +16636,12 @@ export default function EditorVisualPaginaClient({
                 subtituloRichText: item.subtituloRichText,
                 textoLink: item.textoLink,
                 linkUrl: item.linkUrl,
+                assetId: item.assetId,
+                mobileAssetId: item.mobileAssetId,
                 imagemDesktopUrl: item.imagemDesktopUrl,
                 imagemUrl: item.imagemDesktopUrl,
                 imagemMobileUrl: item.imagemMobileUrl,
+                usarImagemMobileAlternativa: item.usarImagemMobileAlternativa,
                 tipoMidia: item.tipoMidia,
                 videoDesktopUrl: item.videoDesktopUrl,
                 videoMobileUrl: item.videoMobileUrl,
@@ -16468,6 +16651,8 @@ export default function EditorVisualPaginaClient({
                 mediaCropDesktopY: item.mediaCropDesktopY,
                 mediaCropMobileX: item.mediaCropMobileX,
                 mediaCropMobileY: item.mediaCropMobileY,
+                mediaZoomDesktop: item.mediaZoomDesktop,
+                mediaZoomMobile: item.mediaZoomMobile,
                 tamanhoMosaico: item.tamanhoMosaico,
                 ordem: index,
               })),
