@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
+const STATUS_PAGAMENTO_FINALIZADOS = new Set([
+  "PAGO",
+  "CANCELADO",
+  "EXPIRADO",
+  "RECUSADO",
+]);
+
 function getBaseUrl(req: Request) {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
@@ -12,6 +19,15 @@ function getBaseUrl(req: Request) {
   const url = new URL(req.url);
 
   return `${url.protocol}//${url.host}`;
+}
+
+async function buscarSessaoStripeExistente(sessionId: string) {
+  try {
+    return await stripe.checkout.sessions.retrieve(sessionId);
+  } catch (error) {
+    console.error("Erro ao buscar sessao Stripe existente:", error);
+    return null;
+  }
 }
 
 export async function POST(req: Request) {
@@ -34,6 +50,7 @@ export async function POST(req: Request) {
         id: true,
         codigo: true,
         total: true,
+        status: true,
         statusPagamento: true,
         nomeCliente: true,
         emailCliente: true,
@@ -55,12 +72,65 @@ export async function POST(req: Request) {
       );
     }
 
+    if (
+      pedido.status === "CANCELADO" ||
+      STATUS_PAGAMENTO_FINALIZADOS.has(pedido.statusPagamento)
+    ) {
+      return NextResponse.json(
+        { error: "Este pedido nÃ£o estÃ¡ disponÃ­vel para pagamento." },
+        { status: 409 }
+      );
+    }
+
     const totalCentavos = Math.round(Number(pedido.total || 0) * 100);
 
     if (totalCentavos <= 0) {
       return NextResponse.json(
         { error: "O total do pedido é inválido para pagamento online." },
         { status: 400 }
+      );
+    }
+
+    if (pedido.gatewayPedidoId) {
+      const sessaoExistente = await buscarSessaoStripeExistente(
+        pedido.gatewayPedidoId
+      );
+
+      if (!sessaoExistente) {
+        return NextResponse.json(
+          {
+            error:
+              "NÃ£o foi possÃ­vel recuperar a sessÃ£o de pagamento existente.",
+          },
+          { status: 409 }
+        );
+      }
+
+      if (
+        sessaoExistente.payment_status === "paid" ||
+        sessaoExistente.status === "complete"
+      ) {
+        return NextResponse.json(
+          { error: "Este pedido jÃ¡ possui pagamento confirmado no Stripe." },
+          { status: 409 }
+        );
+      }
+
+      if (sessaoExistente.status === "open" && sessaoExistente.url) {
+        return NextResponse.json({
+          ok: true,
+          url: sessaoExistente.url,
+          sessionId: sessaoExistente.id,
+          reutilizada: true,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "A sessÃ£o de pagamento deste pedido nÃ£o estÃ¡ mais disponÃ­vel.",
+        },
+        { status: 409 }
       );
     }
 
