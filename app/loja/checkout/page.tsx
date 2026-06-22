@@ -22,6 +22,17 @@ export const metadata: Metadata = criarMetadataLoja({
 export const dynamic = "force-dynamic";
 
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
+const CHAVE_CASHBACK_CONFIG = "PADRAO";
+
+const CASHBACK_CONFIG_PADRAO: CheckoutCashbackConfig = {
+  ativo: true,
+  percentualPrimeiraCompra: 10,
+  percentualCompraRecorrente: 5,
+  somenteClienteCadastrado: true,
+  permitirComCupom: false,
+  permitirProdutoComDesconto: true,
+  diasValidade: null,
+};
 
 export default async function CheckoutPage() {
   const cookieStore = await cookies();
@@ -40,20 +51,10 @@ export default async function CheckoutPage() {
 
     buscarConfiguracaoMenuRodape(),
 
-    prisma.lojaCashbackConfiguracao.upsert({
+    prisma.lojaCashbackConfiguracao.findUnique({
       where: {
-        chave: "PADRAO",
+        chave: CHAVE_CASHBACK_CONFIG,
       },
-      create: {
-        chave: "PADRAO",
-        ativo: true,
-        percentualPrimeiraCompra: 10,
-        percentualCompraRecorrente: 5,
-        somenteClienteCadastrado: true,
-        permitirComCupom: false,
-        permitirProdutoComDesconto: true,
-      },
-      update: {},
     }),
 
     clienteId
@@ -92,19 +93,21 @@ export default async function CheckoutPage() {
       : Promise.resolve(null),
   ]);
 
-  const cashbackConfig: CheckoutCashbackConfig = {
-    ativo: cashbackRaw.ativo,
-    percentualPrimeiraCompra: Number(
-      cashbackRaw.percentualPrimeiraCompra || 0
-    ),
-    percentualCompraRecorrente: Number(
-      cashbackRaw.percentualCompraRecorrente || 0
-    ),
-    somenteClienteCadastrado: cashbackRaw.somenteClienteCadastrado,
-    permitirComCupom: cashbackRaw.permitirComCupom,
-    permitirProdutoComDesconto: cashbackRaw.permitirProdutoComDesconto,
-    diasValidade: cashbackRaw.diasValidade,
-  };
+  const cashbackConfig: CheckoutCashbackConfig = cashbackRaw
+    ? {
+        ativo: cashbackRaw.ativo,
+        percentualPrimeiraCompra: Number(
+          cashbackRaw.percentualPrimeiraCompra || 0
+        ),
+        percentualCompraRecorrente: Number(
+          cashbackRaw.percentualCompraRecorrente || 0
+        ),
+        somenteClienteCadastrado: cashbackRaw.somenteClienteCadastrado,
+        permitirComCupom: cashbackRaw.permitirComCupom,
+        permitirProdutoComDesconto: cashbackRaw.permitirProdutoComDesconto,
+        diasValidade: cashbackRaw.diasValidade,
+      }
+    : CASHBACK_CONFIG_PADRAO;
 
   const clienteLogado: CheckoutClienteLogado | null =
     clienteRaw && clienteRaw.status !== "NA_LIXEIRA"
