@@ -1745,6 +1745,12 @@ export default function ProdutoLojaClient({
               </div>
             )}
 
+            {semEstoque && (
+              <p className="mt-5 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+                Produto sem estoque no momento.
+              </p>
+            )}
+
             <div className="mt-5 grid gap-3 sm:grid-cols-[82px_1fr]">
               <label>
                 <span className="mb-2 block text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
