@@ -411,16 +411,22 @@ export default function ProdutosCatalogClient({
   produtos,
   familiasDisponiveis = [],
   perfilAdmin,
+  podeVerValoresInternos: podeVerValoresInternosProp,
+  podeEditarCatalogo: podeEditarCatalogoProp,
 }: {
   produtos: ProdutoCatalogItem[];
   familiasDisponiveis?: ProdutoFamiliaOption[];
   perfilAdmin?: "ACESSO_GERAL" | "VENDEDOR" | string;
+  podeVerValoresInternos?: boolean;
+  podeEditarCatalogo?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isVendedor = perfilAdmin === "VENDEDOR";
-  const podeVerValoresInternos = perfilAdmin === "ACESSO_GERAL";
-  const podeEditarCatalogo = perfilAdmin === "ACESSO_GERAL";
+  const podeVerValoresInternos =
+    podeVerValoresInternosProp ?? perfilAdmin === "ACESSO_GERAL";
+  const podeEditarCatalogo =
+    podeEditarCatalogoProp ?? perfilAdmin === "ACESSO_GERAL";
   const statusOptionsVisiveis = isVendedor
     ? STATUS_OPTIONS.filter((status) => status.value !== "NA_LIXEIRA")
     : STATUS_OPTIONS;

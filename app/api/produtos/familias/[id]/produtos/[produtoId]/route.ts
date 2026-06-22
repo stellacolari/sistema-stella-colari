@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ type RouteContext = {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const { id: familiaId, produtoId } = await context.params;
 
     const vinculo = await prisma.produtoFamiliaProduto.findUnique({
@@ -83,7 +86,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
             ? error.message
             : "Erro ao remover produto da família.",
       },
-      { status: 500 }
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
     );
   }
 }

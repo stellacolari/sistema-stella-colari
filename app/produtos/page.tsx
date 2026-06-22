@@ -2,7 +2,10 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import ProdutosCatalogClient from "@/components/produtos/ProdutosCatalogClient";
 import { regraAplicaACategorias } from "@/lib/regras-categoria";
-import { exigirAdmin } from "@/lib/auth/admin";
+import {
+  exigirAdminComPermissao,
+  usuarioTemPermissaoAdmin,
+} from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -314,7 +317,7 @@ function serializarFamilias(familias: FamiliaComRelacoes[]) {
 
 export default async function ProdutosPage() {
   const [usuario, produtosRaw, regrasAdicionais, familiasRaw] = await Promise.all([
-    exigirAdmin(),
+    exigirAdminComPermissao("produtos", "ver"),
 
     prisma.produto.findMany({
       orderBy: {
@@ -361,6 +364,14 @@ export default async function ProdutosPage() {
     buscarFamiliasRaw(),
   ]);
 
+  const podeVerValoresInternos =
+    usuarioTemPermissaoAdmin(usuario, "produtos", "verCustos") ||
+    usuarioTemPermissaoAdmin(usuario, "produtos", "verMargem");
+  const podeEditarCatalogo = usuarioTemPermissaoAdmin(
+    usuario,
+    "produtos",
+    "editar"
+  );
   const familiasDisponiveis = serializarFamilias(familiasRaw);
   const mapaValoresFamilia = montarMapaValoresFamilia(familiasRaw);
 
@@ -418,33 +429,35 @@ export default async function ProdutosPage() {
     return {
       id: produto.id,
       codigoInterno: produto.codigoInterno,
-      codigoFornecedor: produto.codigoFornecedor || "",
+      codigoFornecedor: podeVerValoresInternos
+        ? produto.codigoFornecedor || ""
+        : "",
       nome: produto.nome,
       imagemUrl: produto.imagemUrl,
       categoria: categoriaPrincipal,
-      fornecedorPadrao: produto.fornecedorPadrao,
+      fornecedorPadrao: podeVerValoresInternos ? produto.fornecedorPadrao : "",
 
-      custoBase,
-      custoAdicionais,
-      quantidadeAdicionais,
-      custoTotal,
+      custoBase: podeVerValoresInternos ? custoBase : 0,
+      custoAdicionais: podeVerValoresInternos ? custoAdicionais : 0,
+      quantidadeAdicionais: podeVerValoresInternos ? quantidadeAdicionais : 0,
+      custoTotal: podeVerValoresInternos ? custoTotal : 0,
 
-      margemAplicada,
+      margemAplicada: podeVerValoresInternos ? margemAplicada : 0,
       precoVenda: precoVendaAtualizado,
 
       descontoAtivo,
       precoPromocional,
 
-      lucroBruto,
-      margemBruta,
+      lucroBruto: podeVerValoresInternos ? lucroBruto : 0,
+      margemBruta: podeVerValoresInternos ? margemBruta : 0,
 
       ativo: produto.ativo,
       status: getStatusProduto(produto),
       statusAntesLixeira: produto.statusAntesLixeira,
-      linkCompra: produto.linkCompra,
+      linkCompra: podeVerValoresInternos ? produto.linkCompra : null,
       estoqueAtual: somarEstoqueProduto(produto),
-      valorEstoque: somarValorEstoqueProduto(produto),
-      totalVendas: produto.vendasItens.length,
+      valorEstoque: podeVerValoresInternos ? somarValorEstoqueProduto(produto) : 0,
+      totalVendas: podeVerValoresInternos ? produto.vendasItens.length : 0,
 
       familiaId: produto.familiaId,
       familiaNome: produto.familia?.nome || null,
@@ -472,6 +485,8 @@ export default async function ProdutosPage() {
       produtos={produtos}
       familiasDisponiveis={familiasDisponiveis}
       perfilAdmin={usuario.perfil}
+      podeVerValoresInternos={podeVerValoresInternos}
+      podeEditarCatalogo={podeEditarCatalogo}
     />
   );
 }

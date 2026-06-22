@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,8 @@ async function gerarSlugUnico(nome: string, familiaIdAtual: string) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const { id } = await context.params;
     const body = await request.json();
 
@@ -112,7 +115,7 @@ export async function PATCH(request: Request, context: RouteContext) {
             ? error.message
             : "Erro ao atualizar família.",
       },
-      { status: 500 }
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
     );
   }
 }

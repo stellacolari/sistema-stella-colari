@@ -108,10 +108,7 @@ export async function exigirAdmin() {
 export async function exigirAdminGeral() {
   const usuario = await exigirAdmin();
 
-  if (
-    usuario.perfil !== "ACESSO_GERAL" &&
-    !usuarioTemPermissao(usuario, "configuracoes", "editar")
-  ) {
+  if (!usuarioTemPermissao(usuario, "configuracoes", "editar")) {
     throw new Error("Acesso nao permitido para este perfil.");
   }
 
@@ -123,7 +120,7 @@ export function usuarioTemPermissaoAdmin(
   modulo: string,
   acao: string
 ) {
-  return usuario.perfil === "ACESSO_GERAL" || usuarioTemPermissao(usuario, modulo, acao);
+  return usuarioTemPermissao(usuario, modulo, acao);
 }
 
 export async function exigirAdminComPermissao(modulo: string, acao = "ver") {

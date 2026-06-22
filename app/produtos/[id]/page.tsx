@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { atualizarProduto } from "../actions";
 import EditarProdutoClient from "@/components/produtos/EditarProdutoClient";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { obterInteligenciaProduto } from "@/lib/produtos/metricas-produto";
 import { analisarPrecificacaoProduto } from "@/lib/financeiro/precificacao-inteligente";
 
@@ -14,7 +14,7 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const usuario = await exigirAdmin();
+  const usuario = await exigirAdminComPermissao("produtos", "editar");
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
 

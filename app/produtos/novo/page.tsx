@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { criarProduto } from "../actions";
 import NovoProdutoClient from "@/components/produtos/NovoProdutoClient";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function NovoProdutoPage() {
-  const usuario = await exigirAdmin();
+  const usuario = await exigirAdminComPermissao("produtos", "editar");
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const [

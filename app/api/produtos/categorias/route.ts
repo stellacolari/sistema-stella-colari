@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 function slugify(value: string) {
   return value
@@ -74,6 +75,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const body = await req.json().catch(() => ({}));
 
     const nome = String(body.nome || "").trim();
@@ -134,6 +137,9 @@ export async function POST(req: Request) {
     const message =
       error instanceof Error ? error.message : "Erro ao criar categoria.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

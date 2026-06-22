@@ -35,7 +35,6 @@ const ADMIN_API_PREFIXES = [
 const VENDEDOR_PAGE_PREFIXES = [
   "/pedidos",
   "/vendas",
-  "/produtos",
   "/clientes",
   "/notificacoes",
 ];
@@ -44,7 +43,6 @@ const VENDEDOR_API_PREFIXES = [
   "/api/clientes",
   "/api/notificacoes",
   "/api/pedidos",
-  "/api/produtos",
   "/api/vendas",
 ];
 
@@ -75,6 +73,10 @@ function matchesPrefix(pathname: string, prefix: string) {
 }
 
 function isVendedorAllowedPage(pathname: string) {
+  if (pathname === "/produtos") {
+    return true;
+  }
+
   return VENDEDOR_PAGE_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
 }
 

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -259,6 +260,8 @@ function getValorCampoProduto({
 
 export async function POST(request: Request) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const body = await request.json();
 
     const familiaId = normalizarTexto(body.familiaId);
@@ -540,7 +543,7 @@ export async function POST(request: Request) {
             ? error.message
             : "Erro ao agrupar produtos.",
       },
-      { status: 500 }
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
     );
   }
 }

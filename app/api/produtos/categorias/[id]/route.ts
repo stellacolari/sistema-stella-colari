@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -107,6 +108,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const { id } = await context.params;
 
     const categoriaExistente = await prisma.categoriaProduto.findUnique({
@@ -222,7 +225,10 @@ export async function PATCH(
     const message =
       error instanceof Error ? error.message : "Erro ao atualizar categoria.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }
 
@@ -231,6 +237,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const { id } = await context.params;
 
     const categoria = await prisma.categoriaProduto.findUnique({
@@ -312,6 +320,9 @@ export async function DELETE(
     const message =
       error instanceof Error ? error.message : "Erro ao excluir categoria.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

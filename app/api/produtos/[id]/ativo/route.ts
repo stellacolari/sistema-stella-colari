@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirAdminComPermissao("produtos", "editar");
+
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
     const ativo = Boolean(body.ativo);
@@ -52,6 +55,9 @@ export async function PATCH(
         ? error.message
         : "Erro ao alterar visibilidade do produto.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

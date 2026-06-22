@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin } from "@/lib/auth/admin";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import { unlink } from "fs/promises";
 import { put, del } from "@vercel/blob";
@@ -808,7 +808,7 @@ async function buscarCategoriaPrincipalObrigatoria(categoriaPrincipalId: string)
 }
 
 export async function criarProduto(formData: FormData) {
-  const usuario = await exigirAdmin();
+  const usuario = await exigirAdminComPermissao("produtos", "editar");
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
@@ -946,7 +946,7 @@ export async function criarProduto(formData: FormData) {
 }
 
 export async function atualizarProduto(id: string, formData: FormData) {
-  const usuario = await exigirAdmin();
+  const usuario = await exigirAdminComPermissao("produtos", "editar");
   const podeEditarEmbalagem = usuario.perfil === "ACESSO_GERAL";
   const podeEditarBuscaSeo = usuario.perfil === "ACESSO_GERAL";
   const nome = String(formData.get("nome") || "").trim();
@@ -1082,6 +1082,8 @@ export async function atualizarProduto(id: string, formData: FormData) {
 }
 
 export async function alternarStatusProduto(id: string, ativoAtual: boolean) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   await prisma.produto.update({
     where: { id },
     data: {
