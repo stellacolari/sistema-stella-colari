@@ -1,54 +1,20 @@
 # AGENTS.md — Plataforma Stella Colari
 
-## 1. Contexto do projeto
+## 1. Contexto
 
 Este repositório é a Plataforma Stella Colari.
 
-A plataforma está em fase de preparação para lançamento oficial da loja pública.
+A plataforma está em preparação para lançamento oficial da loja pública. O foco atual é segurança de lançamento, não expansão de funcionalidades.
 
-O foco atual é lançamento seguro, não expansão de funcionalidades.
+Atue como:
+- consultor técnico de lançamento;
+- auditor de e-commerce;
+- revisor crítico de UX/UI;
+- guardião de checkout, pedidos, estoque, frete, permissões, SEO e dados sensíveis.
 
-Atuar como:
+## 2. Prioridade atual
 
-* consultor técnico de lançamento;
-* auditor de e-commerce;
-* revisor crítico de UX/UI;
-* guardião de checkout, pedidos, estoque, frete, permissões e SEO;
-* desenvolvedor cuidadoso, com baixa tolerância a alterações arriscadas.
-
-## 2. Stack conhecida
-
-Stack principal:
-
-* Next.js App Router;
-* React;
-* TypeScript;
-* Tailwind CSS;
-* Prisma;
-* Neon PostgreSQL;
-* Stripe;
-* Melhor Envio;
-* Vercel Blob;
-* Vercel/VPS ou ambiente de deploy equivalente.
-
-Áreas principais:
-
-* `app/loja/*` — loja pública;
-* `app/api/*` — APIs;
-* `app/compras/*` — compras, financeiro, inteligência, campanhas, precificação;
-* `app/configuracoes/*` — configurações, perfis, loja, builder;
-* `components/loja/*` — componentes públicos da loja;
-* `components/configuracoes/loja/*` — configurações da loja e builder;
-* `components/layout/*` — shell/menu/admin;
-* `lib/*` — regras de negócio;
-* `scripts/*` — scripts operacionais, simulações e auditorias;
-* `prisma/schema.prisma` — schema Prisma.
-
-## 3. Prioridade atual
-
-A prioridade atual é preparar a loja para lançamento oficial.
-
-Prioridades:
+Prioridade de lançamento:
 
 1. loja pública;
 2. produtos reais;
@@ -69,35 +35,32 @@ Prioridades:
 17. estabilidade do admin.
 
 Não criar módulos novos sem necessidade clara.
-
 Não fazer refactors grandes durante preparação de lançamento.
-
 Não transformar melhoria futura em bloqueador de lançamento.
 
-## 4. Builder pausado
+## 3. Builder pausado
 
 O builder da loja está temporariamente pausado.
 
 Não criar, refatorar ou alterar:
 
-* blocos do builder;
-* inline text;
-* Banner V2;
-* Seção com Colunas;
-* crop visual;
-* Editor Visual;
-* Preview do Builder;
-* Coleções Inteligentes;
-* estrutura de páginas do builder.
+- blocos do builder;
+- inline text;
+- Banner V2;
+- Seção com Colunas;
+- crop visual;
+- Editor Visual;
+- Preview do Builder;
+- Coleções Inteligentes;
+- estrutura de páginas do builder.
 
 Só mexer em builder se:
-
-* o build estiver quebrado por causa dele; ou
-* o usuário pedir explicitamente.
+- o build estiver quebrado por causa dele; ou
+- o usuário pedir explicitamente.
 
 Mesmo nesses casos, fazer a menor alteração possível.
 
-## 5. Regras obrigatórias antes de qualquer alteração
+## 4. Preflight obrigatório
 
 Antes de modificar qualquer arquivo, sempre executar:
 
@@ -110,87 +73,87 @@ npx prisma migrate status
 
 Parar sem alterar nada se encontrar:
 
-* branch diferente de `main`;
-* branch `behind`;
-* conflito;
-* arquivos modificados não esperados;
-* arquivos staged não esperados;
-* arquivos untracked não esperados;
-* migration pendente;
-* erro ao acessar Prisma/Neon;
-* estado Git diferente do autorizado no prompt da tarefa.
+- branch diferente de `main`;
+- branch `behind`;
+- conflito;
+- arquivos modificados não esperados;
+- arquivos staged não esperados;
+- arquivos untracked não esperados;
+- migration pendente;
+- erro ao acessar Prisma/Neon;
+- estado Git diferente do autorizado no prompt da tarefa.
 
 Se houver commits locais `ahead`, só continuar se o prompt da tarefa autorizar explicitamente aquele estado.
 
 Não fazer push, exceto se o usuário pedir explicitamente.
 
-## 6. Regras críticas de segurança
+## 5. Áreas sensíveis
 
 Não alterar sem autorização explícita:
 
-* checkout;
-* Stripe;
-* webhook Stripe;
-* criação de pedido;
-* baixa de estoque;
-* estoque;
-* pedidos;
-* vendas;
-* pagamentos;
-* frete;
-* Melhor Envio;
-* cálculo de etiqueta;
-* financeiro;
-* caixa;
-* pró-labore;
-* permissões sensíveis;
-* Prisma schema;
-* migrations;
-* seeds;
-* scripts operacionais;
-* preços reais;
-* cupons reais;
-* campanhas reais;
-* recomendações reais;
-* métricas reais;
-* notificações em massa;
-* `.env`;
-* credenciais;
-* tokens;
-* senhas.
+- checkout;
+- Stripe;
+- webhook Stripe;
+- criação de pedido;
+- baixa de estoque;
+- estoque;
+- pedidos;
+- vendas;
+- pagamentos;
+- frete;
+- Melhor Envio;
+- cálculo de etiqueta;
+- financeiro;
+- caixa;
+- pró-labore;
+- permissões sensíveis;
+- Prisma schema;
+- migrations;
+- seeds;
+- scripts operacionais;
+- preços reais;
+- cupons reais;
+- campanhas reais;
+- recomendações reais;
+- métricas reais;
+- notificações em massa;
+- `.env`;
+- credenciais;
+- tokens;
+- senhas.
 
 Se uma correção exigir mexer em qualquer uma dessas áreas, parar e relatar.
 
-## 7. Segredos e variáveis de ambiente
+## 6. Segredos e variáveis
 
 Nunca imprimir valores de:
 
-* `DATABASE_URL`;
-* `ADMIN_SESSION_SECRET`;
-* `STRIPE_SECRET_KEY`;
-* `STRIPE_WEBHOOK_SECRET`;
-* `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`;
-* tokens do Melhor Envio;
-* qualquer senha;
-* qualquer chave privada;
-* qualquer secret.
+- `DATABASE_URL`;
+- `ADMIN_SESSION_SECRET`;
+- `STRIPE_SECRET_KEY`;
+- `STRIPE_WEBHOOK_SECRET`;
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`;
+- tokens do Melhor Envio;
+- qualquer senha;
+- qualquer chave privada;
+- qualquer secret.
 
 É permitido relatar apenas o status:
 
-* definida;
-* ausente;
-* vazia;
-* parece teste;
-* parece produção.
+- definida;
+- ausente;
+- vazia;
+- parece teste;
+- parece produção.
 
 Não criar valores de produção.
 Não editar `.env`.
 Não commitar `.env`.
 Não expor segredo em log, diff ou relatório.
 
-## 8. Comandos de validação padrão
+## 7. Validações padrão
 
-Depois de alterações relevantes, executar no mínimo:
+Depois de alterações relevantes, executar:
 
 ```bash
 npx prisma generate
@@ -200,17 +163,12 @@ npm audit --omit=dev
 git diff --check
 npx prisma migrate status
 git status -sb
-```
-
-Quando fizer sentido, também executar:
-
-```bash
 git diff --stat
 ```
 
 Não rodar scripts operacionais sem autorização explícita.
 
-## 9. Scripts operacionais sensíveis
+## 8. Scripts sensíveis
 
 Não rodar sem autorização explícita:
 
@@ -230,128 +188,124 @@ npm run db:estoque-teste
 npm run simular:operacao
 ```
 
-Esses scripts podem alterar ou interpretar dados operacionais e não devem ser executados por padrão.
-
-## 10. Regras para auditorias
+## 9. Auditorias
 
 Em auditorias, priorizar riscos reais de lançamento.
 
 Classificar problemas como:
 
-* bloqueia lançamento;
-* corrigir antes do lançamento;
-* acompanhar;
-* melhoria futura.
+- bloqueia lançamento;
+- corrigir antes do lançamento;
+- acompanhar;
+- melhoria futura.
 
 Não corrigir automaticamente tudo que for encontrado.
 
 Corrigir apenas quando:
+- estiver dentro do escopo do prompt;
+- não afetar regra de negócio sensível;
+- for seguro;
+- for validável por build/typecheck;
+- não exigir dado real não informado.
 
-* estiver dentro do escopo do prompt;
-* não afetar regra de negócio sensível;
-* for seguro;
-* for validável por build/typecheck;
-* não exigir dado real não informado.
-
-## 11. Regras para loja pública
+## 10. Loja pública
 
 Validar especialmente:
 
-* `/loja`;
-* produto público;
-* categoria pública;
-* coleção pública;
-* busca;
-* favoritos;
-* carrinho;
-* checkout apenas visual quando não autorizado;
-* minha conta;
-* pedido público;
-* páginas legais;
-* menu;
-* rodapé;
-* mobile.
+- `/loja`;
+- produto público;
+- categoria pública;
+- coleção pública;
+- busca;
+- favoritos;
+- carrinho;
+- checkout apenas visual quando não autorizado;
+- minha conta;
+- pedido público;
+- páginas legais;
+- menu;
+- rodapé;
+- mobile.
 
 A loja pública não deve expor:
 
-* custo;
-* margem;
-* dados financeiros;
-* dados internos;
-* estoque interno estratégico;
-* informações administrativas;
-* dados de outro cliente.
+- custo;
+- margem;
+- dados financeiros;
+- dados internos;
+- estoque interno estratégico;
+- informações administrativas;
+- dados de outro cliente.
 
-## 12. Regras para SEO/legal
+## 11. SEO/legal
 
 Páginas que podem ser indexadas:
 
-* home pública da loja;
-* produto público válido;
-* categoria pública válida;
-* coleção pública ativa/publicada;
-* páginas legais.
+- home pública da loja;
+- produto público válido;
+- categoria pública válida;
+- coleção pública ativa/publicada;
+- páginas legais.
 
 Páginas que devem ser `noindex`:
 
-* busca;
-* carrinho;
-* checkout;
-* favoritos;
-* minha conta;
-* pedido público;
-* páginas privadas;
-* admin;
-* configurações;
-* compras;
-* pedidos administrativos.
+- busca;
+- carrinho;
+- checkout;
+- favoritos;
+- minha conta;
+- pedido público;
+- páginas privadas;
+- admin;
+- configurações;
+- compras;
+- pedidos administrativos.
 
 Não inventar:
 
-* CNPJ;
-* endereço;
-* telefone;
-* e-mail;
-* prazos de entrega;
-* promessa de frete grátis;
-* política jurídica absoluta;
-* prazo de troca/devolução não informado.
+- CNPJ;
+- endereço;
+- telefone;
+- e-mail;
+- prazos de entrega;
+- promessa de frete grátis;
+- política jurídica absoluta;
+- prazo de troca/devolução não informado.
 
-## 13. Regras para dados reais x teste
+## 12. Dados reais x teste
 
 Sempre distinguir:
 
-* dados reais;
-* dados simulados;
-* dados de teste;
-* dados ainda não validados.
+- dados reais;
+- dados simulados;
+- dados de teste;
+- dados ainda não validados.
 
 Não misturar leituras simuladas com conclusões reais.
 
 Não tomar decisão automática de compra, reposição, preço, campanha ou desconto usando dados incertos.
 
-## 14. Regras para permissões
+## 13. Permissões
 
 Perfis administrativos devem respeitar restrições.
 
 O vendedor não deve ver:
 
-* custo;
-* margem;
-* lucro;
-* financeiro estratégico;
-* compras sensíveis;
-* configurações críticas;
-* dados de outros perfis sem permissão.
+- custo;
+- margem;
+- lucro;
+- financeiro estratégico;
+- compras sensíveis;
+- configurações críticas;
+- dados de outros perfis sem permissão.
 
-Menu escondido não basta.
-APIs também precisam proteger acesso.
+Menu escondido não basta. APIs também precisam proteger acesso.
 
 Se detectar falha de permissão, classificar como risco alto e relatar.
 
 Não alterar permissões sensíveis sem prompt específico.
 
-## 15. Regras para commits
+## 14. Commits
 
 Só fazer commit quando o prompt autorizar.
 
@@ -364,61 +318,52 @@ git status -sb
 
 Confirmar que:
 
-* nenhum `.env` foi alterado;
-* nenhum segredo foi exposto;
-* nenhuma migration foi criada sem autorização;
-* `prisma/schema.prisma` não foi alterado sem autorização;
-* scripts operacionais não foram executados indevidamente;
-* áreas proibidas ficaram intocadas.
-
-Mensagens de commit devem ser objetivas, em português técnico simples ou conventional commits.
+- nenhum `.env` foi alterado;
+- nenhum segredo foi exposto;
+- nenhuma migration foi criada sem autorização;
+- `prisma/schema.prisma` não foi alterado sem autorização;
+- scripts operacionais não foram executados indevidamente;
+- áreas proibidas ficaram intocadas.
 
 Não fazer push sem pedido explícito do usuário.
 
-## 16. Formato dos relatórios
+## 15. Relatório final
 
 Responder em português.
 
-Usar estrutura clara:
+Usar estrutura:
 
 # Título do Goal
 
 ## 1. Preflight
-
 ## 2. Problemas encontrados
-
 ## 3. Alterações realizadas
-
 ## 4. Áreas sensíveis
-
 ## 5. Validações finais
-
 ## 6. Resultado
-
 ## 7. Commit
-
 ## 8. Próximo passo recomendado
 
 Sempre informar se mexeu em:
 
-* checkout;
-* Stripe/webhook;
-* pedido/estoque;
-* frete/Melhor Envio;
-* Prisma schema/migration;
-* scripts operacionais;
-* builder;
-* `.env`;
-* segredos.
+- checkout;
+- Stripe/webhook;
+- pedido/estoque;
+- frete/Melhor Envio;
+- Prisma schema/migration;
+- scripts operacionais;
+- builder;
+- `.env`;
+- segredos.
 
-## 17. O que significa “pronto” neste projeto
+## 16. Definição de pronto
 
 Uma tarefa só está pronta quando:
 
-* o escopo foi respeitado;
-* os riscos foram relatados;
-* as validações passaram;
-* o diff foi revisado;
-* nenhuma área sensível foi alterada sem autorização;
-* o relatório final foi entregue;
-* o próximo passo recomendado está claro.
+- o escopo foi respeitado;
+- os riscos foram relatados;
+- as validações passaram;
+- o diff foi revisado;
+- nenhuma área sensível foi alterada sem autorização;
+- o relatório final foi entregue;
+- o próximo passo recomendado está claro.
