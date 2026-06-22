@@ -10,6 +10,10 @@ import PedidoDetalheClient, {
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
 import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeVerDadosFinanceirosAdmin,
+} from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
   title: "Detalhe do pedido | Sistema Stella",
@@ -23,6 +27,9 @@ export default async function PedidoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const usuario = await exigirAdminComPermissao("pedidos", "ver");
+  const podeVerDadosFinanceiros =
+    usuarioPodeVerDadosFinanceirosAdmin(usuario);
 
   const pedidoRaw = await prisma.pedidoOnline.findUnique({
     where: { id },
@@ -242,11 +249,17 @@ export default async function PedidoDetalhePage({
           adicional.itemAdicionalConsumido?.nome ?? null,
 
         quantidade: adicional.quantidade,
-        custoUnitario: Number(adicional.custoUnitario || 0),
+        custoUnitario: podeVerDadosFinanceiros
+          ? Number(adicional.custoUnitario || 0)
+          : 0,
         valorVendaUnitario: Number(adicional.valorVendaUnitario || 0),
-        custoTotal: Number(adicional.custoTotal || 0),
+        custoTotal: podeVerDadosFinanceiros
+          ? Number(adicional.custoTotal || 0)
+          : 0,
         valorVendaTotal: Number(adicional.valorVendaTotal || 0),
-        lucroTotal: Number(adicional.lucroTotal || 0),
+        lucroTotal: podeVerDadosFinanceiros
+          ? Number(adicional.lucroTotal || 0)
+          : 0,
       })),
     })),
 
@@ -372,7 +385,10 @@ export default async function PedidoDetalhePage({
         }}
       />
 
-      <PedidoDetalheClient pedido={pedido} />
+      <PedidoDetalheClient
+        pedido={pedido}
+        podeVerDadosFinanceiros={podeVerDadosFinanceiros}
+      />
     </main>
   );
 }

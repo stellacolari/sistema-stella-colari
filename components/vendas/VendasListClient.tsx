@@ -61,6 +61,7 @@ export type VendaListItem = {
 
 type VendasListClientProps = {
   vendas: VendaListItem[];
+  podeVerDadosFinanceiros?: boolean;
 };
 
 type VisualizacaoVendas = "lista" | "cards" | "tabela";
@@ -279,7 +280,10 @@ function LinhaResumo({
   );
 }
 
-export default function VendasListClient({ vendas }: VendasListClientProps) {
+export default function VendasListClient({
+  vendas,
+  podeVerDadosFinanceiros = false,
+}: VendasListClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -1434,12 +1438,16 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
                         <th className="px-5 py-3 text-right font-semibold">
                           Total
                         </th>
-                        <th className="px-5 py-3 text-right font-semibold">
-                          Gasto
-                        </th>
-                        <th className="px-5 py-3 text-right font-semibold">
-                          Lucro
-                        </th>
+                        {podeVerDadosFinanceiros && (
+                          <>
+                            <th className="px-5 py-3 text-right font-semibold">
+                              Gasto
+                            </th>
+                            <th className="px-5 py-3 text-right font-semibold">
+                              Lucro
+                            </th>
+                          </>
+                        )}
                       </tr>
                     </thead>
 
@@ -1469,15 +1477,19 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
                             {moeda(produto.valorTotal)}
                           </td>
 
-                          <td className="px-5 py-4 text-right text-slate-700">
-                            {moeda(
-                              produto.gastoProduto + produto.gastoAdicionais
-                            )}
-                          </td>
+                          {podeVerDadosFinanceiros && (
+                            <>
+                              <td className="px-5 py-4 text-right text-slate-700">
+                                {moeda(
+                                  produto.gastoProduto + produto.gastoAdicionais
+                                )}
+                              </td>
 
-                          <td className="px-5 py-4 text-right text-slate-700">
-                            {moeda(produto.lucroTotal)}
-                          </td>
+                              <td className="px-5 py-4 text-right text-slate-700">
+                                {moeda(produto.lucroTotal)}
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1491,15 +1503,19 @@ export default function VendasListClient({ vendas }: VendasListClientProps) {
                   value={moeda(vendaSelecionada.valorTotal)}
                 />
 
-                <LinhaResumo
-                  label="Gasto total"
-                  value={moeda(vendaSelecionada.gastoTotal)}
-                />
+                {podeVerDadosFinanceiros && (
+                  <>
+                    <LinhaResumo
+                      label="Gasto total"
+                      value={moeda(vendaSelecionada.gastoTotal)}
+                    />
 
-                <LinhaResumo
-                  label="Lucro total"
-                  value={moeda(vendaSelecionada.lucroTotal)}
-                />
+                    <LinhaResumo
+                      label="Lucro total"
+                      value={moeda(vendaSelecionada.lucroTotal)}
+                    />
+                  </>
+                )}
               </div>
 
               {vendaSelecionada.observacoes && (

@@ -614,9 +614,11 @@ function Info({
 export default function NovaVendaV2Client({
   clientes,
   produtos,
+  podeVerDadosFinanceiros = false,
 }: {
   clientes: ClienteBusca[];
   produtos: ProdutoBusca[];
+  podeVerDadosFinanceiros?: boolean;
 }) {
   const [clientesDisponiveis, setClientesDisponiveis] = useState(clientes);
   const [buscaCliente, setBuscaCliente] = useState("");
@@ -790,10 +792,11 @@ export default function NovaVendaV2Client({
       return (
         produto.nome.toLowerCase().includes(termo) ||
         produto.codigoInterno.toLowerCase().includes(termo) ||
-        produto.codigoFornecedor.toLowerCase().includes(termo)
+        (podeVerDadosFinanceiros &&
+          produto.codigoFornecedor.toLowerCase().includes(termo))
       );
     });
-  }, [produtos, buscaProduto]);
+  }, [podeVerDadosFinanceiros, produtos, buscaProduto]);
 
   const descontoNumero = Number(descontoPercentual.replace(",", ".")) || 0;
 
@@ -1766,13 +1769,15 @@ export default function NovaVendaV2Client({
             observacao: origemEntregaManual?.observacao,
           },
           destino: entrega,
-          parametros: {
-            consumoKmPorLitro: entregaManual.consumoKmPorLitro,
-            precoCombustivel: entregaManual.precoCombustivel,
-            margemPercentual: entregaManual.margemPercentual,
-            taxaFixa: entregaManual.taxaFixa,
-            valorMinimo: entregaManual.valorMinimo,
-          },
+          parametros: podeVerDadosFinanceiros
+            ? {
+                consumoKmPorLitro: entregaManual.consumoKmPorLitro,
+                precoCombustivel: entregaManual.precoCombustivel,
+                margemPercentual: entregaManual.margemPercentual,
+                taxaFixa: entregaManual.taxaFixa,
+                valorMinimo: entregaManual.valorMinimo,
+              }
+            : undefined,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -1839,14 +1844,30 @@ export default function NovaVendaV2Client({
         distanciaTotalKm: numeroParaCampo(data.distanciaTotalKm),
         duracaoTexto: String(data.duracaoTexto || ""),
         duracaoMinutos: String(data.duracaoMinutos || ""),
-        consumoKmPorLitro: numeroParaCampo(data.consumoKmPorLitro),
-        precoCombustivel: numeroParaCampo(data.precoCombustivel),
-        litrosEstimados: numeroParaCampo(data.litrosEstimados),
-        custoCombustivel: numeroParaCampo(data.custoCombustivel),
-        margemPercentual: numeroParaCampo(data.margemPercentual),
-        valorComMargem: numeroParaCampo(data.valorComMargem),
-        taxaFixa: numeroParaCampo(data.taxaFixa),
-        valorMinimo: numeroParaCampo(data.valorMinimo),
+        consumoKmPorLitro: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.consumoKmPorLitro)
+          : atual.consumoKmPorLitro,
+        precoCombustivel: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.precoCombustivel)
+          : atual.precoCombustivel,
+        litrosEstimados: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.litrosEstimados)
+          : "",
+        custoCombustivel: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.custoCombustivel)
+          : "",
+        margemPercentual: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.margemPercentual)
+          : atual.margemPercentual,
+        valorComMargem: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.valorComMargem)
+          : "",
+        taxaFixa: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.taxaFixa)
+          : atual.taxaFixa,
+        valorMinimo: podeVerDadosFinanceiros
+          ? numeroParaCampo(data.valorMinimo)
+          : atual.valorMinimo,
         valorSugerido: numeroParaCampo(data.valorSugerido),
         providerDistancia: String(data.providerDistancia || "openroute"),
         origemEnderecoFormatado: String(data.origemEnderecoFormatado || ""),
@@ -1886,6 +1907,7 @@ export default function NovaVendaV2Client({
     modalidadeEntregaNormalizada,
     origemEntregaManual,
     origemEntregaResumo,
+    podeVerDadosFinanceiros,
     salvandoOrigemManual,
   ]);
 
@@ -2012,14 +2034,26 @@ export default function NovaVendaV2Client({
       kmIdaVolta: entregaManual.distanciaTotalKm || null,
       duracaoTexto: entregaManual.duracaoTexto || null,
       duracaoMinutos: entregaManual.duracaoMinutos || null,
-      consumoKmPorLitro: entregaManual.consumoKmPorLitro || null,
-      precoCombustivel: entregaManual.precoCombustivel || null,
-      litrosEstimados: entregaManual.litrosEstimados || null,
-      custoCombustivel: entregaManual.custoCombustivel || null,
+      consumoKmPorLitro: podeVerDadosFinanceiros
+        ? entregaManual.consumoKmPorLitro || null
+        : null,
+      precoCombustivel: podeVerDadosFinanceiros
+        ? entregaManual.precoCombustivel || null
+        : null,
+      litrosEstimados: podeVerDadosFinanceiros
+        ? entregaManual.litrosEstimados || null
+        : null,
+      custoCombustivel: podeVerDadosFinanceiros
+        ? entregaManual.custoCombustivel || null
+        : null,
       cobrarIdaVolta: Boolean(entregaManual.distanciaTotalKm),
-      margemPercentual: entregaManual.margemPercentual || null,
-      taxaFixa: entregaManual.taxaFixa || null,
-      valorMinimo: entregaManual.valorMinimo || null,
+      margemPercentual: podeVerDadosFinanceiros
+        ? entregaManual.margemPercentual || null
+        : null,
+      taxaFixa: podeVerDadosFinanceiros ? entregaManual.taxaFixa || null : null,
+      valorMinimo: podeVerDadosFinanceiros
+        ? entregaManual.valorMinimo || null
+        : null,
       valorSugerido: entregaManual.valorSugerido || null,
       valorManual:
         modalidadeEntregaNormalizada === "RETIRADA_COMBINADA"
@@ -4164,20 +4198,24 @@ export default function NovaVendaV2Client({
                                     {entregaManual.duracaoTexto || "Não informado"}
                                   </strong>
                                 </div>
-                                <div>
-                                  <span className="block text-xs text-emerald-700">
-                                    Litros
+                                {podeVerDadosFinanceiros ? (
+                                  <>
+                                    <div>
+                                      <span className="block text-xs text-emerald-700">
+                                        Litros
                                   </span>
-                                  <strong>{entregaManual.litrosEstimados} L</strong>
-                                </div>
-                                <div>
+                                      <strong>{entregaManual.litrosEstimados} L</strong>
+                                    </div>
+                                    <div>
                                   <span className="block text-xs text-emerald-700">
                                     Combustível
                                   </span>
                                   <strong>
-                                    {moeda(numeroInputOuNull(entregaManual.custoCombustivel) ?? 0)}
-                                  </strong>
-                                </div>
+                                        {moeda(numeroInputOuNull(entregaManual.custoCombustivel) ?? 0)}
+                                      </strong>
+                                    </div>
+                                  </>
+                                ) : null}
                                 <div>
                                   <span className="block text-xs text-emerald-700">
                                     Sugerido
@@ -4235,7 +4273,8 @@ export default function NovaVendaV2Client({
                               </span>
                             </label>
 
-                            <button
+                            {podeVerDadosFinanceiros ? (
+                              <button
                               type="button"
                               onClick={() =>
                                 setConfigCalculoAberta((atual) => !atual)
@@ -4243,9 +4282,10 @@ export default function NovaVendaV2Client({
                               className="mt-3 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
                               Configurações do cálculo
-                            </button>
+                              </button>
+                            ) : null}
 
-                            {configCalculoAberta ? (
+                            {podeVerDadosFinanceiros && configCalculoAberta ? (
                               <div className="mt-3 grid gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200 sm:grid-cols-2">
                                 <label>
                                   <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">

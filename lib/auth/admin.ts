@@ -123,6 +123,21 @@ export function usuarioTemPermissaoAdmin(
   return usuarioTemPermissao(usuario, modulo, acao);
 }
 
+export function usuarioPodeVerDadosFinanceirosAdmin(
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+) {
+  return (
+    usuarioTemPermissaoAdmin(usuario, "financeiro", "verFinanceiro") ||
+    usuarioTemPermissaoAdmin(usuario, "resultado", "verFinanceiro") ||
+    usuarioTemPermissaoAdmin(usuario, "resultado", "verEstrategico") ||
+    usuarioTemPermissaoAdmin(usuario, "compras", "verCustos") ||
+    usuarioTemPermissaoAdmin(usuario, "precificacao", "verCustos") ||
+    usuarioTemPermissaoAdmin(usuario, "precificacao", "verMargem") ||
+    usuarioTemPermissaoAdmin(usuario, "produtos", "verCustos") ||
+    usuarioTemPermissaoAdmin(usuario, "produtos", "verMargem")
+  );
+}
+
 export async function exigirAdminComPermissao(modulo: string, acao = "ver") {
   const usuario = await exigirAdmin();
 

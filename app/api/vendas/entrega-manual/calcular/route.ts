@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeVerDadosFinanceirosAdmin,
+} from "@/lib/auth/admin";
 
 type EnderecoEntrega = {
   id?: string | null;
@@ -1058,6 +1062,9 @@ export async function POST(req: Request) {
   let destinoErro: EnderecoEntrega | null = null;
 
   try {
+    const usuario = await exigirAdminComPermissao("vendas", "ver");
+    const podeVerDadosFinanceiros =
+      usuarioPodeVerDadosFinanceirosAdmin(usuario);
     const key = texto(process.env.OPENROUTE_API_KEY);
     const body = (await req.json().catch(() => ({}))) as Record<
       string,
@@ -1114,17 +1121,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const parametros =
+    const parametrosRaw =
       body.parametros &&
       typeof body.parametros === "object" &&
       !Array.isArray(body.parametros)
         ? (body.parametros as Record<string, unknown>)
         : {};
+    const parametros = podeVerDadosFinanceiros ? parametrosRaw : {};
     const consumoKmPorLitro = numeroPositivo(
       parametros.consumoKmPorLitro,
       16,
     );
-    const precoCombustivel = numeroNaoNegativo(parametros.precoCombustivel, 0);
+    const precoCombustivel = numeroNaoNegativo(
+      parametros.precoCombustivel,
+      podeVerDadosFinanceiros ? 0 : 6,
+    );
     const margemPercentual = numeroNaoNegativo(
       parametros.margemPercentual,
       15,
@@ -1198,6 +1209,19 @@ export async function POST(req: Request) {
     );
     const duracaoMinutos = Math.max(1, Math.round(rota.duracaoMinutos));
 
+    const dadosFinanceiros = podeVerDadosFinanceiros
+      ? {
+          consumoKmPorLitro,
+          precoCombustivel,
+          litrosEstimados,
+          custoCombustivel,
+          margemPercentual,
+          valorComMargem,
+          taxaFixa,
+          valorMinimo,
+        }
+      : {};
+
     return NextResponse.json({
       origem,
       destino,
@@ -1205,16 +1229,9 @@ export async function POST(req: Request) {
       distanciaTotalKm,
       duracaoMinutos,
       duracaoTexto: formatarDuracao(duracaoMinutos),
-      consumoKmPorLitro,
-      litrosEstimados,
-      precoCombustivel,
-      custoCombustivel,
-      margemPercentual,
-      valorComMargem,
-      taxaFixa,
-      valorMinimo,
       valorSugerido,
       valorFinal: valorSugerido,
+      ...dadosFinanceiros,
       providerDistancia: "openroute",
       mapsUrl: montarMapsUrl(origem, destino),
       origemResumo: resumoEndereco(origem),

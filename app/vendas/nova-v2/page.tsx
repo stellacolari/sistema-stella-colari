@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import NovaVendaV2Client from "@/components/vendas/NovaVendaV2Client";
 import { calcularEstoqueProdutoVenda } from "@/lib/loja/estoque";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeVerDadosFinanceirosAdmin,
+} from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +101,10 @@ async function buscarProdutosVenda() {
 }
 
 export default async function NovaVendaV2Page() {
+  const usuario = await exigirAdminComPermissao("vendas", "ver");
+  const podeVerDadosFinanceiros =
+    usuarioPodeVerDadosFinanceirosAdmin(usuario);
+
   const clientes = await prisma.cliente.findMany({
     where: {
       status: {
@@ -133,7 +141,9 @@ export default async function NovaVendaV2Page() {
     return {
       id: produto.id,
       codigoInterno: produto.codigoInterno,
-      codigoFornecedor: produto.codigoFornecedor || "",
+      codigoFornecedor: podeVerDadosFinanceiros
+        ? produto.codigoFornecedor || ""
+        : "",
       nome:
         produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
       precoVenda: Number(produto.precoVenda),
@@ -158,6 +168,10 @@ export default async function NovaVendaV2Page() {
   });
 
   return (
-    <NovaVendaV2Client clientes={clientes} produtos={produtosFormatados} />
+    <NovaVendaV2Client
+      clientes={clientes}
+      produtos={produtosFormatados}
+      podeVerDadosFinanceiros={podeVerDadosFinanceiros}
+    />
   );
 }

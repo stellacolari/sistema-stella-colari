@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import VendasListClient, {
   type VendaListItem,
 } from "@/components/vendas/VendasListClient";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeVerDadosFinanceirosAdmin,
+} from "@/lib/auth/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +23,10 @@ type VendaComRelacoes = Prisma.VendaGetPayload<{
 }>;
 
 export default async function VendasPage() {
+  const usuario = await exigirAdminComPermissao("vendas", "ver");
+  const podeVerDadosFinanceiros =
+    usuarioPodeVerDadosFinanceirosAdmin(usuario);
+
   const vendasRaw = await prisma.venda.findMany({
     orderBy: { criadoEm: "desc" },
     include: {
@@ -41,9 +49,11 @@ export default async function VendasPage() {
       valorUnitarioBase: Number(item.valorUnitarioBase),
       valorUnitarioFinal: Number(item.valorUnitarioFinal),
       valorTotal: Number(item.valorTotal),
-      gastoProduto: Number(item.gastoProduto),
-      gastoAdicionais: Number(item.gastoAdicionais),
-      lucroTotal: Number(item.lucroTotal),
+      gastoProduto: podeVerDadosFinanceiros ? Number(item.gastoProduto) : 0,
+      gastoAdicionais: podeVerDadosFinanceiros
+        ? Number(item.gastoAdicionais)
+        : 0,
+      lucroTotal: podeVerDadosFinanceiros ? Number(item.lucroTotal) : 0,
       categoria: item.produto?.categoria ?? null,
     }));
 
@@ -64,8 +74,8 @@ export default async function VendasPage() {
       quantidadeItens,
       produtosVendidos,
       valorTotal: Number(venda.valorTotal),
-      gastoTotal: Number(venda.gastoTotal),
-      lucroTotal: Number(venda.lucroTotal),
+      gastoTotal: podeVerDadosFinanceiros ? Number(venda.gastoTotal) : 0,
+      lucroTotal: podeVerDadosFinanceiros ? Number(venda.lucroTotal) : 0,
       descontoPercentual: Number(venda.descontoPercentual),
       status: venda.status,
       observacoes: venda.observacoes,
@@ -104,7 +114,10 @@ export default async function VendasPage() {
         </div>
       </div>
 
-      <VendasListClient vendas={vendas} />
+      <VendasListClient
+        vendas={vendas}
+        podeVerDadosFinanceiros={podeVerDadosFinanceiros}
+      />
     </div>
   );
 }

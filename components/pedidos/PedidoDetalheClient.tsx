@@ -275,8 +275,10 @@ function getTextoOpcaoProduto(tamanhoAnel: string | null) {
 }
 export default function PedidoDetalheClient({
   pedido,
+  podeVerDadosFinanceiros = false,
 }: {
   pedido: PedidoDetalhe;
+  podeVerDadosFinanceiros?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -702,25 +704,29 @@ export default function PedidoDetalheClient({
               </p>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Custo adicionais
-              </p>
+            {podeVerDadosFinanceiros && (
+              <>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Custo adicionais
+                  </p>
 
-              <p className="mt-1 text-sm font-semibold text-slate-950">
-                {moeda(custoAdicionais)}
-              </p>
-            </div>
+                  <p className="mt-1 text-sm font-semibold text-slate-950">
+                    {moeda(custoAdicionais)}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Lucro adicionais
-              </p>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Lucro adicionais
+                  </p>
 
-              <p className="mt-1 text-sm font-semibold text-emerald-700">
-                {moeda(lucroAdicionais)}
-              </p>
-            </div>
+                  <p className="mt-1 text-sm font-semibold text-emerald-700">
+                    {moeda(lucroAdicionais)}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>
@@ -929,13 +935,17 @@ export default function PedidoDetalheClient({
                                 {moeda(adicional.valorVendaTotal)}
                               </p>
 
-                              <p className="mt-1 text-[11px] text-blue-600">
-                                Custo: {moeda(adicional.custoTotal)}
-                              </p>
+                              {podeVerDadosFinanceiros && (
+                                <>
+                                  <p className="mt-1 text-[11px] text-blue-600">
+                                    Custo: {moeda(adicional.custoTotal)}
+                                  </p>
 
-                              <p className="mt-1 text-[11px] text-emerald-700">
-                                Lucro: {moeda(adicional.lucroTotal)}
-                              </p>
+                                  <p className="mt-1 text-[11px] text-emerald-700">
+                                    Lucro: {moeda(adicional.lucroTotal)}
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
