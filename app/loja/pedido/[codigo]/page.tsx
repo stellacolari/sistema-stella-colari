@@ -7,10 +7,16 @@ import PedidoPublicoClient, {
 import AtualizarPedidoPagamentoClient from "@/components/loja/AtualizarPedidoPagamentoClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
-  title: "Pedido | Loja Stella",
-};
+export const metadata: Metadata = criarMetadataLoja({
+  title: "Pedido | Stella Colari",
+  path: "/loja/pedido",
+  robots: {
+    index: false,
+    follow: false,
+  },
+});
 
 export const dynamic = "force-dynamic";
 

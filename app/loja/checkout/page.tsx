@@ -7,10 +7,16 @@ import CheckoutClient, {
 import { prisma } from "@/lib/prisma";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const metadata: Metadata = {
-  title: "Checkout | Loja Stella",
-};
+export const metadata: Metadata = criarMetadataLoja({
+  title: "Checkout | Stella Colari",
+  path: "/loja/checkout",
+  robots: {
+    index: false,
+    follow: false,
+  },
+});
 
 export const dynamic = "force-dynamic";
 

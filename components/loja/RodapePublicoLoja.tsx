@@ -18,6 +18,13 @@ type RodapePublicoLojaProps = {
 };
 
 const LOGO_URL = "/logo-stella.png";
+const LEGAL_LINKS = [
+  { href: "/loja/termos-de-uso", label: "Termos de Uso" },
+  { href: "/loja/politica-de-privacidade", label: "Politica de Privacidade" },
+  { href: "/loja/trocas-e-devolucoes", label: "Trocas e Devolucoes" },
+  { href: "/loja/frete-e-prazos", label: "Frete e Prazos" },
+  { href: "/loja/contato", label: "Contato" },
+];
 
 function isExternalUrl(href: string) {
   return /^https?:\/\//i.test(href);
@@ -178,6 +185,20 @@ export default function RodapePublicoLoja({
               </div>
             </nav>
           )}
+
+          <nav className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              Informacoes
+            </p>
+
+            <div className="grid gap-2">
+              {LEGAL_LINKS.map((link) => (
+                <LinkRodape key={link.href} href={link.href}>
+                  {link.label}
+                </LinkRodape>
+              ))}
+            </div>
+          </nav>
         </div>
       </div>
 

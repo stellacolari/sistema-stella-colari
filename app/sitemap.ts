@@ -7,6 +7,13 @@ export const dynamic = "force-dynamic";
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
 const TIPOS_PAGINA_INDEXAVEIS = ["GERAL", "LANDING", "CAMPANHA"];
+const ROTAS_LEGAIS = [
+  "/loja/termos-de-uso",
+  "/loja/politica-de-privacidade",
+  "/loja/trocas-e-devolucoes",
+  "/loja/frete-e-prazos",
+  "/loja/contato",
+];
 
 function adicionarUrl(
   mapa: Map<string, SitemapEntry>,
@@ -30,12 +37,12 @@ function getLastModifiedTime(entrada: SitemapEntry) {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [produtos, categorias, paginas] = await Promise.all([
+  const [produtos, categorias, colecoes, paginas] = await Promise.all([
     prisma.produto.findMany({
       where: {
         ativo: true,
         status: {
-          not: "LIXEIRA",
+          not: "NA_LIXEIRA",
         },
       },
       select: {
@@ -49,6 +56,52 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.categoriaProduto.findMany({
       where: {
         ativo: true,
+        OR: [
+          {
+            produtos: {
+              some: {
+                produto: {
+                  ativo: true,
+                  status: {
+                    not: "NA_LIXEIRA",
+                  },
+                },
+              },
+            },
+          },
+          {
+            paginasBuilder: {
+              some: {
+                ativo: true,
+                statusPublicacao: "PUBLICADA",
+                tipo: "CATEGORIA",
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        slug: true,
+        atualizadoEm: true,
+      },
+      orderBy: {
+        atualizadoEm: "desc",
+      },
+    }),
+    prisma.colecaoInteligente.findMany({
+      where: {
+        status: "ATIVA",
+        produtos: {
+          some: {
+            status: "APROVADO",
+            produto: {
+              ativo: true,
+              status: {
+                not: "NA_LIXEIRA",
+              },
+            },
+          },
+        },
       },
       select: {
         slug: true,
@@ -98,6 +151,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly",
     priority: 0.5,
   });
+  for (const rota of ROTAS_LEGAIS) {
+    adicionarUrl(urls, {
+      url: getLojaUrl(rota),
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.35,
+    });
+  }
 
   for (const categoria of categorias) {
     adicionarUrl(urls, {
@@ -114,6 +175,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: produto.atualizadoEm,
       changeFrequency: "daily",
       priority: 0.85,
+    });
+  }
+
+  for (const colecao of colecoes) {
+    adicionarUrl(urls, {
+      url: getLojaUrl(`/loja/colecao/${colecao.slug}`),
+      lastModified: colecao.atualizadoEm,
+      changeFrequency: "weekly",
+      priority: 0.7,
     });
   }
 
