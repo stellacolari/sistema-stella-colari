@@ -6,6 +6,7 @@ import CheckoutClient, {
 } from "@/components/loja/CheckoutClient";
 import { prisma } from "@/lib/prisma";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { criarMetadataLoja } from "@/lib/loja/seo";
 
@@ -26,10 +27,18 @@ export default async function CheckoutPage() {
   const cookieStore = await cookies();
   const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
 
-  const [menus, categoriasMenu, cashbackRaw, clienteRaw] = await Promise.all([
+  const [
+    menus,
+    categoriasMenu,
+    configuracaoMenuRodape,
+    cashbackRaw,
+    clienteRaw,
+  ] = await Promise.all([
     buscarMenusPublicos(),
 
     buscarCategoriasMenuPublico(),
+
+    buscarConfiguracaoMenuRodape(),
 
     prisma.lojaCashbackConfiguracao.upsert({
       where: {
@@ -126,6 +135,7 @@ export default async function CheckoutPage() {
     <CheckoutClient
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       cashbackConfig={cashbackConfig}
       clienteLogado={clienteLogado}
     />

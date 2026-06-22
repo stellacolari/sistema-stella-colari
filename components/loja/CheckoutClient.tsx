@@ -21,6 +21,7 @@ import {
   type ComponentProps,
 } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
 import { registrarCheckoutIniciado } from "@/lib/loja/eventos-client";
 
@@ -61,6 +62,7 @@ export type CheckoutClienteLogado = {
 type CheckoutClientProps = {
   menus: MenuPublicoLojaProps["menus"];
   categoriasMenu: MenuPublicoLojaProps["categorias"];
+  configuracaoMenuRodape?: MenuPublicoLojaProps["configuracaoMenuRodape"];
   cashbackConfig: CheckoutCashbackConfig;
   clienteLogado: CheckoutClienteLogado | null;
 };
@@ -382,6 +384,7 @@ function formatarTipoCupom(cupom: CupomAplicado) {
 export default function CheckoutClient({
   menus: menusPublicos,
   categoriasMenu,
+  configuracaoMenuRodape,
   cashbackConfig,
   clienteLogado,
 }: CheckoutClientProps) {
@@ -1033,6 +1036,7 @@ function preencherDadosClienteLogado() {
         <MenuPublicoLoja
           menus={menusPublicos}
           categorias={categoriasMenu}
+          configuracaoMenuRodape={configuracaoMenuRodape}
           mostrarBusca
           mostrarPerfil
           mostrarCarrinho
@@ -1076,6 +1080,11 @@ function preencherDadosClienteLogado() {
             Continuar comprando
           </Link>
         </main>
+
+        <RodapePublicoLoja
+          menus={menusPublicos}
+          configuracaoMenuRodape={configuracaoMenuRodape}
+        />
       </div>
     );
   }
@@ -1085,6 +1094,7 @@ function preencherDadosClienteLogado() {
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -1983,6 +1993,11 @@ function preencherDadosClienteLogado() {
           </section>
         )}
       </main>
+
+      <RodapePublicoLoja
+        menus={menusPublicos}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

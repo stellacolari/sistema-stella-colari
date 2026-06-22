@@ -9,18 +9,24 @@ import MenuPublicoLoja, {
 import ProdutoCardLoja, {
   type ProdutoCardLojaItem,
 } from "./ProdutoCardLoja";
+import RodapePublicoLoja from "./RodapePublicoLoja";
 import { FAVORITOS_UPDATED_EVENT, lerFavoritosIds } from "./favoritos";
+import type { ComponentProps } from "react";
+
+type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
 
 type FavoritosClientProps = {
   produtos: ProdutoCardLojaItem[];
   menus: MenuPublicoItem[];
   categoriasMenu: CategoriaMenuPublicoItem[];
+  configuracaoMenuRodape?: MenuPublicoLojaProps["configuracaoMenuRodape"];
 };
 
 export default function FavoritosClient({
   produtos,
   menus,
   categoriasMenu,
+  configuracaoMenuRodape,
 }: FavoritosClientProps) {
   const [favoritosIds, setFavoritosIds] = useState<string[]>([]);
 
@@ -49,6 +55,7 @@ export default function FavoritosClient({
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -84,6 +91,11 @@ export default function FavoritosClient({
           </div>
         )}
       </main>
+
+      <RodapePublicoLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

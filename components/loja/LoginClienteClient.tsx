@@ -5,17 +5,20 @@ import { useRouter } from "next/navigation";
 import { useState, type ComponentProps } from "react";
 import { AlertCircle, LogIn, Sparkles } from "lucide-react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 
 type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
 
 type LoginClienteClientProps = {
   menus: MenuPublicoLojaProps["menus"];
   categoriasMenu: MenuPublicoLojaProps["categorias"];
+  configuracaoMenuRodape?: MenuPublicoLojaProps["configuracaoMenuRodape"];
 };
 
 export default function LoginClienteClient({
   menus,
   categoriasMenu,
+  configuracaoMenuRodape,
 }: LoginClienteClientProps) {
   const router = useRouter();
 
@@ -72,6 +75,7 @@ export default function LoginClienteClient({
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -173,6 +177,11 @@ export default function LoginClienteClient({
           </Link>
         </section>
       </main>
+
+      <RodapePublicoLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentProps } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
 import {
   registrarCheckoutIniciado,
@@ -24,6 +25,7 @@ type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
 type CarrinhoClientProps = {
   menus: MenuPublicoLojaProps["menus"];
   categoriasMenu: MenuPublicoLojaProps["categorias"];
+  configuracaoMenuRodape?: MenuPublicoLojaProps["configuracaoMenuRodape"];
 };
 
 type CarrinhoItemOpcaoAdicional = {
@@ -300,6 +302,7 @@ function getTextoOpcaoProduto(item: CarrinhoItem) {
 export default function CarrinhoClient({
   menus: menusPublicos,
   categoriasMenu,
+  configuracaoMenuRodape,
 }: CarrinhoClientProps) {
   const [itens, setItens] = useState<CarrinhoItem[]>(() => lerCarrinho());
 
@@ -436,6 +439,7 @@ export default function CarrinhoClient({
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
@@ -853,6 +857,11 @@ export default function CarrinhoClient({
           </section>
         )}
       </main>
+
+      <RodapePublicoLoja
+        menus={menusPublicos}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import FavoritosClient from "@/components/loja/FavoritosClient";
@@ -17,9 +18,10 @@ export const metadata: Metadata = criarMetadataLoja({
 export const dynamic = "force-dynamic";
 
 export default async function FavoritosPage() {
-  const [menus, categoriasMenu, produtos] = await Promise.all([
+  const [menus, categoriasMenu, configuracaoMenuRodape, produtos] = await Promise.all([
     buscarMenusPublicos(),
     buscarCategoriasMenuPublico(),
+    buscarConfiguracaoMenuRodape(),
     buscarProdutosPublicos(),
   ]);
 
@@ -28,6 +30,7 @@ export default async function FavoritosPage() {
       produtos={produtos}
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
     />
   );
 }
