@@ -45,6 +45,7 @@ export type DashboardMovimentacaoItem = {
 };
 
 export type DashboardData = {
+  podeVerDadosFinanceiros: boolean;
   cards: {
     totalVendido: number;
     lucroTotal: number;
@@ -300,11 +301,12 @@ function DashboardCard({
 }
 
 export default function DashboardClient({ data }: DashboardClientProps) {
+  const podeVerDadosFinanceiros = data.podeVerDadosFinanceiros;
   const totalEstoque =
     data.cards.valorEstoqueProdutos + data.cards.valorEstoqueAdicionais;
 
   return (
-    <main className="space-y-6">
+    <section className="space-y-6">
       <section className="overflow-hidden rounded-3xl bg-slate-950 shadow-sm ring-1 ring-slate-800">
         <div className="relative p-6">
           <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
@@ -334,32 +336,56 @@ export default function DashboardClient({ data }: DashboardClientProps) {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <DashboardCard
-          label="Total vendido"
-          value={moeda(data.cards.totalVendido)}
-          description={`${numero(data.cards.vendasAtivas)} venda(s)/pedido(s) pago(s). Online: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
-          icon={<ShoppingBag className="h-5 w-5" />}
-          href="/relatorios"
-          tone="emerald"
-        />
+        {podeVerDadosFinanceiros ? (
+          <>
+            <DashboardCard
+              label="Total vendido"
+              value={moeda(data.cards.totalVendido)}
+              description={`${numero(data.cards.vendasAtivas)} venda(s)/pedido(s) pago(s). Online: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
+              icon={<ShoppingBag className="h-5 w-5" />}
+              href="/relatorios"
+              tone="emerald"
+            />
 
-        <DashboardCard
-          label="Lucro total"
-          value={moeda(data.cards.lucroTotal)}
-          description={`Gasto de vendas e pedidos online efetivados: ${moeda(data.cards.gastoTotalVendas)}.`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          href="/relatorios"
-          tone="blue"
-        />
+            <DashboardCard
+              label="Lucro total"
+              value={moeda(data.cards.lucroTotal)}
+              description={`Gasto de vendas e pedidos online efetivados: ${moeda(data.cards.gastoTotalVendas)}.`}
+              icon={<TrendingUp className="h-5 w-5" />}
+              href="/relatorios"
+              tone="blue"
+            />
 
-        <DashboardCard
-          label="Total comprado"
-          value={moeda(data.cards.totalComprado)}
-          description={`${numero(data.cards.comprasAtivas)} compra(s) ativa(s), sem canceladas/lixeira.`}
-          icon={<ShoppingCart className="h-5 w-5" />}
-          href="/compras"
-          tone="amber"
-        />
+            <DashboardCard
+              label="Total comprado"
+              value={moeda(data.cards.totalComprado)}
+              description={`${numero(data.cards.comprasAtivas)} compra(s) ativa(s), sem canceladas/lixeira.`}
+              icon={<ShoppingCart className="h-5 w-5" />}
+              href="/compras"
+              tone="amber"
+            />
+          </>
+        ) : (
+          <>
+            <DashboardCard
+              label="Vendas e pedidos"
+              value={numero(data.cards.vendasAtivas)}
+              description={`${numero(data.cards.pedidosOnlinePagos)} pedido(s) online pago(s) incluidos.`}
+              icon={<ShoppingBag className="h-5 w-5" />}
+              href="/pedidos"
+              tone="emerald"
+            />
+
+            <DashboardCard
+              label="Compras ativas"
+              value={numero(data.cards.comprasAtivas)}
+              description="Compras operacionais, sem valores financeiros."
+              icon={<ShoppingCart className="h-5 w-5" />}
+              href="/compras"
+              tone="amber"
+            />
+          </>
+        )}
 
         <DashboardCard
           label="Clientes ativos"
@@ -388,14 +414,28 @@ export default function DashboardClient({ data }: DashboardClientProps) {
           tone="amber"
         />
 
-        <DashboardCard
-          label="Valor em estoque"
-          value={moeda(totalEstoque)}
-          description={`Produtos: ${moeda(data.cards.valorEstoqueProdutos)} · Adicionais: ${moeda(data.cards.valorEstoqueAdicionais)}.`}
-          icon={<Warehouse className="h-5 w-5" />}
-          href="/estoque"
-          tone="indigo"
-        />
+        {podeVerDadosFinanceiros ? (
+          <DashboardCard
+            label="Valor em estoque"
+            value={moeda(totalEstoque)}
+            description={`Produtos: ${moeda(data.cards.valorEstoqueProdutos)} · Adicionais: ${moeda(data.cards.valorEstoqueAdicionais)}.`}
+            icon={<Warehouse className="h-5 w-5" />}
+            href="/estoque"
+            tone="indigo"
+          />
+        ) : (
+          <DashboardCard
+            label="Itens em estoque"
+            value={numero(
+              data.cards.quantidadeProdutosEmEstoque +
+                data.cards.quantidadeAdicionaisEmEstoque
+            )}
+            description={`${numero(data.cards.quantidadeProdutosEmEstoque)} produto(s) e ${numero(data.cards.quantidadeAdicionaisEmEstoque)} adicional(is).`}
+            icon={<Warehouse className="h-5 w-5" />}
+            href="/estoque"
+            tone="indigo"
+          />
+        )}
 
         <DashboardCard
           label="Alertas de estoque"
@@ -472,7 +512,9 @@ export default function DashboardClient({ data }: DashboardClientProps) {
                     <th className="px-6 py-4 text-center font-semibold">
                       Estoque
                     </th>
-                    <th className="px-6 py-4 font-semibold">Valor</th>
+                    {podeVerDadosFinanceiros ? (
+                      <th className="px-6 py-4 font-semibold">Valor</th>
+                    ) : null}
                     <th className="px-6 py-4 font-semibold">Situação</th>
                   </tr>
                 </thead>
@@ -497,9 +539,11 @@ export default function DashboardClient({ data }: DashboardClientProps) {
                         {item.quantidadeAtual}
                       </td>
 
-                      <td className="px-6 py-4">
-                        {moeda(item.valorAcumulado)}
-                      </td>
+                      {podeVerDadosFinanceiros ? (
+                        <td className="px-6 py-4">
+                          {moeda(item.valorAcumulado)}
+                        </td>
+                      ) : null}
 
                       <td className="px-6 py-4">
                         <span
@@ -536,7 +580,11 @@ export default function DashboardClient({ data }: DashboardClientProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px] text-left text-sm">
+            <table
+              className={`w-full text-left text-sm ${
+                podeVerDadosFinanceiros ? "min-w-[1050px]" : "min-w-[780px]"
+              }`}
+            >
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="px-6 py-4 font-semibold">Data</th>
@@ -546,8 +594,12 @@ export default function DashboardClient({ data }: DashboardClientProps) {
                   <th className="px-6 py-4 text-center font-semibold">
                     Qtd.
                   </th>
-                  <th className="px-6 py-4 font-semibold">Custo</th>
-                  <th className="px-6 py-4 font-semibold">Faturamento</th>
+                  {podeVerDadosFinanceiros ? (
+                    <>
+                      <th className="px-6 py-4 font-semibold">Custo</th>
+                      <th className="px-6 py-4 font-semibold">Faturamento</th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
 
@@ -585,13 +637,17 @@ export default function DashboardClient({ data }: DashboardClientProps) {
                       {movimentacao.quantidade}
                     </td>
 
-                    <td className="px-6 py-4">
-                      {moeda(movimentacao.custo)}
-                    </td>
+                    {podeVerDadosFinanceiros ? (
+                      <>
+                        <td className="px-6 py-4">
+                          {moeda(movimentacao.custo)}
+                        </td>
 
-                    <td className="px-6 py-4">
-                      {moeda(movimentacao.faturamento)}
-                    </td>
+                        <td className="px-6 py-4">
+                          {moeda(movimentacao.faturamento)}
+                        </td>
+                      </>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -599,6 +655,6 @@ export default function DashboardClient({ data }: DashboardClientProps) {
           </div>
         )}
       </section>
-    </main>
+    </section>
   );
 }

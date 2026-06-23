@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeVerDadosFinanceirosAdmin,
+} from "@/lib/auth/admin";
+import { montarCentralAcoesAdmin } from "@/lib/dashboard/central-acoes";
+import CentralAcoesAdmin from "@/components/dashboard/CentralAcoesAdmin";
 import DashboardClient, {
   type DashboardData,
   type DashboardMovimentacaoItem,
@@ -68,7 +74,11 @@ function getTipoMovimentacaoLabel(tipo: string) {
 }
 
 export default async function DashboardPage() {
+  const usuario = await exigirAdminComPermissao("dashboard", "ver");
+  const podeVerDadosFinanceiros =
+    usuarioPodeVerDadosFinanceirosAdmin(usuario);
   const [
+    centralAcoes,
     vendasRaw,
     comprasRaw,
     clientesRaw,
@@ -77,6 +87,8 @@ export default async function DashboardPage() {
     movimentacoesRaw,
     pedidosOnlineRaw,
   ] = await Promise.all([
+    montarCentralAcoesAdmin(usuario),
+
     prisma.venda.findMany({
       include: {
         itens: true,
@@ -279,7 +291,9 @@ export default async function DashboardPage() {
           ? `${estoque.produto.nome} · Tam. ${estoque.tamanhoAnel}`
           : estoque.produto.nome,
       quantidadeAtual: estoque.quantidadeAtual,
-      valorAcumulado: Number(estoque.valorAcumulado),
+      valorAcumulado: podeVerDadosFinanceiros
+        ? Number(estoque.valorAcumulado)
+        : 0,
       situacao:
         estoque.quantidadeAtual <= 0
           ? "ZERADO"
@@ -293,7 +307,9 @@ export default async function DashboardPage() {
       codigo: estoque.itemAdicional.codigoInterno,
       nome: estoque.itemAdicional.nome,
       quantidadeAtual: estoque.quantidadeAtual,
-      valorAcumulado: Number(estoque.valorAcumulado),
+      valorAcumulado: podeVerDadosFinanceiros
+        ? Number(estoque.valorAcumulado)
+        : 0,
       situacao:
         estoque.quantidadeAtual <= 0
           ? "ZERADO"
@@ -335,30 +351,39 @@ export default async function DashboardPage() {
       itemTipo: movimentacao.itemTipo,
       quantidade: movimentacao.quantidade,
       tamanhoAnel: movimentacao.tamanhoAnel,
-      custo: Number(movimentacao.custo),
-      faturamento: Number(movimentacao.faturamento),
+      custo: podeVerDadosFinanceiros ? Number(movimentacao.custo) : 0,
+      faturamento: podeVerDadosFinanceiros
+        ? Number(movimentacao.faturamento)
+        : 0,
       criadoEm: movimentacao.criadoEm.toISOString(),
       status: movimentacao.status,
     })
   );
 
   const dashboardData: DashboardData = {
+    podeVerDadosFinanceiros,
     cards: {
-      totalVendido,
-      lucroTotal,
-      gastoTotalVendas,
-      totalComprado,
+      totalVendido: podeVerDadosFinanceiros ? totalVendido : 0,
+      lucroTotal: podeVerDadosFinanceiros ? lucroTotal : 0,
+      gastoTotalVendas: podeVerDadosFinanceiros ? gastoTotalVendas : 0,
+      totalComprado: podeVerDadosFinanceiros ? totalComprado : 0,
       clientesAtivos: clientesAtivos.length,
       vendasAtivas: vendasOperacionais.length + pedidosOnline.length,
       pedidosOnlinePagos: pedidosOnline.length,
-      totalPedidosOnlinePagos,
+      totalPedidosOnlinePagos: podeVerDadosFinanceiros
+        ? totalPedidosOnlinePagos
+        : 0,
       comprasAtivas: comprasOperacionais.length,
       quantidadeItensVendidos,
       quantidadeItensComprados,
       quantidadeProdutosEmEstoque,
       quantidadeAdicionaisEmEstoque,
-      valorEstoqueProdutos,
-      valorEstoqueAdicionais,
+      valorEstoqueProdutos: podeVerDadosFinanceiros
+        ? valorEstoqueProdutos
+        : 0,
+      valorEstoqueAdicionais: podeVerDadosFinanceiros
+        ? valorEstoqueAdicionais
+        : 0,
       alertasEstoque: alertasEstoque.length,
     },
     vendasPorStatus,
@@ -366,5 +391,10 @@ export default async function DashboardPage() {
     ultimasMovimentacoes,
   };
 
-  return <DashboardClient data={dashboardData} />;
+  return (
+    <main className="space-y-6">
+      <CentralAcoesAdmin data={centralAcoes} />
+      <DashboardClient data={dashboardData} />
+    </main>
+  );
 }
