@@ -6,6 +6,10 @@ import {
   etapaFunilEvento,
   type EventoComercialTipoPublico,
 } from "@/lib/loja/eventos-taxonomia";
+import {
+  categoriaConsentimentoEvento,
+  categoriaConsentimentoPermitida,
+} from "@/lib/loja/consentimento-privacidade";
 
 export type EventoComercialTipo = EventoComercialTipoPublico;
 
@@ -205,11 +209,16 @@ function sanitizarMetadataCliente(value: unknown, depth = 0): MetadataSeguro | u
 
 export function registrarEventoLoja(evento: EventoComercialPayload) {
   if (typeof window === "undefined") return;
+
+  const categoriaConsentimento = categoriaConsentimentoEvento(evento.tipo);
+
+  if (!categoriaConsentimentoPermitida(categoriaConsentimento)) return;
   if (deveIgnorarPorDedupe(evento)) return;
 
   const metadata = sanitizarMetadataCliente({
     etapa: etapaFunilEvento(evento.tipo),
     confiabilidade: confiabilidadeEvento(evento.tipo),
+    consentimento: categoriaConsentimento,
     ...evento.metadata,
   });
 

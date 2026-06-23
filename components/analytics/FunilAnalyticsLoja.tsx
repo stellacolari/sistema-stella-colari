@@ -322,7 +322,7 @@ function SaudeTracking({ dados }: { dados: FunilAnalyticsLoja }) {
             Proximo cuidado
           </p>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-            Validar eventos em acoes reais antes de automacoes.
+            Considerar consentimento: visitantes em essenciais reduzem analytics.
           </p>
         </div>
       </div>

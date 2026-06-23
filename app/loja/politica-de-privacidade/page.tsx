@@ -30,6 +30,15 @@ export default function PoliticaDePrivacidadePage() {
           ],
         },
         {
+          title: "Cookies, armazenamento local e preferencias",
+          paragraphs: [
+            "A loja usa recursos essenciais para manter carrinho, login, seguranca e funcionamento do checkout. Esses recursos sao necessarios para a experiencia de compra.",
+            "Com a sua escolha, a loja tambem pode registrar sinais de analytics, como busca, produto visualizado, favoritos, carrinho e inicio de checkout, sempre com metadata limitada e sem incluir dados sensiveis como telefone, e-mail, documento ou endereco.",
+            "Favoritos, buscas recentes e preferencias de privacidade podem ser salvos no navegador do visitante. Voce pode revisar as preferencias pelo link no rodape da loja.",
+            "Recursos de marketing e CRM podem ser evoluidos futuramente, mas nao disparam automacoes nesta versao de preparacao.",
+          ],
+        },
+        {
           title: "Seguranca e revisao",
           paragraphs: [
             "As informacoes devem ser tratadas com cuidado e acesso restrito aos processos necessarios para operacao da loja.",

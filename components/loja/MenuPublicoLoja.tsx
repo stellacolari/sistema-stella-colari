@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import ConsentimentoPrivacidadeBanner from "@/components/loja/ConsentimentoPrivacidadeBanner";
 import PerfilClienteLink from "@/components/loja/PerfilClienteLink";
 import {
   ChevronRight,
@@ -1418,6 +1419,7 @@ export default function MenuPublicoLoja({
           )}
         </div>
       )}
+      <ConsentimentoPrivacidadeBanner />
     </>
   );
 }

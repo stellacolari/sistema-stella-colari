@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import { normalizarLojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import { abrirPreferenciasPrivacidade } from "@/lib/loja/consentimento-privacidade";
 
 type RodapeMenuItem = {
   id: string;
@@ -50,6 +51,24 @@ function LinkRodape({
     >
       {children}
     </Link>
+  );
+}
+
+function BotaoRodape({
+  children,
+  onClick,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left text-sm font-medium text-slate-600 transition hover:text-[var(--brand-blue)]"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -197,6 +216,9 @@ export default function RodapePublicoLoja({
                   {link.label}
                 </LinkRodape>
               ))}
+              <BotaoRodape onClick={abrirPreferenciasPrivacidade}>
+                Preferencias de privacidade
+              </BotaoRodape>
             </div>
           </nav>
         </div>
