@@ -22,6 +22,7 @@ import {
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
+import { registrarCheckoutIniciado } from "@/lib/loja/eventos-client";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 
@@ -947,6 +948,19 @@ function preencherDadosClienteLogado() {
       );
       return;
     }
+
+    registrarCheckoutIniciado({
+      origem: "checkout_submit",
+      metadata: {
+        acao: "finalizar_pedido",
+        itensDistintos: itens.length,
+        quantidadeItens: quantidadeTotal,
+        possuiCupom: Boolean(cupomAplicado),
+        possuiCashback: cashbackUsoSolicitado > 0,
+        tipoEntrega: freteSelecionado.tipoEntrega || "ENTREGA",
+        freteProvider: freteSelecionado.provider || "INDEFINIDO",
+      },
+    });
 
     setSalvando(true);
 

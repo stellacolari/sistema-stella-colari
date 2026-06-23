@@ -2,30 +2,16 @@ import type { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  METADATA_KEYS_SENSIVEIS_EVENTO,
+  TIPOS_EVENTO_COMERCIAL_PUBLICOS,
+} from "@/lib/loja/eventos-taxonomia";
 
 export const dynamic = "force-dynamic";
 
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
 const MAX_EVENTOS_POR_MINUTO = 80;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-const TIPOS_EVENTO_COMERCIAL = new Set([
-  "PRODUTO_VISUALIZADO",
-  "PRODUTO_FAVORITADO",
-  "PRODUTO_DESFAVORITADO",
-  "PRODUTO_ADICIONADO_CARRINHO",
-  "PRODUTO_REMOVIDO_CARRINHO",
-  "BUSCA_REALIZADA",
-  "BUSCA_RESULTADO_CLICADO",
-  "BUSCA_SEM_RESULTADO",
-  "VITRINE_EDITORIAL_CLICADA",
-  "BANNER_CTA_CLICADO",
-  "CHECKOUT_INICIADO",
-  "CATEGORIA_CLICADA",
-]);
-
-const METADATA_KEYS_SENSIVEIS =
-  /(senha|password|token|documento|cpf|cnpj|cartao|card|pagamento|endereco|rua|cep|telefone|email|whatsapp)/i;
 
 type JsonSeguro =
   | string
@@ -119,7 +105,7 @@ function sanitizarMetadata(value: unknown, depth = 0): JsonSeguro | undefined {
     entries.forEach(([key, item]) => {
       const cleanKey = key.trim().slice(0, 48);
 
-      if (!cleanKey || METADATA_KEYS_SENSIVEIS.test(cleanKey)) {
+      if (!cleanKey || METADATA_KEYS_SENSIVEIS_EVENTO.test(cleanKey)) {
         return;
       }
 
@@ -162,7 +148,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const tipo = limitarString(body.tipo, 60);
 
-    if (!tipo || !TIPOS_EVENTO_COMERCIAL.has(tipo)) {
+    if (!tipo || !TIPOS_EVENTO_COMERCIAL_PUBLICOS.has(tipo)) {
       return NextResponse.json(
         { error: "Tipo de evento comercial invalido." },
         { status: 400 }

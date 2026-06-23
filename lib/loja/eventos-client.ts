@@ -1,18 +1,13 @@
 "use client";
 
-export type EventoComercialTipo =
-  | "PRODUTO_VISUALIZADO"
-  | "PRODUTO_FAVORITADO"
-  | "PRODUTO_DESFAVORITADO"
-  | "PRODUTO_ADICIONADO_CARRINHO"
-  | "PRODUTO_REMOVIDO_CARRINHO"
-  | "BUSCA_REALIZADA"
-  | "BUSCA_RESULTADO_CLICADO"
-  | "BUSCA_SEM_RESULTADO"
-  | "VITRINE_EDITORIAL_CLICADA"
-  | "BANNER_CTA_CLICADO"
-  | "CHECKOUT_INICIADO"
-  | "CATEGORIA_CLICADA";
+import {
+  METADATA_KEYS_SENSIVEIS_EVENTO,
+  confiabilidadeEvento,
+  etapaFunilEvento,
+  type EventoComercialTipoPublico,
+} from "@/lib/loja/eventos-taxonomia";
+
+export type EventoComercialTipo = EventoComercialTipoPublico;
 
 type EventoComercialPayload = {
   tipo: EventoComercialTipo;
@@ -27,7 +22,16 @@ type EventoComercialPayload = {
   dedupeMs?: number;
 };
 
+type MetadataSeguro =
+  | string
+  | number
+  | boolean
+  | null
+  | MetadataSeguro[]
+  | { [key: string]: MetadataSeguro };
+
 const SESSION_STORAGE_KEY = "stella_loja_session_id";
+const EVENTOS_RECENTES_STORAGE_KEY = "stella_loja_eventos_recentes";
 const EVENTOS_RECENTES = new Map<string, number>();
 
 function gerarSessionId() {
@@ -73,6 +77,51 @@ function montarChaveDedupe(evento: EventoComercialPayload) {
   ].join("|");
 }
 
+function lerEventosRecentesPersistidos() {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.sessionStorage.getItem(EVENTOS_RECENTES_STORAGE_KEY);
+
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        ([, value]) => typeof value === "number" && Number.isFinite(value)
+      )
+    ) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function salvarEventoRecentePersistido(key: string, timestamp: number) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const atual = lerEventosRecentesPersistidos();
+    const limite = timestamp - 10 * 60_000;
+    const entries = Object.entries(atual)
+      .filter(([, value]) => value >= limite)
+      .slice(-80);
+
+    entries.push([key, timestamp]);
+
+    window.sessionStorage.setItem(
+      EVENTOS_RECENTES_STORAGE_KEY,
+      JSON.stringify(Object.fromEntries(entries))
+    );
+  } catch {
+    return;
+  }
+}
+
 function deveIgnorarPorDedupe(evento: EventoComercialPayload) {
   const dedupeMs = evento.dedupeMs ?? 700;
 
@@ -80,13 +129,15 @@ function deveIgnorarPorDedupe(evento: EventoComercialPayload) {
 
   const now = Date.now();
   const key = montarChaveDedupe(evento);
-  const ultimo = EVENTOS_RECENTES.get(key) || 0;
+  const eventosPersistidos = lerEventosRecentesPersistidos();
+  const ultimo = Math.max(EVENTOS_RECENTES.get(key) || 0, eventosPersistidos[key] || 0);
 
   if (now - ultimo < dedupeMs) {
     return true;
   }
 
   EVENTOS_RECENTES.set(key, now);
+  salvarEventoRecentePersistido(key, now);
 
   if (EVENTOS_RECENTES.size > 120) {
     for (const [eventKey, timestamp] of EVENTOS_RECENTES.entries()) {
@@ -99,9 +150,68 @@ function deveIgnorarPorDedupe(evento: EventoComercialPayload) {
   return false;
 }
 
+function sanitizarMetadataCliente(value: unknown, depth = 0): MetadataSeguro | undefined {
+  if (depth > 3) return undefined;
+
+  if (value === null) return null;
+
+  if (typeof value === "string") {
+    const clean = value.trim();
+
+    return clean ? clean.slice(0, 220) : undefined;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const items = value
+      .slice(0, 12)
+      .map((item) => sanitizarMetadataCliente(item, depth + 1))
+      .filter((item): item is MetadataSeguro => typeof item !== "undefined");
+
+    return items.length > 0 ? items : undefined;
+  }
+
+  if (typeof value === "object" && value) {
+    const output: { [key: string]: MetadataSeguro } = {};
+
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, 24)
+      .forEach(([key, item]) => {
+        const cleanKey = key.trim().slice(0, 48);
+
+        if (!cleanKey || METADATA_KEYS_SENSIVEIS_EVENTO.test(cleanKey)) {
+          return;
+        }
+
+        const cleanValue = sanitizarMetadataCliente(item, depth + 1);
+
+        if (typeof cleanValue !== "undefined") {
+          output[cleanKey] = cleanValue;
+        }
+      });
+
+    return Object.keys(output).length > 0 ? output : undefined;
+  }
+
+  return undefined;
+}
+
 export function registrarEventoLoja(evento: EventoComercialPayload) {
   if (typeof window === "undefined") return;
   if (deveIgnorarPorDedupe(evento)) return;
+
+  const metadata = sanitizarMetadataCliente({
+    etapa: etapaFunilEvento(evento.tipo),
+    confiabilidade: confiabilidadeEvento(evento.tipo),
+    ...evento.metadata,
+  });
 
   const payload = {
     tipo: evento.tipo,
@@ -113,7 +223,7 @@ export function registrarEventoLoja(evento: EventoComercialPayload) {
     termoBusca: limparString(evento.termoBusca, 120),
     origem: limparString(evento.origem, 80),
     sessionId: obterSessionId(),
-    metadata: evento.metadata,
+    metadata,
   };
 
   void fetch("/api/loja/eventos", {
@@ -291,8 +401,11 @@ export function registrarCheckoutIniciado({
   registrarEventoLoja({
     tipo: "CHECKOUT_INICIADO",
     origem: origem || "checkout",
-    metadata,
-    dedupeMs: 30_000,
+    metadata: {
+      acao: "checkout_iniciado",
+      ...metadata,
+    },
+    dedupeMs: 120_000,
   });
 }
 

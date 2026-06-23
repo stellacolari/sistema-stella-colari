@@ -8,6 +8,7 @@ import {
   Heart,
   Info,
   Search,
+  ShieldCheck,
   ShoppingCart,
   Sparkles,
   type LucideIcon,
@@ -158,6 +159,8 @@ export default function FunilAnalyticsLoja({ dados }: Props) {
         </section>
       )}
 
+      <SaudeTracking dados={dados} />
+
       {dados.estadoVazio ? (
         <EstadoVazio />
       ) : (
@@ -270,6 +273,60 @@ export default function FunilAnalyticsLoja({ dados }: Props) {
         </>
       )}
     </div>
+  );
+}
+
+function buscarEtapa(dados: FunilAnalyticsLoja, id: FunilLojaEtapa["id"]) {
+  return dados.etapas.find((etapa) => etapa.id === id);
+}
+
+function SaudeTracking({ dados }: { dados: FunilAnalyticsLoja }) {
+  const checkout = buscarEtapa(dados, "checkout");
+  const carrinho = buscarEtapa(dados, "carrinho");
+  const favoritos = buscarEtapa(dados, "favorito");
+  const faltantes = [
+    favoritos?.contagem ? null : "favoritos",
+    carrinho?.contagem ? null : "carrinho",
+    checkout?.contagem ? null : "checkout iniciado",
+  ].filter((item): item is string => Boolean(item));
+  const incompleto =
+    dados.resumo.amostraPequena || Boolean(checkout && checkout.contagem === 0);
+
+  return (
+    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <SectionTitle
+        icon={incompleto ? AlertTriangle : ShieldCheck}
+        title={incompleto ? "Tracking incompleto" : "Tracking saudavel"}
+        description="Leitura de qualidade do dado antes de usar funil para CRM, campanha ou IA."
+      />
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Eventos faltantes
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+            {faltantes.length > 0 ? faltantes.join(", ") : "Nenhum ponto critico"}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Atribuicao
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+            Pedido e pagamento entram como contagem, nao como sessao atribuida.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Proximo cuidado
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+            Validar eventos em acoes reais antes de automacoes.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
