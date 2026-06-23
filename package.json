@@ -7,6 +7,7 @@
     "dev:clean": "rm -rf .next next-build node_modules/.cache && prisma generate && next dev --turbo -p 3000",
     "build": "prisma generate && next build",
     "start": "next start -p 3000",
+    "reset:pre-lancamento": "node scripts/reset-pre-lancamento-stella.mjs",
     "db:limpar-teste": "node scripts/limpar-base-teste.mjs",
     "db:estoque-teste": "node scripts/estoque-inicial-teste.mjs",
     "db:criar-admin": "node scripts/criar-admin.mjs",
