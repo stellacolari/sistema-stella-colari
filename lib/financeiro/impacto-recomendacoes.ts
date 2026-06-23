@@ -20,6 +20,9 @@ export const IMPACTO_RECOMENDACAO_STATUS = [
   "NEGATIVO",
   "INCONCLUSIVO",
   "AGUARDANDO_DADOS",
+  "AINDA_CEDO",
+  "SEM_DADOS",
+  "SEM_ACAO_EXECUTADA",
 ] as const;
 
 export type ImpactoRecomendacaoStatus =
@@ -56,10 +59,12 @@ type ComparativoRecomendacao = {
   diasDecorridos: number;
   confianca: "BAIXA" | "MEDIA" | "ALTA";
   dadosSimulados: boolean;
+  estadoAvaliacao?: "AVALIADO" | "AINDA_CEDO" | "SEM_DADOS" | "SEM_ACAO_EXECUTADA";
+  motivoAvaliacao?: string;
   metricas: Record<string, ComparativoMetrica>;
 };
 
-const STATUS_ELEGIVEIS = ["ACEITA", "EM_EXECUCAO", "CONCLUIDA"];
+const STATUS_ELEGIVEIS = ["ACEITA", "EM_EXECUCAO", "CONCLUIDA", "ADIADA"];
 const STATUS_PEDIDO_INVALIDO = ["CANCELADO", "EXPIRADO", "RECUSADO"];
 const STATUS_VENDA_INVALIDO = ["CANCELADA", "NA_LIXEIRA"];
 const TIPOS_MARKETING = ["MARKETING", "TRAFEGO_PAGO", "INFLUENCIADOR"];
@@ -382,6 +387,85 @@ function baseFromEvidencias(recomendacao: RecomendacaoGerencial) {
   return base;
 }
 
+function recomendacaoTemEvidenciaManualDeAcao(recomendacao: RecomendacaoGerencial) {
+  return Boolean(
+    recomendacao.iniciadaEm ||
+      recomendacao.concluidaEm ||
+      recomendacao.resultadoObservado ||
+      recomendacao.status === "EM_EXECUCAO" ||
+      recomendacao.status === "CONCLUIDA"
+  );
+}
+
+async function campanhaVinculadaExecutada(recomendacaoId: string) {
+  const campanhasExecutadas = await prisma.campanhaComercial.count({
+    where: {
+      recomendacaoId,
+      status: {
+        in: ["EM_EXECUCAO", "CONCLUIDA"],
+      },
+    },
+  });
+
+  return campanhasExecutadas > 0;
+}
+
+async function precoFoiAlteradoDepoisDaRecomendacao(
+  recomendacao: RecomendacaoGerencial
+) {
+  if (!recomendacao.produtoId) return false;
+
+  const evidencias = jsonRecord(recomendacao.evidenciasJson);
+  const precoBase = numero(evidencias.precoAtual);
+  if (precoBase <= 0) return false;
+
+  const produto = await prisma.produto.findUnique({
+    where: { id: recomendacao.produtoId },
+    select: {
+      precoVenda: true,
+      precoPromocional: true,
+      descontoAtivo: true,
+    },
+  });
+  const precoAtual = produto?.descontoAtivo
+    ? numero(produto.precoPromocional || produto.precoVenda)
+    : numero(produto?.precoVenda);
+
+  return precoAtual > 0 && Math.abs(precoAtual - precoBase) >= 0.01;
+}
+
+async function classificarExecucaoAcao(recomendacao: RecomendacaoGerencial) {
+  if (recomendacao.tipo === "PRECIFICACAO") {
+    const precoAlterado = await precoFoiAlteradoDepoisDaRecomendacao(recomendacao);
+
+    return {
+      executada:
+        precoAlterado || recomendacaoTemEvidenciaManualDeAcao(recomendacao),
+      motivo: precoAlterado
+        ? "Preco atual difere da evidencia registrada na recomendacao."
+        : "Nao ha alteracao de preco ou registro manual suficiente para avaliar impacto de precificacao.",
+    };
+  }
+
+  if (["MARKETING", "LOJA", "CRESCIMENTO"].includes(recomendacao.tipo)) {
+    const campanhaExecutada = await campanhaVinculadaExecutada(recomendacao.id);
+
+    return {
+      executada:
+        campanhaExecutada || recomendacaoTemEvidenciaManualDeAcao(recomendacao),
+      motivo: campanhaExecutada
+        ? "Campanha vinculada saiu de rascunho e foi executada."
+        : "Nao ha campanha executada ou registro manual suficiente para avaliar impacto comercial.",
+    };
+  }
+
+  return {
+    executada: recomendacaoTemEvidenciaManualDeAcao(recomendacao),
+    motivo:
+      "Nao ha registro manual suficiente de execucao para comparar impacto com seguranca.",
+  };
+}
+
 export async function capturarMetricasBaseRecomendacao(
   recomendacao: RecomendacaoGerencial
 ) {
@@ -515,7 +599,13 @@ function statusPorScore(
   comparativo: ComparativoRecomendacao,
   janelaCompleta: boolean
 ): ImpactoRecomendacaoStatus {
-  if (!janelaCompleta) return "AGUARDANDO_DADOS";
+  if (comparativo.estadoAvaliacao === "SEM_ACAO_EXECUTADA") {
+    return "SEM_ACAO_EXECUTADA";
+  }
+  if (comparativo.estadoAvaliacao === "SEM_DADOS") return "SEM_DADOS";
+  if (!janelaCompleta || comparativo.estadoAvaliacao === "AINDA_CEDO") {
+    return "AINDA_CEDO";
+  }
   if (comparativo.amostra < 3) return "INCONCLUSIVO";
   if (comparativo.confianca === "BAIXA") return "INCONCLUSIVO";
   if (score >= 70) return "POSITIVO";
@@ -537,7 +627,13 @@ export function formatarResumoImpacto({
     ? " Leitura cautelosa: ha dados simulados na base."
     : "";
 
-  if (status === "AGUARDANDO_DADOS") {
+  if (status === "SEM_ACAO_EXECUTADA") {
+    return `${comparativo.motivoAvaliacao || "Sem evidencia de acao executada; impacto nao deve ser atribuido a recomendacao."}${cautela}`;
+  }
+  if (status === "SEM_DADOS") {
+    return `${comparativo.motivoAvaliacao || "Nao ha dados suficientes para comparar antes e depois."}${cautela}`;
+  }
+  if (status === "AINDA_CEDO" || status === "AGUARDANDO_DADOS") {
     return `Ainda e cedo para concluir; a janela analisada nao terminou.${cautela}`;
   }
   if (status === "INCONCLUSIVO") {
@@ -557,7 +653,15 @@ export function formatarResumoImpacto({
 }
 
 function proximaAcao(status: ImpactoRecomendacaoStatus, tipo: string) {
-  if (status === "AGUARDANDO_DADOS") return "Reavaliar ao fim da janela definida.";
+  if (status === "SEM_ACAO_EXECUTADA") {
+    return "Registrar execucao manual antes de atribuir impacto a recomendacao.";
+  }
+  if (status === "SEM_DADOS") {
+    return "Aguardar novos eventos, vendas ou metricas antes de concluir.";
+  }
+  if (status === "AGUARDANDO_DADOS" || status === "AINDA_CEDO") {
+    return "Reavaliar ao fim da janela definida.";
+  }
   if (status === "INCONCLUSIVO") return "Aumentar amostra antes de decidir escalar ou descartar.";
   if (status === "POSITIVO") return "Manter a decisao e considerar repetir em casos semelhantes.";
   if (status === "PARCIAL" && ["LOJA", "ESTOQUE", "REPOSICAO"].includes(tipo)) {
@@ -567,7 +671,17 @@ function proximaAcao(status: ImpactoRecomendacaoStatus, tipo: string) {
   return "Acompanhar sem escalar investimento por enquanto.";
 }
 
-export async function avaliarImpactoRecomendacao({
+function semDadosSuficientes(comparativo: ComparativoRecomendacao) {
+  const metricas = Object.values(comparativo.metricas);
+
+  return (
+    metricas.length === 0 ||
+    (comparativo.amostra <= 0 &&
+      metricas.every((item) => item.antes === 0 && item.depois === 0))
+  );
+}
+
+export async function calcularImpactoRecomendacao({
   recomendacaoId,
   janelaDias = 14,
 }: {
@@ -583,6 +697,7 @@ export async function avaliarImpactoRecomendacao({
   }
 
   const janela = [7, 14, 30].includes(janelaDias) ? janelaDias : 14;
+  const execucao = await classificarExecucaoAcao(recomendacao);
   const antes = await capturarMetricasBaseRecomendacao(recomendacao);
   const depois = await capturarMetricasAtuaisRecomendacao(recomendacao, janela);
   const diasDecorridos = diasEntre(dataReferenciaRecomendacao(recomendacao));
@@ -592,37 +707,81 @@ export async function avaliarImpactoRecomendacao({
     depois,
     diasDecorridos,
   });
-  const score = calcularScoreImpacto(comparativo);
-  const status = statusPorScore(score, comparativo, janelaAtingida(recomendacao, janela));
+  const janelaCompleta = janelaAtingida(recomendacao, janela);
+
+  if (!execucao.executada) {
+    comparativo.estadoAvaliacao = "SEM_ACAO_EXECUTADA";
+    comparativo.motivoAvaliacao = execucao.motivo;
+  } else if (!janelaCompleta) {
+    comparativo.estadoAvaliacao = "AINDA_CEDO";
+    comparativo.motivoAvaliacao =
+      "A recomendacao teve acao registrada, mas a janela minima de avaliacao ainda nao terminou.";
+  } else if (semDadosSuficientes(comparativo)) {
+    comparativo.estadoAvaliacao = "SEM_DADOS";
+    comparativo.motivoAvaliacao =
+      "Nao ha eventos, vendas ou metricas suficientes no periodo analisado.";
+  } else {
+    comparativo.estadoAvaliacao = "AVALIADO";
+  }
+
+  const scoreCalculado = calcularScoreImpacto(comparativo);
+  const score =
+    comparativo.estadoAvaliacao === "AVALIADO" ? scoreCalculado : 0;
+  const status = statusPorScore(score, comparativo, janelaCompleta);
   const resumo = formatarResumoImpacto({ status, score, comparativo });
   const proximaAcaoSugerida = proximaAcao(status, recomendacao.tipo);
+
+  return {
+    recomendacao,
+    janela,
+    status,
+    score,
+    resumo,
+    antes,
+    depois,
+    comparativo,
+    proximaAcaoSugerida,
+  };
+}
+
+export async function avaliarImpactoRecomendacao({
+  recomendacaoId,
+  janelaDias = 14,
+}: {
+  recomendacaoId: string;
+  janelaDias?: number;
+}) {
+  const calculo = await calcularImpactoRecomendacao({
+    recomendacaoId,
+    janelaDias,
+  });
 
   const impacto = await prisma.recomendacaoGerencialImpacto.upsert({
     where: {
       recomendacaoId_janelaDias: {
-        recomendacaoId: recomendacao.id,
-        janelaDias: janela,
+        recomendacaoId: calculo.recomendacao.id,
+        janelaDias: calculo.janela,
       },
     },
     create: {
-      recomendacaoId: recomendacao.id,
-      janelaDias: janela,
-      statusImpacto: status,
-      scoreImpacto: score,
-      resumo,
-      metricasAntesJson: antes as Prisma.InputJsonObject,
-      metricasDepoisJson: depois as Prisma.InputJsonObject,
-      comparativoJson: comparativo as unknown as Prisma.InputJsonObject,
-      proximaAcaoSugerida,
+      recomendacaoId: calculo.recomendacao.id,
+      janelaDias: calculo.janela,
+      statusImpacto: calculo.status,
+      scoreImpacto: calculo.score,
+      resumo: calculo.resumo,
+      metricasAntesJson: calculo.antes as Prisma.InputJsonObject,
+      metricasDepoisJson: calculo.depois as Prisma.InputJsonObject,
+      comparativoJson: calculo.comparativo as unknown as Prisma.InputJsonObject,
+      proximaAcaoSugerida: calculo.proximaAcaoSugerida,
     },
     update: {
-      statusImpacto: status,
-      scoreImpacto: score,
-      resumo,
-      metricasAntesJson: antes as Prisma.InputJsonObject,
-      metricasDepoisJson: depois as Prisma.InputJsonObject,
-      comparativoJson: comparativo as unknown as Prisma.InputJsonObject,
-      proximaAcaoSugerida,
+      statusImpacto: calculo.status,
+      scoreImpacto: calculo.score,
+      resumo: calculo.resumo,
+      metricasAntesJson: calculo.antes as Prisma.InputJsonObject,
+      metricasDepoisJson: calculo.depois as Prisma.InputJsonObject,
+      comparativoJson: calculo.comparativo as unknown as Prisma.InputJsonObject,
+      proximaAcaoSugerida: calculo.proximaAcaoSugerida,
       avaliadoEm: new Date(),
     },
   });

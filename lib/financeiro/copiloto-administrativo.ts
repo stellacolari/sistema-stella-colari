@@ -237,6 +237,28 @@ function redigirRecomendacao(
   const sensivel = tipoFinanceiro(recomendacao.tipo);
   const ocultarTexto = sensivel && !permissoes.podeVerDadosFinanceiros;
   const dadosSensiveisOcultados = ocultarTexto || sanitizada.ocultou;
+  const impactos = recomendacao.impactos?.map((impacto) => {
+    if (!dadosSensiveisOcultados) {
+      return impacto;
+    }
+
+    return {
+      ...impacto,
+      resumo:
+        "Impacto estrategico com metricas financeiras ocultadas para este perfil.",
+      metricasAntesJson: {
+        dadosSensiveisOcultados: true,
+      },
+      metricasDepoisJson: {
+        dadosSensiveisOcultados: true,
+      },
+      comparativoJson: {
+        dadosSensiveisOcultados: true,
+      },
+      proximaAcaoSugerida:
+        "Solicitar leitura de impacto a um perfil financeiro/autorizado.",
+    };
+  });
 
   return {
     recomendacao: {
@@ -258,6 +280,7 @@ function redigirRecomendacao(
         : recomendacao.acaoSugerida,
       linkAcao: linkPermitido(recomendacao.linkAcao, permissoes),
       evidenciasJson: sanitizada.value,
+      impactos,
     },
     dadosSensiveisOcultados,
   };

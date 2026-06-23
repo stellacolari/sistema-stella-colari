@@ -16,7 +16,6 @@ import {
   PlayCircle,
   RefreshCcw,
   ShieldAlert,
-  TrendingUp,
   Search,
   XCircle,
 } from "lucide-react";
@@ -258,6 +257,9 @@ function labelImpacto(status: string) {
   if (status === "NEGATIVO") return "Negativo";
   if (status === "INCONCLUSIVO") return "Inconclusivo";
   if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
+  if (status === "AINDA_CEDO") return "Ainda cedo";
+  if (status === "SEM_DADOS") return "Sem dados";
+  if (status === "SEM_ACAO_EXECUTADA") return "Sem acao executada";
   return status.replaceAll("_", " ");
 }
 
@@ -266,7 +268,12 @@ function impactoClasses(status: string) {
   if (status === "PARCIAL") return "border-blue-200 bg-blue-50 text-blue-800";
   if (status === "NEUTRO") return "border-slate-200 bg-slate-50 text-slate-700";
   if (status === "NEGATIVO") return "border-red-200 bg-red-50 text-red-800";
-  if (status === "AGUARDANDO_DADOS") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (status === "AGUARDANDO_DADOS" || status === "AINDA_CEDO") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+  if (status === "SEM_DADOS" || status === "SEM_ACAO_EXECUTADA") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
   return "border-violet-200 bg-violet-50 text-violet-800";
 }
 
@@ -429,9 +436,14 @@ export default function RecomendacoesGerenciaisClient({
 
     return {
       positivos: impactos.filter((impacto) => impacto.statusImpacto === "POSITIVO").length,
-      inconclusivos: impactos.filter((impacto) => impacto.statusImpacto === "INCONCLUSIVO").length,
+      inconclusivos: impactos.filter((impacto) =>
+        ["INCONCLUSIVO", "SEM_DADOS"].includes(impacto.statusImpacto)
+      ).length,
       negativos: impactos.filter((impacto) => impacto.statusImpacto === "NEGATIVO").length,
-      aguardando: impactos.filter((impacto) => impacto.statusImpacto === "AGUARDANDO_DADOS").length,
+      aguardando: impactos.filter((impacto) =>
+        ["AGUARDANDO_DADOS", "AINDA_CEDO"].includes(impacto.statusImpacto)
+      ).length,
+      semAcao: impactos.filter((impacto) => impacto.statusImpacto === "SEM_ACAO_EXECUTADA").length,
       taxaPositiva: concluidas > 0 ? Math.round((positivas / concluidas) * 100) : 0,
     };
   }, [recomendacoes]);
@@ -517,29 +529,6 @@ export default function RecomendacoesGerenciaisClient({
         data.atualizadas?.length || 0
       } atualizada(s).`
     );
-    refresh();
-  }
-
-  async function avaliarImpacto(recomendacao: RecomendacaoGerencialResumo) {
-    setErro("");
-    setMensagem("");
-
-    const response = await fetch(
-      `/api/compras/recomendacoes/${recomendacao.id}/avaliar-impacto`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ janelaDias: 14 }),
-      }
-    );
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      setErro(data.error || "Nao foi possivel avaliar impacto.");
-      return;
-    }
-
-    setMensagem("Impacto avaliado.");
     refresh();
   }
 
@@ -651,33 +640,6 @@ export default function RecomendacoesGerenciaisClient({
                   <RefreshCcw className="h-4 w-4" />
                   Gerar recomendacoes
                 </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setErro("");
-                    setMensagem("");
-                    const response = await fetch(
-                      "/api/compras/recomendacoes/avaliar-impactos",
-                      {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ janelaDias: 14 }),
-                      }
-                    );
-                    const data = await response.json().catch(() => ({}));
-                    if (!response.ok) {
-                      setErro(data.error || "Nao foi possivel avaliar impactos.");
-                      return;
-                    }
-                    setMensagem(`${data.avaliadas || 0} impacto(s) avaliado(s).`);
-                    refresh();
-                  }}
-                  disabled={isPending}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Avaliar impactos
-                </button>
               </>
             ) : (
               <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
@@ -701,6 +663,12 @@ export default function RecomendacoesGerenciaisClient({
         unidades podem gerar sinais positivos rapidos. O sistema agora
         diferencia sinal inicial de produto realmente validado, evitando
         alertas fortes sem confirmacao.
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm">
+        Impactos sao exibidos quando ja foram avaliados. Para calcular novos
+        impactos com seguranca, use o script `npm run recomendacoes:impacto`
+        primeiro em dry-run; a tela nao executa avaliacao automaticamente.
       </section>
 
       {(erro || mensagem) && (
@@ -753,9 +721,9 @@ export default function RecomendacoesGerenciaisClient({
           description="Recomendacoes com melhora clara."
         />
         <ResumoCard
-          label="Inconclusivas"
+          label="Sem dados"
           value={resumoImpactos.inconclusivos}
-          description="Ainda sem amostra suficiente."
+          description="Amostra insuficiente ou inconclusiva."
         />
         <ResumoCard
           label="Impacto negativo"
@@ -763,14 +731,14 @@ export default function RecomendacoesGerenciaisClient({
           description="Pedem revisao da premissa."
         />
         <ResumoCard
-          label="Aguardando dados"
+          label="Ainda cedo"
           value={resumoImpactos.aguardando}
           description="Janela ainda em andamento."
         />
         <ResumoCard
-          label="Taxa positiva"
-          value={resumoImpactos.taxaPositiva}
-          description="% das concluidas com impacto bom."
+          label="Sem acao"
+          value={resumoImpactos.semAcao}
+          description="Nao atribuir impacto ainda."
         />
       </section>
 
@@ -878,7 +846,6 @@ export default function RecomendacoesGerenciaisClient({
               permissoes={permissoes}
               vitrine={vitrines.find((vitrine) => vitrine.recomendacaoId === item.id) || null}
               onAcao={acionarRecomendacao}
-              onAvaliarImpacto={avaliarImpacto}
               onCriarCampanha={criarCampanha}
             />
           ))
@@ -894,7 +861,6 @@ function RecomendacaoCard({
   permissoes,
   vitrine,
   onAcao,
-  onAvaliarImpacto,
   onCriarCampanha,
 }: {
   copiloto: RecomendacaoCopilotoAdministrativo;
@@ -902,7 +868,6 @@ function RecomendacaoCard({
   permissoes: PermissoesCopilotoAdministrativo;
   vitrine: VitrineRecomendacaoResumo | null;
   onAcao: (recomendacao: RecomendacaoGerencialResumo, acao: string) => void;
-  onAvaliarImpacto: (recomendacao: RecomendacaoGerencialResumo) => void;
   onCriarCampanha: (recomendacao: RecomendacaoGerencialResumo) => void;
 }) {
   const impacto = latestImpacto(recomendacao);
@@ -1080,17 +1045,6 @@ function RecomendacaoCard({
                         }
                       />
                     )}
-                  {permissoes.podeExecutarRecomendacoes &&
-                    ["ACEITA", "EM_EXECUCAO", "CONCLUIDA"].includes(
-                      recomendacao.status
-                    ) && (
-                    <AcaoButton
-                      icon={<TrendingUp className="h-4 w-4" />}
-                      label="Avaliar impacto"
-                      variant="secondary"
-                      onClick={() => onAvaliarImpacto(recomendacao)}
-                    />
-                  )}
                   {campanha && permissoes.podeVerCampanhas ? (
                     <Link
                       href="/compras/campanhas"

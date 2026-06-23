@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const CONFIRM_VALUE = "AVALIAR_IMPACTO_RECOMENDACOES";
-const STATUS_ELEGIVEIS = ["ACEITA", "EM_EXECUCAO", "CONCLUIDA"];
+const STATUS_ELEGIVEIS = ["ACEITA", "EM_EXECUCAO", "CONCLUIDA", "ADIADA"];
 const MS_DIA = 24 * 60 * 60 * 1000;
 
 function parseArgs(argv) {
@@ -58,6 +58,83 @@ function referencia(recomendacao) {
     recomendacao.aceitaEm ||
     recomendacao.criadoEm
   );
+}
+
+function temEvidenciaManualDeAcao(recomendacao) {
+  return Boolean(
+    recomendacao.iniciadaEm ||
+      recomendacao.concluidaEm ||
+      recomendacao.resultadoObservado ||
+      recomendacao.status === "EM_EXECUCAO" ||
+      recomendacao.status === "CONCLUIDA"
+  );
+}
+
+async function campanhaExecutada(recomendacaoId) {
+  const total = await prisma.campanhaComercial.count({
+    where: {
+      recomendacaoId,
+      status: { in: ["EM_EXECUCAO", "CONCLUIDA"] },
+    },
+  });
+
+  return total > 0;
+}
+
+async function precoAlterado(recomendacao) {
+  if (!recomendacao.produtoId) return false;
+
+  const evidencias =
+    recomendacao.evidenciasJson &&
+    typeof recomendacao.evidenciasJson === "object" &&
+    !Array.isArray(recomendacao.evidenciasJson)
+      ? recomendacao.evidenciasJson
+      : {};
+  const precoBase = num(evidencias.precoAtual);
+  if (precoBase <= 0) return false;
+
+  const produto = await prisma.produto.findUnique({
+    where: { id: recomendacao.produtoId },
+    select: {
+      precoVenda: true,
+      precoPromocional: true,
+      descontoAtivo: true,
+    },
+  });
+  const precoAtual = produto?.descontoAtivo
+    ? num(produto.precoPromocional || produto.precoVenda)
+    : num(produto?.precoVenda);
+
+  return precoAtual > 0 && Math.abs(precoAtual - precoBase) >= 0.01;
+}
+
+async function classificarExecucao(recomendacao) {
+  if (recomendacao.tipo === "PRECIFICACAO") {
+    const alterado = await precoAlterado(recomendacao);
+
+    return {
+      executada: alterado || temEvidenciaManualDeAcao(recomendacao),
+      motivo: alterado
+        ? "Preco alterado em relacao a evidencia original."
+        : "Sem alteracao de preco ou registro manual suficiente.",
+    };
+  }
+
+  if (["MARKETING", "LOJA", "CRESCIMENTO"].includes(recomendacao.tipo)) {
+    const executada = await campanhaExecutada(recomendacao.id);
+
+    return {
+      executada: executada || temEvidenciaManualDeAcao(recomendacao),
+      motivo: executada
+        ? "Campanha vinculada executada."
+        : "Sem campanha executada ou registro manual suficiente.",
+    };
+  }
+
+  return {
+    executada: temEvidenciaManualDeAcao(recomendacao),
+    motivo: "Sem registro manual suficiente de execucao.",
+  };
 }
 
 function baseFromEvidencias(recomendacao) {
@@ -212,8 +289,10 @@ function scoreImpacto(tipo, antes, depois) {
   return Math.round(Math.max(-100, Math.min(100, score)));
 }
 
-function statusImpacto(score, amostra, janelaCompleta) {
-  if (!janelaCompleta) return "AGUARDANDO_DADOS";
+function statusImpacto(score, amostra, janelaCompleta, execucao) {
+  if (!execucao.executada) return "SEM_ACAO_EXECUTADA";
+  if (!janelaCompleta) return "AINDA_CEDO";
+  if (amostra <= 0) return "SEM_DADOS";
   if (amostra < 3) return "INCONCLUSIVO";
   if (score >= 70) return "POSITIVO";
   if (score >= 25) return "PARCIAL";
@@ -222,7 +301,9 @@ function statusImpacto(score, amostra, janelaCompleta) {
 }
 
 function resumo(status, score) {
-  if (status === "AGUARDANDO_DADOS") return "Ainda e cedo para concluir; a janela nao terminou.";
+  if (status === "SEM_ACAO_EXECUTADA") return "Sem acao executada registrada; impacto nao deve ser atribuido ainda.";
+  if (status === "AINDA_CEDO" || status === "AGUARDANDO_DADOS") return "Ainda e cedo para concluir; a janela nao terminou.";
+  if (status === "SEM_DADOS") return "Nao ha dados suficientes para comparar antes e depois.";
   if (status === "INCONCLUSIVO") return "Amostra pequena para declarar impacto com seguranca.";
   if (status === "POSITIVO") return `Impacto positivo claro, score ${score}.`;
   if (status === "PARCIAL") return `Impacto parcial, score ${score}.`;
@@ -230,20 +311,64 @@ function resumo(status, score) {
   return `Impacto neutro, score ${score}.`;
 }
 
-async function avaliar(recomendacao, janela) {
+async function avaliar(recomendacao, janela, dryRun) {
+  const execucao = await classificarExecucao(recomendacao);
   const antes = baseFromEvidencias(recomendacao);
   const depois = await metricasAtuais(recomendacao, janela);
-  const score = scoreImpacto(recomendacao.tipo, antes, depois);
-  const status = statusImpacto(
-    score,
-    num(antes.amostra) + num(depois.amostra),
-    diasDesde(referencia(recomendacao)) >= janela,
-  );
+  const amostra = num(antes.amostra) + num(depois.amostra);
+  const janelaCompleta = diasDesde(referencia(recomendacao)) >= janela;
+  const scoreCalculado = scoreImpacto(recomendacao.tipo, antes, depois);
+  const status = statusImpacto(scoreCalculado, amostra, janelaCompleta, execucao);
+  const score =
+    status === "SEM_ACAO_EXECUTADA" ||
+    status === "AINDA_CEDO" ||
+    status === "SEM_DADOS"
+      ? 0
+      : scoreCalculado;
   const comparativo = {
     tipo: recomendacao.tipo,
-    amostra: num(antes.amostra) + num(depois.amostra),
+    amostra,
     diasDecorridos: diasDesde(referencia(recomendacao)),
+    estadoAvaliacao:
+      status === "SEM_ACAO_EXECUTADA"
+        ? "SEM_ACAO_EXECUTADA"
+        : status === "AINDA_CEDO"
+          ? "AINDA_CEDO"
+          : status === "SEM_DADOS"
+            ? "SEM_DADOS"
+            : "AVALIADO",
+    motivoAvaliacao: execucao.motivo,
   };
+  const data = {
+    recomendacaoId: recomendacao.id,
+    janelaDias: janela,
+    statusImpacto: status,
+    scoreImpacto: score,
+    resumo: resumo(status, score),
+    metricasAntesJson: antes,
+    metricasDepoisJson: depois,
+    comparativoJson: comparativo,
+    proximaAcaoSugerida:
+      status === "NEGATIVO"
+        ? "Revisar premissa antes de repetir."
+        : status === "SEM_ACAO_EXECUTADA"
+          ? "Registrar execucao manual antes de atribuir impacto."
+          : "Acompanhar e reavaliar na proxima janela.",
+  };
+
+  if (dryRun) {
+    return {
+      dryRun: true,
+      codigo: recomendacao.codigo,
+      tipo: recomendacao.tipo,
+      recomendacaoStatus: recomendacao.status,
+      janelaDias: data.janelaDias,
+      statusImpacto: data.statusImpacto,
+      scoreImpacto: data.scoreImpacto,
+      resumo: data.resumo,
+      diasDecorridos: comparativo.diasDecorridos,
+    };
+  }
 
   return prisma.recomendacaoGerencialImpacto.upsert({
     where: {
@@ -253,30 +378,16 @@ async function avaliar(recomendacao, janela) {
       },
     },
     create: {
-      recomendacaoId: recomendacao.id,
-      janelaDias: janela,
-      statusImpacto: status,
-      scoreImpacto: score,
-      resumo: resumo(status, score),
-      metricasAntesJson: antes,
-      metricasDepoisJson: depois,
-      comparativoJson: comparativo,
-      proximaAcaoSugerida:
-        status === "NEGATIVO"
-          ? "Revisar premissa antes de repetir."
-          : "Acompanhar e reavaliar na proxima janela.",
+      ...data,
     },
     update: {
-      statusImpacto: status,
-      scoreImpacto: score,
-      resumo: resumo(status, score),
-      metricasAntesJson: antes,
-      metricasDepoisJson: depois,
-      comparativoJson: comparativo,
-      proximaAcaoSugerida:
-        status === "NEGATIVO"
-          ? "Revisar premissa antes de repetir."
-          : "Acompanhar e reavaliar na proxima janela.",
+      statusImpacto: data.statusImpacto,
+      scoreImpacto: data.scoreImpacto,
+      resumo: data.resumo,
+      metricasAntesJson: data.metricasAntesJson,
+      metricasDepoisJson: data.metricasDepoisJson,
+      comparativoJson: data.comparativoJson,
+      proximaAcaoSugerida: data.proximaAcaoSugerida,
       avaliadoEm: new Date(),
     },
   });
@@ -284,10 +395,7 @@ async function avaliar(recomendacao, janela) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-
-  if (args.confirm !== CONFIRM_VALUE) {
-    throw new Error(`Use --confirm=${CONFIRM_VALUE} para avaliar impactos.`);
-  }
+  const dryRun = args.confirm !== CONFIRM_VALUE;
 
   const recomendacoes = await prisma.recomendacaoGerencial.findMany({
     where: { status: { in: STATUS_ELEGIVEIS } },
@@ -297,25 +405,41 @@ async function main() {
   const impactos = [];
 
   for (const recomendacao of recomendacoes) {
-    impactos.push(await avaliar(recomendacao, args.janela));
+    impactos.push(await avaliar(recomendacao, args.janela, dryRun));
   }
 
   const result = {
     ok: true,
+    dryRun,
     janelaDias: args.janela,
     avaliadas: impactos.length,
+    confirmacaoParaGravar: dryRun
+      ? `Use --confirm=${CONFIRM_VALUE} para gravar impactos.`
+      : null,
     porStatus: impactos.reduce((acc, impacto) => {
       acc[impacto.statusImpacto] = (acc[impacto.statusImpacto] || 0) + 1;
       return acc;
     }, {}),
+    itens: impactos.map((impacto) => ({
+      codigo: impacto.codigo || undefined,
+      tipo: impacto.tipo || undefined,
+      recomendacaoStatus: impacto.recomendacaoStatus || undefined,
+      janelaDias: impacto.janelaDias,
+      statusImpacto: impacto.statusImpacto,
+      scoreImpacto: impacto.scoreImpacto,
+      resumo: impacto.resumo,
+      diasDecorridos: impacto.diasDecorridos,
+    })),
   };
 
   if (args.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {
+    console.log(dryRun ? "Dry-run: nenhum impacto foi gravado." : "Impactos gravados/atualizados.");
     console.log(`Impactos avaliados: ${result.avaliadas}`);
     console.log(`Janela: ${result.janelaDias} dias`);
     console.log(result.porStatus);
+    if (dryRun) console.log(result.confirmacaoParaGravar);
   }
 }
 
