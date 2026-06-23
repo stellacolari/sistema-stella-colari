@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import ClientesListClient, {
   type ClienteListItem,
 } from "@/components/clientes/ClientesListClient";
@@ -20,6 +21,8 @@ type ClienteComVendas = Prisma.ClienteGetPayload<{
 }>;
 
 export default async function ClientesPage() {
+  await exigirAdminComPermissao("clientes", "ver");
+
   const clientesRaw = await prisma.cliente.findMany({
     orderBy: { criadoEm: "desc" },
     include: {

@@ -241,7 +241,7 @@ function OportunidadeItem({
           href={oportunidade.href}
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
-          Abrir cliente
+          Abrir ficha
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -488,7 +488,7 @@ export default function CrmAcionavelClientes({
                       href={cliente.href}
                       className="mt-3 inline-flex items-center justify-end gap-1 text-xs font-semibold text-slate-700 underline-offset-4 hover:text-slate-950 hover:underline"
                     >
-                      Abrir cliente
+                      Abrir ficha
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>

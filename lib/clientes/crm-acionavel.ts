@@ -326,7 +326,7 @@ function criarOportunidade(
     prioridade,
     descricao,
     acaoSugerida,
-    href: `/clientes/${analise.cliente.id}`,
+    href: `/clientes/${analise.cliente.id}/ficha`,
     confiabilidade,
   };
 }
@@ -542,7 +542,7 @@ function montarFichaRapida(analise: AnaliseCliente): FichaRapidaCliente {
     ultimaInteracaoEm: analise.ultimaInteracao?.toISOString() ?? null,
     contato: analise.temContatoCompleto ? "COMPLETO" : "INCOMPLETO",
     sinalPrincipal: analise.sinalPrincipal,
-    href: `/clientes/${analise.cliente.id}`,
+    href: `/clientes/${analise.cliente.id}/ficha`,
   };
 }
 

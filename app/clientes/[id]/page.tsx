@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { atualizarCliente } from "../actions";
 
 function Field({
@@ -92,6 +93,7 @@ export default async function EditarClientePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await exigirAdminComPermissao("clientes", "ver");
 
   const cliente = await prisma.cliente.findUnique({
     where: { id },
@@ -201,12 +203,21 @@ export default async function EditarClientePage({
             </p>
           </div>
 
-          <Link
-            href="/clientes"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-          >
-            Voltar para lista
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/clientes/${cliente.id}/ficha`}
+              className="inline-flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+            >
+              Ver ficha 360
+            </Link>
+
+            <Link
+              href="/clientes"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              Voltar para lista
+            </Link>
+          </div>
         </div>
       </div>
 
