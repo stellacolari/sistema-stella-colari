@@ -12,7 +12,9 @@ import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
 import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
 import {
   exigirAdminComPermissao,
+  usuarioPodeAlterarStatusPedidoAdmin,
   usuarioPodeVerDadosFinanceirosAdmin,
+  usuarioPodeGerenciarPagamentoPedidoAdmin,
 } from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
@@ -30,6 +32,10 @@ export default async function PedidoDetalhePage({
   const usuario = await exigirAdminComPermissao("pedidos", "ver");
   const podeVerDadosFinanceiros =
     usuarioPodeVerDadosFinanceirosAdmin(usuario);
+  const podeAlterarStatus =
+    usuarioPodeAlterarStatusPedidoAdmin(usuario);
+  const podeGerenciarPagamento =
+    usuarioPodeGerenciarPagamentoPedidoAdmin(usuario);
 
   const pedidoRaw = await prisma.pedidoOnline.findUnique({
     where: { id },
@@ -383,11 +389,13 @@ export default async function PedidoDetalhePage({
           valorPago: Number(pedidoRaw.valorPago || 0),
           pagamentoObservacao: pedidoRaw.pagamentoObservacao,
         }}
+        podeGerenciarPagamento={podeGerenciarPagamento}
       />
 
       <PedidoDetalheClient
         pedido={pedido}
         podeVerDadosFinanceiros={podeVerDadosFinanceiros}
+        podeAlterarStatus={podeAlterarStatus}
       />
     </main>
   );

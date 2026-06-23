@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoExecutarAcaoSensivelPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
 import { inserirEnvioNoCarrinhoMelhorEnvio } from "@/lib/frete/melhor-envio";
@@ -43,6 +47,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    await exigirPermissaoExecutarAcaoSensivelPedidoAdmin();
+
     const { id } = await context.params;
 
     const pedido = await prisma.pedidoOnline.findUnique({
@@ -257,6 +263,9 @@ export async function PATCH(
 
     const status = message.startsWith("Dados incompletos") ? 400 : 500;
 
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : status },
+    );
   }
 }

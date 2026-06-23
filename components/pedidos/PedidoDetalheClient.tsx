@@ -276,9 +276,11 @@ function getTextoOpcaoProduto(tamanhoAnel: string | null) {
 export default function PedidoDetalheClient({
   pedido,
   podeVerDadosFinanceiros = false,
+  podeAlterarStatus = false,
 }: {
   pedido: PedidoDetalhe;
   podeVerDadosFinanceiros?: boolean;
+  podeAlterarStatus?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -344,6 +346,11 @@ export default function PedidoDetalheClient({
   const alertasOperacionais = pedido.alertasOperacionais || [];
 
   async function executarProximoPasso() {
+    if (!podeAlterarStatus) {
+      setErroOperacao("Seu perfil nao permite alterar status de pedidos.");
+      return;
+    }
+
     if (!proximoPasso) {
       return;
     }
@@ -450,7 +457,7 @@ export default function PedidoDetalheClient({
                     : "Nenhuma acao operacional pendente para esta etapa.")}
               </p>
 
-              {proximoPasso ? (
+              {proximoPasso && podeAlterarStatus ? (
                 <button
                   type="button"
                   onClick={executarProximoPasso}

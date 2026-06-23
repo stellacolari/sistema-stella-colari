@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoExecutarAcaoSensivelPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 function normalizarIds(value: unknown) {
@@ -36,6 +40,8 @@ function isPedidoImprimivel(pedido: {
 
 export async function POST(request: Request) {
   try {
+    await exigirPermissaoExecutarAcaoSensivelPedidoAdmin();
+
     const body = await request.json().catch(() => ({}));
     const ids = normalizarIds(body.ids);
 
@@ -98,7 +104,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { error: "Erro ao preparar impressão em lote." },
-      { status: 500 },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 },
     );
   }
 }

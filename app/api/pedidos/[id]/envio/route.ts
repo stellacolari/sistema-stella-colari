@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoExecutarAcaoSensivelPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 const STATUS_ENVIO_VALIDOS = new Set([
@@ -132,6 +136,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirPermissaoExecutarAcaoSensivelPedidoAdmin();
+
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
@@ -299,6 +305,9 @@ export async function PATCH(
     const message =
       error instanceof Error ? error.message : "Erro ao salvar envio do pedido.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

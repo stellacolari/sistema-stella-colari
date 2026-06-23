@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoGerenciarPagamentoPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import { efetivarPedidoOnlinePago } from "@/lib/pedidos/efetivar-pedido-online-pago";
 
@@ -113,6 +117,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirPermissaoGerenciarPagamentoPedidoAdmin();
+
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
@@ -362,6 +368,9 @@ export async function PATCH(
         ? error.message
         : "Erro ao atualizar pagamento do pedido.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

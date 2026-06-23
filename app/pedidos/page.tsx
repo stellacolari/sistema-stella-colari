@@ -6,7 +6,12 @@ import PedidosClient, {
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
 import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
-import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import {
+  exigirAdminComPermissao,
+  usuarioPodeAlterarStatusPedidoAdmin,
+  usuarioPodeExecutarAcaoSensivelPedidoAdmin,
+  usuarioPodeGerenciarPagamentoPedidoAdmin,
+} from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
   title: "Pedidos | Sistema Stella",
@@ -37,7 +42,12 @@ function moeda(valor: number) {
   }).format(valor || 0);
 }
 export default async function PedidosPage() {
-  await exigirAdminComPermissao("pedidos", "ver");
+  const usuario = await exigirAdminComPermissao("pedidos", "ver");
+  const podeAlterarStatus = usuarioPodeAlterarStatusPedidoAdmin(usuario);
+  const podeExecutarAcaoSensivel =
+    usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario);
+  const podeGerenciarPagamento =
+    usuarioPodeGerenciarPagamentoPedidoAdmin(usuario);
 
   const pedidosRaw = await prisma.pedidoOnline.findMany({
     orderBy: {
@@ -557,7 +567,12 @@ export default async function PedidosPage() {
           </div>
         </details>
       </section>
-      <PedidosClient pedidos={pedidos} />
+      <PedidosClient
+        pedidos={pedidos}
+        podeAlterarStatus={podeAlterarStatus}
+        podeExecutarAcaoSensivel={podeExecutarAcaoSensivel}
+        podeGerenciarPagamento={podeGerenciarPagamento}
+      />
     </main>
   );
 }

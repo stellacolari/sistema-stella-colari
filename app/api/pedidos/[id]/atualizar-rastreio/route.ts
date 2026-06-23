@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoExecutarAcaoSensivelPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import { buscarConfiguracaoFrete } from "@/lib/frete/configuracao";
 import { atualizarRastreioMelhorEnvio } from "@/lib/frete/melhor-envio";
@@ -153,6 +157,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    await exigirPermissaoExecutarAcaoSensivelPedidoAdmin();
+
     const { id } = await context.params;
 
     const pedido = await prisma.pedidoOnline.findUnique({
@@ -343,6 +349,9 @@ export async function PATCH(
         ? error.message
         : "Erro ao atualizar rastreio no Melhor Envio.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 },
+    );
   }
 }

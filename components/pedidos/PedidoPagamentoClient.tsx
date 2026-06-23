@@ -88,8 +88,10 @@ async function lerRespostaApi(response: Response) {
 
 export default function PedidoPagamentoClient({
   pagamento,
+  podeGerenciarPagamento = false,
 }: {
   pagamento: PedidoPagamentoInfo;
+  podeGerenciarPagamento?: boolean;
 }) {
   const router = useRouter();
 
@@ -117,16 +119,44 @@ export default function PedidoPagamentoClient({
     }));
   }
 
+  function confirmarAlteracaoPagamento(statusDestino: string) {
+    if (statusDestino === "PAGO" && pagamento.statusPagamento !== "PAGO") {
+      return window.confirm(
+        "Marcar este pedido como pago? Use apenas quando o pagamento foi confirmado fora do fluxo automatico. Para pagamentos Stripe, confira a transacao antes de continuar. Esta acao altera o status de pagamento e pode acionar a efetivacao do pedido.",
+      );
+    }
+
+    if (statusDestino === "ESTORNADO" || statusDestino === "CANCELADO") {
+      return window.confirm(
+        `Alterar o pagamento deste pedido para ${statusPagamentoLabel(
+          statusDestino,
+        )}? Esta acao deve ser feita somente apos conferencia administrativa.`,
+      );
+    }
+
+    return true;
+  }
+
   async function salvarPagamento(statusRapido?: string) {
+    if (!podeGerenciarPagamento) {
+      setErro("Seu perfil nao permite alterar pagamentos de pedidos.");
+      return;
+    }
+
     setErro("");
     setSucesso("");
-    setSalvando(true);
 
     try {
       const payload = {
         ...form,
         statusPagamento: statusRapido || form.statusPagamento,
       };
+
+      if (!confirmarAlteracaoPagamento(payload.statusPagamento)) {
+        return;
+      }
+
+      setSalvando(true);
 
       const response = await fetch(`/api/pedidos/${pagamento.id}/pagamento`, {
         method: "PATCH",
@@ -199,6 +229,13 @@ export default function PedidoPagamentoClient({
         </div>
       )}
 
+      {!podeGerenciarPagamento && (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Seu perfil pode consultar o pagamento, mas nao pode alterar status ou
+          dados financeiros do pedido.
+        </div>
+      )}
+
       <div className="mt-5 grid gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -242,6 +279,7 @@ export default function PedidoPagamentoClient({
             onChange={(event) =>
               atualizarCampo("statusPagamento", event.target.value)
             }
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           >
             {STATUS_PAGAMENTO.map((status) => (
@@ -262,6 +300,7 @@ export default function PedidoPagamentoClient({
             onChange={(event) =>
               atualizarCampo("metodoPagamento", event.target.value)
             }
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           >
             {METODOS_PAGAMENTO.map((metodo) => (
@@ -280,6 +319,7 @@ export default function PedidoPagamentoClient({
           <input
             value={form.valorPago}
             onChange={(event) => atualizarCampo("valorPago", event.target.value)}
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           />
         </label>
@@ -295,6 +335,7 @@ export default function PedidoPagamentoClient({
               atualizarCampo("gatewayPagamento", event.target.value)
             }
             placeholder="Ex: Mercado Pago, Stripe, Pagar.me"
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           />
         </label>
@@ -309,6 +350,7 @@ export default function PedidoPagamentoClient({
             onChange={(event) =>
               atualizarCampo("gatewayPedidoId", event.target.value)
             }
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           />
         </label>
@@ -323,6 +365,7 @@ export default function PedidoPagamentoClient({
             onChange={(event) =>
               atualizarCampo("gatewayPagamentoId", event.target.value)
             }
+            disabled={!podeGerenciarPagamento}
             className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           />
         </label>
@@ -340,39 +383,42 @@ export default function PedidoPagamentoClient({
           }
           rows={3}
           placeholder="Ex: pagamento confirmado manualmente via Pix."
+          disabled={!podeGerenciarPagamento}
           className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-500"
         />
       </label>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => salvarPagamento("PAGO")}
-          disabled={salvando}
-          className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Marcar como pago
-        </button>
+      {podeGerenciarPagamento && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => salvarPagamento("PAGO")}
+            disabled={salvando}
+            className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Marcar como pago
+          </button>
 
-        <button
-          type="button"
-          onClick={() => salvarPagamento("AGUARDANDO_PAGAMENTO")}
-          disabled={salvando}
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Aguardando
-        </button>
+          <button
+            type="button"
+            onClick={() => salvarPagamento("AGUARDANDO_PAGAMENTO")}
+            disabled={salvando}
+            className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Aguardando
+          </button>
 
-        <button
-          type="button"
-          onClick={() => salvarPagamento()}
-          disabled={salvando}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Save className="h-4 w-4" />
-          {salvando ? "Salvando..." : "Salvar pagamento"}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => salvarPagamento()}
+            disabled={salvando}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Save className="h-4 w-4" />
+            {salvando ? "Salvando..." : "Salvar pagamento"}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

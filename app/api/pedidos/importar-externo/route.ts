@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoImportarPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 const CANAIS_VALIDOS = new Set([
@@ -283,6 +287,8 @@ function getDatasEnvio(statusEnvio: string) {
 
 export async function POST(req: Request) {
   try {
+    await exigirPermissaoImportarPedidoAdmin();
+
     const body = await req.json().catch(() => ({}));
 
     const origemCanal = parseString(body.origemCanal);
@@ -628,6 +634,9 @@ export async function POST(req: Request) {
         ? error.message
         : "Erro ao importar pedido externo.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 },
+    );
   }
 }

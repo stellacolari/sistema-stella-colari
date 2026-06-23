@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertCircle, ExternalLink, Package } from "lucide-react";
-import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import { exigirPermissaoExecutarAcaoSensivelPedidoAdmin } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import ImpressaoEtiquetasClient from "./ImpressaoEtiquetasClient";
 
@@ -50,7 +50,7 @@ export default async function EtiquetasLotePage({
 }: {
   searchParams: Promise<{ ids?: string | string[] }>;
 }) {
-  await exigirAdminComPermissao("pedidos", "ver");
+  await exigirPermissaoExecutarAcaoSensivelPedidoAdmin();
 
   const { ids: idsParam } = await searchParams;
   const ids = parseIds(idsParam);

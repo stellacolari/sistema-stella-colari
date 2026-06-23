@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoGerenciarPagamentoPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 const STATUS_PENDENTES = new Set([
@@ -76,6 +80,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    await exigirPermissaoGerenciarPagamentoPedidoAdmin();
+
     const { id } = await context.params;
 
     const pedido = await prisma.pedidoOnline.findUnique({
@@ -205,6 +211,9 @@ export async function PATCH(
         ? error.message
         : "Erro ao cancelar link de pagamento manual.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

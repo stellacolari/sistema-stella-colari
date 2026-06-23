@@ -138,11 +138,81 @@ export function usuarioPodeVerDadosFinanceirosAdmin(
   );
 }
 
+export function usuarioPodeAlterarStatusPedidoAdmin(
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+) {
+  return (
+    usuarioTemPermissaoAdmin(usuario, "pedidos", "editar") ||
+    usuarioTemPermissaoAdmin(usuario, "pedidos", "executar")
+  );
+}
+
+export function usuarioPodeExecutarAcaoSensivelPedidoAdmin(
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+) {
+  return usuarioTemPermissaoAdmin(usuario, "pedidos", "executar");
+}
+
+export function usuarioPodeGerenciarPagamentoPedidoAdmin(
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+) {
+  return (
+    usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario) ||
+    usuarioTemPermissaoAdmin(usuario, "financeiro", "editar") ||
+    usuarioTemPermissaoAdmin(usuario, "financeiro", "verFinanceiro") ||
+    usuarioTemPermissaoAdmin(usuario, "resultado", "verFinanceiro") ||
+    usuarioTemPermissaoAdmin(usuario, "resultado", "verEstrategico")
+  );
+}
+
 export async function exigirAdminComPermissao(modulo: string, acao = "ver") {
   const usuario = await exigirAdmin();
 
   if (!usuarioTemPermissaoAdmin(usuario, modulo, acao)) {
     throw new AdminPermissaoError("Acesso nao permitido para este perfil.");
+  }
+
+  return usuario;
+}
+
+export async function exigirPermissaoAlterarStatusPedidoAdmin() {
+  const usuario = await exigirAdmin();
+
+  if (!usuarioPodeAlterarStatusPedidoAdmin(usuario)) {
+    throw new AdminPermissaoError("Acesso nao permitido para alterar status de pedido.");
+  }
+
+  return usuario;
+}
+
+export async function exigirPermissaoExecutarAcaoSensivelPedidoAdmin() {
+  const usuario = await exigirAdmin();
+
+  if (!usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario)) {
+    throw new AdminPermissaoError("Acesso nao permitido para executar esta acao de pedido.");
+  }
+
+  return usuario;
+}
+
+export async function exigirPermissaoGerenciarPagamentoPedidoAdmin() {
+  const usuario = await exigirAdmin();
+
+  if (!usuarioPodeGerenciarPagamentoPedidoAdmin(usuario)) {
+    throw new AdminPermissaoError("Acesso nao permitido para alterar pagamento de pedido.");
+  }
+
+  return usuario;
+}
+
+export async function exigirPermissaoImportarPedidoAdmin() {
+  const usuario = await exigirAdmin();
+
+  if (
+    !usuarioTemPermissaoAdmin(usuario, "pedidos", "criar") &&
+    !usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario)
+  ) {
+    throw new AdminPermissaoError("Acesso nao permitido para importar pedido.");
   }
 
   return usuario;

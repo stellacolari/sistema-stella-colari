@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  AdminPermissaoError,
+  exigirPermissaoAlterarStatusPedidoAdmin,
+} from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import { cancelarPedidoOnlineNaoPago } from "@/lib/pedidos/cancelar-pedido-online";
 
@@ -102,48 +106,50 @@ export async function PATCH(
       );
     }
 
-const pedidoAtual = await prisma.pedidoOnline.findUnique({
-  where: { id },
-  select: {
-    id: true,
-    status: true,
-    statusPagamento: true,
-    origemCanal: true,
-    cep: true,
-    envio: {
+    await exigirPermissaoAlterarStatusPedidoAdmin();
+
+    const pedidoAtual = await prisma.pedidoOnline.findUnique({
+      where: { id },
       select: {
         id: true,
-        gatewayLogistico: true,
+        status: true,
+        statusPagamento: true,
+        origemCanal: true,
+        cep: true,
+        envio: {
+          select: {
+            id: true,
+            gatewayLogistico: true,
+          },
+        },
       },
-    },
-  },
-});
+    });
 
-if (!pedidoAtual) {
-  return NextResponse.json(
-    { error: "Pedido não encontrado." },
-    { status: 404 }
-  );
-}
+    if (!pedidoAtual) {
+      return NextResponse.json(
+        { error: "Pedido não encontrado." },
+        { status: 404 }
+      );
+    }
 
-if (statusNovo === "CANCELADO") {
-  const resultado = await cancelarPedidoOnlineNaoPago({
-    pedidoId: id,
-    origem,
-    usuarioNome,
-    permitirPedidoPago: pedidoAtual.origemCanal === "LOJA_STELLA",
-    observacao:
-      observacao ||
-      "Pedido cancelado manualmente pela área administrativa.",
-  });
+    if (statusNovo === "CANCELADO") {
+      const resultado = await cancelarPedidoOnlineNaoPago({
+        pedidoId: id,
+        origem,
+        usuarioNome,
+        permitirPedidoPago: pedidoAtual.origemCanal === "LOJA_STELLA",
+        observacao:
+          observacao ||
+          "Pedido cancelado manualmente pela área administrativa.",
+      });
 
-  return NextResponse.json(resultado);
-}
+      return NextResponse.json(resultado);
+    }
 
-const statusEnvioSincronizado = getStatusEnvioSincronizado({
-  statusPedido: statusNovo,
-  gatewayLogistico: pedidoAtual.envio?.gatewayLogistico,
-});
+    const statusEnvioSincronizado = getStatusEnvioSincronizado({
+      statusPedido: statusNovo,
+      gatewayLogistico: pedidoAtual.envio?.gatewayLogistico,
+    });
     const datasEnvioSincronizadas = getDatasEnvioSincronizadas(statusNovo);
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -177,9 +183,9 @@ const statusEnvioSincronizado = getStatusEnvioSincronizado({
             pedidoOnlineId: id,
           },
           data: {
-          statusEnvio: statusEnvioSincronizado,
-          postadoEm: datasEnvioSincronizadas.postadoEm,
-          entregueEm: datasEnvioSincronizadas.entregueEm,
+            statusEnvio: statusEnvioSincronizado,
+            postadoEm: datasEnvioSincronizadas.postadoEm,
+            entregueEm: datasEnvioSincronizadas.entregueEm,
           },
         });
       }
@@ -199,6 +205,9 @@ const statusEnvioSincronizado = getStatusEnvioSincronizado({
         ? error.message
         : "Erro ao atualizar status do pedido.";
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: message },
+      { status: error instanceof AdminPermissaoError ? 403 : 500 }
+    );
   }
 }

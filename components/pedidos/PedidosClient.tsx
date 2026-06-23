@@ -133,6 +133,9 @@ export type PedidoOperacionalItem = {
 
 type PedidosClientProps = {
   pedidos: PedidoOperacionalItem[];
+  podeAlterarStatus?: boolean;
+  podeExecutarAcaoSensivel?: boolean;
+  podeGerenciarPagamento?: boolean;
 };
 
 const FILTROS_RAPIDOS = [
@@ -915,7 +918,12 @@ function escaparHtml(texto: string) {
     .replaceAll("'", "&#039;");
 }
 
-export default function PedidosClient({ pedidos }: PedidosClientProps) {
+export default function PedidosClient({
+  pedidos,
+  podeAlterarStatus = false,
+  podeExecutarAcaoSensivel = false,
+  podeGerenciarPagamento = false,
+}: PedidosClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -968,8 +976,12 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }, [busca, filtroRapido, pedidos]);
 
   const pedidosImprimiveisVisiveis = useMemo(() => {
+    if (!podeExecutarAcaoSensivel) {
+      return [];
+    }
+
     return pedidosFiltrados.filter(podeImprimirEtiquetaEmLote);
-  }, [pedidosFiltrados]);
+  }, [pedidosFiltrados, podeExecutarAcaoSensivel]);
 
   const pedidoIdsImprimiveisVisiveis = useMemo(() => {
     return new Set(pedidosImprimiveisVisiveis.map((pedido) => pedido.id));
@@ -982,8 +994,12 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }, [pedidoIdsImprimiveisVisiveis, pedidoIdsSelecionados]);
 
   const pedidosDisponiveisSeparacaoLote = useMemo(() => {
+    if (!podeAlterarStatus) {
+      return [];
+    }
+
     return pedidos.filter(podeSepararEmLote);
-  }, [pedidos]);
+  }, [pedidos, podeAlterarStatus]);
 
   const pedidoIdsDisponiveisSeparacaoLote = useMemo(() => {
     return new Set(pedidosDisponiveisSeparacaoLote.map((pedido) => pedido.id));
@@ -1064,6 +1080,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }, [pedidosFiltrados]);
 
   async function atualizarStatusRapido(pedido: PedidoOperacionalItem) {
+    if (!podeAlterarStatus) {
+      setErroOperacao("Seu perfil nao permite alterar status de pedidos.");
+      return;
+    }
+
     const acaoRapida = getAcaoPrincipalOperacional(pedido);
 
     if (!acaoRapida) {
@@ -1125,6 +1146,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function cancelarLinkPagamentoManual(pedido: PedidoOperacionalItem) {
+    if (!podeGerenciarPagamento) {
+      setErroOperacao("Seu perfil nao permite cancelar links de pagamento.");
+      return;
+    }
+
     const confirmado = window.confirm(
       `Cancelar o link de pagamento do pedido ${pedido.codigo}? A sessão Stripe será expirada quando possível e o estoque não será baixado.`,
     );
@@ -1164,6 +1190,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function prepararEnvioMelhorEnvio(pedido: PedidoOperacionalItem) {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite preparar envios.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Preparar envio do pedido ${pedido.codigo} no Melhor Envio? Esta acao altera o status logistico do pedido.`,
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
     setErroOperacao("");
     setPreparandoEnvioPedidoId(pedido.id);
 
@@ -1190,6 +1229,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function comprarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite comprar etiquetas.");
+      return;
+    }
+
     const confirmado = window.confirm(
       `Comprar/pagar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? A geração e impressão continuarão pendentes.`,
     );
@@ -1227,6 +1271,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function gerarEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite gerar etiquetas.");
+      return;
+    }
+
     const confirmado = window.confirm(
       `Gerar a etiqueta do Melhor Envio para o pedido ${pedido.codigo}? Depois disso será possível solicitar o link de impressão.`,
     );
@@ -1261,6 +1310,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function imprimirEtiquetaMelhorEnvio(pedido: PedidoOperacionalItem) {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite imprimir etiquetas.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Solicitar link de impressao da etiqueta do pedido ${pedido.codigo}?`,
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
     setErroOperacao("");
     setImprimindoEtiquetaPedidoId(pedido.id);
 
@@ -1296,6 +1358,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function atualizarRastreioMelhorEnvio(pedido: PedidoOperacionalItem) {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite atualizar rastreio.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Atualizar rastreio do pedido ${pedido.codigo} pelo Melhor Envio?`,
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
     setErroOperacao("");
     setAtualizandoRastreioPedidoId(pedido.id);
 
@@ -1360,7 +1435,24 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function imprimirEtiquetasSelecionadas() {
+    if (!podeExecutarAcaoSensivel) {
+      setErroOperacao("Seu perfil nao permite preparar impressao de etiquetas.");
+      return;
+    }
+
     if (pedidoIdsSelecionadosValidos.length === 0) {
+      return;
+    }
+
+    const confirmado = window.confirm(
+      `Preparar impressao de ${pedidoIdsSelecionadosValidos.length} etiqueta${
+        pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"
+      } selecionada${
+        pedidoIdsSelecionadosValidos.length === 1 ? "" : "s"
+      }?`,
+    );
+
+    if (!confirmado) {
       return;
     }
 
@@ -1396,6 +1488,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   function abrirSeparacaoLote() {
+    if (!podeAlterarStatus) {
+      setErroOperacao("Seu perfil nao permite iniciar separacao em lote.");
+      return;
+    }
+
     setPedidoIdsSeparacaoLote((idsAtuais) => {
       if (idsAtuais.length > 0) {
         return idsAtuais;
@@ -1485,6 +1582,11 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
   }
 
   async function marcarSeparacaoLote() {
+    if (!podeAlterarStatus) {
+      setErroOperacao("Seu perfil nao permite iniciar separacao em lote.");
+      return;
+    }
+
     if (pedidosParaIniciarSeparacaoLote.length === 0) {
       return;
     }
@@ -1643,17 +1745,19 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
         </div>
 
         <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
-          <button
-            type="button"
-            onClick={abrirSeparacaoLote}
-            disabled={pedidosDisponiveisSeparacaoLote.length === 0}
-            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Package className="h-4 w-4 shrink-0" />
-            <span className="truncate">
-              Separacao em lote ({pedidosDisponiveisSeparacaoLote.length})
-            </span>
-          </button>
+          {podeAlterarStatus && (
+            <button
+              type="button"
+              onClick={abrirSeparacaoLote}
+              disabled={pedidosDisponiveisSeparacaoLote.length === 0}
+              className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Package className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                Separacao em lote ({pedidosDisponiveisSeparacaoLote.length})
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1830,7 +1934,9 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
 
             const possuiCashbackPrevisto = pedido.cashbackPrevistoValor > 0;
 
-            const acaoRapida = getAcaoPrincipalOperacional(pedido);
+            const acaoRapida = podeAlterarStatus
+              ? getAcaoPrincipalOperacional(pedido)
+              : null;
             const estaProcessando =
               processandoPedidoId === pedido.id || isPending;
             const pedidoManualComLink = isPedidoManualComLink(pedido);
@@ -1840,7 +1946,7 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
               cancelandoLinkPedidoId === pedido.id || isPending;
             const destaquePedidoClass = getDestaquePedidoClass(pedido);
             const podeSelecionarParaImpressao =
-              podeImprimirEtiquetaEmLote(pedido);
+              podeExecutarAcaoSensivel && podeImprimirEtiquetaEmLote(pedido);
             const selecionadoParaImpressao =
               pedidoIdsSelecionadosValidos.includes(pedido.id);
 
@@ -2096,20 +2202,22 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                               </a>
                             )}
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                cancelarLinkPagamentoManual(pedido)
-                              }
-                              disabled={estaCancelandoLink}
-                              className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
-                            >
-                              <span className="truncate">
-                                {estaCancelandoLink
-                                  ? "Cancelando..."
-                                  : "Cancelar link"}
-                              </span>
-                            </button>
+                            {podeGerenciarPagamento && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  cancelarLinkPagamentoManual(pedido)
+                                }
+                                disabled={estaCancelandoLink}
+                                className="inline-flex h-8 min-w-0 items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+                              >
+                                <span className="truncate">
+                                  {estaCancelandoLink
+                                    ? "Cancelando..."
+                                    : "Cancelar link"}
+                                </span>
+                              </button>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -2118,18 +2226,20 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                             Link indisponível ou expirado na Stripe.
                           </p>
 
-                          <button
-                            type="button"
-                            onClick={() => cancelarLinkPagamentoManual(pedido)}
-                            disabled={estaCancelandoLink}
-                            className="mt-2 inline-flex h-8 max-w-full min-w-0 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <span className="truncate">
-                              {estaCancelandoLink
-                                ? "Cancelando..."
-                                : "Marcar cancelado"}
-                            </span>
-                          </button>
+                          {podeGerenciarPagamento && (
+                            <button
+                              type="button"
+                              onClick={() => cancelarLinkPagamentoManual(pedido)}
+                              disabled={estaCancelandoLink}
+                              className="mt-2 inline-flex h-8 max-w-full min-w-0 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <span className="truncate">
+                                {estaCancelandoLink
+                                  ? "Cancelando..."
+                                  : "Marcar cancelado"}
+                              </span>
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -2277,14 +2387,16 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </p>
                       )}
 
-                      {podeAtualizarRastreioMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podeAtualizarRastreioMelhorEnvio(pedido) && (
                         <p className="mt-1 text-[11px] text-slate-400">
                           Rastreio atualizado em{" "}
                           {dataCurta(pedido.envio.atualizadoEm)}
                         </p>
                       )}
 
-                      {podePrepararEnvioMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podePrepararEnvioMelhorEnvio(pedido) && (
                         <div className="mt-3 grid min-w-0 grid-cols-1 gap-2 sm:inline-grid">
                           <button
                             type="button"
@@ -2302,7 +2414,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </div>
                       )}
 
-                      {podeComprarEtiquetaMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podeComprarEtiquetaMelhorEnvio(pedido) && (
                         <button
                           type="button"
                           onClick={() => comprarEtiquetaMelhorEnvio(pedido)}
@@ -2318,7 +2431,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </button>
                       )}
 
-                      {podeGerarEtiquetaMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podeGerarEtiquetaMelhorEnvio(pedido) && (
                         <button
                           type="button"
                           onClick={() => gerarEtiquetaMelhorEnvio(pedido)}
@@ -2334,7 +2448,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </button>
                       )}
 
-                      {podeImprimirEtiquetaMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podeImprimirEtiquetaMelhorEnvio(pedido) && (
                         <button
                           type="button"
                           onClick={() => imprimirEtiquetaMelhorEnvio(pedido)}
@@ -2367,7 +2482,8 @@ export default function PedidosClient({ pedidos }: PedidosClientProps) {
                         </a>
                       )}
 
-                      {podeAtualizarRastreioMelhorEnvio(pedido) && (
+                      {podeExecutarAcaoSensivel &&
+                        podeAtualizarRastreioMelhorEnvio(pedido) && (
                         <button
                           type="button"
                           onClick={() => atualizarRastreioMelhorEnvio(pedido)}
