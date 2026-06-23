@@ -2,6 +2,14 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizarCanalConsentimentoCliente,
+  normalizarFinalidadeConsentimentoCliente,
+  normalizarStatusConsentimentoCliente,
+  resumirConsentimentosCliente,
+  type ConsentimentoClienteItem,
+  type EstadoResumoConsentimentoCliente,
+} from "@/lib/clientes/consentimentos-cliente";
 
 export type TipoOportunidadeCliente =
   | "RECOMPRA"
@@ -49,6 +57,7 @@ export type FichaRapidaCliente = {
   ultimaCompraEm: string | null;
   ultimaInteracaoEm: string | null;
   contato: "COMPLETO" | "INCOMPLETO";
+  consentimento: EstadoResumoConsentimentoCliente;
   sinalPrincipal: string;
   href: string;
 };
@@ -140,6 +149,27 @@ const clienteCrmInclude = Prisma.validator<Prisma.ClienteInclude>()({
       },
     },
   },
+  consentimentos: {
+    orderBy: {
+      criadoEm: "desc",
+    },
+    take: 50,
+    select: {
+      id: true,
+      finalidade: true,
+      canal: true,
+      status: true,
+      origem: true,
+      versaoPolitica: true,
+      registradoPorAdminId: true,
+      registradoPorAdminNome: true,
+      consentidoEm: true,
+      revogadoEm: true,
+      observacao: true,
+      criadoEm: true,
+      atualizadoEm: true,
+    },
+  },
 });
 
 type ClienteCrmRaw = Prisma.ClienteGetPayload<{
@@ -173,6 +203,9 @@ type AnaliseCliente = {
   temPresente: boolean;
   intencaoForte: boolean;
   intencaoFraca: boolean;
+  consentimentoStatus: EstadoResumoConsentimentoCliente;
+  contatoAutorizado: boolean;
+  contatoRevogado: boolean;
   sinalPrincipal: string;
 };
 
@@ -255,8 +288,36 @@ function descreverSinal(cliente: ClienteCrmRaw) {
   return evento.tipo.replaceAll("_", " ").toLowerCase();
 }
 
+function serializarConsentimentoCrm(
+  consentimento: ClienteCrmRaw["consentimentos"][number]
+): ConsentimentoClienteItem {
+  return {
+    id: consentimento.id,
+    finalidade:
+      normalizarFinalidadeConsentimentoCliente(consentimento.finalidade) ||
+      "RELACIONAMENTO",
+    canal:
+      normalizarCanalConsentimentoCliente(consentimento.canal) || "WHATSAPP",
+    status:
+      normalizarStatusConsentimentoCliente(consentimento.status) ||
+      "REVOGADO",
+    origem: consentimento.origem,
+    versaoPolitica: consentimento.versaoPolitica,
+    registradoPorAdminId: consentimento.registradoPorAdminId,
+    registradoPorAdminNome: consentimento.registradoPorAdminNome,
+    consentidoEm: consentimento.consentidoEm?.toISOString() ?? null,
+    revogadoEm: consentimento.revogadoEm?.toISOString() ?? null,
+    observacao: consentimento.observacao,
+    criadoEm: consentimento.criadoEm.toISOString(),
+    atualizadoEm: consentimento.atualizadoEm.toISOString(),
+  };
+}
+
 function analisarCliente(cliente: ClienteCrmRaw, agora: Date): AnaliseCliente {
   const compras = comprasValidas(cliente);
+  const consentimentoResumo = resumirConsentimentosCliente(
+    cliente.consentimentos.map(serializarConsentimentoCrm)
+  );
   const totalComprado = compras.reduce((total, compra) => total + compra.valor, 0);
   const ticketMedio = compras.length > 0 ? totalComprado / compras.length : 0;
   const ultimaCompra = compras[0]?.criadoEm ?? null;
@@ -305,6 +366,9 @@ function analisarCliente(cliente: ClienteCrmRaw, agora: Date): AnaliseCliente {
     temPresente: compras.some((compra) => compra.temPresente),
     intencaoForte: eventoForteRecente,
     intencaoFraca: eventoFracoRecente,
+    consentimentoStatus: consentimentoResumo.statusGeral,
+    contatoAutorizado: consentimentoResumo.statusGeral === "AUTORIZADO",
+    contatoRevogado: consentimentoResumo.statusGeral === "REVOGADO",
     sinalPrincipal: descreverSinal(cliente),
   };
 }
@@ -341,39 +405,47 @@ function oportunidadesDoCliente(analise: AnaliseCliente) {
         "OPERACIONAL",
         "ALTA",
         "Existe pedido online com pagamento pendente, recusado ou status de problema.",
-        "Priorizar revisao manual do historico antes de qualquer contato.",
+        "Priorizar revisao manual do historico antes de qualquer abordagem.",
         "ALTA"
       )
     );
   }
 
-  if (analise.intencaoForte) {
+  if (analise.intencaoForte && !analise.contatoRevogado) {
     oportunidades.push(
       criarOportunidade(
         analise,
         "INTENCAO",
         "ALTA",
         `${analise.sinalPrincipal}. Sinal recente e vinculado ao cliente.`,
-        "Revisar contexto e abordar manualmente apenas se o canal estiver autorizado.",
+        analise.contatoAutorizado
+          ? "Revisar contexto e abordar manualmente apenas pelo canal autorizado."
+          : "Revisar consentimento antes de qualquer contato ativo.",
         "MEDIA"
       )
     );
   }
 
-  if (analise.recorrente && (analise.diasDesdeUltimaCompra ?? 0) >= DIAS_RECOMPRA) {
+  if (
+    analise.recorrente &&
+    (analise.diasDesdeUltimaCompra ?? 0) >= DIAS_RECOMPRA &&
+    !analise.contatoRevogado
+  ) {
     oportunidades.push(
       criarOportunidade(
         analise,
         "RECOMPRA",
         "MEDIA",
         `Cliente recorrente sem compra ha ${analise.diasDesdeUltimaCompra} dias.`,
-        "Revisar historico antes de oferecer novidade semelhante.",
+        analise.contatoAutorizado
+          ? "Revisar historico antes de oferecer novidade semelhante."
+          : "Revisar consentimento antes de sugerir contato de recompra.",
         "ALTA"
       )
     );
   }
 
-  if (analise.inativo) {
+  if (analise.inativo && !analise.contatoRevogado) {
     oportunidades.push(
       criarOportunidade(
         analise,
@@ -382,8 +454,23 @@ function oportunidadesDoCliente(analise: AnaliseCliente) {
         analise.diasDesdeUltimaCompra === null
           ? "Cliente sem compra registrada."
           : `Ultima compra ha ${analise.diasDesdeUltimaCompra} dias.`,
-        "Considerar contato manual somente se houver consentimento e contexto claro.",
+        analise.contatoAutorizado
+          ? "Considerar contato manual somente pelo canal autorizado e com contexto claro."
+          : "Revisar consentimento antes de qualquer tentativa de reativacao.",
         "MEDIA"
+      )
+    );
+  }
+
+  if (analise.contatoRevogado) {
+    oportunidades.push(
+      criarOportunidade(
+        analise,
+        "ATENDIMENTO",
+        "ALTA",
+        "Cliente possui revogacao registrada e nenhum canal/finalidade autorizado.",
+        "Nao sugerir contato ativo. Usar historico apenas se o cliente iniciar atendimento.",
+        "ALTA"
       )
     );
   }
@@ -414,14 +501,20 @@ function oportunidadesDoCliente(analise: AnaliseCliente) {
     );
   }
 
-  if (oportunidades.length === 0 && analise.intencaoFraca) {
+  if (
+    oportunidades.length === 0 &&
+    analise.intencaoFraca &&
+    !analise.contatoRevogado
+  ) {
     oportunidades.push(
       criarOportunidade(
         analise,
         "INTENCAO",
         "BAIXA",
         `${analise.sinalPrincipal}. Sinal fraco, usar apenas como acompanhamento.`,
-        "Acompanhar comportamento antes de tomar acao comercial.",
+        analise.contatoAutorizado
+          ? "Acompanhar comportamento antes de tomar acao comercial manual."
+          : "Acompanhar internamente e revisar consentimento antes de contato.",
         "BAIXA"
       )
     );
@@ -444,6 +537,15 @@ function montarSegmentos(analises: AnaliseCliente[]): SegmentoCrmCliente[] {
   const intencao = analises.filter((item) => item.intencaoForte || item.intencaoFraca);
   const operacionais = analises.filter((item) => item.atencaoOperacional);
   const dadosIncompletos = analises.filter((item) => !item.temContatoCompleto);
+  const consentimentoAutorizado = analises.filter(
+    (item) => item.consentimentoStatus === "AUTORIZADO"
+  );
+  const consentimentoAusente = analises.filter(
+    (item) => item.consentimentoStatus === "NAO_REGISTRADO"
+  );
+  const consentimentoRevogado = analises.filter(
+    (item) => item.consentimentoStatus === "REVOGADO"
+  );
 
   return [
     {
@@ -518,13 +620,33 @@ function montarSegmentos(analises: AnaliseCliente[]): SegmentoCrmCliente[] {
     },
     {
       id: "consentimento-marketing",
-      nome: "Consentimento de marketing",
-      quantidade: null,
-      explicacao: "Nao ha campo persistido de consentimento de marketing no banco.",
-      acaoSugerida: "Evoluir persistencia antes de qualquer campanha ou automacao.",
-      href: "/loja/politica-de-privacidade",
-      confiabilidade: "BAIXA",
-      disponivel: false,
+      nome: "Contato autorizado",
+      quantidade: consentimentoAutorizado.length,
+      explicacao: "Ha pelo menos um canal/finalidade autorizado no consentimento persistido.",
+      acaoSugerida: "Usar somente para contato manual responsavel e contextual.",
+      href: "/clientes",
+      confiabilidade: "ALTA",
+      disponivel: true,
+    },
+    {
+      id: "consentimento-ausente",
+      nome: "Sem consentimento",
+      quantidade: consentimentoAusente.length,
+      explicacao: "Clientes sem autorizacao ou revogacao registrada.",
+      acaoSugerida: "Revisar consentimento antes de qualquer contato ativo.",
+      href: "/clientes",
+      confiabilidade: "ALTA",
+      disponivel: true,
+    },
+    {
+      id: "consentimento-revogado",
+      nome: "Consentimento revogado",
+      quantidade: consentimentoRevogado.length,
+      explicacao: "Clientes com revogacao registrada e sem canal autorizado.",
+      acaoSugerida: "Nao sugerir contato ativo; respeitar revogacao.",
+      href: "/clientes",
+      confiabilidade: "ALTA",
+      disponivel: true,
     },
   ];
 }
@@ -541,6 +663,7 @@ function montarFichaRapida(analise: AnaliseCliente): FichaRapidaCliente {
     ultimaCompraEm: analise.ultimaCompra?.toISOString() ?? null,
     ultimaInteracaoEm: analise.ultimaInteracao?.toISOString() ?? null,
     contato: analise.temContatoCompleto ? "COMPLETO" : "INCOMPLETO",
+    consentimento: analise.consentimentoStatus,
     sinalPrincipal: analise.sinalPrincipal,
     href: `/clientes/${analise.cliente.id}/ficha`,
   };
@@ -610,7 +733,7 @@ export async function obterCrmAcionavelClientes(): Promise<CrmAcionavelClientes>
       pedidosOnline: temPedidosOnline,
       eventosComerciais: temEventos,
       favoritosPersistidos: false,
-      consentimentoMarketingPersistido: false,
+      consentimentoMarketingPersistido: true,
       dataEspecial: false,
     },
   };

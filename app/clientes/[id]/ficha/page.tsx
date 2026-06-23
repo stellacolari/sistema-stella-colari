@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Ficha360Cliente from "@/components/clientes/Ficha360Cliente";
-import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import {
+  exigirAdminComPermissao,
+  usuarioTemPermissaoAdmin,
+} from "@/lib/auth/admin";
 import { obterFicha360Cliente } from "@/lib/clientes/ficha-360";
 
 export const metadata: Metadata = {
@@ -17,7 +20,7 @@ export default async function Ficha360ClientePage({
 }) {
   const { id } = await params;
 
-  await exigirAdminComPermissao("clientes", "ver");
+  const usuario = await exigirAdminComPermissao("clientes", "ver");
 
   const ficha = await obterFicha360Cliente(id);
 
@@ -25,5 +28,14 @@ export default async function Ficha360ClientePage({
     notFound();
   }
 
-  return <Ficha360Cliente ficha={ficha} />;
+  return (
+    <Ficha360Cliente
+      ficha={ficha}
+      podeEditarConsentimento={usuarioTemPermissaoAdmin(
+        usuario,
+        "clientes",
+        "editar"
+      )}
+    />
+  );
 }

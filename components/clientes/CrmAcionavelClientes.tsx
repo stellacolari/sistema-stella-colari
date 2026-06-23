@@ -69,6 +69,25 @@ function dataCurta(dataIso: string | null) {
   return new Intl.DateTimeFormat("pt-BR").format(data);
 }
 
+function consentimentoLabel(status: string) {
+  if (status === "AUTORIZADO") return "contato autorizado";
+  if (status === "REVOGADO") return "contato revogado";
+
+  return "sem consentimento";
+}
+
+function consentimentoClass(status: string) {
+  if (status === "AUTORIZADO") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "REVOGADO") {
+    return "border-red-200 bg-red-50 text-red-700";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
 function CardResumo({
   label,
   valor,
@@ -462,6 +481,9 @@ export default function CrmAcionavelClientes({
                         {cliente.contato === "COMPLETO"
                           ? "contato completo"
                           : "contato incompleto"}
+                      </Badge>
+                      <Badge className={consentimentoClass(cliente.consentimento)}>
+                        {consentimentoLabel(cliente.consentimento)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">

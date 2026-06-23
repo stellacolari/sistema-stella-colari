@@ -422,6 +422,7 @@ model Cliente {
   complemento           String?
   estado                String?
   cashbackMovimentacoes ClienteCashbackMovimentacao[]
+  consentimentos        ClienteConsentimento[]
   pedidosOnline         PedidoOnline[]
   vendas                Venda[]
   eventosComerciais     EventoComercial[]
@@ -1296,6 +1297,33 @@ model ClienteCashbackMovimentacao {
   @@index([origemId])
 }
 
+model ClienteConsentimento {
+  id                     String        @id @default(cuid())
+  clienteId              String
+  finalidade             String
+  canal                  String
+  status                 String
+  origem                 String        @default("ADMIN_MANUAL")
+  versaoPolitica         String?
+  registradoPorAdminId   String?
+  registradoPorAdminNome String?
+  consentidoEm           DateTime?
+  revogadoEm             DateTime?
+  observacao             String?
+  criadoEm               DateTime      @default(now())
+  atualizadoEm           DateTime      @updatedAt
+  cliente                Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  registradoPorAdmin     UsuarioAdmin? @relation("ClienteConsentimentoRegistradoPor", fields: [registradoPorAdminId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId])
+  @@index([finalidade])
+  @@index([canal])
+  @@index([status])
+  @@index([registradoPorAdminId])
+  @@index([criadoEm])
+  @@index([clienteId, finalidade, canal, criadoEm])
+}
+
 model LojaPagina {
   id                     String                       @id @default(cuid())
   titulo                 String
@@ -1676,6 +1704,7 @@ model UsuarioAdmin {
   notificacoes  NotificacaoUsuario[]
   perfilAdministrativo PerfilAdministrativo? @relation(fields: [perfilAdministrativoId], references: [id], onDelete: SetNull)
   regrasNotificacao RegraNotificacaoPerfil[]
+  consentimentosClienteRegistrados ClienteConsentimento[]   @relation("ClienteConsentimentoRegistradoPor")
 
   @@index([email])
   @@index([ativo])

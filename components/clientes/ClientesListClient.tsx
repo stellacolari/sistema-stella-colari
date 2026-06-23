@@ -15,6 +15,11 @@ import {
   Wallet,
 } from "lucide-react";
 
+type EstadoResumoConsentimentoCliente =
+  | "AUTORIZADO"
+  | "REVOGADO"
+  | "NAO_REGISTRADO";
+
 export type ClienteListItem = {
   id: string;
   codigo: string;
@@ -31,6 +36,7 @@ export type ClienteListItem = {
   totalVendas: number;
   totalVendasAtivas: number;
   valorTotalComprado: number;
+  consentimento: EstadoResumoConsentimentoCliente;
   cashbackSaldo?: number;
 };
 
@@ -101,6 +107,25 @@ function statusIcon(status: string) {
   }
 
   return <CheckCircle2 className="h-4 w-4" />;
+}
+
+function consentimentoLabel(status: EstadoResumoConsentimentoCliente) {
+  if (status === "AUTORIZADO") return "Contato autorizado";
+  if (status === "REVOGADO") return "Revogado";
+
+  return "Sem consentimento";
+}
+
+function consentimentoClass(status: EstadoResumoConsentimentoCliente) {
+  if (status === "AUTORIZADO") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "REVOGADO") {
+    return "border-red-200 bg-red-50 text-red-700";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
 export default function ClientesListClient({
@@ -479,7 +504,7 @@ export default function ClientesListClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1350px] w-full text-left">
+            <table className="min-w-[1460px] w-full text-left">
               <thead className="bg-slate-50">
                 <tr className="text-sm text-slate-600">
                   <th className="w-12 px-6 py-4"></th>
@@ -491,6 +516,7 @@ export default function ClientesListClient({
                   <th className="px-6 py-4 font-semibold">Tipo</th>
                   <th className="px-6 py-4 font-semibold">Vendas</th>
                   <th className="px-6 py-4 font-semibold">Cashback</th>
+                  <th className="px-6 py-4 font-semibold">Consentimento</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 text-right font-semibold">Ações</th>
                 </tr>
@@ -565,6 +591,16 @@ export default function ClientesListClient({
                             disponível
                           </span>
                         </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${consentimentoClass(
+                            cliente.consentimento
+                          )}`}
+                        >
+                          {consentimentoLabel(cliente.consentimento)}
+                        </span>
                       </td>
 
                       <td className="px-6 py-4">

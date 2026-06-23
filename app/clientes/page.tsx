@@ -2,6 +2,13 @@ import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import {
+  normalizarCanalConsentimentoCliente,
+  normalizarFinalidadeConsentimentoCliente,
+  normalizarStatusConsentimentoCliente,
+  resumirConsentimentosCliente,
+  type ConsentimentoClienteItem,
+} from "@/lib/clientes/consentimentos-cliente";
 import ClientesListClient, {
   type ClienteListItem,
 } from "@/components/clientes/ClientesListClient";
@@ -17,8 +24,50 @@ type ClienteComVendas = Prisma.ClienteGetPayload<{
         status: true;
       };
     };
+    consentimentos: {
+      select: {
+        id: true;
+        finalidade: true;
+        canal: true;
+        status: true;
+        origem: true;
+        versaoPolitica: true;
+        registradoPorAdminId: true;
+        registradoPorAdminNome: true;
+        consentidoEm: true;
+        revogadoEm: true;
+        observacao: true;
+        criadoEm: true;
+        atualizadoEm: true;
+      };
+    };
   };
 }>;
+
+function serializarConsentimentoLista(
+  consentimento: ClienteComVendas["consentimentos"][number]
+): ConsentimentoClienteItem {
+  return {
+    id: consentimento.id,
+    finalidade:
+      normalizarFinalidadeConsentimentoCliente(consentimento.finalidade) ||
+      "RELACIONAMENTO",
+    canal:
+      normalizarCanalConsentimentoCliente(consentimento.canal) || "WHATSAPP",
+    status:
+      normalizarStatusConsentimentoCliente(consentimento.status) ||
+      "REVOGADO",
+    origem: consentimento.origem,
+    versaoPolitica: consentimento.versaoPolitica,
+    registradoPorAdminId: consentimento.registradoPorAdminId,
+    registradoPorAdminNome: consentimento.registradoPorAdminNome,
+    consentidoEm: consentimento.consentidoEm?.toISOString() ?? null,
+    revogadoEm: consentimento.revogadoEm?.toISOString() ?? null,
+    observacao: consentimento.observacao,
+    criadoEm: consentimento.criadoEm.toISOString(),
+    atualizadoEm: consentimento.atualizadoEm.toISOString(),
+  };
+}
 
 export default async function ClientesPage() {
   await exigirAdminComPermissao("clientes", "ver");
@@ -33,6 +82,27 @@ export default async function ClientesPage() {
           status: true,
         },
       },
+      consentimentos: {
+        orderBy: {
+          criadoEm: "desc",
+        },
+        take: 50,
+        select: {
+          id: true,
+          finalidade: true,
+          canal: true,
+          status: true,
+          origem: true,
+          versaoPolitica: true,
+          registradoPorAdminId: true,
+          registradoPorAdminNome: true,
+          consentidoEm: true,
+          revogadoEm: true,
+          observacao: true,
+          criadoEm: true,
+          atualizadoEm: true,
+        },
+      },
     },
   });
 
@@ -45,6 +115,9 @@ export default async function ClientesPage() {
       const valorTotalComprado = vendasAtivas.reduce(
         (total: number, venda) => total + Number(venda.valorTotal),
         0
+      );
+      const consentimento = resumirConsentimentosCliente(
+        cliente.consentimentos.map(serializarConsentimentoLista)
       );
 
       return {
@@ -63,6 +136,7 @@ export default async function ClientesPage() {
         totalVendas: cliente.vendas.length,
         totalVendasAtivas: vendasAtivas.length,
         valorTotalComprado,
+        consentimento: consentimento.statusGeral,
       };
     }
   );

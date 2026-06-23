@@ -2,6 +2,10 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  obterResumoConsentimentosCliente,
+  type ConsentimentoClienteResumo,
+} from "@/lib/clientes/consentimentos-cliente";
 
 export type ConfiabilidadeFichaCliente = "ALTA" | "MEDIA" | "BAIXA";
 export type PrioridadeFichaCliente = "ALTA" | "MEDIA" | "BAIXA";
@@ -93,6 +97,7 @@ export type Ficha360Cliente = {
   sinais: Ficha360SinalCliente[];
   oportunidades: Ficha360Oportunidade[];
   historico: Ficha360HistoricoItem[];
+  consentimento: ConsentimentoClienteResumo;
   dados: {
     clientes: boolean;
     pedidosOnline: boolean;
@@ -630,6 +635,7 @@ function montarOportunidades(params: {
   pedidosComAtencao: number;
   sinais: Ficha360SinalCliente[];
   temContatoCompleto: boolean;
+  consentimento: ConsentimentoClienteResumo;
   agora: Date;
 }): Ficha360Oportunidade[] {
   const {
@@ -639,6 +645,7 @@ function montarOportunidades(params: {
     pedidosComAtencao,
     sinais,
     temContatoCompleto,
+    consentimento,
     agora,
   } = params;
   const oportunidades: Ficha360Oportunidade[] = [];
@@ -661,13 +668,16 @@ function montarOportunidades(params: {
       titulo: "Revisar pedido antes de contato",
       motivo: `${pedidosComAtencao} pedido${pedidosComAtencao === 1 ? "" : "s"} com pagamento pendente, recusado ou problema.`,
       prioridade: "ALTA",
-      acaoSugerida: "Abrir o pedido e resolver o ponto operacional antes de abordagem comercial.",
+      acaoSugerida: "Abrir o pedido e resolver o ponto operacional antes de qualquer abordagem.",
       avisoPrivacidade: null,
       confiabilidade: "ALTA",
     });
   }
 
-  if (intencaoRecente) {
+  const contatoAutorizado = consentimento.statusGeral === "AUTORIZADO";
+  const contatoRevogado = consentimento.statusGeral === "REVOGADO";
+
+  if (intencaoRecente && !contatoRevogado) {
     const alvo =
       intencaoRecente.produto?.nome ||
       intencaoRecente.categoria?.nome ||
@@ -682,31 +692,40 @@ function montarOportunidades(params: {
       prioridade: TIPOS_INTENCAO_FORTE.has(intencaoRecente.tipo)
         ? "ALTA"
         : "BAIXA",
-      acaoSugerida: "Conferir historico e abordar manualmente apenas se houver canal autorizado.",
-      avisoPrivacidade:
-        "Contato comercial deve respeitar consentimento e contexto do atendimento.",
+      acaoSugerida: contatoAutorizado
+        ? "Conferir historico e abordar manualmente apenas pelo canal autorizado."
+        : "Revisar consentimento antes de qualquer contato ativo.",
+      avisoPrivacidade: contatoAutorizado
+        ? "Contato comercial deve respeitar finalidade, canal e contexto do atendimento."
+        : "Sem consentimento registrado, use o sinal apenas como contexto interno.",
       confiabilidade: "MEDIA",
     });
   }
 
-  if (compras.length >= 2 && (diasDesdeUltimaCompra ?? 0) >= DIAS_RECOMPRA) {
+  if (
+    compras.length >= 2 &&
+    (diasDesdeUltimaCompra ?? 0) >= DIAS_RECOMPRA &&
+    !contatoRevogado
+  ) {
     oportunidades.push({
       id: "recompra",
       tipo: "RECOMPRA",
       titulo: "Recompra cuidadosa",
       motivo: `Cliente recorrente sem compra ha ${diasDesdeUltimaCompra} dias.`,
       prioridade: "MEDIA",
-      acaoSugerida: "Revisar categorias compradas antes de sugerir novidade semelhante.",
-      avisoPrivacidade:
-        "Use como apoio de atendimento, nao como disparo automatico.",
+      acaoSugerida: contatoAutorizado
+        ? "Revisar categorias compradas antes de sugerir novidade semelhante."
+        : "Revisar consentimento antes de sugerir contato de recompra.",
+      avisoPrivacidade: "Use como apoio de atendimento, nao como disparo automatico.",
       confiabilidade: "ALTA",
     });
   }
 
   if (
-    cliente.status === "INATIVO" ||
-    (diasDesdeUltimaCompra !== null &&
-      diasDesdeUltimaCompra > DIAS_CLIENTE_INATIVO)
+    (cliente.status === "INATIVO" ||
+      (diasDesdeUltimaCompra !== null &&
+        diasDesdeUltimaCompra > DIAS_CLIENTE_INATIVO)) &&
+    !contatoRevogado
   ) {
     oportunidades.push({
       id: "inativo",
@@ -717,10 +736,35 @@ function montarOportunidades(params: {
           ? "Nao ha compra registrada."
           : `Ultima compra ha ${diasDesdeUltimaCompra} dias.`,
       prioridade: "MEDIA",
-      acaoSugerida: "Avaliar contato manual somente com consentimento e motivo claro.",
-      avisoPrivacidade:
-        "Nao presumir interesse atual sem interacao recente do cliente.",
+      acaoSugerida: contatoAutorizado
+        ? "Avaliar contato manual somente pelo canal autorizado e com motivo claro."
+        : "Revisar consentimento antes de qualquer tentativa de reativacao.",
+      avisoPrivacidade: "Nao presumir interesse atual sem interacao recente do cliente.",
       confiabilidade: "MEDIA",
+    });
+  }
+
+  if (contatoRevogado) {
+    oportunidades.push({
+      id: "consentimento-revogado",
+      tipo: "ATENDIMENTO",
+      titulo: "Consentimento revogado",
+      motivo: "Ha revogacao registrada e nenhum canal/finalidade autorizado no momento.",
+      prioridade: "ALTA",
+      acaoSugerida: "Nao sugerir contato ativo. Usar historico apenas se o cliente iniciar atendimento.",
+      avisoPrivacidade: "Revogacao deve prevalecer sobre sinais de intencao ou recompra.",
+      confiabilidade: "ALTA",
+    });
+  } else if (!contatoAutorizado) {
+    oportunidades.push({
+      id: "consentimento-ausente",
+      tipo: "ATENDIMENTO",
+      titulo: "Revisar consentimento",
+      motivo: "Nao ha consentimento de relacionamento registrado.",
+      prioridade: "MEDIA",
+      acaoSugerida: "Registrar consentimento apenas se o cliente autorizar de forma clara.",
+      avisoPrivacidade: "Sem consentimento, nao usar oportunidades como autorizacao de contato.",
+      confiabilidade: "ALTA",
     });
   }
 
@@ -836,6 +880,7 @@ export async function obterFicha360Cliente(
     cliente.telefone.trim() && cliente.email?.trim()
   );
   const sinais = montarSinais(cliente, compras, agora);
+  const consentimento = await obterResumoConsentimentosCliente(cliente.id);
 
   return {
     geradoEm: agora.toISOString(),
@@ -872,9 +917,11 @@ export async function obterFicha360Cliente(
       pedidosComAtencao,
       sinais,
       temContatoCompleto,
+      consentimento,
       agora,
     }),
     historico: montarHistorico(cliente),
+    consentimento,
     dados: {
       clientes: true,
       pedidosOnline: cliente.pedidosOnline.length > 0,
@@ -883,7 +930,7 @@ export async function obterFicha360Cliente(
       ),
       eventosComerciais: cliente.eventosComerciais.length > 0,
       favoritosPersistidos: false,
-      consentimentoMarketingPersistido: false,
+      consentimentoMarketingPersistido: true,
     },
     avisoPrivacidade:
       "Use essas informacoes apenas para atendimento e relacionamento responsavel. Nao ha envio automatico de mensagens.",

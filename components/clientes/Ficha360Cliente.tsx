@@ -18,6 +18,7 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
+import ConsentimentosClienteCard from "@/components/clientes/ConsentimentosClienteCard";
 import type {
   ConfiabilidadeFichaCliente,
   Ficha360Cliente as Ficha360ClienteData,
@@ -31,6 +32,7 @@ import type {
 
 type Ficha360ClienteProps = {
   ficha: Ficha360ClienteData;
+  podeEditarConsentimento: boolean;
 };
 
 const confiabilidadeClasses: Record<ConfiabilidadeFichaCliente, string> = {
@@ -369,7 +371,10 @@ function EmptyState({ children }: { children: ReactNode }) {
   );
 }
 
-export default function Ficha360Cliente({ ficha }: Ficha360ClienteProps) {
+export default function Ficha360Cliente({
+  ficha,
+  podeEditarConsentimento,
+}: Ficha360ClienteProps) {
   const dadosDisponiveis = [
     { label: "Clientes", disponivel: ficha.dados.clientes },
     { label: "Pedidos online", disponivel: ficha.dados.pedidosOnline },
@@ -598,6 +603,12 @@ export default function Ficha360Cliente({ ficha }: Ficha360ClienteProps) {
         </div>
 
         <aside className="space-y-6">
+          <ConsentimentosClienteCard
+            clienteId={ficha.cliente.id}
+            resumoInicial={ficha.consentimento}
+            podeEditar={podeEditarConsentimento}
+          />
+
           <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
             <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-5">
               <Sparkles className="h-5 w-5 text-slate-500" />
