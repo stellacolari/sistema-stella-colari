@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import PedidosClient, {
   type PedidoOperacionalItem,
@@ -423,6 +424,13 @@ export default async function PedidosPage() {
               etiquetas e progresso operacional.
             </p>
           </div>
+
+          <Link
+            href="/pedidos/operacao"
+            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-900 bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800"
+          >
+            Painel operacional
+          </Link>
         </div>
       </section>
       <section className="hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:block">
