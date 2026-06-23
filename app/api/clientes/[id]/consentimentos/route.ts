@@ -38,6 +38,45 @@ function parseTextoLimitado(value: unknown, limite: number) {
   return texto.length > limite ? texto.slice(0, limite) : texto;
 }
 
+async function parseJsonSeguro(request: Request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new Error("Payload JSON invalido.");
+  }
+}
+
+function erroEsperadoConsentimento(message: string) {
+  return [
+    "Payload JSON invalido.",
+    "Cliente nao encontrado.",
+    "Finalidade de consentimento invalida.",
+    "Canal de consentimento invalido.",
+    "Status de consentimento invalido.",
+  ].includes(message);
+}
+
+function respostaErroConsentimento(
+  error: unknown,
+  fallbackMessage: string
+) {
+  if (error instanceof AdminPermissaoError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+
+  const message = error instanceof Error ? error.message : fallbackMessage;
+
+  if (message === "Cliente nao encontrado.") {
+    return NextResponse.json({ error: message }, { status: 404 });
+  }
+
+  if (erroEsperadoConsentimento(message)) {
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  return NextResponse.json({ error: fallbackMessage }, { status: 500 });
+}
+
 export async function GET(_request: Request, context: RouteContext) {
   try {
     await exigirAdminComPermissao("clientes", "ver");
@@ -58,15 +97,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ consentimentos, resumo });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao listar consentimentos.";
-
-    return NextResponse.json(
-      { error: message },
-      { status: error instanceof AdminPermissaoError ? 403 : 500 }
-    );
+    return respostaErroConsentimento(error, "Erro ao listar consentimentos.");
   }
 }
 
@@ -74,7 +105,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const usuario = await exigirAdminComPermissao("clientes", "editar");
     const { id } = await context.params;
-    const body = await request.json();
+    const body = await parseJsonSeguro(request);
 
     const consentimento = await registrarConsentimentoManualCliente({
       clienteId: id,
@@ -93,18 +124,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     return NextResponse.json({ consentimento, resumo }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao registrar consentimento.";
-    const status =
-      error instanceof AdminPermissaoError
-        ? 403
-        : message === "Cliente nao encontrado."
-          ? 404
-          : 400;
-
-    return NextResponse.json({ error: message }, { status });
+    return respostaErroConsentimento(error, "Erro ao registrar consentimento.");
   }
 }
 
@@ -112,7 +132,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const usuario = await exigirAdminComPermissao("clientes", "editar");
     const { id } = await context.params;
-    const body = await request.json();
+    const body = await parseJsonSeguro(request);
 
     const consentimento = await revogarConsentimentoCliente({
       clienteId: id,
@@ -129,15 +149,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({ consentimento, resumo });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Erro ao revogar consentimento.";
-    const status =
-      error instanceof AdminPermissaoError
-        ? 403
-        : message === "Cliente nao encontrado."
-          ? 404
-          : 400;
-
-    return NextResponse.json({ error: message }, { status });
+    return respostaErroConsentimento(error, "Erro ao revogar consentimento.");
   }
 }
