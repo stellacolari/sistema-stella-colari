@@ -306,7 +306,7 @@ export async function montarCentralAcoesAdmin(
       prisma.campanhaComercial.count({
         where: {
           status: {
-            in: ["RASCUNHO", "EM_REVISAO", "AGENDADA", "ATIVA"],
+            in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"],
           },
         },
       })

@@ -6,17 +6,27 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  Ban,
   CheckCircle2,
+  Eye,
   Filter,
   Lightbulb,
   Megaphone,
   PauseCircle,
   PlayCircle,
   RefreshCcw,
+  ShieldAlert,
   TrendingUp,
   Search,
   XCircle,
 } from "lucide-react";
+import type {
+  CopilotoAdministrativoData,
+  EvidenciaCopilotoAdministrativo,
+  GrupoCopilotoAdministrativo,
+  PermissoesCopilotoAdministrativo,
+  RecomendacaoCopilotoAdministrativo,
+} from "@/lib/financeiro/copiloto-administrativo";
 
 export type RecomendacaoGerencialResumo = {
   id: string;
@@ -90,6 +100,8 @@ type Props = {
   recomendacoes: RecomendacaoGerencialResumo[];
   resumo: ResumoStatus;
   tipos: string[];
+  copiloto: CopilotoAdministrativoData;
+  permissoes: PermissoesCopilotoAdministrativo;
   vitrines?: VitrineRecomendacaoResumo[];
   filtroInicial?: {
     status?: string;
@@ -111,9 +123,36 @@ const STATUS_OPTIONS = [
 
 const PRIORIDADE_OPTIONS = [
   { value: "TODAS", label: "Todas" },
+  { value: "CRITICA", label: "Critica" },
   { value: "ALTA", label: "Alta" },
   { value: "MEDIA", label: "Media" },
   { value: "BAIXA", label: "Baixa" },
+] as const;
+
+const GRUPO_OPTIONS = [
+  { value: "TODOS", label: "Todos" },
+  { value: "FACA_HOJE", label: "Faca hoje" },
+  { value: "ACOMPANHE", label: "Acompanhe" },
+  { value: "NAO_MEXA_AINDA", label: "Nao mexa ainda" },
+  { value: "BAIXA_EVIDENCIA", label: "Baixa evidencia" },
+] as const;
+
+const AREA_OPTIONS = [
+  { value: "TODAS", label: "Todas" },
+  { value: "OPERACAO", label: "Operacao" },
+  { value: "CATALOGO", label: "Catalogo" },
+  { value: "MARKETING", label: "Marketing" },
+  { value: "CRM", label: "CRM" },
+  { value: "FINANCEIRO", label: "Financeiro" },
+  { value: "SISTEMA", label: "Sistema" },
+] as const;
+
+const EVIDENCIA_OPTIONS = [
+  { value: "TODAS", label: "Todas" },
+  { value: "FORTE", label: "Forte" },
+  { value: "MODERADA", label: "Moderada" },
+  { value: "FRACA", label: "Fraca" },
+  { value: "SEM_EVIDENCIA", label: "Sem evidencia" },
 ] as const;
 
 function normalizarTexto(value: string | null | undefined) {
@@ -144,9 +183,72 @@ function statusClasses(status: string) {
 }
 
 function prioridadeClasses(prioridade: string) {
+  if (prioridade === "CRITICA") return "border-rose-300 bg-rose-50 text-rose-900";
   if (prioridade === "ALTA") return "border-red-200 bg-red-50 text-red-800";
   if (prioridade === "MEDIA") return "border-amber-200 bg-amber-50 text-amber-800";
   return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function labelPrioridade(prioridade: string) {
+  if (prioridade === "CRITICA") return "Critica";
+  if (prioridade === "ALTA") return "Alta";
+  if (prioridade === "MEDIA") return "Media";
+  if (prioridade === "BAIXA") return "Baixa";
+  return prioridade.replaceAll("_", " ");
+}
+
+function labelGrupo(grupo: string) {
+  return GRUPO_OPTIONS.find((item) => item.value === grupo)?.label || grupo.replaceAll("_", " ");
+}
+
+function grupoClasses(grupo: string) {
+  if (grupo === "FACA_HOJE") return "border-red-200 bg-red-50 text-red-800";
+  if (grupo === "ACOMPANHE") return "border-blue-200 bg-blue-50 text-blue-800";
+  if (grupo === "NAO_MEXA_AINDA") return "border-slate-200 bg-slate-100 text-slate-700";
+  return "border-amber-200 bg-amber-50 text-amber-800";
+}
+
+function labelClassificacao(classificacao: string) {
+  if (classificacao === "RECOMENDACAO") return "Recomendacao";
+  if (classificacao === "ALERTA") return "Alerta";
+  if (classificacao === "OBSERVACAO") return "Observacao";
+  if (classificacao === "NAO_RECOMENDAR") return "Nao recomendar";
+  return classificacao.replaceAll("_", " ");
+}
+
+function classificacaoClasses(classificacao: string) {
+  if (classificacao === "ALERTA") return "border-red-200 bg-red-50 text-red-800";
+  if (classificacao === "RECOMENDACAO") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (classificacao === "OBSERVACAO") return "border-sky-200 bg-sky-50 text-sky-800";
+  return "border-slate-200 bg-slate-100 text-slate-700";
+}
+
+function labelArea(area: string) {
+  return AREA_OPTIONS.find((item) => item.value === area)?.label || area.replaceAll("_", " ");
+}
+
+function areaClasses(area: string) {
+  if (area === "OPERACAO") return "border-red-200 bg-red-50 text-red-800";
+  if (area === "CATALOGO") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (area === "MARKETING") return "border-violet-200 bg-violet-50 text-violet-800";
+  if (area === "CRM") return "border-sky-200 bg-sky-50 text-sky-800";
+  if (area === "FINANCEIRO") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function labelEvidencia(evidencia: EvidenciaCopilotoAdministrativo | string) {
+  if (evidencia === "FORTE") return "Forte";
+  if (evidencia === "MODERADA") return "Moderada";
+  if (evidencia === "FRACA") return "Fraca";
+  if (evidencia === "SEM_EVIDENCIA") return "Sem evidencia";
+  return String(evidencia).replaceAll("_", " ");
+}
+
+function evidenciaClasses(evidencia: string) {
+  if (evidencia === "FORTE") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (evidencia === "MODERADA") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (evidencia === "FRACA") return "border-slate-200 bg-slate-50 text-slate-700";
+  return "border-slate-200 bg-white text-slate-500";
 }
 
 function labelImpacto(status: string) {
@@ -294,8 +396,9 @@ function ResumoCard({
 
 export default function RecomendacoesGerenciaisClient({
   recomendacoes,
-  resumo,
   tipos,
+  copiloto,
+  permissoes,
   vitrines = [],
   filtroInicial,
 }: Props) {
@@ -307,6 +410,9 @@ export default function RecomendacoesGerenciaisClient({
   const [prioridade, setPrioridade] = useState(
     filtroInicial?.prioridade || "TODAS"
   );
+  const [grupo, setGrupo] = useState<string>("TODOS");
+  const [area, setArea] = useState("TODAS");
+  const [evidencia, setEvidencia] = useState("TODAS");
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
 
@@ -330,13 +436,21 @@ export default function RecomendacoesGerenciaisClient({
     };
   }, [recomendacoes]);
 
-  const recomendacoesFiltradas = useMemo(() => {
+  const itensFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
 
-    return recomendacoes.filter((recomendacao) => {
+    return copiloto.itens.filter((item) => {
+      const recomendacao = item.recomendacao;
+      if (grupo !== "TODOS" && item.grupo !== grupo) return false;
+      if (area !== "TODAS" && item.area !== area) return false;
+      if (evidencia !== "TODAS" && item.evidencia !== evidencia) return false;
       if (status !== "TODOS" && recomendacao.status !== status) return false;
       if (tipo !== "TODOS" && recomendacao.tipo !== tipo) return false;
-      if (prioridade !== "TODAS" && recomendacao.prioridade !== prioridade) {
+      if (
+        prioridade !== "TODAS" &&
+        item.prioridade !== prioridade &&
+        !(prioridade === "ALTA" && item.prioridade === "CRITICA")
+      ) {
         return false;
       }
       if (
@@ -353,16 +467,30 @@ export default function RecomendacoesGerenciaisClient({
           recomendacao.tipo,
           recomendacao.status,
           recomendacao.prioridade,
+          item.grupo,
+          item.classificacao,
+          item.area,
+          item.evidencia,
           recomendacao.titulo,
           recomendacao.descricao,
-          recomendacao.motivo,
-          recomendacao.acaoSugerida,
+          item.motivo,
+          item.acaoSugerida,
           recomendacao.origem,
           recomendacao.periodoReferencia,
         ].join(" ")
       ).includes(termo);
     });
-  }, [busca, filtroInicial?.produtoId, prioridade, recomendacoes, status, tipo]);
+  }, [
+    area,
+    busca,
+    copiloto.itens,
+    evidencia,
+    filtroInicial?.produtoId,
+    grupo,
+    prioridade,
+    status,
+    tipo,
+  ]);
 
   function refresh() {
     startTransition(() => router.refresh());
@@ -490,6 +618,9 @@ export default function RecomendacoesGerenciaisClient({
     setStatus("TODOS");
     setTipo("TODOS");
     setPrioridade("TODAS");
+    setGrupo("TODOS");
+    setArea("TODAS");
+    setEvidencia("TODAS");
   }
 
   return (
@@ -501,51 +632,59 @@ export default function RecomendacoesGerenciaisClient({
               Inteligencia de gestao
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
-              Recomendacoes gerenciais
+              Copiloto administrativo
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Acompanhe acoes sugeridas pela plataforma, aceite decisoes e
-              registre execucao sem transformar isso em tarefa operacional.
+              Recomendacoes explicadas, priorizadas e seguras para decisao.
             </p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={gerarRecomendacoes}
-              disabled={isPending}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <RefreshCcw className="h-4 w-4" />
-              Gerar recomendacoes
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                setErro("");
-                setMensagem("");
-                const response = await fetch(
-                  "/api/compras/recomendacoes/avaliar-impactos",
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ janelaDias: 14 }),
-                  }
-                );
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                  setErro(data.error || "Nao foi possivel avaliar impactos.");
-                  return;
-                }
-                setMensagem(`${data.avaliadas || 0} impacto(s) avaliado(s).`);
-                refresh();
-              }}
-              disabled={isPending}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Avaliar impactos
-            </button>
+            {permissoes.podeExecutarRecomendacoes ? (
+              <>
+                <button
+                  type="button"
+                  onClick={gerarRecomendacoes}
+                  disabled={isPending}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  Gerar recomendacoes
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setErro("");
+                    setMensagem("");
+                    const response = await fetch(
+                      "/api/compras/recomendacoes/avaliar-impactos",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ janelaDias: 14 }),
+                      }
+                    );
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                      setErro(data.error || "Nao foi possivel avaliar impactos.");
+                      return;
+                    }
+                    setMensagem(`${data.avaliadas || 0} impacto(s) avaliado(s).`);
+                    refresh();
+                  }}
+                  disabled={isPending}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Avaliar impactos
+                </button>
+              </>
+            ) : (
+              <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+                <Eye className="h-4 w-4" />
+                Modo leitura
+              </span>
+            )}
             <Link
               href="/compras"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -581,29 +720,29 @@ export default function RecomendacoesGerenciaisClient({
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <ResumoCard
-          label="Novas"
-          value={resumo.NOVA || 0}
-          description="Aguardam decisao gerencial."
+          label="Faca hoje"
+          value={copiloto.resumo.grupos.FACA_HOJE}
+          description="Alta prioridade com acao manual clara."
         />
         <ResumoCard
-          label="Aceitas"
-          value={resumo.ACEITA || 0}
-          description="Decisao aprovada, ainda sem execucao."
+          label="Acompanhe"
+          value={copiloto.resumo.grupos.ACOMPANHE}
+          description="Sinais uteis sem urgencia imediata."
         />
         <ResumoCard
-          label="Em execucao"
-          value={resumo.EM_EXECUCAO || 0}
-          description="Acoes em andamento."
+          label="Nao mexa ainda"
+          value={copiloto.resumo.grupos.NAO_MEXA_AINDA}
+          description="Agir agora pode trazer mais risco que beneficio."
         />
         <ResumoCard
-          label="Concluidas"
-          value={resumo.CONCLUIDA || 0}
-          description="Com resultado observado."
+          label="Baixa evidencia"
+          value={copiloto.resumo.grupos.BAIXA_EVIDENCIA}
+          description="Sinais acompanhados, sem decisao ainda."
         />
         <ResumoCard
-          label="Ignoradas"
-          value={resumo.IGNORADA || 0}
-          description="Descartadas conscientemente."
+          label="Impactos pendentes"
+          value={copiloto.resumo.impactosPendentes}
+          description="Acoes que pedem avaliacao de resultado."
         />
       </section>
 
@@ -635,8 +774,38 @@ export default function RecomendacoesGerenciaisClient({
         />
       </section>
 
+      <section className="rounded-3xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
+        <div className="grid gap-2 md:grid-cols-5">
+          {GRUPO_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setGrupo(option.value)}
+              className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+                grupo === option.value
+                  ? "bg-slate-950 text-white"
+                  : "bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <span>{option.label}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  grupo === option.value
+                    ? "bg-white/15 text-white"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {option.value === "TODOS"
+                  ? copiloto.resumo.total
+                  : copiloto.resumo.grupos[option.value as GrupoCopilotoAdministrativo]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto] lg:items-end">
+        <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_160px_auto] lg:items-end">
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Search className="h-4 w-4 text-slate-400" />
@@ -671,6 +840,18 @@ export default function RecomendacoesGerenciaisClient({
             onChange={setPrioridade}
             options={PRIORIDADE_OPTIONS}
           />
+          <FiltroSelect
+            label="Area"
+            value={area}
+            onChange={setArea}
+            options={AREA_OPTIONS}
+          />
+          <FiltroSelect
+            label="Evidencia"
+            value={evidencia}
+            onChange={setEvidencia}
+            options={EVIDENCIA_OPTIONS}
+          />
 
           <button
             type="button"
@@ -684,16 +865,18 @@ export default function RecomendacoesGerenciaisClient({
       </section>
 
       <section className="space-y-3">
-        {recomendacoesFiltradas.length === 0 ? (
+        {itensFiltrados.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-sm font-medium text-slate-500">
-            Nenhuma recomendacao encontrada para os filtros atuais.
+            Nenhuma acao recomendada agora.
           </div>
         ) : (
-          recomendacoesFiltradas.map((recomendacao) => (
+          itensFiltrados.map((item) => (
             <RecomendacaoCard
-              key={recomendacao.id}
-              recomendacao={recomendacao}
-              vitrine={vitrines.find((item) => item.recomendacaoId === recomendacao.id) || null}
+              key={item.id}
+              copiloto={item}
+              recomendacao={item.recomendacao}
+              permissoes={permissoes}
+              vitrine={vitrines.find((vitrine) => vitrine.recomendacaoId === item.id) || null}
               onAcao={acionarRecomendacao}
               onAvaliarImpacto={avaliarImpacto}
               onCriarCampanha={criarCampanha}
@@ -706,13 +889,17 @@ export default function RecomendacoesGerenciaisClient({
 }
 
 function RecomendacaoCard({
+  copiloto,
   recomendacao,
+  permissoes,
   vitrine,
   onAcao,
   onAvaliarImpacto,
   onCriarCampanha,
 }: {
+  copiloto: RecomendacaoCopilotoAdministrativo;
   recomendacao: RecomendacaoGerencialResumo;
+  permissoes: PermissoesCopilotoAdministrativo;
   vitrine: VitrineRecomendacaoResumo | null;
   onAcao: (recomendacao: RecomendacaoGerencialResumo, acao: string) => void;
   onAvaliarImpacto: (recomendacao: RecomendacaoGerencialResumo) => void;
@@ -724,8 +911,10 @@ function RecomendacaoCard({
   const prioridadeVisual =
     recomendacao.prioridade === "ALTA" && (evidencias.sinalInicial || evidencias.amostraPequena)
       ? "MEDIA"
-      : recomendacao.prioridade;
+      : copiloto.prioridade;
   const podeCriarCampanha =
+    permissoes.podeExecutarCampanhas &&
+    permissoes.podeVerCampanhas &&
     !(evidencias.revalidada && (evidencias.sinalInicial || evidencias.amostraPequena)) &&
     !["SEM_EVIDENCIA", "EVIDENCIA_FRACA"].includes(String(evidencias.nivelEvidencia || ""));
 
@@ -734,6 +923,20 @@ function RecomendacaoCard({
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${grupoClasses(
+                        copiloto.grupo
+                      )}`}
+                    >
+                      {labelGrupo(copiloto.grupo)}
+                    </span>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${classificacaoClasses(
+                        copiloto.classificacao
+                      )}`}
+                    >
+                      {labelClassificacao(copiloto.classificacao)}
+                    </span>
                     <span
                       className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasses(
                         recomendacao.status
@@ -746,8 +949,27 @@ function RecomendacaoCard({
                         prioridadeVisual
                       )}`}
                     >
-                      Prioridade {labelTipo(prioridadeVisual)}
+                      Prioridade {labelPrioridade(prioridadeVisual)}
                     </span>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${areaClasses(
+                        copiloto.area
+                      )}`}
+                    >
+                      {labelArea(copiloto.area)}
+                    </span>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${evidenciaClasses(
+                        copiloto.evidencia
+                      )}`}
+                    >
+                      Evidencia {labelEvidencia(copiloto.evidencia)}
+                    </span>
+                    {copiloto.confianca && (
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                        Confianca {labelPrioridade(copiloto.confianca)}
+                      </span>
+                    )}
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
                       {labelTipo(recomendacao.tipo)}
                     </span>
@@ -758,6 +980,11 @@ function RecomendacaoCard({
                         )}`}
                       >
                         Impacto {labelImpacto(impacto.statusImpacto)}
+                      </span>
+                    )}
+                    {copiloto.impactoPendente && (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+                        Impacto pendente
                       </span>
                     )}
                     {recomendacao.periodoReferencia && (
@@ -787,26 +1014,63 @@ function RecomendacaoCard({
                       de confirmacao antes de uma recompra maior.
                     </p>
                   )}
+                  {copiloto.grupo === "NAO_MEXA_AINDA" && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                      <p className="flex items-center gap-2 font-bold text-slate-900">
+                        <Ban className="h-4 w-4" />
+                        Nao recomendo acao agora
+                      </p>
+                      <p className="mt-1">
+                        {copiloto.motivoParaNaoRecomendar ||
+                          "Observe novos dados antes de transformar este sinal em acao."}
+                      </p>
+                    </div>
+                  )}
+                  {copiloto.grupo === "BAIXA_EVIDENCIA" && (
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                      <p className="flex items-center gap-2 font-bold">
+                        <Eye className="h-4 w-4" />
+                        Sinal acompanhado
+                      </p>
+                      <p className="mt-1">
+                        Amostra pequena. Nao usar como decisao comercial ainda.
+                      </p>
+                    </div>
+                  )}
+                  {copiloto.dadosSensiveisOcultados && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+                      <p className="flex items-center gap-2 font-bold text-slate-900">
+                        <ShieldAlert className="h-4 w-4" />
+                        Dados sensiveis ocultados
+                      </p>
+                      <p className="mt-1">
+                        Custos, margens, caixa ou precificacao aparecem apenas
+                        para perfis autorizados.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 xl:justify-end">
-                  {recomendacao.status === "NOVA" && (
+                  {permissoes.podeEditarRecomendacoes && recomendacao.status === "NOVA" && (
                     <AcaoButton
                       icon={<CheckCircle2 className="h-4 w-4" />}
                       label="Aceitar"
                       onClick={() => onAcao(recomendacao, "ACEITAR")}
                     />
                   )}
-                  {["NOVA", "ACEITA", "ADIADA"].includes(
-                    recomendacao.status
-                  ) && (
+                  {permissoes.podeEditarRecomendacoes &&
+                    ["NOVA", "ACEITA", "ADIADA"].includes(
+                      recomendacao.status
+                    ) && (
                     <AcaoButton
                       icon={<PlayCircle className="h-4 w-4" />}
                       label="Iniciar"
                       onClick={() => onAcao(recomendacao, "INICIAR")}
                     />
                   )}
-                  {recomendacao.status !== "CONCLUIDA" &&
+                  {permissoes.podeEditarRecomendacoes &&
+                    recomendacao.status !== "CONCLUIDA" &&
                     recomendacao.status !== "IGNORADA" && (
                       <AcaoButton
                         icon={<CheckCircle2 className="h-4 w-4" />}
@@ -816,9 +1080,10 @@ function RecomendacaoCard({
                         }
                       />
                     )}
-                  {["ACEITA", "EM_EXECUCAO", "CONCLUIDA"].includes(
-                    recomendacao.status
-                  ) && (
+                  {permissoes.podeExecutarRecomendacoes &&
+                    ["ACEITA", "EM_EXECUCAO", "CONCLUIDA"].includes(
+                      recomendacao.status
+                    ) && (
                     <AcaoButton
                       icon={<TrendingUp className="h-4 w-4" />}
                       label="Avaliar impacto"
@@ -826,7 +1091,7 @@ function RecomendacaoCard({
                       onClick={() => onAvaliarImpacto(recomendacao)}
                     />
                   )}
-                  {campanha ? (
+                  {campanha && permissoes.podeVerCampanhas ? (
                     <Link
                       href="/compras/campanhas"
                       className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
@@ -847,7 +1112,8 @@ function RecomendacaoCard({
                       />
                     )
                   )}
-                  {recomendacao.status !== "CONCLUIDA" &&
+                  {permissoes.podeEditarRecomendacoes &&
+                    recomendacao.status !== "CONCLUIDA" &&
                     recomendacao.status !== "IGNORADA" && (
                       <AcaoButton
                         icon={<PauseCircle className="h-4 w-4" />}
@@ -856,7 +1122,8 @@ function RecomendacaoCard({
                         onClick={() => onAcao(recomendacao, "ADIAR")}
                       />
                     )}
-                  {recomendacao.status !== "CONCLUIDA" &&
+                  {permissoes.podeEditarRecomendacoes &&
+                    recomendacao.status !== "CONCLUIDA" &&
                     recomendacao.status !== "IGNORADA" && (
                       <AcaoButton
                         icon={<XCircle className="h-4 w-4" />}
@@ -870,9 +1137,13 @@ function RecomendacaoCard({
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                {recomendacao.motivo && (
-                  <InfoBox label="Motivo" value={recomendacao.motivo} />
+              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                <InfoBox
+                  label="Explicacao executiva"
+                  value={copiloto.explicacaoExecutiva}
+                />
+                {copiloto.motivo && (
+                  <InfoBox label="Motivo" value={copiloto.motivo} />
                 )}
                 {recomendacao.impactoEsperado && (
                   <InfoBox
@@ -892,26 +1163,28 @@ function RecomendacaoCard({
                     Acao sugerida
                   </p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-                    {recomendacao.acaoSugerida || "Registrar decisao gerencial."}
+                    {copiloto.acaoSugerida || "Registrar decisao gerencial."}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link
-                      href={
-                        vitrine
-                          ? `/configuracoes/loja/vitrines-inteligentes?recomendacaoId=${recomendacao.id}`
-                          : "/configuracoes/loja/vitrines-inteligentes"
-                      }
-                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
-                    >
-                      {vitrine ? "Ver vitrine sugerida" : "Sugerir vitrine"}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                    {recomendacao.linkAcao && (
+                    {permissoes.podeVerLoja && (
                       <Link
-                        href={recomendacao.linkAcao}
+                        href={
+                          vitrine
+                            ? `/configuracoes/loja/vitrines-inteligentes?recomendacaoId=${recomendacao.id}`
+                            : "/configuracoes/loja/vitrines-inteligentes"
+                        }
+                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+                      >
+                        {vitrine ? "Ver vitrine sugerida" : "Sugerir vitrine"}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                    {copiloto.href && (
+                      <Link
+                        href={copiloto.href}
                         className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
                       >
-                        Ir para acao
+                        {copiloto.cta || "Ir para acao"}
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     )}

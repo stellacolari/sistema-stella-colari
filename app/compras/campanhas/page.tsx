@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin, usuarioTemPermissaoAdmin } from "@/lib/auth/admin";
+import {
+  exigirAdmin,
+  usuarioPodeVerDadosFinanceirosAdmin,
+  usuarioTemPermissaoAdmin,
+} from "@/lib/auth/admin";
 import {
   listarCampanhasComerciais,
   obterResumoCampanhasComerciais,
@@ -36,6 +40,9 @@ export default async function CampanhasComerciaisPage({
   }
 
   const params = await searchParams;
+  const podeVerDadosPrecificacao =
+    usuarioPodeVerDadosFinanceirosAdmin(usuario) &&
+    usuarioTemPermissaoAdmin(usuario, "precificacao", "ver");
   const [campanhas, resumo, precificacao, vitrines] = await Promise.all([
     listarCampanhasComerciais({
       status: params.status && params.status !== "TODOS" ? params.status : undefined,
@@ -43,7 +50,9 @@ export default async function CampanhasComerciaisPage({
       take: 200,
     }),
     obterResumoCampanhasComerciais(),
-    analisarPrecificacaoProdutos(),
+    podeVerDadosPrecificacao
+      ? analisarPrecificacaoProdutos()
+      : Promise.resolve(null),
     prisma.vitrineInteligenteSugestao.findMany({
       where: {
         status: {
@@ -66,7 +75,10 @@ export default async function CampanhasComerciaisPage({
     <CampanhasComerciaisClient
       campanhas={campanhas.map(serializarCampanhaComercial)}
       resumo={resumo}
-      precificacoes={precificacao.produtos.map(serializarAnalisePrecificacao)}
+      precificacoes={
+        precificacao?.produtos.map(serializarAnalisePrecificacao) || []
+      }
+      podeVerDadosPrecificacao={podeVerDadosPrecificacao}
       vitrines={vitrines}
       filtroInicial={{
         status: params.status,

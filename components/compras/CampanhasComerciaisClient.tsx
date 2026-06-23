@@ -74,6 +74,7 @@ type Props = {
   campanhas: CampanhaComercialResumo[];
   resumo: Record<string, number>;
   precificacoes?: PrecificacaoCampanhaResumo[];
+  podeVerDadosPrecificacao?: boolean;
   vitrines?: VitrineCampanhaResumo[];
   filtroInicial?: {
     status?: string;
@@ -180,6 +181,7 @@ export default function CampanhasComerciaisClient({
   campanhas,
   resumo,
   precificacoes = [],
+  podeVerDadosPrecificacao = false,
   vitrines = [],
   filtroInicial,
 }: Props) {
@@ -330,6 +332,13 @@ export default function CampanhasComerciaisClient({
         sinais reais de venda, intencao, exposicao suficiente ou risco
         comprovado.
       </section>
+
+      {!podeVerDadosPrecificacao && (
+        <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm">
+          Analise de margem, preco minimo e desconto maximo foi ocultada para
+          este perfil.
+        </section>
+      )}
 
       {(erro || mensagem) && (
         <div className="space-y-2">

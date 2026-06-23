@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { exigirAdmin, usuarioTemPermissaoAdmin } from "@/lib/auth/admin";
+import {
+  exigirAdmin,
+  usuarioPodeVerDadosFinanceirosAdmin,
+  usuarioTemPermissaoAdmin,
+} from "@/lib/auth/admin";
+import { montarCopilotoAdministrativo } from "@/lib/financeiro/copiloto-administrativo";
 import {
   filtrarTiposUnicos,
   listarRecomendacoesGerenciais,
@@ -35,6 +40,33 @@ export default async function RecomendacoesGerenciaisPage({
   }
 
   const params = await searchParams;
+  const permissoes = {
+    podeVerDadosFinanceiros: usuarioPodeVerDadosFinanceirosAdmin(usuario),
+    podeEditarRecomendacoes: usuarioTemPermissaoAdmin(
+      usuario,
+      "recomendacoes",
+      "editar"
+    ),
+    podeExecutarRecomendacoes: usuarioTemPermissaoAdmin(
+      usuario,
+      "recomendacoes",
+      "executar"
+    ),
+    podeVerCampanhas: usuarioTemPermissaoAdmin(usuario, "campanhas", "ver"),
+    podeExecutarCampanhas: usuarioTemPermissaoAdmin(
+      usuario,
+      "campanhas",
+      "executar"
+    ),
+    podeVerProdutos: usuarioTemPermissaoAdmin(usuario, "produtos", "ver"),
+    podeVerPedidos: usuarioTemPermissaoAdmin(usuario, "pedidos", "ver"),
+    podeVerClientes: usuarioTemPermissaoAdmin(usuario, "clientes", "ver"),
+    podeVerIntencao: usuarioTemPermissaoAdmin(usuario, "intencaoComercial", "ver"),
+    podeVerPrecificacao: usuarioTemPermissaoAdmin(usuario, "precificacao", "ver"),
+    podeVerFinanceiro: usuarioTemPermissaoAdmin(usuario, "financeiro", "ver"),
+    podeVerResultado: usuarioTemPermissaoAdmin(usuario, "resultado", "ver"),
+    podeVerLoja: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "ver"),
+  };
   const [recomendacoes, resumo, vitrines] = await Promise.all([
     listarRecomendacoesGerenciais({
       status: params.status && params.status !== "TODOS" ? params.status : undefined,
@@ -64,12 +96,21 @@ export default async function RecomendacoesGerenciaisPage({
       },
     }),
   ]);
+  const recomendacoesSerializadas = recomendacoes.map(
+    serializarRecomendacaoGerencial
+  );
+  const copiloto = montarCopilotoAdministrativo(
+    recomendacoesSerializadas,
+    permissoes
+  );
 
   return (
     <RecomendacoesGerenciaisClient
-      recomendacoes={recomendacoes.map(serializarRecomendacaoGerencial)}
+      recomendacoes={copiloto.recomendacoes}
       resumo={resumo}
       tipos={filtrarTiposUnicos(recomendacoes)}
+      copiloto={copiloto}
+      permissoes={permissoes}
       vitrines={vitrines}
       filtroInicial={{
         status: params.status,
