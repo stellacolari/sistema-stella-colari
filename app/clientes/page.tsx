@@ -83,12 +83,21 @@ export default async function ClientesPage() {
             </p>
           </div>
 
-          <Link
-            href="/clientes/novo"
-            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Adicionar cliente
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/clientes/relacionamento"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+            >
+              Relacionamento
+            </Link>
+
+            <Link
+              href="/clientes/novo"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+            >
+              Adicionar cliente
+            </Link>
+          </div>
         </div>
       </div>
 
