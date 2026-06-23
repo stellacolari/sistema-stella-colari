@@ -540,7 +540,8 @@ async function sincronizarPedidos() {
       pedido.envio?.etiquetaPdfUrl &&
       ["ETIQUETA_GERADA", "PREPARADO"].includes(pedido.envio.statusEnvio)
     ) {
-      ativas.add(chaveNotificacao({ tipo: "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO", origemTipo: "PEDIDO_ENVIO", origemId: pedido.envio.id, linkAcao: "/pedidos/etiquetas/lote" }));
+      const linkEtiquetasLote = `/pedidos/etiquetas/lote?ids=${encodeURIComponent(pedido.id)}`;
+      ativas.add(chaveNotificacao({ tipo: "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO", origemTipo: "PEDIDO_ENVIO", origemId: pedido.envio.id, linkAcao: linkEtiquetasLote }));
       await criarOuAtualizarNotificacao({
         tipo: "PEDIDO_ETIQUETA_PRONTA_IMPRESSAO",
         categoria: "OPERACIONAL",
@@ -550,7 +551,7 @@ async function sincronizarPedidos() {
         resumo: "Etiqueta pronta",
         origemTipo: "PEDIDO_ENVIO",
         origemId: pedido.envio.id,
-        linkAcao: "/pedidos/etiquetas/lote",
+        linkAcao: linkEtiquetasLote,
         acaoLabel: "Imprimir etiqueta",
         metadataJson: { codigo: pedido.codigo, statusEnvio: pedido.envio.statusEnvio },
       });

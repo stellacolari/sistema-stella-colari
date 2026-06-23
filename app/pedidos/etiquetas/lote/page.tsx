@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertCircle, ExternalLink, Package } from "lucide-react";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import ImpressaoEtiquetasClient from "./ImpressaoEtiquetasClient";
 
@@ -35,7 +36,7 @@ function isPedidoImprimivel(pedido: {
   } | null;
 }) {
   return (
-    pedido.origemCanal === "LOJA_STELLA" &&
+    ["LOJA_STELLA", "ADMIN_MANUAL"].includes(pedido.origemCanal) &&
     pedido.statusPagamento === "PAGO" &&
     pedido.envio?.tipoEntrega === "ENTREGA" &&
     pedido.envio?.gatewayLogistico === "MELHOR_ENVIO" &&
@@ -49,6 +50,8 @@ export default async function EtiquetasLotePage({
 }: {
   searchParams: Promise<{ ids?: string | string[] }>;
 }) {
+  await exigirAdminComPermissao("pedidos", "ver");
+
   const { ids: idsParam } = await searchParams;
   const ids = parseIds(idsParam);
 

@@ -6,6 +6,7 @@ import PedidosClient, {
 import { mapearEmbalagensPresentePorItem } from "@/lib/pedidos/embalagens-presente";
 import { extrairAlertasOperacionais } from "@/lib/pedidos/alertas-operacionais";
 import { extrairEntregaManualPedido } from "@/lib/pedidos/entrega-manual";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 
 export const metadata: Metadata = {
   title: "Pedidos | Sistema Stella",
@@ -36,6 +37,8 @@ function moeda(valor: number) {
   }).format(valor || 0);
 }
 export default async function PedidosPage() {
+  await exigirAdminComPermissao("pedidos", "ver");
+
   const pedidosRaw = await prisma.pedidoOnline.findMany({
     orderBy: {
       criadoEm: "desc",
