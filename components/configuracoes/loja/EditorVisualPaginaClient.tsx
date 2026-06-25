@@ -68,6 +68,13 @@ import BannerRenderer, {
   normalizeBannerModelo,
   type BannerDevicePreview,
 } from "@/components/loja/paginas/blocos/BannerRenderer";
+import BannerEditorialPublico from "@/components/loja/paginas/blocos/BannerEditorialPublico";
+import {
+  BANNER_EDITORIAL_TEXT_LIMITS,
+  criarBannerEditorialConfigPadrao,
+  normalizarBannerEditorialConfig,
+  type BannerEditorialConfig,
+} from "@/components/loja/paginas/blocos/bannerEditorialConfig";
 import GaleriaEditorialFullBleedPublico from "@/components/loja/paginas/blocos/GaleriaEditorialFullBleedPublico";
 import VitrineEditorialPublico from "@/components/loja/paginas/blocos/VitrineEditorialPublico";
 import VisualCropEditor, {
@@ -207,6 +214,7 @@ type EditorSelectionContext =
 
 type TipoBlocoAdicionar =
   | "BANNER_HERO_V2"
+  | "BANNER_EDITORIAL"
   | "BANNER"
   | "HERO_EDITORIAL_PNG"
   | "GALERIA_EDITORIAL_FULL_BLEED"
@@ -1277,6 +1285,29 @@ const TIPOS_BLOCO_ADICIONAR: {
     icon: ImageIcon,
   },
   {
+    tipo: "BANNER_EDITORIAL",
+    nome: "Banner Editorial",
+    descricao:
+      "Hero claro com texto por inputs, imagem de destaque e escala automatica do titulo.",
+    tituloInicial: "Banner Editorial",
+    icon: ImageIcon,
+    preview: (
+      <span className="mt-3 block overflow-hidden rounded-xl bg-slate-100 p-2">
+        <span className="grid min-h-20 grid-cols-[1.1fr_.9fr] gap-2 rounded-xl bg-[#f7f2ea] p-2">
+          <span className="flex flex-col justify-between">
+            <span className="h-2 w-12 rounded-full bg-[#2e7b99]" />
+            <span className="space-y-1">
+              <span className="block h-3 w-16 rounded bg-slate-950" />
+              <span className="block h-3 w-12 rounded bg-slate-950" />
+            </span>
+            <span className="h-4 w-14 rounded-full bg-[#2e7b99]" />
+          </span>
+          <span className="rounded-lg bg-white/80 ring-1 ring-black/5" />
+        </span>
+      </span>
+    ),
+  },
+  {
     tipo: "HERO_EDITORIAL_PNG",
     nome: "Hero Editorial com PNG",
     descricao:
@@ -2223,6 +2254,7 @@ const RichTextTypography = Extension.create({
 
 function getTipoLabel(tipo: string) {
   if (tipo === "HERO") return "Banner / Hero";
+  if (tipo === "BANNER_EDITORIAL") return "Banner Editorial";
   if (tipo === "BANNER_HERO_V2") return "Banner";
   if (tipo === "HERO_EDITORIAL_PNG") return "Hero Editorial com PNG";
   if (tipo === "GALERIA_EDITORIAL_FULL_BLEED") return "Galeria Editorial";
@@ -2257,6 +2289,7 @@ function getBlocoIcon(tipo: string) {
     tipo.includes("IMAGEM") ||
     tipo === "HERO" ||
     tipo === "BANNER" ||
+    isBannerEditorialTipo(tipo) ||
     tipo === "BANNER_HERO_V2" ||
     isHeroEditorialPngTipo(tipo) ||
     isGaleriaEditorialTipo(tipo)
@@ -2281,6 +2314,10 @@ function isBannerTipo(tipo: string) {
 
 function isBannerHeroV2Tipo(tipo: string) {
   return tipo === "BANNER_HERO_V2";
+}
+
+function isBannerEditorialTipo(tipo: string) {
+  return tipo === "BANNER_EDITORIAL";
 }
 
 function isHeroEditorialPngTipo(tipo: string) {
@@ -3900,6 +3937,299 @@ function getHeroEditorialPngConfig(value: unknown): HeroEditorialPngConfig {
         HERO_EDITORIAL_PNG_DEFAULT.responsivo.comportamentoMobile) as HeroEditorialPngConfig["responsivo"]["comportamentoMobile"],
     },
   };
+}
+
+function CampoTextoLimitado({
+  label,
+  value,
+  limit,
+  placeholder,
+  multiline = false,
+  required = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  limit: number;
+  placeholder?: string;
+  multiline?: boolean;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const length = value.length;
+  const limitReached = length >= limit;
+  const isEmptyRequired = required && !value.trim();
+  const inputClass =
+    "w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500";
+
+  return (
+    <label className="block">
+      <span className="mb-2 flex items-center justify-between gap-3 text-sm font-medium text-slate-700">
+        <span>{label}</span>
+        <span
+          className={`text-xs font-semibold ${
+            limitReached ? "text-amber-600" : "text-slate-400"
+          }`}
+        >
+          {length}/{limit}
+        </span>
+      </span>
+
+      {multiline ? (
+        <textarea
+          value={value}
+          maxLength={limit}
+          rows={3}
+          required={required}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value.slice(0, limit))}
+          className={`${inputClass} py-3 leading-6`}
+        />
+      ) : (
+        <input
+          value={value}
+          maxLength={limit}
+          required={required}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value.slice(0, limit))}
+          className={`${inputClass} h-11`}
+        />
+      )}
+
+      {isEmptyRequired ? (
+        <span className="mt-1 block text-xs font-medium text-amber-600">
+          Campo obrigatório.
+        </span>
+      ) : limitReached ? (
+        <span className="mt-1 block text-xs font-medium text-amber-600">
+          Limite atingido.
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
+function BannerEditorialEditor({
+  estado,
+  onChange,
+}: {
+  estado: NonNullable<BlocoEditandoState>;
+  onChange: (data: Partial<NonNullable<BlocoEditandoState>>) => void;
+}) {
+  const configBanner = normalizarBannerEditorialConfig(estado.bloco.configJson);
+
+  function aplicarConfig(patch: Partial<BannerEditorialConfig>) {
+    const configJson = normalizarBannerEditorialConfig({
+      ...configBanner,
+      ...patch,
+    });
+
+    onChange({
+      bloco: {
+        ...estado.bloco,
+        configJson,
+      },
+      titulo: configJson.titulo,
+      texto: configJson.subtitulo,
+      textoBotao: configJson.botaoTexto,
+      linkBotao: configJson.botaoUrl,
+      imagemDesktopUrl: configJson.imagemUrl,
+      imagemMobileUrl: configJson.imagemMobileUrl,
+      imagemAlt: configJson.imagemAlt,
+    });
+  }
+
+  return (
+    <div className="space-y-5 px-6 py-5">
+      <label>
+        <span className="mb-2 block text-sm font-medium text-slate-700">
+          Nome interno
+        </span>
+        <input
+          value={estado.nomeInterno}
+          onChange={(event) => onChange({ nomeInterno: event.target.value })}
+          placeholder="Ex: Banner editorial campanha"
+          className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+        />
+      </label>
+
+      <PainelSecao title="Conteúdo">
+        <div className="space-y-4">
+          <CampoTextoLimitado
+            label="Título"
+            value={configBanner.titulo}
+            limit={BANNER_EDITORIAL_TEXT_LIMITS.titulo}
+            placeholder="Brilho em nova escala"
+            required
+            multiline
+            onChange={(titulo) => aplicarConfig({ titulo })}
+          />
+
+          <CampoTextoLimitado
+            label="Subtítulo"
+            value={configBanner.subtitulo}
+            limit={BANNER_EDITORIAL_TEXT_LIMITS.subtitulo}
+            placeholder="Texto de apoio do banner"
+            multiline
+            onChange={(subtitulo) => aplicarConfig({ subtitulo })}
+          />
+
+          <CampoTextoLimitado
+            label="Texto auxiliar"
+            value={configBanner.textoAuxiliar}
+            limit={BANNER_EDITORIAL_TEXT_LIMITS.textoAuxiliar}
+            placeholder="Nova coleção"
+            onChange={(textoAuxiliar) => aplicarConfig({ textoAuxiliar })}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <CampoTextoLimitado
+              label="Texto do botão"
+              value={configBanner.botaoTexto}
+              limit={BANNER_EDITORIAL_TEXT_LIMITS.botaoTexto}
+              placeholder="Explorar"
+              onChange={(botaoTexto) => aplicarConfig({ botaoTexto })}
+            />
+
+            <label>
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                URL do botão
+              </span>
+              <input
+                value={configBanner.botaoUrl}
+                onChange={(event) => aplicarConfig({ botaoUrl: event.target.value })}
+                placeholder="/loja"
+                className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+              />
+            </label>
+          </div>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Imagem">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <UploadMidiaCampo
+              label="Imagem destaque"
+              value={configBanner.imagemUrl}
+              tipoMidia="IMAGEM"
+              onChange={(imagemUrl) => aplicarConfig({ imagemUrl })}
+              orientacao="Recomendado: imagem editorial horizontal ou produto recortado em alta resolução."
+            />
+            <UploadMidiaCampo
+              label="Imagem mobile"
+              value={configBanner.imagemMobileUrl}
+              tipoMidia="IMAGEM"
+              onChange={(imagemMobileUrl) => aplicarConfig({ imagemMobileUrl })}
+              orientacao="Opcional. Se vazio, usa a imagem destaque."
+            />
+          </div>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Alt text
+            </span>
+            <input
+              value={configBanner.imagemAlt}
+              onChange={(event) => aplicarConfig({ imagemAlt: event.target.value })}
+              placeholder="Descrição da imagem do banner"
+              className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() =>
+              aplicarConfig({
+                imagemUrl: "",
+                imagemMobileUrl: "",
+              })
+            }
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Limpar imagem
+          </button>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Design">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Alinhamento
+            </span>
+            <select
+              value={configBanner.alinhamento}
+              onChange={(event) =>
+                aplicarConfig({
+                  alinhamento: event.target.value as BannerEditorialConfig["alinhamento"],
+                })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-slate-500"
+            >
+              <option value="ESQUERDA">Esquerda</option>
+              <option value="CENTRO">Centro</option>
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor do card
+            </span>
+            <input
+              type="color"
+              value={configBanner.corFundo}
+              onChange={(event) => aplicarConfig({ corFundo: event.target.value })}
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor do texto
+            </span>
+            <input
+              type="color"
+              value={configBanner.corTexto}
+              onChange={(event) => aplicarConfig({ corTexto: event.target.value })}
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+            />
+          </label>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Cor de destaque
+            </span>
+            <input
+              type="color"
+              value={configBanner.corDestaque}
+              onChange={(event) =>
+                aplicarConfig({ corDestaque: event.target.value })
+              }
+              className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3"
+            />
+          </label>
+        </div>
+      </PainelSecao>
+
+      <PainelSecao title="Avançado">
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              bloco: {
+                ...estado.bloco,
+                configJson: criarBannerEditorialConfigPadrao(),
+              },
+            })
+          }
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Restaurar padrão do bloco
+        </button>
+      </PainelSecao>
+    </div>
+  );
 }
 
 function getGaleriaEditorialItemConfig(
@@ -7048,7 +7378,14 @@ function RenderBlocoPreview({
         </>
       )}
 
-      {isVitrineEditorialTipo(bloco.tipo) ? (
+      {isBannerEditorialTipo(bloco.tipo) ? (
+        <BannerEditorialPublico
+          bloco={bloco}
+          device={device}
+          modo="editor"
+          produtos={toBannerProdutosPublicos(produtosDisponiveis)}
+        />
+      ) : isVitrineEditorialTipo(bloco.tipo) ? (
         <VitrineEditorialPublico
           bloco={bloco}
           device={device}
@@ -13582,6 +13919,7 @@ function EditorConteudoBlocoModal({
   const isListaProdutos = isListaProdutosTipo(estado.bloco.tipo);
   const isDestaquesCards = isDestaquesCardsTipo(estado.bloco.tipo);
   const isColecoesCategorias = isColecoesCategoriasTipo(estado.bloco.tipo);
+  const isBannerEditorial = isBannerEditorialTipo(estado.bloco.tipo);
   const isHeroEditorialPng = isHeroEditorialPngTipo(estado.bloco.tipo);
   const isGaleriaEditorial = isGaleriaEditorialTipo(estado.bloco.tipo);
   const isVitrineEditorial = isVitrineEditorialTipo(estado.bloco.tipo);
@@ -13766,6 +14104,7 @@ function EditorConteudoBlocoModal({
         className={`max-h-[92vh] w-full overflow-y-auto rounded-[2rem] bg-white shadow-2xl ${
           isBanner ||
           isTextoImagem ||
+          isBannerEditorial ||
           isHeroEditorialPng ||
           isGaleriaEditorial ||
           isVitrineEditorial
@@ -13794,6 +14133,8 @@ function EditorConteudoBlocoModal({
                       ? "Configure cards manuais com mídia, ícones, links e layout responsivo."
                       : isColecoesCategorias
                         ? "Configure mosaicos editoriais com coleções, categorias, mídia e links."
+                        : isBannerEditorial
+                          ? "Configure textos, imagem, botão e cores do banner editorial."
                         : isHeroEditorialPng
                           ? "Configure texto gigante, PNG frontal, variações responsivas, CTA e animações sutis."
                           : isGaleriaEditorial
@@ -14810,6 +15151,11 @@ function EditorConteudoBlocoModal({
             </PainelSecao>
 
           </div>
+        ) : isBannerEditorial ? (
+          <BannerEditorialEditor
+            estado={estado}
+            onChange={onChange}
+          />
         ) : isHeroEditorialPng ? (
           <HeroEditorialPngEditor
             estado={estado}
@@ -17799,6 +18145,7 @@ export default function EditorVisualPaginaClient({
     blocoAtual: EditorVisualBloco;
   }) {
     const usaConfigDireto =
+      isBannerEditorialTipo(blocoAtual.tipo) ||
       isHeroEditorialPngTipo(blocoAtual.tipo) ||
       isGaleriaEditorialTipo(blocoAtual.tipo) ||
       isVitrineEditorialTipo(blocoAtual.tipo);
@@ -18143,6 +18490,7 @@ export default function EditorVisualPaginaClient({
 
     const blocoAtual = getBlocoEditorAtual(editando.bloco.id) || editando.bloco;
     const usaConfigDireto =
+      isBannerEditorialTipo(blocoAtual.tipo) ||
       isHeroEditorialPngTipo(blocoAtual.tipo) ||
       isGaleriaEditorialTipo(blocoAtual.tipo) ||
       isVitrineEditorialTipo(blocoAtual.tipo);

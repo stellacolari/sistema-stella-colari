@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { criarSecaoColunasPadrao } from "@/components/loja/paginas/textElements";
+import { criarBannerEditorialConfigPadrao } from "@/components/loja/paginas/blocos/bannerEditorialConfig";
 import { criarBannerHeroV2ConfigPadrao } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 
 const TIPOS_BLOCO_VALIDOS = new Set([
   "BANNER",
+  "BANNER_EDITORIAL",
   "BANNER_HERO_V2",
   "FAIXA_DIFERENCIAIS",
   "TEXTO",
@@ -38,6 +40,7 @@ const TIPOS_BLOCO_VALIDOS = new Set([
 function getTituloPadrao(tipo: string) {
   const titulos: Record<string, string> = {
     BANNER: "Banner",
+    BANNER_EDITORIAL: "Banner Editorial",
     BANNER_HERO_V2: "Banner",
     FAIXA_DIFERENCIAIS: "Faixa de diferenciais",
     TEXTO: "Texto / título",
@@ -122,6 +125,10 @@ function getConfigPadrao(tipo: string) {
 
   if (tipo === "BANNER_HERO_V2") {
     return criarBannerHeroV2ConfigPadrao() as unknown as Prisma.InputJsonValue;
+  }
+
+  if (tipo === "BANNER_EDITORIAL") {
+    return criarBannerEditorialConfigPadrao() as unknown as Prisma.InputJsonValue;
   }
 
   if (tipo === "BANNER") {
