@@ -34,6 +34,29 @@ export type AreaCopilotoAdministrativo =
 
 export type ConfiancaCopilotoAdministrativo = "BAIXA" | "MEDIA" | "ALTA";
 
+export type EstadoImpactoCopilotoAdministrativo =
+  | "NAO_AVALIADO"
+  | "PENDENTE"
+  | "AINDA_CEDO"
+  | "SEM_ACAO_EXECUTADA"
+  | "SEM_DADOS"
+  | "INCONCLUSIVO"
+  | "POSITIVO"
+  | "NEUTRO"
+  | "NEGATIVO";
+
+export type ResumoImpactosCopilotoAdministrativo = {
+  naoAvaliados: number;
+  pendentes: number;
+  semAcaoExecutada: number;
+  aindaCedo: number;
+  semDados: number;
+  inconclusivos: number;
+  positivos: number;
+  neutros: number;
+  negativos: number;
+};
+
 export type PermissoesCopilotoAdministrativo = {
   podeVerDadosFinanceiros: boolean;
   podeEditarRecomendacoes: boolean;
@@ -71,6 +94,9 @@ export type RecomendacaoCopilotoAdministrativo = {
   podeAgir: boolean;
   motivoParaNaoRecomendar?: string | null;
   dadosSensiveisOcultados: boolean;
+  estadoImpacto: EstadoImpactoCopilotoAdministrativo;
+  impactoResumoExecutivo: string;
+  impactoAcaoSugerida: string;
   impactoPendente: boolean;
 };
 
@@ -80,6 +106,7 @@ export type CopilotoAdministrativoData = {
   resumo: {
     total: number;
     impactosPendentes: number;
+    impactos: ResumoImpactosCopilotoAdministrativo;
     grupos: Record<GrupoCopilotoAdministrativo, number>;
     classificacoes: Record<ClassificacaoCopilotoAdministrativo, number>;
   };
@@ -345,11 +372,111 @@ function temAcaoClara(recomendacao: RecomendacaoGerencialResumo) {
   );
 }
 
-function impactoPendente(recomendacao: RecomendacaoGerencialResumo) {
-  return (
-    ["ACEITA", "EM_EXECUCAO", "CONCLUIDA"].includes(recomendacao.status) &&
-    !recomendacao.impactos?.length
+function temRegistroDeAcaoExecutada(recomendacao: RecomendacaoGerencialResumo) {
+  return Boolean(
+    recomendacao.iniciadaEm ||
+      recomendacao.concluidaEm ||
+      recomendacao.resultadoObservado ||
+      recomendacao.status === "EM_EXECUCAO" ||
+      recomendacao.status === "CONCLUIDA" ||
+      recomendacao.campanhas?.some((campanha) =>
+        ["EM_EXECUCAO", "CONCLUIDA"].includes(campanha.status)
+      )
   );
+}
+
+function estadoImpactoCopiloto(
+  recomendacao: RecomendacaoGerencialResumo
+): {
+  estado: EstadoImpactoCopilotoAdministrativo;
+  resumo: string;
+  acao: string;
+} {
+  const impacto = recomendacao.impactos?.[0];
+
+  if (impacto) {
+    if (impacto.statusImpacto === "SEM_ACAO_EXECUTADA") {
+      return {
+        estado: "SEM_ACAO_EXECUTADA",
+        resumo:
+          "Ainda nao houve acao registrada para avaliar impacto. Use como acompanhamento, nao como falha.",
+        acao: "Aceitar, iniciar ou concluir a acao antes de atribuir impacto.",
+      };
+    }
+    if (
+      impacto.statusImpacto === "AINDA_CEDO" ||
+      impacto.statusImpacto === "AGUARDANDO_DADOS"
+    ) {
+      return {
+        estado: "AINDA_CEDO",
+        resumo: "A janela de analise ainda e curta. Reavalie depois.",
+        acao: impacto.proximaAcaoSugerida || "Reavaliar ao fim da janela definida.",
+      };
+    }
+    if (impacto.statusImpacto === "SEM_DADOS") {
+      return {
+        estado: "SEM_DADOS",
+        resumo: "Nao ha dados suficientes para concluir se houve impacto.",
+        acao: impacto.proximaAcaoSugerida || "Aguardar novos eventos ou vendas.",
+      };
+    }
+    if (impacto.statusImpacto === "INCONCLUSIVO") {
+      return {
+        estado: "INCONCLUSIVO",
+        resumo: "O impacto ainda e inconclusivo; a amostra nao sustenta decisao forte.",
+        acao: impacto.proximaAcaoSugerida || "Acompanhar antes de escalar.",
+      };
+    }
+    if (impacto.statusImpacto === "NEGATIVO") {
+      return {
+        estado: "NEGATIVO",
+        resumo:
+          "O resultado piorou ou nao acompanhou a expectativa. Revise antes de repetir a acao.",
+        acao: impacto.proximaAcaoSugerida || "Revisar premissa antes de repetir.",
+      };
+    }
+    if (impacto.statusImpacto === "NEUTRO") {
+      return {
+        estado: "NEUTRO",
+        resumo: "O impacto medido foi neutro; nao ha sinal claro para escalar.",
+        acao: impacto.proximaAcaoSugerida || "Acompanhar sem escalar investimento.",
+      };
+    }
+    if (impacto.statusImpacto === "POSITIVO" || impacto.statusImpacto === "PARCIAL") {
+      return {
+        estado: "POSITIVO",
+        resumo: "Ha sinais de melhora apos a recomendacao.",
+        acao:
+          impacto.proximaAcaoSugerida ||
+          "Manter a decisao e considerar repetir com criterio.",
+      };
+    }
+  }
+
+  if (temRegistroDeAcaoExecutada(recomendacao)) {
+    return {
+      estado: "PENDENTE",
+      resumo:
+        "Ha acao registrada, mas ainda nao existe avaliacao de impacto gravada.",
+      acao:
+        "Avaliar impacto em dry-run e gravar somente quando houver janela e dados suficientes.",
+    };
+  }
+
+  if (["ACEITA", "ADIADA"].includes(recomendacao.status)) {
+    return {
+      estado: "SEM_ACAO_EXECUTADA",
+      resumo:
+        "Ainda nao houve acao executada para medir impacto. Use como acompanhamento, nao como falha.",
+      acao: "Iniciar ou concluir a acao antes de avaliar impacto.",
+    };
+  }
+
+  return {
+    estado: "NAO_AVALIADO",
+    resumo: "Impacto ainda nao avaliado.",
+    acao: "Decidir a recomendacao antes de medir resultado.",
+  };
 }
 
 function motivoNaoRecomendar(params: {
@@ -454,14 +581,18 @@ function explicacaoExecutiva(params: {
   evidencia: EvidenciaCopilotoAdministrativo;
   prioridade: PrioridadeCopilotoAdministrativo;
   impactoPendente: boolean;
+  estadoImpacto: EstadoImpactoCopilotoAdministrativo;
   motivoParaNaoRecomendar?: string | null;
 }) {
   if (params.grupo === "FACA_HOJE") {
     return `Entrou em Faca hoje por combinar prioridade ${params.prioridade.toLowerCase()}, evidencia ${params.evidencia.toLowerCase()} e acao manual clara.`;
   }
   if (params.grupo === "ACOMPANHE") {
-    return params.impactoPendente
-      ? "Acompanhe porque a acao ja teve andamento e ainda precisa de avaliacao de impacto."
+    if (params.impactoPendente) {
+      return "Acompanhe porque a acao ja teve andamento e ainda precisa de avaliacao de impacto.";
+    }
+    return params.estadoImpacto === "SEM_ACAO_EXECUTADA"
+      ? "Acompanhe porque ainda nao ha acao executada para atribuir impacto."
       : "Acompanhe porque ha sinal util, mas a decisao ainda nao exige acao imediata.";
   }
   if (params.grupo === "BAIXA_EVIDENCIA") {
@@ -524,7 +655,6 @@ function montarItemCopiloto(
     (recomendacao.campanhas?.length && permissoes.podeVerCampanhas
       ? "/compras/campanhas"
       : null);
-  const impactoEmAberto = impactoPendente(recomendacao);
   const grupo = escolherGrupo({
     recomendacao,
     evidencia,
@@ -533,6 +663,8 @@ function montarItemCopiloto(
     dadosSensiveisOcultados,
     href,
   });
+  const impacto = estadoImpactoCopiloto(recomendacao);
+  const impactoEmAberto = impacto.estado === "PENDENTE";
   const classificacao = classificacaoPorGrupo(grupo.grupo, prioridade);
   const podeAgir =
     Boolean(href || permissoes.podeEditarRecomendacoes) &&
@@ -559,6 +691,7 @@ function montarItemCopiloto(
       evidencia,
       prioridade,
       impactoPendente: impactoEmAberto,
+      estadoImpacto: impacto.estado,
       motivoParaNaoRecomendar: grupo.motivoParaNaoRecomendar,
     }),
     impactoEsperado: recomendacao.impactoEsperado,
@@ -569,8 +702,41 @@ function montarItemCopiloto(
     podeAgir,
     motivoParaNaoRecomendar: grupo.motivoParaNaoRecomendar,
     dadosSensiveisOcultados,
+    estadoImpacto: impacto.estado,
+    impactoResumoExecutivo: impacto.resumo,
+    impactoAcaoSugerida: impacto.acao,
     impactoPendente: impactoEmAberto,
   };
+}
+
+function resumoImpactosCopiloto(
+  itens: RecomendacaoCopilotoAdministrativo[]
+): ResumoImpactosCopilotoAdministrativo {
+  return itens.reduce<ResumoImpactosCopilotoAdministrativo>(
+    (acc, item) => {
+      if (item.estadoImpacto === "NAO_AVALIADO") acc.naoAvaliados += 1;
+      if (item.estadoImpacto === "PENDENTE") acc.pendentes += 1;
+      if (item.estadoImpacto === "SEM_ACAO_EXECUTADA") acc.semAcaoExecutada += 1;
+      if (item.estadoImpacto === "AINDA_CEDO") acc.aindaCedo += 1;
+      if (item.estadoImpacto === "SEM_DADOS") acc.semDados += 1;
+      if (item.estadoImpacto === "INCONCLUSIVO") acc.inconclusivos += 1;
+      if (item.estadoImpacto === "POSITIVO") acc.positivos += 1;
+      if (item.estadoImpacto === "NEUTRO") acc.neutros += 1;
+      if (item.estadoImpacto === "NEGATIVO") acc.negativos += 1;
+      return acc;
+    },
+    {
+      naoAvaliados: 0,
+      pendentes: 0,
+      semAcaoExecutada: 0,
+      aindaCedo: 0,
+      semDados: 0,
+      inconclusivos: 0,
+      positivos: 0,
+      neutros: 0,
+      negativos: 0,
+    }
+  );
 }
 
 export function montarCopilotoAdministrativo(
@@ -595,12 +761,15 @@ export function montarCopilotoAdministrativo(
       );
     });
 
+  const resumoImpactos = resumoImpactosCopiloto(itens);
+
   return {
     recomendacoes: itens.map((item) => item.recomendacao),
     itens,
     resumo: {
       total: itens.length,
-      impactosPendentes: itens.filter((item) => item.impactoPendente).length,
+      impactosPendentes: resumoImpactos.pendentes,
+      impactos: resumoImpactos,
       grupos: Object.fromEntries(
         GRUPOS.map((grupo) => [
           grupo,

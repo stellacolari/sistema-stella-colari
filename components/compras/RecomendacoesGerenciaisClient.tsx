@@ -22,6 +22,7 @@ import {
 import type {
   CopilotoAdministrativoData,
   EvidenciaCopilotoAdministrativo,
+  EstadoImpactoCopilotoAdministrativo,
   GrupoCopilotoAdministrativo,
   PermissoesCopilotoAdministrativo,
   RecomendacaoCopilotoAdministrativo,
@@ -154,6 +155,19 @@ const EVIDENCIA_OPTIONS = [
   { value: "SEM_EVIDENCIA", label: "Sem evidencia" },
 ] as const;
 
+const IMPACTO_OPTIONS = [
+  { value: "TODOS", label: "Todos" },
+  { value: "PENDENTE", label: "Impacto pendente" },
+  { value: "SEM_ACAO_EXECUTADA", label: "Sem acao executada" },
+  { value: "AINDA_CEDO", label: "Ainda cedo" },
+  { value: "SEM_DADOS", label: "Sem dados" },
+  { value: "POSITIVO", label: "Impacto positivo" },
+  { value: "NEUTRO", label: "Impacto neutro" },
+  { value: "NEGATIVO", label: "Impacto negativo" },
+  { value: "INCONCLUSIVO", label: "Inconclusivo" },
+  { value: "NAO_AVALIADO", label: "Nao avaliado" },
+] as const;
+
 function normalizarTexto(value: string | null | undefined) {
   return String(value ?? "")
     .normalize("NFD")
@@ -275,6 +289,33 @@ function impactoClasses(status: string) {
     return "border-slate-200 bg-slate-100 text-slate-700";
   }
   return "border-violet-200 bg-violet-50 text-violet-800";
+}
+
+function labelEstadoImpacto(estado: EstadoImpactoCopilotoAdministrativo | string) {
+  if (estado === "NAO_AVALIADO") return "Impacto ainda nao avaliado";
+  if (estado === "PENDENTE") return "Impacto pendente";
+  if (estado === "AINDA_CEDO") return "Ainda cedo para avaliar";
+  if (estado === "SEM_ACAO_EXECUTADA") return "Sem acao executada";
+  if (estado === "SEM_DADOS") return "Sem dados suficientes";
+  if (estado === "INCONCLUSIVO") return "Impacto inconclusivo";
+  if (estado === "POSITIVO") return "Impacto positivo";
+  if (estado === "NEUTRO") return "Impacto neutro";
+  if (estado === "NEGATIVO") return "Impacto negativo";
+  return String(estado).replaceAll("_", " ");
+}
+
+function estadoImpactoClasses(estado: EstadoImpactoCopilotoAdministrativo | string) {
+  if (estado === "POSITIVO") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (estado === "NEGATIVO") return "border-red-200 bg-red-50 text-red-800";
+  if (estado === "PENDENTE") return "border-amber-200 bg-amber-50 text-amber-800";
+  if (estado === "AINDA_CEDO") return "border-blue-200 bg-blue-50 text-blue-800";
+  if (estado === "SEM_DADOS" || estado === "INCONCLUSIVO") {
+    return "border-violet-200 bg-violet-50 text-violet-800";
+  }
+  if (estado === "SEM_ACAO_EXECUTADA" || estado === "NAO_AVALIADO") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+  return "border-slate-200 bg-white text-slate-600";
 }
 
 function labelTipo(tipo: string) {
@@ -402,7 +443,6 @@ function ResumoCard({
 }
 
 export default function RecomendacoesGerenciaisClient({
-  recomendacoes,
   tipos,
   copiloto,
   permissoes,
@@ -420,33 +460,11 @@ export default function RecomendacoesGerenciaisClient({
   const [grupo, setGrupo] = useState<string>("TODOS");
   const [area, setArea] = useState("TODAS");
   const [evidencia, setEvidencia] = useState("TODAS");
+  const [impactoFiltro, setImpactoFiltro] = useState("TODOS");
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
 
-  const resumoImpactos = useMemo(() => {
-    const impactos = recomendacoes
-      .map(latestImpacto)
-      .filter((impacto): impacto is RecomendacaoImpactoResumo => Boolean(impacto));
-    const concluidas = recomendacoes.filter(
-      (recomendacao) => recomendacao.status === "CONCLUIDA"
-    ).length;
-    const positivas = impactos.filter((impacto) =>
-      ["POSITIVO", "PARCIAL"].includes(impacto.statusImpacto)
-    ).length;
-
-    return {
-      positivos: impactos.filter((impacto) => impacto.statusImpacto === "POSITIVO").length,
-      inconclusivos: impactos.filter((impacto) =>
-        ["INCONCLUSIVO", "SEM_DADOS"].includes(impacto.statusImpacto)
-      ).length,
-      negativos: impactos.filter((impacto) => impacto.statusImpacto === "NEGATIVO").length,
-      aguardando: impactos.filter((impacto) =>
-        ["AGUARDANDO_DADOS", "AINDA_CEDO"].includes(impacto.statusImpacto)
-      ).length,
-      semAcao: impactos.filter((impacto) => impacto.statusImpacto === "SEM_ACAO_EXECUTADA").length,
-      taxaPositiva: concluidas > 0 ? Math.round((positivas / concluidas) * 100) : 0,
-    };
-  }, [recomendacoes]);
+  const resumoImpactos = copiloto.resumo.impactos;
 
   const itensFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -456,6 +474,9 @@ export default function RecomendacoesGerenciaisClient({
       if (grupo !== "TODOS" && item.grupo !== grupo) return false;
       if (area !== "TODAS" && item.area !== area) return false;
       if (evidencia !== "TODAS" && item.evidencia !== evidencia) return false;
+      if (impactoFiltro !== "TODOS" && item.estadoImpacto !== impactoFiltro) {
+        return false;
+      }
       if (status !== "TODOS" && recomendacao.status !== status) return false;
       if (tipo !== "TODOS" && recomendacao.tipo !== tipo) return false;
       if (
@@ -483,6 +504,9 @@ export default function RecomendacoesGerenciaisClient({
           item.classificacao,
           item.area,
           item.evidencia,
+          item.estadoImpacto,
+          labelEstadoImpacto(item.estadoImpacto),
+          item.impactoResumoExecutivo,
           recomendacao.titulo,
           recomendacao.descricao,
           item.motivo,
@@ -499,6 +523,7 @@ export default function RecomendacoesGerenciaisClient({
     evidencia,
     filtroInicial?.produtoId,
     grupo,
+    impactoFiltro,
     prioridade,
     status,
     tipo,
@@ -610,6 +635,7 @@ export default function RecomendacoesGerenciaisClient({
     setGrupo("TODOS");
     setArea("TODAS");
     setEvidencia("TODAS");
+    setImpactoFiltro("TODOS");
   }
 
   return (
@@ -666,7 +692,7 @@ export default function RecomendacoesGerenciaisClient({
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm">
-        Impactos sao exibidos quando ja foram avaliados. Para calcular novos
+        Impactos aparecem como estado de acompanhamento. Para calcular novos
         impactos com seguranca, use o script `npm run recomendacoes:impacto`
         primeiro em dry-run; a tela nao executa avaliacao automaticamente.
       </section>
@@ -709,8 +735,8 @@ export default function RecomendacoesGerenciaisClient({
         />
         <ResumoCard
           label="Impactos pendentes"
-          value={copiloto.resumo.impactosPendentes}
-          description="Acoes que pedem avaliacao de resultado."
+          value={resumoImpactos.pendentes}
+          description="Acoes executadas que pedem avaliacao."
         />
       </section>
 
@@ -722,7 +748,7 @@ export default function RecomendacoesGerenciaisClient({
         />
         <ResumoCard
           label="Sem dados"
-          value={resumoImpactos.inconclusivos}
+          value={resumoImpactos.semDados + resumoImpactos.inconclusivos}
           description="Amostra insuficiente ou inconclusiva."
         />
         <ResumoCard
@@ -732,12 +758,12 @@ export default function RecomendacoesGerenciaisClient({
         />
         <ResumoCard
           label="Ainda cedo"
-          value={resumoImpactos.aguardando}
+          value={resumoImpactos.aindaCedo}
           description="Janela ainda em andamento."
         />
         <ResumoCard
           label="Sem acao"
-          value={resumoImpactos.semAcao}
+          value={resumoImpactos.semAcaoExecutada}
           description="Nao atribuir impacto ainda."
         />
       </section>
@@ -773,7 +799,7 @@ export default function RecomendacoesGerenciaisClient({
       </section>
 
       <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div className="grid gap-4 lg:grid-cols-[minmax(220px,1fr)_160px_160px_160px_160px_160px_auto] lg:items-end">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_150px_150px_170px_auto] xl:items-end">
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Search className="h-4 w-4 text-slate-400" />
@@ -819,6 +845,12 @@ export default function RecomendacoesGerenciaisClient({
             value={evidencia}
             onChange={setEvidencia}
             options={EVIDENCIA_OPTIONS}
+          />
+          <FiltroSelect
+            label="Impacto"
+            value={impactoFiltro}
+            onChange={setImpactoFiltro}
+            options={IMPACTO_OPTIONS}
           />
 
           <button
@@ -938,20 +970,13 @@ function RecomendacaoCard({
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
                       {labelTipo(recomendacao.tipo)}
                     </span>
-                    {impacto && (
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${impactoClasses(
-                          impacto.statusImpacto
-                        )}`}
-                      >
-                        Impacto {labelImpacto(impacto.statusImpacto)}
-                      </span>
-                    )}
-                    {copiloto.impactoPendente && (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
-                        Impacto pendente
-                      </span>
-                    )}
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${estadoImpactoClasses(
+                        copiloto.estadoImpacto
+                      )}`}
+                    >
+                      {labelEstadoImpacto(copiloto.estadoImpacto)}
+                    </span>
                     {recomendacao.periodoReferencia && (
                       <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
                         {recomendacao.periodoReferencia}
@@ -1096,6 +1121,10 @@ function RecomendacaoCard({
                   label="Explicacao executiva"
                   value={copiloto.explicacaoExecutiva}
                 />
+                <InfoBox
+                  label="Estado do impacto"
+                  value={copiloto.impactoResumoExecutivo}
+                />
                 {copiloto.motivo && (
                   <InfoBox label="Motivo" value={copiloto.motivo} />
                 )}
@@ -1188,6 +1217,33 @@ function RecomendacaoCard({
                   ))}
                 </div>
               )}
+              {!impacto && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Avaliacao de impacto
+                      </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
+                        {copiloto.impactoResumoExecutivo}
+                      </p>
+                    </div>
+                    <span
+                      className={`w-fit rounded-full border px-3 py-1 text-xs font-bold ${estadoImpactoClasses(
+                        copiloto.estadoImpacto
+                      )}`}
+                    >
+                      {labelEstadoImpacto(copiloto.estadoImpacto)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    <span className="font-semibold text-slate-800">
+                      Proxima acao:
+                    </span>{" "}
+                    {copiloto.impactoAcaoSugerida}
+                  </p>
+                </div>
+              )}
               {impacto && (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -1204,7 +1260,7 @@ function RecomendacaoCard({
                         impacto.statusImpacto
                       )}`}
                     >
-                      Score {impacto.scoreImpacto}
+                      {labelImpacto(impacto.statusImpacto)} - Score {impacto.scoreImpacto}
                     </span>
                   </div>
 
@@ -1222,7 +1278,8 @@ function RecomendacaoCard({
                         Proxima acao
                       </p>
                       <p className="mt-2 font-semibold text-slate-800">
-                        {impacto.proximaAcaoSugerida ||
+                        {copiloto.impactoAcaoSugerida ||
+                          impacto.proximaAcaoSugerida ||
                           "Acompanhar antes de escalar."}
                       </p>
                     </div>

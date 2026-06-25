@@ -107,6 +107,23 @@ async function contarSe(
   return consulta();
 }
 
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function recomendacaoTemBoaEvidencia(evidenciasJson: unknown) {
+  const evidencias = jsonRecord(evidenciasJson);
+  const nivel = String(evidencias.nivelEvidencia || "");
+
+  return (
+    ["EVIDENCIA_FORTE", "EVIDENCIA_MODERADA"].includes(nivel) &&
+    !evidencias.amostraPequena &&
+    !evidencias.sinalInicial
+  );
+}
+
 function criarAcao(params: AcaoAdmin & { quantidade: number }): AcaoAdmin | null {
   if (params.quantidade <= 0) {
     return null;
@@ -174,6 +191,8 @@ export async function montarCentralAcoesAdmin(
     produtosSemEstoque,
     categoriasVazias,
     recomendacoesAbertas,
+    recomendacoesComBoaEvidencia,
+    recomendacoesImpactoPendente,
     campanhasAbertas,
     buscasSemResultado,
     clientesRecorrentesSemAtualizacao,
@@ -299,6 +318,64 @@ export async function montarCentralAcoesAdmin(
           status: {
             in: ["NOVA", "ACEITA", "EM_EXECUCAO", "ADIADA"],
           },
+        },
+      })
+    ),
+    contarSe(podeVerRecomendacoes, async () => {
+      const recomendacoes = await prisma.recomendacaoGerencial.findMany({
+        where: {
+          status: "NOVA",
+        },
+        select: {
+          evidenciasJson: true,
+        },
+        take: 200,
+      });
+
+      return recomendacoes.filter((recomendacao) =>
+        recomendacaoTemBoaEvidencia(recomendacao.evidenciasJson)
+      ).length;
+    }),
+    contarSe(podeVerRecomendacoes, () =>
+      prisma.recomendacaoGerencial.count({
+        where: {
+          status: {
+            in: ["ACEITA", "EM_EXECUCAO", "CONCLUIDA", "ADIADA"],
+          },
+          impactos: {
+            none: {},
+          },
+          OR: [
+            {
+              status: {
+                in: ["EM_EXECUCAO", "CONCLUIDA"],
+              },
+            },
+            {
+              iniciadaEm: {
+                not: null,
+              },
+            },
+            {
+              concluidaEm: {
+                not: null,
+              },
+            },
+            {
+              resultadoObservado: {
+                not: null,
+              },
+            },
+            {
+              campanhas: {
+                some: {
+                  status: {
+                    in: ["EM_EXECUCAO", "CONCLUIDA"],
+                  },
+                },
+              },
+            },
+          ],
         },
       })
     ),
@@ -467,17 +544,32 @@ export async function montarCentralAcoesAdmin(
         explicacao: "Categoria vazia cria caminho sem saida para o cliente.",
       }),
       criarAcao({
-        id: "recomendacoes-abertas",
-        titulo: "Ha recomendacoes gerenciais abertas.",
+        id: "recomendacoes-impacto-pendente",
+        titulo: "Ha recomendacoes prontas para avaliar impacto.",
         descricao:
-          "Veja sugestoes que ainda precisam de aceite, execucao ou conclusao.",
+          "Revise a avaliacao apenas quando ja houver acao executada registrada.",
+        area: "SISTEMA",
+        prioridade: "MEDIA",
+        perfilAlvo: ["ADMIN_GERAL", "FINANCEIRO", "MARKETING_LOJA"],
+        href: hrefRecomendacoes,
+        cta: "Ver impactos",
+        quantidade: recomendacoesImpactoPendente,
+        explicacao:
+          "Sem acao executada nao vira alerta critico; impacto pendente pede leitura conservadora.",
+      }),
+      criarAcao({
+        id: "recomendacoes-boa-evidencia",
+        titulo: "Ha recomendacoes com boa evidencia para revisar.",
+        descricao:
+          "Priorize sinais moderados ou fortes; baixa evidencia fica apenas em acompanhamento.",
         area: "SISTEMA",
         prioridade: "MEDIA",
         perfilAlvo: ["ADMIN_GERAL", "FINANCEIRO", "MARKETING_LOJA"],
         href: hrefRecomendacoes,
         cta: "Abrir recomendacoes",
-        quantidade: recomendacoesAbertas,
-        explicacao: "Recomendacoes abertas acumulam oportunidades sem decisao.",
+        quantidade: recomendacoesComBoaEvidencia,
+        explicacao:
+          "Recomendacoes novas com boa evidencia merecem decisao antes de virar execucao.",
       }),
       criarAcao({
         id: "buscas-sem-resultado",
@@ -557,10 +649,19 @@ export async function montarCentralAcoesAdmin(
       id: "recomendacoes",
       titulo: "Recomendacoes abertas",
       valor: recomendacoesAbertas,
-      descricao: "Sugestoes pendentes de decisao.",
+      descricao: "Sugestoes em decisao, execucao ou acompanhamento.",
       href: hrefRecomendacoes,
       cta: "Ver recomendacoes",
       tom: tomResumo(recomendacoesAbertas),
+    },
+    {
+      id: "impactos-recomendacoes",
+      titulo: "Impacto pendente",
+      valor: recomendacoesImpactoPendente,
+      descricao: "Acoes executadas sem avaliacao gravada.",
+      href: hrefRecomendacoes,
+      cta: "Avaliar impacto",
+      tom: tomResumo(recomendacoesImpactoPendente),
     },
     {
       id: "alertas",

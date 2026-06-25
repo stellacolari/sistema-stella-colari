@@ -103,6 +103,7 @@ function resumoIcone(id: string) {
   if (id === "pedidos") return ClipboardList;
   if (id === "catalogo") return PackageSearch;
   if (id === "recomendacoes") return Lightbulb;
+  if (id === "impactos-recomendacoes") return CheckCircle2;
   return AlertTriangle;
 }
 
