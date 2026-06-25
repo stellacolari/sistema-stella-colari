@@ -1,16 +1,32 @@
 "use client";
 
 import Link from "next/link";
+import type { ElementType, ReactNode } from "react";
 import {
-  AlertTriangle,
-  ArrowDownUp,
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  ClipboardList,
+  ExternalLink,
+  Lightbulb,
+  MessageCircle,
+  PackageSearch,
   ReceiptText,
+  ShieldCheck,
   ShoppingBag,
-  ShoppingCart,
-  TrendingUp,
-  Users,
+  Sparkles,
+  Store,
   Warehouse,
 } from "lucide-react";
+import type {
+  AreaAcaoAdmin,
+  CentralAcoesAdminData,
+} from "@/lib/dashboard/central-acoes";
+
+const DASHBOARD_DESTAQUE_URL = "";
+const DASHBOARD_DESTAQUE_TITULO = "Conteudo em destaque";
+const DASHBOARD_DESTAQUE_DESCRICAO =
+  "Adicione aqui um link de campanha, relatorio ou conteudo externo.";
 
 export type DashboardStatusItem = {
   status: string;
@@ -44,8 +60,32 @@ export type DashboardMovimentacaoItem = {
   status: string;
 };
 
+export type DashboardAtalhoRapido = {
+  id: string;
+  titulo: string;
+  descricao: string;
+  href: string;
+  destaque?: boolean;
+};
+
+export type DashboardPermissoes = {
+  pedidos: boolean;
+  vendas: boolean;
+  clientes: boolean;
+  produtos: boolean;
+  estoque: boolean;
+  recomendacoes: boolean;
+  intencaoComercial: boolean;
+  lojaOnline: boolean;
+  notificacoes: boolean;
+  relatorios: boolean;
+};
+
 export type DashboardData = {
+  geradoEm: string;
   podeVerDadosFinanceiros: boolean;
+  permissoes: DashboardPermissoes;
+  atalhosRapidos: DashboardAtalhoRapido[];
   cards: {
     totalVendido: number;
     lucroTotal: number;
@@ -71,227 +111,299 @@ export type DashboardData = {
 
 type DashboardClientProps = {
   data: DashboardData;
+  centralAcoes: CentralAcoesAdminData;
 };
 
-type CardTone =
-  | "emerald"
-  | "blue"
-  | "amber"
-  | "violet"
-  | "indigo"
-  | "red"
-  | "slate";
+type Tone = "slate" | "emerald" | "blue" | "amber" | "red" | "violet";
 
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(valor);
+  }).format(valor || 0);
 }
 
 function numero(valor: number) {
-  return new Intl.NumberFormat("pt-BR").format(valor);
+  return new Intl.NumberFormat("pt-BR").format(valor || 0);
 }
 
 function dataCompleta(dataIso: string) {
   const data = new Date(dataIso);
 
-  if (Number.isNaN(data.getTime())) {
-    return "-";
-  }
+  if (Number.isNaN(data.getTime())) return "-";
 
   return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(data);
 }
 
-function getCardToneClasses(tone: CardTone) {
-  const classes: Record<
-    CardTone,
+function periodoCurto(dataIso: string) {
+  const data = new Date(dataIso);
+
+  if (Number.isNaN(data.getTime())) return "Hoje";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(data);
+}
+
+function toneClasses(tone: Tone) {
+  const map: Record<
+    Tone,
     {
       card: string;
+      soft: string;
       icon: string;
-      value: string;
-      label: string;
-      description: string;
-      border: string;
+      text: string;
+      bar: string;
     }
   > = {
+    slate: {
+      card: "border-slate-200 bg-white text-slate-950",
+      soft: "bg-slate-50 text-slate-600",
+      icon: "bg-slate-100 text-slate-700",
+      text: "text-slate-600",
+      bar: "bg-slate-900",
+    },
     emerald: {
-      card: "bg-emerald-50",
-      icon: "bg-emerald-100 text-emerald-700",
-      value: "text-emerald-950",
-      label: "text-emerald-700",
-      description: "text-emerald-800/80",
-      border: "ring-emerald-200",
+      card: "border-emerald-200 bg-emerald-50 text-emerald-950",
+      soft: "bg-emerald-100 text-emerald-700",
+      icon: "bg-white text-emerald-700",
+      text: "text-emerald-800",
+      bar: "bg-emerald-600",
     },
     blue: {
-      card: "bg-blue-50",
-      icon: "bg-blue-100 text-blue-700",
-      value: "text-blue-950",
-      label: "text-blue-700",
-      description: "text-blue-800/80",
-      border: "ring-blue-200",
+      card: "border-blue-200 bg-blue-50 text-blue-950",
+      soft: "bg-blue-100 text-blue-700",
+      icon: "bg-white text-blue-700",
+      text: "text-blue-800",
+      bar: "bg-blue-600",
     },
     amber: {
-      card: "bg-amber-50",
-      icon: "bg-amber-100 text-amber-700",
-      value: "text-amber-950",
-      label: "text-amber-700",
-      description: "text-amber-800/80",
-      border: "ring-amber-200",
-    },
-    violet: {
-      card: "bg-violet-50",
-      icon: "bg-violet-100 text-violet-700",
-      value: "text-violet-950",
-      label: "text-violet-700",
-      description: "text-violet-800/80",
-      border: "ring-violet-200",
-    },
-    indigo: {
-      card: "bg-indigo-50",
-      icon: "bg-indigo-100 text-indigo-700",
-      value: "text-indigo-950",
-      label: "text-indigo-700",
-      description: "text-indigo-800/80",
-      border: "ring-indigo-200",
+      card: "border-amber-200 bg-amber-50 text-amber-950",
+      soft: "bg-amber-100 text-amber-700",
+      icon: "bg-white text-amber-700",
+      text: "text-amber-800",
+      bar: "bg-amber-500",
     },
     red: {
-      card: "bg-red-50",
-      icon: "bg-red-100 text-red-700",
-      value: "text-red-950",
-      label: "text-red-700",
-      description: "text-red-800/80",
-      border: "ring-red-200",
+      card: "border-red-200 bg-red-50 text-red-950",
+      soft: "bg-red-100 text-red-700",
+      icon: "bg-white text-red-700",
+      text: "text-red-800",
+      bar: "bg-red-600",
     },
-    slate: {
-      card: "bg-white",
-      icon: "bg-slate-100 text-slate-700",
-      value: "text-slate-950",
-      label: "text-slate-500",
-      description: "text-slate-500",
-      border: "ring-slate-200",
+    violet: {
+      card: "border-violet-200 bg-violet-50 text-violet-950",
+      soft: "bg-violet-100 text-violet-700",
+      icon: "bg-white text-violet-700",
+      text: "text-violet-800",
+      bar: "bg-violet-600",
     },
   };
 
-  return classes[tone];
+  return map[tone];
 }
 
-function statusBadgeClass(status: string) {
-  if (status === "VENDA_FINALIZADA") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (status === "EM_PREPARACAO") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  if (status === "ENVIADA") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
-  }
-
-  if (status === "ENTREGUE") {
-    return "border-indigo-200 bg-indigo-50 text-indigo-700";
-  }
-
-  if (status === "CANCELADA") {
-    return "border-red-200 bg-red-50 text-red-700";
-  }
-
-  if (status === "NA_LIXEIRA") {
-    return "border-zinc-300 bg-zinc-100 text-zinc-600";
-  }
-
-  return "border-slate-200 bg-slate-50 text-slate-700";
+function resumoPorId(data: CentralAcoesAdminData, ids: string[]) {
+  return data.resumo.find((item) => ids.includes(item.id));
 }
 
-function movimentoBadgeClass(tipo: string) {
-  if (tipo === "ENTRADA") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (tipo === "SAÍDA" || tipo === "SAIDA") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
-  }
-
-  if (tipo === "ESTORNO_VENDA" || tipo === "ESTORNO_COMPRA") {
-    return "border-red-200 bg-red-50 text-red-700";
-  }
-
-  return "border-slate-200 bg-slate-50 text-slate-700";
+function quantidadePorArea(data: CentralAcoesAdminData, areas: AreaAcaoAdmin[]) {
+  return data.acoes
+    .filter((acao) => areas.includes(acao.area))
+    .reduce((total, acao) => total + (acao.quantidade ?? 1), 0);
 }
 
-function situacaoEstoqueClass(situacao: string) {
-  if (situacao === "ZERADO") {
-    return "border-red-200 bg-red-50 text-red-700";
-  }
-
-  if (situacao === "REPOR") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  return "border-emerald-200 bg-emerald-50 text-emerald-700";
+function prioridadeAlta(data: CentralAcoesAdminData) {
+  return data.acoes.filter((acao) =>
+    ["CRITICA", "ALTA"].includes(acao.prioridade)
+  );
 }
 
-function itemMetaMovimentacao(movimentacao: DashboardMovimentacaoItem) {
-  return [
-    movimentacao.itemTipo,
-    movimentacao.tamanhoAnel ? `Tam. ${movimentacao.tamanhoAnel}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+function statusOperacaoTexto(totalPrioritario: number) {
+  if (totalPrioritario > 0) {
+    return `Hoje sua loja precisa de atencao em ${numero(totalPrioritario)} ponto${totalPrioritario === 1 ? "" : "s"}.`;
+  }
+
+  return "A operacao esta sem alerta critico no momento.";
 }
 
-function DashboardCard({
+function indicador({
   label,
   value,
-  description,
-  icon,
-  href,
-  tone = "slate",
+  detail,
 }: {
   label: string;
   value: string;
-  description: string;
-  icon: React.ReactNode;
-  href?: string;
-  tone?: CardTone;
+  detail: string;
 }) {
-  const toneClasses = getCardToneClasses(tone);
+  return (
+    <div className="rounded-3xl border border-white/15 bg-white/10 p-4 text-white">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-black">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-white/65">{detail}</p>
+    </div>
+  );
+}
 
-  const content = (
-    <div
-      className={`h-full rounded-3xl p-5 shadow-sm ring-1 transition hover:shadow-md ${toneClasses.card} ${toneClasses.border}`}
+function QuickActionLink({ atalho }: { atalho: DashboardAtalhoRapido }) {
+  return (
+    <Link
+      href={atalho.href}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+        atalho.destaque
+          ? "bg-slate-950 text-white hover:bg-slate-800"
+          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+      }`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className={`text-sm font-semibold ${toneClasses.label}`}>
-            {label}
-          </p>
+      {atalho.titulo}
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+  );
+}
 
-          <p className={`mt-2 text-2xl font-bold ${toneClasses.value}`}>
-            {value}
+function DashboardDestaqueExterno() {
+  const url = DASHBOARD_DESTAQUE_URL.trim();
+
+  return (
+    <section className="flex min-h-[390px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-start justify-between gap-4 px-6 py-5">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Destaque
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+            {DASHBOARD_DESTAQUE_TITULO}
+          </h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+            {url
+              ? "Conteudo externo configurado para acompanhamento visual."
+              : DASHBOARD_DESTAQUE_DESCRICAO}
           </p>
         </div>
-
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${toneClasses.icon}`}
-        >
-          {icon}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-slate-100 text-slate-700">
+          <Store className="h-5 w-5" />
         </div>
       </div>
 
-      <p className={`mt-4 text-sm leading-6 ${toneClasses.description}`}>
+      <div className="flex min-h-0 flex-1 px-6 pb-6">
+        {url ? (
+          <div className="flex min-h-[240px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
+            <iframe
+              title={DASHBOARD_DESTAQUE_TITULO}
+              src={url}
+              sandbox="allow-forms allow-popups allow-same-origin"
+              referrerPolicy="no-referrer"
+              loading="lazy"
+              className="min-h-[240px] w-full flex-1"
+            />
+          </div>
+        ) : (
+          <div className="flex w-full flex-1 flex-col justify-between rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {["Campanha", "Relatorio", "Conteudo"].map((label, index) => (
+                <div
+                  key={label}
+                  className="rounded-3xl border border-slate-200 bg-white p-4"
+                >
+                  <div className="h-2 w-10 rounded-full bg-slate-200" />
+                  <div
+                    className={`mt-8 h-20 rounded-3xl ${
+                      index === 0
+                        ? "bg-emerald-100"
+                        : index === 1
+                          ? "bg-blue-100"
+                          : "bg-amber-100"
+                    }`}
+                  />
+                  <p className="mt-3 text-sm font-bold text-slate-700">
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-sm leading-6 text-slate-500">
+              Configure a constante `DASHBOARD_DESTAQUE_URL` neste componente
+              para exibir um link visual sem usar `.env`.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-slate-100 px-6 py-4">
+        {url ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-950"
+          >
+            Abrir conteudo
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : (
+          <span className="text-sm font-semibold text-slate-400">
+            Conteudo externo ainda nao configurado.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AreaCard({
+  title,
+  value,
+  description,
+  href,
+  cta,
+  icon: Icon,
+  tone,
+  children,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  href?: string;
+  cta: string;
+  icon: ElementType;
+  tone: Tone;
+  children?: ReactNode;
+}) {
+  const colors = toneClasses(tone);
+  const content = (
+    <article
+      className={`flex h-full flex-col rounded-[2rem] border p-5 shadow-sm transition hover:shadow-md ${colors.card}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className={`rounded-full px-3 py-1 text-xs font-black ${colors.soft}`}>
+          {title}
+        </div>
+        <div className={`flex h-11 w-11 items-center justify-center rounded-3xl ${colors.icon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      <p className="mt-5 text-3xl font-black tracking-tight">{value}</p>
+      <p className={`mt-2 min-h-[48px] text-sm leading-6 ${colors.text}`}>
         {description}
       </p>
-    </div>
+      {children ? <div className="mt-4">{children}</div> : null}
+      <span className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-black">
+        {cta}
+        <ArrowRight className="h-4 w-4" />
+      </span>
+    </article>
   );
 
-  if (!href) {
-    return content;
-  }
+  if (!href) return content;
 
   return (
     <Link href={href} className="block h-full">
@@ -300,361 +412,379 @@ function DashboardCard({
   );
 }
 
-export default function DashboardClient({ data }: DashboardClientProps) {
-  const podeVerDadosFinanceiros = data.podeVerDadosFinanceiros;
-  const totalEstoque =
-    data.cards.valorEstoqueProdutos + data.cards.valorEstoqueAdicionais;
+function StatusBars({ itens }: { itens: DashboardStatusItem[] }) {
+  const max = Math.max(...itens.map((item) => item.quantidade), 1);
+
+  if (itens.length === 0) {
+    return (
+      <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+        Ainda sem dados suficientes para grafico.
+      </p>
+    );
+  }
 
   return (
-    <section className="space-y-6">
-      <section className="overflow-hidden rounded-3xl bg-slate-950 shadow-sm ring-1 ring-slate-800">
-        <div className="relative p-6">
-          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
-          <div className="absolute bottom-0 right-24 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-
-          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wide text-slate-400">
-                Dashboard
-              </p>
-
-              <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">
-                Visão geral da Plataforma Stella Colari
-              </h1>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Acompanhe vendas, compras, estoque, clientes, alertas e
-                movimentações recentes em um único painel.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-slate-200">
-              Dados atualizados em tempo real pelo banco local.
-            </div>
+    <div className="space-y-3">
+      {itens.slice(0, 5).map((item) => (
+        <div key={item.status}>
+          <div className="mb-1 flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
+            <span className="truncate">{item.label}</span>
+            <span>{numero(item.quantidade)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-slate-900"
+              style={{ width: `${Math.max(8, (item.quantidade / max) * 100)}%` }}
+            />
           </div>
         </div>
-      </section>
+      ))}
+    </div>
+  );
+}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {podeVerDadosFinanceiros ? (
-          <>
-            <DashboardCard
-              label="Total vendido"
-              value={moeda(data.cards.totalVendido)}
-              description={`${numero(data.cards.vendasAtivas)} venda(s)/pedido(s) pago(s). Online: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
-              icon={<ShoppingBag className="h-5 w-5" />}
-              href="/relatorios"
-              tone="emerald"
-            />
+function AtividadeRecente({
+  itens,
+}: {
+  itens: DashboardMovimentacaoItem[];
+}) {
+  if (itens.length === 0) {
+    return (
+      <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+        Ainda sem movimentacoes recentes.
+      </p>
+    );
+  }
 
-            <DashboardCard
-              label="Lucro total"
-              value={moeda(data.cards.lucroTotal)}
-              description={`Gasto de vendas e pedidos online efetivados: ${moeda(data.cards.gastoTotalVendas)}.`}
-              icon={<TrendingUp className="h-5 w-5" />}
-              href="/relatorios"
-              tone="blue"
-            />
-
-            <DashboardCard
-              label="Total comprado"
-              value={moeda(data.cards.totalComprado)}
-              description={`${numero(data.cards.comprasAtivas)} compra(s) ativa(s), sem canceladas/lixeira.`}
-              icon={<ShoppingCart className="h-5 w-5" />}
-              href="/compras"
-              tone="amber"
-            />
-          </>
-        ) : (
-          <>
-            <DashboardCard
-              label="Vendas e pedidos"
-              value={numero(data.cards.vendasAtivas)}
-              description={`${numero(data.cards.pedidosOnlinePagos)} pedido(s) online pago(s) incluidos.`}
-              icon={<ShoppingBag className="h-5 w-5" />}
-              href="/pedidos"
-              tone="emerald"
-            />
-
-            <DashboardCard
-              label="Compras ativas"
-              value={numero(data.cards.comprasAtivas)}
-              description="Compras operacionais, sem valores financeiros."
-              icon={<ShoppingCart className="h-5 w-5" />}
-              href="/compras"
-              tone="amber"
-            />
-          </>
-        )}
-
-        <DashboardCard
-          label="Clientes ativos"
-          value={numero(data.cards.clientesAtivos)}
-          description="Clientes fora da lixeira cadastrados no sistema."
-          icon={<Users className="h-5 w-5" />}
-          href="/clientes"
-          tone="violet"
-        />
-
-        <DashboardCard
-          label="Itens vendidos"
-          value={numero(data.cards.quantidadeItensVendidos)}
-          description={`${numero(data.cards.pedidosOnlinePagos)} pedido(s) online pago(s) incluidos.`}
-          icon={<ReceiptText className="h-5 w-5" />}
-          href="/pedidos"
-          tone="emerald"
-        />
-
-        <DashboardCard
-          label="Itens comprados"
-          value={numero(data.cards.quantidadeItensComprados)}
-          description="Soma das quantidades compradas nas compras ativas."
-          icon={<ArrowDownUp className="h-5 w-5" />}
-          href="/compras"
-          tone="amber"
-        />
-
-        {podeVerDadosFinanceiros ? (
-          <DashboardCard
-            label="Valor em estoque"
-            value={moeda(totalEstoque)}
-            description={`Produtos: ${moeda(data.cards.valorEstoqueProdutos)} · Adicionais: ${moeda(data.cards.valorEstoqueAdicionais)}.`}
-            icon={<Warehouse className="h-5 w-5" />}
-            href="/estoque"
-            tone="indigo"
-          />
-        ) : (
-          <DashboardCard
-            label="Itens em estoque"
-            value={numero(
-              data.cards.quantidadeProdutosEmEstoque +
-                data.cards.quantidadeAdicionaisEmEstoque
-            )}
-            description={`${numero(data.cards.quantidadeProdutosEmEstoque)} produto(s) e ${numero(data.cards.quantidadeAdicionaisEmEstoque)} adicional(is).`}
-            icon={<Warehouse className="h-5 w-5" />}
-            href="/estoque"
-            tone="indigo"
-          />
-        )}
-
-        <DashboardCard
-          label="Alertas de estoque"
-          value={numero(data.cards.alertasEstoque)}
-          description="Itens com estoque zerado ou igual/abaixo de 5 unidades."
-          icon={<AlertTriangle className="h-5 w-5" />}
-          href="/estoque"
-          tone={data.cards.alertasEstoque > 0 ? "red" : "emerald"}
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-          <div className="border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-white px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Vendas por status
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Distribuição geral das vendas cadastradas.
+  return (
+    <div className="divide-y divide-slate-100 rounded-3xl border border-slate-200 bg-white">
+      {itens.slice(0, 4).map((item) => (
+        <div
+          key={item.id}
+          className="grid gap-3 px-4 py-4 sm:grid-cols-[120px_minmax(0,1fr)_80px]"
+        >
+          <p className="text-xs font-semibold text-slate-500">
+            {dataCompleta(item.criadoEm)}
+          </p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-slate-950">
+              {item.codigoItem}
+            </p>
+            <p className="mt-1 truncate text-xs text-slate-500">
+              {item.tipoMovimentacaoLabel} em {item.origemTipo}
             </p>
           </div>
-
-          {data.vendasPorStatus.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-slate-500">
-              Nenhuma venda cadastrada.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {data.vendasPorStatus.map((item) => (
-                <div
-                  key={item.status}
-                  className="flex items-center justify-between gap-4 px-6 py-4"
-                >
-                  <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(
-                      item.status
-                    )}`}
-                  >
-                    {item.label}
-                  </span>
-
-                  <span className="text-sm font-bold text-slate-950">
-                    {item.quantidade}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-          <div className="border-b border-slate-200 bg-gradient-to-r from-red-50 to-white px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Alertas de estoque
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Produtos e adicionais que exigem atenção.
-            </p>
-          </div>
-
-          {data.alertasEstoque.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-slate-500">
-              Nenhum alerta de estoque no momento.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Item</th>
-                    <th className="px-6 py-4 font-semibold">Tipo</th>
-                    <th className="px-6 py-4 text-center font-semibold">
-                      Estoque
-                    </th>
-                    {podeVerDadosFinanceiros ? (
-                      <th className="px-6 py-4 font-semibold">Valor</th>
-                    ) : null}
-                    <th className="px-6 py-4 font-semibold">Situação</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {data.alertasEstoque.map((item) => (
-                    <tr key={`${item.tipo}-${item.id}`}>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-950">
-                            {item.nome}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {item.codigo}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">{item.tipo}</td>
-
-                      <td className="px-6 py-4 text-center font-semibold text-slate-950">
-                        {item.quantidadeAtual}
-                      </td>
-
-                      {podeVerDadosFinanceiros ? (
-                        <td className="px-6 py-4">
-                          {moeda(item.valorAcumulado)}
-                        </td>
-                      ) : null}
-
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${situacaoEstoqueClass(
-                            item.situacao
-                          )}`}
-                        >
-                          {item.situacao}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-white px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Últimas movimentações
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Entradas, saídas e estornos registrados recentemente.
+          <p className="text-sm font-black text-slate-900 sm:text-right">
+            {numero(item.quantidade)}
           </p>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        {data.ultimasMovimentacoes.length === 0 ? (
-          <div className="px-6 py-10 text-sm text-slate-500">
-            Nenhuma movimentação cadastrada.
+export default function DashboardClient({
+  data,
+  centralAcoes,
+}: DashboardClientProps) {
+  const criticas = prioridadeAlta(centralAcoes);
+  const acaoPrincipal = centralAcoes.acoes[0] || null;
+  const resumoPedidos = resumoPorId(centralAcoes, ["pedidos"]);
+  const resumoCatalogo = resumoPorId(centralAcoes, ["catalogo"]);
+  const resumoRecomendacoes = resumoPorId(centralAcoes, [
+    "recomendacoes",
+    "impactos-recomendacoes",
+  ]);
+  const quantidadeClientes = quantidadePorArea(centralAcoes, ["CLIENTES"]);
+  const quantidadeMarketing = quantidadePorArea(centralAcoes, ["MARKETING"]);
+  const totalEstoque =
+    data.cards.quantidadeProdutosEmEstoque +
+    data.cards.quantidadeAdicionaisEmEstoque;
+  const valorOperacao = data.podeVerDadosFinanceiros
+    ? moeda(data.cards.totalVendido)
+    : numero(data.cards.quantidadeItensVendidos);
+  const valorOperacaoLabel = data.podeVerDadosFinanceiros
+    ? "Vendido"
+    : "Itens vendidos";
+
+  const cardsArea = [
+    data.permissoes.pedidos
+      ? {
+          title: "Operacao",
+          value: numero(resumoPedidos?.valor ?? 0),
+          description:
+            resumoPedidos?.descricao ||
+            "Pedidos e rotinas que precisam de acompanhamento.",
+          href: resumoPedidos?.href || "/pedidos",
+          cta: "Abrir operacao",
+          icon: ClipboardList,
+          tone: (resumoPedidos?.tom === "critico" ? "red" : "blue") as Tone,
+        }
+      : null,
+    data.permissoes.pedidos || data.permissoes.vendas
+      ? {
+          title: "Vendas/Pedidos",
+          value: numero(data.cards.vendasAtivas),
+          description: `${numero(data.cards.pedidosOnlinePagos)} pedido(s) online pago(s) dentro da leitura atual.`,
+          href: data.permissoes.pedidos ? "/pedidos" : "/vendas",
+          cta: "Ver vendas",
+          icon: ShoppingBag,
+          tone: "emerald" as Tone,
+        }
+      : null,
+    data.permissoes.clientes
+      ? {
+          title: "Clientes/CRM",
+          value: numero(data.cards.clientesAtivos),
+          description: `${numero(quantidadeClientes)} sinal(is) de relacionamento em atencao.`,
+          href: "/clientes/relacionamento/campanhas",
+          cta: "Abrir CRM",
+          icon: MessageCircle,
+          tone: "violet" as Tone,
+        }
+      : null,
+    data.permissoes.produtos || data.permissoes.estoque || data.permissoes.lojaOnline
+      ? {
+          title: "Loja/Catalogo",
+          value: numero(data.cards.alertasEstoque),
+          description:
+            resumoCatalogo?.descricao ||
+            `${numero(totalEstoque)} item(ns) mapeados em estoque e catalogo.`,
+          href: data.permissoes.estoque
+            ? "/estoque"
+            : data.permissoes.produtos
+              ? "/produtos"
+              : "/configuracoes/loja",
+          cta: "Revisar catalogo",
+          icon: PackageSearch,
+          tone: (data.cards.alertasEstoque > 0 ? "amber" : "emerald") as Tone,
+        }
+      : null,
+    data.permissoes.recomendacoes
+      ? {
+          title: "Copiloto",
+          value: numero(resumoRecomendacoes?.valor ?? 0),
+          description:
+            resumoRecomendacoes?.descricao ||
+            "Recomendacoes prontas para revisao administrativa.",
+          href: resumoRecomendacoes?.href || "/compras/recomendacoes",
+          cta: "Ver recomendacoes",
+          icon: Lightbulb,
+          tone: "amber" as Tone,
+        }
+      : null,
+    data.permissoes.intencaoComercial || data.permissoes.lojaOnline
+      ? {
+          title: "Funil/Analytics",
+          value: numero(quantidadeMarketing),
+          description:
+            "Sinais de busca, funil e intencao comercial para acompanhar.",
+          href: data.permissoes.intencaoComercial
+            ? "/compras/intencao"
+            : "/configuracoes/loja",
+          cta: "Abrir funil",
+          icon: BarChart3,
+          tone: "blue" as Tone,
+        }
+      : null,
+  ].filter((card): card is NonNullable<typeof card> => Boolean(card));
+
+  return (
+    <section className="space-y-8">
+      <header className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
+              Dashboard administrativo
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Bom trabalho, Stella Colari
+            </h1>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              {periodoCurto(data.geradoEm)}. Painel executivo da operacao.
+            </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table
-              className={`w-full text-left text-sm ${
-                podeVerDadosFinanceiros ? "min-w-[1050px]" : "min-w-[780px]"
-              }`}
-            >
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Data</th>
-                  <th className="px-6 py-4 font-semibold">Tipo</th>
-                  <th className="px-6 py-4 font-semibold">Item</th>
-                  <th className="px-6 py-4 font-semibold">Origem</th>
-                  <th className="px-6 py-4 text-center font-semibold">
-                    Qtd.
-                  </th>
-                  {podeVerDadosFinanceiros ? (
-                    <>
-                      <th className="px-6 py-4 font-semibold">Custo</th>
-                      <th className="px-6 py-4 font-semibold">Faturamento</th>
-                    </>
-                  ) : null}
-                </tr>
-              </thead>
 
-              <tbody className="divide-y divide-slate-100">
-                {data.ultimasMovimentacoes.map((movimentacao) => (
-                  <tr key={movimentacao.id}>
-                    <td className="px-6 py-4 text-slate-600">
-                      {dataCompleta(movimentacao.criadoEm)}
-                    </td>
+          {data.atalhosRapidos.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {data.atalhosRapidos.map((atalho) => (
+                <QuickActionLink key={atalho.id} atalho={atalho} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </header>
 
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${movimentoBadgeClass(
-                          movimentacao.tipoMovimentacao
-                        )}`}
-                      >
-                        {movimentacao.tipoMovimentacaoLabel}
-                      </span>
-                    </td>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)]">
+        <section className="overflow-hidden rounded-[2rem] border border-slate-900 bg-slate-950 shadow-sm">
+          <div className="p-6 sm:p-7">
+            <div className="flex flex-col gap-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/55">
+                    Resumo executivo
+                  </p>
+                  <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl">
+                    {statusOperacaoTexto(criticas.length)}
+                  </h2>
+                  <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">
+                    {acaoPrincipal
+                      ? acaoPrincipal.descricao
+                      : "Use os atalhos para revisar pedidos, clientes, catalogo e recomendacoes sem perder o ritmo da loja."}
+                  </p>
+                </div>
+                <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-white text-slate-950 sm:flex">
+                  {criticas.length > 0 ? (
+                    <Sparkles className="h-6 w-6" />
+                  ) : (
+                    <CheckCircle2 className="h-6 w-6" />
+                  )}
+                </div>
+              </div>
 
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-950">
-                          {movimentacao.codigoItem}
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          {itemMetaMovimentacao(movimentacao)}
-                        </span>
-                      </div>
-                    </td>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {indicador({
+                  label: "Acoes",
+                  value: numero(centralAcoes.acoes.length),
+                  detail: `${numero(criticas.length)} alta prioridade`,
+                })}
+                {indicador({
+                  label: "Pedidos",
+                  value: numero(data.cards.pedidosOnlinePagos),
+                  detail: "online pagos",
+                })}
+                {indicador({
+                  label: "Clientes",
+                  value: numero(data.cards.clientesAtivos),
+                  detail: "fora da lixeira",
+                })}
+                {indicador({
+                  label: valorOperacaoLabel,
+                  value: valorOperacao,
+                  detail: data.podeVerDadosFinanceiros
+                    ? "valor operacional"
+                    : "sem dado financeiro",
+                })}
+              </div>
 
-                    <td className="px-6 py-4">{movimentacao.origemTipo}</td>
-
-                    <td className="px-6 py-4 text-center font-semibold text-slate-950">
-                      {movimentacao.quantidade}
-                    </td>
-
-                    {podeVerDadosFinanceiros ? (
-                      <>
-                        <td className="px-6 py-4">
-                          {moeda(movimentacao.custo)}
-                        </td>
-
-                        <td className="px-6 py-4">
-                          {moeda(movimentacao.faturamento)}
-                        </td>
-                      </>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <div className="flex flex-wrap gap-3">
+                {acaoPrincipal?.href ? (
+                  <Link
+                    href={acaoPrincipal.href}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-slate-100"
+                  >
+                    {acaoPrincipal.cta || "Abrir prioridade"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : null}
+                <Link
+                  href="#central-acoes-detalhada"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10"
+                >
+                  Central de acoes
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
           </div>
-        )}
+        </section>
+
+        <DashboardDestaqueExterno />
       </section>
+
+      <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+        {cardsArea.map((card) => (
+          <AreaCard
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            description={card.description}
+            href={card.href}
+            cta={card.cta}
+            icon={card.icon}
+            tone={card.tone}
+          />
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
+                Grafico simples
+              </p>
+              <h2 className="mt-2 text-xl font-black text-slate-950">
+                Vendas por status
+              </h2>
+            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-3xl bg-slate-100 text-slate-700">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-6">
+            <StatusBars itens={data.vendasPorStatus} />
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
+                Movimento
+              </p>
+              <h2 className="mt-2 text-xl font-black text-slate-950">
+                Atividade recente
+              </h2>
+            </div>
+            <Link
+              href={data.permissoes.estoque ? "/movimentacoes" : "/dashboard"}
+              className="inline-flex items-center gap-2 text-sm font-black text-slate-700 hover:text-slate-950"
+            >
+              Ver detalhes
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="mt-6">
+            <AtividadeRecente itens={data.ultimasMovimentacoes} />
+          </div>
+        </section>
+      </section>
+
+      {data.podeVerDadosFinanceiros ? (
+        <section className="grid gap-4 md:grid-cols-3">
+          <AreaCard
+            title="Receita"
+            value={moeda(data.cards.totalVendido)}
+            description={`Pedidos e vendas ativos. Online pago: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
+            href={data.permissoes.relatorios ? "/relatorios" : undefined}
+            cta="Ver relatorios"
+            icon={ReceiptText}
+            tone="emerald"
+          />
+          <AreaCard
+            title="Margem"
+            value={moeda(data.cards.lucroTotal)}
+            description={`Gasto vinculado a vendas/pedidos: ${moeda(data.cards.gastoTotalVendas)}.`}
+            href={data.permissoes.relatorios ? "/relatorios" : undefined}
+            cta="Analisar resultado"
+            icon={ShieldCheck}
+            tone="blue"
+          />
+          <AreaCard
+            title="Estoque"
+            value={moeda(
+              data.cards.valorEstoqueProdutos +
+                data.cards.valorEstoqueAdicionais
+            )}
+            description="Valor em produtos e adicionais, visivel apenas para perfis autorizados."
+            href={data.permissoes.estoque ? "/estoque" : undefined}
+            cta="Ver estoque"
+            icon={Warehouse}
+            tone="slate"
+          />
+        </section>
+      ) : null}
     </section>
   );
 }

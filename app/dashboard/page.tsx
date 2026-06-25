@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   exigirAdminComPermissao,
+  usuarioTemPermissaoAdmin,
   usuarioPodeVerDadosFinanceirosAdmin,
 } from "@/lib/auth/admin";
 import { montarCentralAcoesAdmin } from "@/lib/dashboard/central-acoes";
@@ -359,9 +360,86 @@ export default async function DashboardPage() {
       status: movimentacao.status,
     })
   );
+  const permissoesDashboard = {
+    pedidos: usuarioTemPermissaoAdmin(usuario, "pedidos", "ver"),
+    vendas: usuarioTemPermissaoAdmin(usuario, "vendas", "ver"),
+    clientes: usuarioTemPermissaoAdmin(usuario, "clientes", "ver"),
+    produtos: usuarioTemPermissaoAdmin(usuario, "produtos", "ver"),
+    estoque: usuarioTemPermissaoAdmin(usuario, "estoque", "ver"),
+    recomendacoes: usuarioTemPermissaoAdmin(usuario, "recomendacoes", "ver"),
+    intencaoComercial: usuarioTemPermissaoAdmin(
+      usuario,
+      "intencaoComercial",
+      "ver"
+    ),
+    lojaOnline: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "ver"),
+    notificacoes: usuarioTemPermissaoAdmin(usuario, "notificacoes", "ver"),
+    relatorios: usuarioTemPermissaoAdmin(usuario, "relatorios", "ver"),
+  };
+  const atalhosRapidos = [
+    permissoesDashboard.vendas
+      ? {
+          id: "nova-venda",
+          titulo: "Nova venda",
+          descricao: "Registrar atendimento",
+          href: "/vendas/nova-v2",
+          destaque: true,
+        }
+      : null,
+    permissoesDashboard.pedidos
+      ? {
+          id: "pedidos",
+          titulo: "Pedidos",
+          descricao: "Ver fila operacional",
+          href: "/pedidos",
+        }
+      : null,
+    permissoesDashboard.clientes
+      ? {
+          id: "clientes",
+          titulo: "Clientes",
+          descricao: "Abrir cadastro e fichas",
+          href: "/clientes",
+        }
+      : null,
+    permissoesDashboard.clientes
+      ? {
+          id: "crm-whatsapp",
+          titulo: "CRM WhatsApp",
+          descricao: "Rascunhos seguros",
+          href: "/clientes/relacionamento/campanhas",
+        }
+      : null,
+    permissoesDashboard.recomendacoes
+      ? {
+          id: "copiloto",
+          titulo: "Copiloto",
+          descricao: "Revisar recomendacoes",
+          href: "/compras/recomendacoes",
+        }
+      : null,
+    permissoesDashboard.lojaOnline
+      ? {
+          id: "loja",
+          titulo: "Loja",
+          descricao: "Configuracoes publicas",
+          href: "/configuracoes/loja",
+        }
+      : permissoesDashboard.produtos
+        ? {
+            id: "catalogo",
+            titulo: "Catalogo",
+            descricao: "Produtos e vitrine",
+            href: "/produtos",
+          }
+        : null,
+  ].filter((atalho): atalho is NonNullable<typeof atalho> => Boolean(atalho));
 
   const dashboardData: DashboardData = {
+    geradoEm: new Date().toISOString(),
     podeVerDadosFinanceiros,
+    permissoes: permissoesDashboard,
+    atalhosRapidos,
     cards: {
       totalVendido: podeVerDadosFinanceiros ? totalVendido : 0,
       lucroTotal: podeVerDadosFinanceiros ? lucroTotal : 0,
@@ -392,9 +470,11 @@ export default async function DashboardPage() {
   };
 
   return (
-    <main className="space-y-6">
-      <CentralAcoesAdmin data={centralAcoes} />
-      <DashboardClient data={dashboardData} />
+    <main className="space-y-8">
+      <DashboardClient data={dashboardData} centralAcoes={centralAcoes} />
+      <section id="central-acoes-detalhada">
+        <CentralAcoesAdmin data={centralAcoes} />
+      </section>
     </main>
   );
 }
