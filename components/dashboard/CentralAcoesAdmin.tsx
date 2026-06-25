@@ -26,7 +26,7 @@ type CentralAcoesAdminProps = {
 
 const AREA_LABEL: Record<AreaAcaoAdmin, string> = {
   PEDIDOS: "Pedidos",
-  CATALOGO: "Catalogo",
+  CATALOGO: "Catálogo",
   CLIENTES: "Clientes",
   MARKETING: "Marketing",
   OPERACAO: "Operacao",
@@ -242,7 +242,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
                 Acoes prioritarias
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Ate 8 sinais ordenados por urgencia e impacto operacional.
+                Até 8 sinais ordenados por urgência e impacto operacional.
               </p>
             </div>
             <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-black text-white">
@@ -255,9 +255,9 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
                 <div>
-                  <h3 className="font-black">Nenhuma acao critica agora.</h3>
+                  <h3 className="font-black">Nenhuma ação crítica agora.</h3>
                   <p className="mt-1 text-sm leading-6">
-                    A operacao esta em dia. Use os links rapidos para revisar
+                    A operação está em dia. Use os links rápidos para revisar
                     rotinas ou acompanhar indicadores.
                   </p>
                 </div>
@@ -306,7 +306,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-black text-slate-950">
-              Links rapidos
+              Links rápidos
             </h2>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
               {data.linksRapidos.map((link) => (

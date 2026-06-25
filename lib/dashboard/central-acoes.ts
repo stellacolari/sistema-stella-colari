@@ -463,7 +463,7 @@ export async function montarCentralAcoesAdmin(
         href: hrefPedidos,
         cta: "Abrir pedidos",
         quantidade: pedidosComProblema,
-        explicacao: "Pedidos em status de problema operacional pedem decisao manual.",
+        explicacao: "Pedidos em status de problema operacional pedem decisão manual.",
       }),
       criarAcao({
         id: "pedidos-pagos-preparo",
@@ -545,9 +545,9 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "recomendacoes-impacto-pendente",
-        titulo: "Ha recomendacoes prontas para avaliar impacto.",
+        titulo: "Há recomendações prontas para avaliar impacto.",
         descricao:
-          "Revise a avaliacao apenas quando ja houver acao executada registrada.",
+          "Revise a avaliação apenas quando já houver ação executada registrada.",
         area: "SISTEMA",
         prioridade: "MEDIA",
         perfilAlvo: ["ADMIN_GERAL", "FINANCEIRO", "MARKETING_LOJA"],
@@ -555,21 +555,21 @@ export async function montarCentralAcoesAdmin(
         cta: "Ver impactos",
         quantidade: recomendacoesImpactoPendente,
         explicacao:
-          "Sem acao executada nao vira alerta critico; impacto pendente pede leitura conservadora.",
+          "Sem ação executada não vira alerta crítico; impacto pendente pede leitura conservadora.",
       }),
       criarAcao({
         id: "recomendacoes-boa-evidencia",
-        titulo: "Ha recomendacoes com boa evidencia para revisar.",
+        titulo: "Há recomendações com boa evidência para revisar.",
         descricao:
-          "Priorize sinais moderados ou fortes; baixa evidencia fica apenas em acompanhamento.",
+          "Priorize sinais moderados ou fortes; baixa evidência fica apenas em acompanhamento.",
         area: "SISTEMA",
         prioridade: "MEDIA",
         perfilAlvo: ["ADMIN_GERAL", "FINANCEIRO", "MARKETING_LOJA"],
         href: hrefRecomendacoes,
-        cta: "Abrir recomendacoes",
+        cta: "Abrir recomendações",
         quantidade: recomendacoesComBoaEvidencia,
         explicacao:
-          "Recomendacoes novas com boa evidencia merecem decisao antes de virar execucao.",
+          "Recomendações novas com boa evidência merecem decisão antes de virar execução.",
       }),
       criarAcao({
         id: "buscas-sem-resultado",
@@ -582,7 +582,7 @@ export async function montarCentralAcoesAdmin(
         href: hrefIntencao,
         cta: "Ver intencao",
         quantidade: buscasSemResultado,
-        explicacao: "Busca sem resultado mostra demanda que a loja ainda nao respondeu.",
+        explicacao: "Busca sem resultado mostra demanda que a loja ainda não respondeu.",
       }),
       criarAcao({
         id: "clientes-recorrentes-sem-atualizacao",
@@ -621,7 +621,7 @@ export async function montarCentralAcoesAdmin(
         href: hrefCampanhas,
         cta: "Ver campanhas",
         quantidade: campanhasAbertas,
-        explicacao: "Campanhas abertas podem virar acao comercial depois das urgencias.",
+        explicacao: "Campanhas abertas podem virar ação comercial depois das urgências.",
       }),
     ].filter((acao): acao is AcaoAdmin => Boolean(acao))
   ).slice(0, 8);
@@ -629,7 +629,7 @@ export async function montarCentralAcoesAdmin(
   const resumo: ResumoCentralAcoesItem[] = [
     {
       id: "pedidos",
-      titulo: "Pedidos que precisam de acao",
+      titulo: "Pedidos que precisam de ação",
       valor: pedidosQuePrecisamAcao,
       descricao: "Pagos, com problema ou com envio pendente.",
       href: hrefPedidos,
@@ -647,18 +647,18 @@ export async function montarCentralAcoesAdmin(
     },
     {
       id: "recomendacoes",
-      titulo: "Recomendacoes abertas",
+      titulo: "Recomendações abertas",
       valor: recomendacoesAbertas,
-      descricao: "Sugestoes em decisao, execucao ou acompanhamento.",
+      descricao: "Sugestões em decisão, execução ou acompanhamento.",
       href: hrefRecomendacoes,
-      cta: "Ver recomendacoes",
+      cta: "Ver recomendações",
       tom: tomResumo(recomendacoesAbertas),
     },
     {
       id: "impactos-recomendacoes",
       titulo: "Impacto pendente",
       valor: recomendacoesImpactoPendente,
-      descricao: "Acoes executadas sem avaliacao gravada.",
+      descricao: "Ações executadas sem avaliação gravada.",
       href: hrefRecomendacoes,
       cta: "Avaliar impacto",
       tom: tomResumo(recomendacoesImpactoPendente),
@@ -723,14 +723,14 @@ export async function montarCentralAcoesAdmin(
     {
       id: "produtos",
       titulo: "Produtos",
-      descricao: "Catalogo",
+      descricao: "Catálogo",
       href: "/produtos",
       modulo: "produtos",
     },
     {
       id: "recomendacoes",
-      titulo: "Recomendacoes",
-      descricao: "Decisoes sugeridas",
+      titulo: "Recomendações",
+      descricao: "Decisões sugeridas",
       href: "/compras/recomendacoes",
       modulo: "recomendacoes",
     },

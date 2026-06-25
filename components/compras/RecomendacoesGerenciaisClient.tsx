@@ -12,6 +12,7 @@ import {
   Filter,
   Lightbulb,
   Megaphone,
+  MoreHorizontal,
   PauseCircle,
   PlayCircle,
   RefreshCcw,
@@ -115,32 +116,32 @@ const STATUS_OPTIONS = [
   { value: "TODOS", label: "Todos" },
   { value: "NOVA", label: "Novas" },
   { value: "ACEITA", label: "Aceitas" },
-  { value: "EM_EXECUCAO", label: "Em execucao" },
-  { value: "CONCLUIDA", label: "Concluidas" },
+  { value: "EM_EXECUCAO", label: "Em execução" },
+  { value: "CONCLUIDA", label: "Concluídas" },
   { value: "IGNORADA", label: "Ignoradas" },
   { value: "ADIADA", label: "Adiada" },
 ] as const;
 
 const PRIORIDADE_OPTIONS = [
   { value: "TODAS", label: "Todas" },
-  { value: "CRITICA", label: "Critica" },
+  { value: "CRITICA", label: "Crítica" },
   { value: "ALTA", label: "Alta" },
-  { value: "MEDIA", label: "Media" },
+  { value: "MEDIA", label: "Média" },
   { value: "BAIXA", label: "Baixa" },
 ] as const;
 
 const GRUPO_OPTIONS = [
   { value: "TODOS", label: "Todos" },
-  { value: "FACA_HOJE", label: "Faca hoje" },
+  { value: "FACA_HOJE", label: "Faça hoje" },
   { value: "ACOMPANHE", label: "Acompanhe" },
-  { value: "NAO_MEXA_AINDA", label: "Nao mexa ainda" },
-  { value: "BAIXA_EVIDENCIA", label: "Baixa evidencia" },
+  { value: "NAO_MEXA_AINDA", label: "Não mexa ainda" },
+  { value: "BAIXA_EVIDENCIA", label: "Baixa evidência" },
 ] as const;
 
 const AREA_OPTIONS = [
   { value: "TODAS", label: "Todas" },
-  { value: "OPERACAO", label: "Operacao" },
-  { value: "CATALOGO", label: "Catalogo" },
+  { value: "OPERACAO", label: "Operação" },
+  { value: "CATALOGO", label: "Catálogo" },
   { value: "MARKETING", label: "Marketing" },
   { value: "CRM", label: "CRM" },
   { value: "FINANCEIRO", label: "Financeiro" },
@@ -152,20 +153,20 @@ const EVIDENCIA_OPTIONS = [
   { value: "FORTE", label: "Forte" },
   { value: "MODERADA", label: "Moderada" },
   { value: "FRACA", label: "Fraca" },
-  { value: "SEM_EVIDENCIA", label: "Sem evidencia" },
+  { value: "SEM_EVIDENCIA", label: "Sem evidência" },
 ] as const;
 
 const IMPACTO_OPTIONS = [
   { value: "TODOS", label: "Todos" },
   { value: "PENDENTE", label: "Impacto pendente" },
-  { value: "SEM_ACAO_EXECUTADA", label: "Sem acao executada" },
+  { value: "SEM_ACAO_EXECUTADA", label: "Sem ação executada" },
   { value: "AINDA_CEDO", label: "Ainda cedo" },
   { value: "SEM_DADOS", label: "Sem dados" },
   { value: "POSITIVO", label: "Impacto positivo" },
   { value: "NEUTRO", label: "Impacto neutro" },
   { value: "NEGATIVO", label: "Impacto negativo" },
   { value: "INCONCLUSIVO", label: "Inconclusivo" },
-  { value: "NAO_AVALIADO", label: "Nao avaliado" },
+  { value: "NAO_AVALIADO", label: "Não avaliado" },
 ] as const;
 
 function normalizarTexto(value: string | null | undefined) {
@@ -179,20 +180,11 @@ function normalizarTexto(value: string | null | undefined) {
 function labelStatus(status: string) {
   if (status === "NOVA") return "Nova";
   if (status === "ACEITA") return "Aceita";
-  if (status === "EM_EXECUCAO") return "Em execucao";
-  if (status === "CONCLUIDA") return "Concluida";
+  if (status === "EM_EXECUCAO") return "Em execução";
+  if (status === "CONCLUIDA") return "Concluída";
   if (status === "IGNORADA") return "Ignorada";
   if (status === "ADIADA") return "Adiada";
   return status.replaceAll("_", " ");
-}
-
-function statusClasses(status: string) {
-  if (status === "NOVA") return "border-blue-200 bg-blue-50 text-blue-800";
-  if (status === "ACEITA") return "border-violet-200 bg-violet-50 text-violet-800";
-  if (status === "EM_EXECUCAO") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (status === "CONCLUIDA") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (status === "IGNORADA") return "border-slate-200 bg-slate-100 text-slate-600";
-  return "border-orange-200 bg-orange-50 text-orange-800";
 }
 
 function prioridadeClasses(prioridade: string) {
@@ -203,9 +195,9 @@ function prioridadeClasses(prioridade: string) {
 }
 
 function labelPrioridade(prioridade: string) {
-  if (prioridade === "CRITICA") return "Critica";
+  if (prioridade === "CRITICA") return "Crítica";
   if (prioridade === "ALTA") return "Alta";
-  if (prioridade === "MEDIA") return "Media";
+  if (prioridade === "MEDIA") return "Média";
   if (prioridade === "BAIXA") return "Baixa";
   return prioridade.replaceAll("_", " ");
 }
@@ -222,10 +214,10 @@ function grupoClasses(grupo: string) {
 }
 
 function labelClassificacao(classificacao: string) {
-  if (classificacao === "RECOMENDACAO") return "Recomendacao";
+  if (classificacao === "RECOMENDACAO") return "Recomendação";
   if (classificacao === "ALERTA") return "Alerta";
-  if (classificacao === "OBSERVACAO") return "Observacao";
-  if (classificacao === "NAO_RECOMENDAR") return "Nao recomendar";
+  if (classificacao === "OBSERVACAO") return "Observação";
+  if (classificacao === "NAO_RECOMENDAR") return "Não recomendar";
   return classificacao.replaceAll("_", " ");
 }
 
@@ -253,15 +245,8 @@ function labelEvidencia(evidencia: EvidenciaCopilotoAdministrativo | string) {
   if (evidencia === "FORTE") return "Forte";
   if (evidencia === "MODERADA") return "Moderada";
   if (evidencia === "FRACA") return "Fraca";
-  if (evidencia === "SEM_EVIDENCIA") return "Sem evidencia";
+  if (evidencia === "SEM_EVIDENCIA") return "Sem evidência";
   return String(evidencia).replaceAll("_", " ");
-}
-
-function evidenciaClasses(evidencia: string) {
-  if (evidencia === "FORTE") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (evidencia === "MODERADA") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (evidencia === "FRACA") return "border-slate-200 bg-slate-50 text-slate-700";
-  return "border-slate-200 bg-white text-slate-500";
 }
 
 function labelImpacto(status: string) {
@@ -273,7 +258,7 @@ function labelImpacto(status: string) {
   if (status === "AGUARDANDO_DADOS") return "Aguardando dados";
   if (status === "AINDA_CEDO") return "Ainda cedo";
   if (status === "SEM_DADOS") return "Sem dados";
-  if (status === "SEM_ACAO_EXECUTADA") return "Sem acao executada";
+  if (status === "SEM_ACAO_EXECUTADA") return "Sem ação executada";
   return status.replaceAll("_", " ");
 }
 
@@ -292,10 +277,10 @@ function impactoClasses(status: string) {
 }
 
 function labelEstadoImpacto(estado: EstadoImpactoCopilotoAdministrativo | string) {
-  if (estado === "NAO_AVALIADO") return "Impacto ainda nao avaliado";
+  if (estado === "NAO_AVALIADO") return "Impacto ainda não avaliado";
   if (estado === "PENDENTE") return "Impacto pendente";
   if (estado === "AINDA_CEDO") return "Ainda cedo para avaliar";
-  if (estado === "SEM_ACAO_EXECUTADA") return "Sem acao executada";
+  if (estado === "SEM_ACAO_EXECUTADA") return "Sem ação executada";
   if (estado === "SEM_DADOS") return "Sem dados suficientes";
   if (estado === "INCONCLUSIVO") return "Impacto inconclusivo";
   if (estado === "POSITIVO") return "Impacto positivo";
@@ -325,13 +310,21 @@ function labelTipo(tipo: string) {
     PRO_LABORE: "Pro-labore",
     MARKETING: "Marketing",
     ESTOQUE: "Estoque",
-    REPOSICAO: "Reposicao",
-    PRECIFICACAO: "Precificacao",
+    REPOSICAO: "Reposição",
+    PRECIFICACAO: "Precificação",
     LOJA: "Loja",
     CRESCIMENTO: "Crescimento",
   };
 
   return labels[tipo] || tipo.replaceAll("_", " ");
+}
+
+function labelAreaPrincipal(copiloto: RecomendacaoCopilotoAdministrativo) {
+  if (["REPOSICAO", "ESTOQUE", "PRECIFICACAO"].includes(copiloto.tipo)) {
+    return labelTipo(copiloto.tipo);
+  }
+
+  return labelArea(copiloto.area);
 }
 
 function dataCurta(value: string | null) {
@@ -340,14 +333,61 @@ function dataCurta(value: string | null) {
   return Number.isNaN(data.getTime()) ? "-" : data.toLocaleDateString("pt-BR");
 }
 
+function dataHoraCurta(value: string | null) {
+  if (!value) return "-";
+  const data = new Date(value);
+  return Number.isNaN(data.getTime())
+    ? "-"
+    : data.toLocaleString("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+}
+
+function labelEvidenciaResumoKey(key: string) {
+  const labels: Record<string, string> = {
+    produto: "Produto",
+    statusComercial: "Status comercial",
+    recomendacao: "Recomendação",
+    scoreValidacao: "Score",
+    vendasQuantidade: "Vendas",
+    estoqueAtual: "Estoque atual",
+    estoqueFinal: "Estoque final",
+    sellThrough: "Sell-through",
+    visualizacoes: "Visualizações",
+    favoritos: "Favoritos",
+    carrinhos: "Carrinhos",
+    adicoesCarrinho: "Carrinhos",
+    scoreInteresse: "Interesse",
+    scoreConversao: "Conversão",
+    decisaoLote: "Decisão de lote",
+  };
+
+  return labels[key] || key.replaceAll("_", " ");
+}
+
 function evidenciasResumo(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const chavesOcultas = new Set([
+    "nivelEvidencia",
+    "confianca",
+    "confiancaAnalise",
+    "amostraPequena",
+    "sinalInicial",
+    "revalidada",
+  ]);
 
   return Object.entries(value as Record<string, unknown>)
-    .filter(([, item]) => item !== null && item !== undefined && item !== "")
+    .filter(
+      ([key, item]) =>
+        !chavesOcultas.has(key) &&
+        item !== null &&
+        item !== undefined &&
+        item !== ""
+    )
     .slice(0, 5)
     .map(([key, item]) => ({
-      key,
+      key: labelEvidenciaResumoKey(key),
       value:
         typeof item === "number"
           ? new Intl.NumberFormat("pt-BR", {
@@ -361,45 +401,6 @@ function evidenciasRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
-}
-
-function selosEvidencia(value: unknown) {
-  const evidencias = evidenciasRecord(value);
-  const nivel = String(evidencias.nivelEvidencia || "");
-  const selos: { label: string; className: string }[] = [];
-
-  if (evidencias.sinalInicial) {
-    selos.push({
-      label: "Sinal inicial",
-      className: "border-sky-200 bg-sky-50 text-sky-800",
-    });
-  }
-  if (nivel === "EVIDENCIA_MODERADA") {
-    selos.push({
-      label: "Evidencia moderada",
-      className: "border-amber-200 bg-amber-50 text-amber-800",
-    });
-  }
-  if (nivel === "EVIDENCIA_FORTE") {
-    selos.push({
-      label: "Evidencia forte",
-      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    });
-  }
-  if (evidencias.amostraPequena) {
-    selos.push({
-      label: "Amostra pequena",
-      className: "border-slate-200 bg-slate-50 text-slate-700",
-    });
-  }
-  if (evidencias.revalidada) {
-    selos.push({
-      label: "Revalidada",
-      className: "border-indigo-200 bg-indigo-50 text-indigo-800",
-    });
-  }
-
-  return selos;
 }
 
 function latestImpacto(recomendacao: RecomendacaoGerencialResumo) {
@@ -465,6 +466,19 @@ export default function RecomendacoesGerenciaisClient({
   const [mensagem, setMensagem] = useState("");
 
   const resumoImpactos = copiloto.resumo.impactos;
+  const ultimaAnalise = useMemo(() => {
+    const maisRecente = copiloto.recomendacoes
+      .map((recomendacao) =>
+        Math.max(
+          new Date(recomendacao.atualizadoEm).getTime(),
+          new Date(recomendacao.criadoEm).getTime()
+        )
+      )
+      .filter((timestamp) => Number.isFinite(timestamp))
+      .sort((a, b) => b - a)[0];
+
+    return maisRecente ? dataHoraCurta(new Date(maisRecente).toISOString()) : "-";
+  }, [copiloto.recomendacoes]);
 
   const itensFiltrados = useMemo(() => {
     const termo = normalizarTexto(busca);
@@ -545,7 +559,7 @@ export default function RecomendacoesGerenciaisClient({
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      setErro(data.error || "Nao foi possivel gerar recomendacoes.");
+      setErro(data.error || "Não foi possível atualizar recomendações.");
       return;
     }
 
@@ -569,7 +583,7 @@ export default function RecomendacoesGerenciaisClient({
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      setErro(data.error || "Nao foi possivel criar campanha.");
+      setErro(data.error || "Não foi possível criar campanha.");
       return;
     }
 
@@ -594,13 +608,13 @@ export default function RecomendacoesGerenciaisClient({
     }
 
     if (acao === "IGNORAR") {
-      observacao = window.prompt("Por que esta recomendacao sera ignorada?", "") || "";
+      observacao = window.prompt("Por que esta recomendação será ignorada?", "") || "";
     }
 
     if (acao === "ADIAR") {
       prazoSugerido =
         window.prompt("Prazo sugerido para retomar (AAAA-MM-DD):", "") || "";
-      observacao = window.prompt("Observacao opcional:", "") || "";
+      observacao = window.prompt("Observação opcional:", "") || "";
     }
 
     const response = await fetch(
@@ -619,11 +633,11 @@ export default function RecomendacoesGerenciaisClient({
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      setErro(data.error || "Nao foi possivel atualizar a recomendacao.");
+      setErro(data.error || "Não foi possível atualizar a recomendação.");
       return;
     }
 
-    setMensagem("Recomendacao atualizada.");
+    setMensagem("Recomendação atualizada.");
     refresh();
   }
 
@@ -644,57 +658,67 @@ export default function RecomendacoesGerenciaisClient({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Inteligencia de gestao
+              Inteligência de gestão
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
               Copiloto administrativo
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Recomendacoes explicadas, priorizadas e seguras para decisao.
+              Recomendações explicadas, priorizadas e seguras para decisão.
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {permissoes.podeExecutarRecomendacoes ? (
-              <>
-                <button
-                  type="button"
-                  onClick={gerarRecomendacoes}
-                  disabled={isPending}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <RefreshCcw className="h-4 w-4" />
-                  Gerar recomendacoes
-                </button>
-              </>
-            ) : (
-              <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
-                <Eye className="h-4 w-4" />
-                Modo leitura
-              </span>
-            )}
-            <Link
-              href="/compras"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Voltar
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <span className="inline-flex min-h-9 items-center rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+              Última análise: {ultimaAnalise}
+            </span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              {permissoes.podeExecutarRecomendacoes ? (
+                <details className="rounded-2xl border border-slate-200 bg-white text-sm text-slate-600">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 px-4 py-2 font-semibold">
+                    <RefreshCcw className="h-4 w-4" />
+                    Manutenção
+                  </summary>
+                  <div className="w-72 border-t border-slate-100 px-4 py-3">
+                    <p className="text-xs leading-5 text-slate-500">
+                      Atualiza a análise gerencial e pode criar ou atualizar
+                      recomendações. Não publica campanhas nem altera dados
+                      operacionais.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={gerarRecomendacoes}
+                      disabled={isPending}
+                      className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <RefreshCcw className="h-4 w-4" />
+                      Atualizar análise
+                    </button>
+                  </div>
+                </details>
+              ) : (
+                <span className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+                  <Eye className="h-4 w-4" />
+                  Modo leitura
+                </span>
+              )}
+              <Link
+                href="/compras"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Voltar
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
       <section className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900 shadow-sm">
-        Como a operacao ainda esta em fase inicial, produtos com poucas
-        unidades podem gerar sinais positivos rapidos. O sistema agora
+        Como a operação ainda está em fase inicial, produtos com poucas
+        unidades podem gerar sinais positivos rápidos. O sistema agora
         diferencia sinal inicial de produto realmente validado, evitando
-        alertas fortes sem confirmacao.
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600 shadow-sm">
-        Impactos aparecem como estado de acompanhamento. Para calcular novos
-        impactos com seguranca, use o script `npm run recomendacoes:impacto`
-        primeiro em dry-run; a tela nao executa avaliacao automaticamente.
+        alertas fortes sem confirmação.
       </section>
 
       {(erro || mensagem) && (
@@ -714,29 +738,29 @@ export default function RecomendacoesGerenciaisClient({
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <ResumoCard
-          label="Faca hoje"
+          label="Faça hoje"
           value={copiloto.resumo.grupos.FACA_HOJE}
-          description="Alta prioridade com acao manual clara."
+          description="Alta prioridade com ação manual clara."
         />
         <ResumoCard
           label="Acompanhe"
           value={copiloto.resumo.grupos.ACOMPANHE}
-          description="Sinais uteis sem urgencia imediata."
+          description="Sinais úteis sem urgência imediata."
         />
         <ResumoCard
-          label="Nao mexa ainda"
+          label="Não mexa ainda"
           value={copiloto.resumo.grupos.NAO_MEXA_AINDA}
-          description="Agir agora pode trazer mais risco que beneficio."
+          description="Agir agora pode trazer mais risco que benefício."
         />
         <ResumoCard
-          label="Baixa evidencia"
+          label="Baixa evidência"
           value={copiloto.resumo.grupos.BAIXA_EVIDENCIA}
-          description="Sinais acompanhados, sem decisao ainda."
+          description="Sinais acompanhados, sem decisão ainda."
         />
         <ResumoCard
           label="Impactos pendentes"
           value={resumoImpactos.pendentes}
-          description="Acoes executadas que pedem avaliacao."
+          description="Ações executadas que pedem avaliação."
         />
       </section>
 
@@ -744,7 +768,7 @@ export default function RecomendacoesGerenciaisClient({
         <ResumoCard
           label="Impacto positivo"
           value={resumoImpactos.positivos}
-          description="Recomendacoes com melhora clara."
+          description="Recomendações com melhora clara."
         />
         <ResumoCard
           label="Sem dados"
@@ -754,7 +778,7 @@ export default function RecomendacoesGerenciaisClient({
         <ResumoCard
           label="Impacto negativo"
           value={resumoImpactos.negativos}
-          description="Pedem revisao da premissa."
+          description="Pedem revisão da premissa."
         />
         <ResumoCard
           label="Ainda cedo"
@@ -762,9 +786,9 @@ export default function RecomendacoesGerenciaisClient({
           description="Janela ainda em andamento."
         />
         <ResumoCard
-          label="Sem acao"
+          label="Sem ação"
           value={resumoImpactos.semAcaoExecutada}
-          description="Nao atribuir impacto ainda."
+          description="Não atribuir impacto ainda."
         />
       </section>
 
@@ -841,7 +865,7 @@ export default function RecomendacoesGerenciaisClient({
             options={AREA_OPTIONS}
           />
           <FiltroSelect
-            label="Evidencia"
+            label="Evidência"
             value={evidencia}
             onChange={setEvidencia}
             options={EVIDENCIA_OPTIONS}
@@ -867,7 +891,7 @@ export default function RecomendacoesGerenciaisClient({
       <section className="space-y-3">
         {itensFiltrados.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center text-sm font-medium text-slate-500">
-            Nenhuma acao recomendada agora.
+            Nenhuma ação recomendada agora.
           </div>
         ) : (
           itensFiltrados.map((item) => (
@@ -909,17 +933,53 @@ function RecomendacaoCard({
     recomendacao.prioridade === "ALTA" && (evidencias.sinalInicial || evidencias.amostraPequena)
       ? "MEDIA"
       : copiloto.prioridade;
+  const podeEditarAtiva =
+    permissoes.podeEditarRecomendacoes &&
+    recomendacao.status !== "CONCLUIDA" &&
+    recomendacao.status !== "IGNORADA";
+  const podeAceitar =
+    permissoes.podeEditarRecomendacoes && recomendacao.status === "NOVA";
+  const podeIniciar =
+    permissoes.podeEditarRecomendacoes &&
+    ["NOVA", "ACEITA", "ADIADA"].includes(recomendacao.status);
+  const podeAdiar = podeEditarAtiva;
+  const podeConcluir = podeEditarAtiva;
+  const podeIgnorar = podeEditarAtiva;
   const podeCriarCampanha =
     permissoes.podeExecutarCampanhas &&
     permissoes.podeVerCampanhas &&
     !(evidencias.revalidada && (evidencias.sinalInicial || evidencias.amostraPequena)) &&
     !["SEM_EVIDENCIA", "EVIDENCIA_FRACA"].includes(String(evidencias.nivelEvidencia || ""));
+  const evidenciaDetalhes = evidenciasResumo(recomendacao.evidenciasJson);
+  const acaoPrincipal = copiloto.href
+    ? {
+        href: copiloto.href,
+        label: copiloto.cta || "Revisar agora",
+      }
+    : campanha && permissoes.podeVerCampanhas
+      ? {
+          href: "/compras/campanhas",
+          label: "Abrir campanha",
+        }
+      : null;
+  const temMaisAcoes =
+    podeAceitar ||
+    podeConcluir ||
+    podeIgnorar ||
+    (podeCriarCampanha && !campanha);
 
   return (
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black text-slate-950">
+                    {recomendacao.titulo}
+                  </h2>
+                  <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+                    {recomendacao.descricao}
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full border px-3 py-1 text-xs font-bold ${grupoClasses(
                         copiloto.grupo
@@ -935,13 +995,6 @@ function RecomendacaoCard({
                       {labelClassificacao(copiloto.classificacao)}
                     </span>
                     <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasses(
-                        recomendacao.status
-                      )}`}
-                    >
-                      {labelStatus(recomendacao.status)}
-                    </span>
-                    <span
                       className={`rounded-full border px-3 py-1 text-xs font-bold ${prioridadeClasses(
                         prioridadeVisual
                       )}`}
@@ -953,66 +1006,25 @@ function RecomendacaoCard({
                         copiloto.area
                       )}`}
                     >
-                      {labelArea(copiloto.area)}
+                      {labelAreaPrincipal(copiloto)}
                     </span>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${evidenciaClasses(
-                        copiloto.evidencia
-                      )}`}
-                    >
-                      Evidencia {labelEvidencia(copiloto.evidencia)}
-                    </span>
-                    {copiloto.confianca && (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                        Confianca {labelPrioridade(copiloto.confianca)}
-                      </span>
-                    )}
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
-                      {labelTipo(recomendacao.tipo)}
-                    </span>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${estadoImpactoClasses(
-                        copiloto.estadoImpacto
-                      )}`}
-                    >
-                      {labelEstadoImpacto(copiloto.estadoImpacto)}
-                    </span>
-                    {recomendacao.periodoReferencia && (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                        {recomendacao.periodoReferencia}
-                      </span>
-                    )}
-                    {selosEvidencia(recomendacao.evidenciasJson).map((selo) => (
-                      <span
-                        key={selo.label}
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${selo.className}`}
-                      >
-                        {selo.label}
-                      </span>
-                    ))}
                   </div>
 
-                  <h2 className="mt-3 text-xl font-black text-slate-950">
-                    {recomendacao.titulo}
-                  </h2>
-                  <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-                    {recomendacao.descricao}
-                  </p>
                   {Boolean(evidencias.sinalInicial || evidencias.amostraPequena) && (
                     <p className="mt-2 max-w-4xl text-sm font-semibold leading-6 text-sky-800">
                       Este produto tem sinal inicial positivo, mas ainda precisa
-                      de confirmacao antes de uma recompra maior.
+                      de confirmação antes de uma recompra maior.
                     </p>
                   )}
                   {copiloto.grupo === "NAO_MEXA_AINDA" && (
                     <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
                       <p className="flex items-center gap-2 font-bold text-slate-900">
                         <Ban className="h-4 w-4" />
-                        Nao recomendo acao agora
+                        Não recomendo ação agora
                       </p>
                       <p className="mt-1">
                         {copiloto.motivoParaNaoRecomendar ||
-                          "Observe novos dados antes de transformar este sinal em acao."}
+                          "Observe novos dados antes de transformar este sinal em ação."}
                       </p>
                     </div>
                   )}
@@ -1023,7 +1035,7 @@ function RecomendacaoCard({
                         Sinal acompanhado
                       </p>
                       <p className="mt-1">
-                        Amostra pequena. Nao usar como decisao comercial ainda.
+                        Amostra pequena. Não usar como decisão comercial ainda.
                       </p>
                     </div>
                   )}
@@ -1031,124 +1043,121 @@ function RecomendacaoCard({
                     <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">
                       <p className="flex items-center gap-2 font-bold text-slate-900">
                         <ShieldAlert className="h-4 w-4" />
-                        Dados sensiveis ocultados
+                        Dados sensíveis ocultados
                       </p>
                       <p className="mt-1">
-                        Custos, margens, caixa ou precificacao aparecem apenas
+                        Custos, margens, caixa ou precificação aparecem apenas
                         para perfis autorizados.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 xl:justify-end">
-                  {permissoes.podeEditarRecomendacoes && recomendacao.status === "NOVA" && (
-                    <AcaoButton
-                      icon={<CheckCircle2 className="h-4 w-4" />}
-                      label="Aceitar"
-                      onClick={() => onAcao(recomendacao, "ACEITAR")}
-                    />
-                  )}
-                  {permissoes.podeEditarRecomendacoes &&
-                    ["NOVA", "ACEITA", "ADIADA"].includes(
-                      recomendacao.status
-                    ) && (
+                <div className="flex flex-wrap gap-2 xl:max-w-xs xl:justify-end">
+                  {podeIniciar && (
                     <AcaoButton
                       icon={<PlayCircle className="h-4 w-4" />}
-                      label="Iniciar"
+                      label="Iniciar ação"
+                      title="Marca que a recomendação começou a ser tratada."
                       onClick={() => onAcao(recomendacao, "INICIAR")}
                     />
                   )}
-                  {permissoes.podeEditarRecomendacoes &&
-                    recomendacao.status !== "CONCLUIDA" &&
-                    recomendacao.status !== "IGNORADA" && (
-                      <AcaoButton
-                        icon={<CheckCircle2 className="h-4 w-4" />}
-                        label="Concluir"
-                        onClick={() =>
-                          onAcao(recomendacao, "CONCLUIR")
-                        }
-                      />
-                    )}
-                  {campanha && permissoes.podeVerCampanhas ? (
-                    <Link
-                      href="/compras/campanhas"
-                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      <Megaphone className="h-4 w-4" />
-                      Ver campanha
-                    </Link>
-                  ) : (
-                    ["NOVA", "ACEITA", "EM_EXECUCAO"].includes(
-                      recomendacao.status
-                    ) &&
-                    podeCriarCampanha && (
-                      <AcaoButton
-                        icon={<Megaphone className="h-4 w-4" />}
-                        label="Criar campanha"
-                        variant="secondary"
-                        onClick={() => onCriarCampanha(recomendacao)}
-                      />
-                    )
+                  {podeAdiar && (
+                    <AcaoButton
+                      icon={<PauseCircle className="h-4 w-4" />}
+                      label="Adiar"
+                      title="Tira temporariamente da fila principal."
+                      variant="secondary"
+                      onClick={() => onAcao(recomendacao, "ADIAR")}
+                    />
                   )}
-                  {permissoes.podeEditarRecomendacoes &&
-                    recomendacao.status !== "CONCLUIDA" &&
-                    recomendacao.status !== "IGNORADA" && (
-                      <AcaoButton
-                        icon={<PauseCircle className="h-4 w-4" />}
-                        label="Adiar"
-                        variant="secondary"
-                        onClick={() => onAcao(recomendacao, "ADIAR")}
-                      />
-                    )}
-                  {permissoes.podeEditarRecomendacoes &&
-                    recomendacao.status !== "CONCLUIDA" &&
-                    recomendacao.status !== "IGNORADA" && (
-                      <AcaoButton
-                        icon={<XCircle className="h-4 w-4" />}
-                        label="Ignorar"
-                        variant="secondary"
-                        onClick={() =>
-                          onAcao(recomendacao, "IGNORAR")
-                        }
-                      />
-                    )}
+                  {temMaisAcoes && (
+                    <details className="relative rounded-2xl border border-slate-200 bg-white text-sm text-slate-600">
+                      <summary className="inline-flex min-h-10 cursor-pointer list-none items-center justify-center gap-2 px-3 py-2 font-bold">
+                        <MoreHorizontal className="h-4 w-4" />
+                        Mais ações
+                      </summary>
+                      <div className="right-0 z-10 mt-2 w-72 space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm xl:absolute">
+                        {podeAceitar && (
+                          <AcaoButton
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            label="Aceitar recomendação"
+                            title="Marca que a sugestão faz sentido para acompanhamento."
+                            variant="secondary"
+                            onClick={() => onAcao(recomendacao, "ACEITAR")}
+                          />
+                        )}
+                        {podeConcluir && (
+                          <AcaoButton
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            label="Concluir ação"
+                            title="Use quando a ação foi realizada."
+                            variant="secondary"
+                            onClick={() => onAcao(recomendacao, "CONCLUIR")}
+                          />
+                        )}
+                        {!campanha && podeCriarCampanha && (
+                          <AcaoButton
+                            icon={<Megaphone className="h-4 w-4" />}
+                            label="Criar campanha"
+                            title="Cria rascunho de campanha; não publica nada."
+                            variant="secondary"
+                            onClick={() => onCriarCampanha(recomendacao)}
+                          />
+                        )}
+                        {podeIgnorar && (
+                          <AcaoButton
+                            icon={<XCircle className="h-4 w-4" />}
+                            label="Ignorar recomendação"
+                            title="Remove da fila quando a sugestão não faz sentido agora."
+                            variant="secondary"
+                            onClick={() => onAcao(recomendacao, "IGNORAR")}
+                          />
+                        )}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 <InfoBox
-                  label="Explicacao executiva"
-                  value={copiloto.explicacaoExecutiva}
+                  label="Por que apareceu"
+                  value={copiloto.motivo || copiloto.explicacaoExecutiva}
                 />
                 <InfoBox
-                  label="Estado do impacto"
-                  value={copiloto.impactoResumoExecutivo}
+                  label="O que fazer agora"
+                  value={copiloto.acaoSugerida || "Registrar decisão gerencial."}
                 />
-                {copiloto.motivo && (
-                  <InfoBox label="Motivo" value={copiloto.motivo} />
-                )}
-                {recomendacao.impactoEsperado && (
-                  <InfoBox
-                    label="Impacto esperado"
-                    value={recomendacao.impactoEsperado}
-                  />
-                )}
-                {recomendacao.risco && (
-                  <InfoBox label="Risco" value={recomendacao.risco} />
-                )}
+                <InfoBox
+                  label="Cuidado"
+                  value={
+                    recomendacao.risco ||
+                    recomendacao.impactoEsperado ||
+                    "Acompanhar antes de escalar."
+                  }
+                />
               </div>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_260px]">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                     <Lightbulb className="h-3.5 w-3.5" />
-                    Acao sugerida
+                    Ação principal
                   </p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
-                    {copiloto.acaoSugerida || "Registrar decisao gerencial."}
+                    {copiloto.acaoSugerida || "Registrar decisão gerencial."}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    {acaoPrincipal && (
+                      <Link
+                        href={acaoPrincipal.href}
+                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                      >
+                        {acaoPrincipal.label}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
                     {permissoes.podeVerLoja && (
                       <Link
                         href={
@@ -1162,15 +1171,6 @@ function RecomendacaoCard({
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     )}
-                    {copiloto.href && (
-                      <Link
-                        href={copiloto.href}
-                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
-                      >
-                        {copiloto.cta || "Ir para acao"}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    )}
                     <span className="inline-flex min-h-9 items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
                       Origem: {recomendacao.origem || recomendacao.origemTipo}
                     </span>
@@ -1179,9 +1179,17 @@ function RecomendacaoCard({
 
                 <div className="rounded-2xl border border-slate-200 px-4 py-3 text-xs text-slate-500">
                   <p className="font-bold uppercase tracking-wide">
-                    Acompanhamento
+                    Metadados
                   </p>
                   <div className="mt-2 space-y-1.5">
+                    <Linha label="Status" value={labelStatus(recomendacao.status)} />
+                    <Linha label="Evidência" value={labelEvidencia(copiloto.evidencia)} />
+                    <Linha
+                      label="Confiança"
+                      value={copiloto.confianca ? labelPrioridade(copiloto.confianca) : "-"}
+                    />
+                    <Linha label="Impacto" value={labelEstadoImpacto(copiloto.estadoImpacto)} />
+                    <Linha label="Período" value={recomendacao.periodoReferencia || "-"} />
                     <Linha label="Criada" value={dataCurta(recomendacao.criadoEm)} />
                     <Linha
                       label="Atualizada"
@@ -1205,24 +1213,29 @@ function RecomendacaoCard({
                 </div>
               </div>
 
-              {evidenciasResumo(recomendacao.evidenciasJson).length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {evidenciasResumo(recomendacao.evidenciasJson).map((item) => (
-                    <span
-                      key={item.key}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500"
-                    >
-                      {item.key}: {item.value}
-                    </span>
-                  ))}
-                </div>
+              {evidenciaDetalhes.length > 0 && (
+                <details className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                  <summary className="cursor-pointer list-none font-bold text-slate-800">
+                    Detalhes da evidência
+                  </summary>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {evidenciaDetalhes.map((item) => (
+                      <span
+                        key={item.key}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500"
+                      >
+                        {item.key}: {item.value}
+                      </span>
+                    ))}
+                  </div>
+                </details>
               )}
               {!impacto && (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Avaliacao de impacto
+                        Acompanhamento de impacto
                       </p>
                       <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
                         {copiloto.impactoResumoExecutivo}
@@ -1238,7 +1251,7 @@ function RecomendacaoCard({
                   </div>
                   <p className="mt-3 text-sm leading-6 text-slate-600">
                     <span className="font-semibold text-slate-800">
-                      Proxima acao:
+                      Próxima ação:
                     </span>{" "}
                     {copiloto.impactoAcaoSugerida}
                   </p>
@@ -1249,7 +1262,7 @@ function RecomendacaoCard({
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Avaliacao de impacto - {impacto.janelaDias} dias
+                        Acompanhamento de impacto - {impacto.janelaDias} dias
                       </p>
                       <p className="mt-2 text-sm font-semibold leading-6 text-slate-800">
                         {impacto.resumo}
@@ -1275,7 +1288,7 @@ function RecomendacaoCard({
                     />
                     <div className="rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-5 text-slate-600">
                       <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Proxima acao
+                        Próxima ação
                       </p>
                       <p className="mt-2 font-semibold text-slate-800">
                         {copiloto.impactoAcaoSugerida ||
@@ -1311,7 +1324,7 @@ function ImpactoMetricasBox({
             </div>
           ))
         ) : (
-          <p>Sem metrica numerica suficiente.</p>
+          <p>Sem métrica numérica suficiente.</p>
         )}
       </div>
     </div>
@@ -1350,17 +1363,20 @@ function FiltroSelect({
 function AcaoButton({
   icon,
   label,
+  title,
   variant = "primary",
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  title?: string;
   variant?: "primary" | "secondary";
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
       className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold transition ${
         variant === "primary"

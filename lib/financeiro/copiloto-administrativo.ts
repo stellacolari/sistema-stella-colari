@@ -272,7 +272,7 @@ function redigirRecomendacao(
     return {
       ...impacto,
       resumo:
-        "Impacto estrategico com metricas financeiras ocultadas para este perfil.",
+        "Impacto estratégico com métricas financeiras ocultadas para este perfil.",
       metricasAntesJson: {
         dadosSensiveisOcultados: true,
       },
@@ -291,19 +291,19 @@ function redigirRecomendacao(
     recomendacao: {
       ...recomendacao,
       descricao: ocultarTexto
-        ? "Recomendacao estrategica com dados financeiros ocultados para este perfil."
+        ? "Recomendação estratégica com dados financeiros ocultados para este perfil."
         : recomendacao.descricao,
       motivo: ocultarTexto
-        ? "Dados de custo, margem, caixa ou precificacao exigem perfil financeiro autorizado."
+        ? "Dados de custo, margem, caixa ou precificação exigem perfil financeiro autorizado."
         : recomendacao.motivo,
       impactoEsperado: ocultarTexto
-        ? "Impacto restrito a perfis com permissao financeira."
+        ? "Impacto restrito a perfis com permissão financeira."
         : recomendacao.impactoEsperado,
       risco: ocultarTexto
-        ? "Pode envolver margem, custo, caixa ou preco minimo. Solicite revisao de um perfil autorizado."
+        ? "Pode envolver margem, custo, caixa ou preço mínimo. Solicite revisão de um perfil autorizado."
         : recomendacao.risco,
       acaoSugerida: ocultarTexto
-        ? "Pedir avaliacao a um perfil financeiro/autorizado antes de agir."
+        ? "Pedir avaliação a um perfil financeiro/autorizado antes de agir."
         : recomendacao.acaoSugerida,
       linkAcao: linkPermitido(recomendacao.linkAcao, permissoes),
       evidenciasJson: sanitizada.value,
@@ -399,8 +399,8 @@ function estadoImpactoCopiloto(
       return {
         estado: "SEM_ACAO_EXECUTADA",
         resumo:
-          "Ainda nao houve acao registrada para avaliar impacto. Use como acompanhamento, nao como falha.",
-        acao: "Aceitar, iniciar ou concluir a acao antes de atribuir impacto.",
+          "Ainda não há ação registrada para medir impacto. Use como acompanhamento, não como falha.",
+        acao: "Iniciar ou concluir a ação antes de medir impacto.",
       };
     }
     if (
@@ -409,21 +409,21 @@ function estadoImpactoCopiloto(
     ) {
       return {
         estado: "AINDA_CEDO",
-        resumo: "A janela de analise ainda e curta. Reavalie depois.",
+        resumo: "A janela de análise ainda é curta. Reavalie depois.",
         acao: impacto.proximaAcaoSugerida || "Reavaliar ao fim da janela definida.",
       };
     }
     if (impacto.statusImpacto === "SEM_DADOS") {
       return {
         estado: "SEM_DADOS",
-        resumo: "Nao ha dados suficientes para concluir se houve impacto.",
+        resumo: "Não há dados suficientes para medir impacto.",
         acao: impacto.proximaAcaoSugerida || "Aguardar novos eventos ou vendas.",
       };
     }
     if (impacto.statusImpacto === "INCONCLUSIVO") {
       return {
         estado: "INCONCLUSIVO",
-        resumo: "O impacto ainda e inconclusivo; a amostra nao sustenta decisao forte.",
+        resumo: "O impacto ainda é inconclusivo; a amostra não sustenta decisão forte.",
         acao: impacto.proximaAcaoSugerida || "Acompanhar antes de escalar.",
       };
     }
@@ -431,24 +431,24 @@ function estadoImpactoCopiloto(
       return {
         estado: "NEGATIVO",
         resumo:
-          "O resultado piorou ou nao acompanhou a expectativa. Revise antes de repetir a acao.",
+          "Revise antes de repetir a ação.",
         acao: impacto.proximaAcaoSugerida || "Revisar premissa antes de repetir.",
       };
     }
     if (impacto.statusImpacto === "NEUTRO") {
       return {
         estado: "NEUTRO",
-        resumo: "O impacto medido foi neutro; nao ha sinal claro para escalar.",
+        resumo: "O impacto medido foi neutro; não há sinal claro para escalar.",
         acao: impacto.proximaAcaoSugerida || "Acompanhar sem escalar investimento.",
       };
     }
     if (impacto.statusImpacto === "POSITIVO" || impacto.statusImpacto === "PARCIAL") {
       return {
         estado: "POSITIVO",
-        resumo: "Ha sinais de melhora apos a recomendacao.",
+        resumo: "Há sinais positivos após a ação.",
         acao:
           impacto.proximaAcaoSugerida ||
-          "Manter a decisao e considerar repetir com criterio.",
+          "Manter a decisão e considerar repetir com critério.",
       };
     }
   }
@@ -457,9 +457,9 @@ function estadoImpactoCopiloto(
     return {
       estado: "PENDENTE",
       resumo:
-        "Ha acao registrada, mas ainda nao existe avaliacao de impacto gravada.",
+        "Há ação registrada, mas ainda não existe avaliação de impacto.",
       acao:
-        "Avaliar impacto em dry-run e gravar somente quando houver janela e dados suficientes.",
+        "Avaliar impacto somente quando houver janela e dados suficientes.",
     };
   }
 
@@ -467,15 +467,15 @@ function estadoImpactoCopiloto(
     return {
       estado: "SEM_ACAO_EXECUTADA",
       resumo:
-        "Ainda nao houve acao executada para medir impacto. Use como acompanhamento, nao como falha.",
-      acao: "Iniciar ou concluir a acao antes de avaliar impacto.",
+        "Ainda não há ação registrada para medir impacto. Use como acompanhamento, não como falha.",
+      acao: "Iniciar ou concluir a ação antes de medir impacto.",
     };
   }
 
   return {
     estado: "NAO_AVALIADO",
-    resumo: "Impacto ainda nao avaliado.",
-    acao: "Decidir a recomendacao antes de medir resultado.",
+    resumo: "Impacto ainda não avaliado.",
+    acao: "Decidir a recomendação antes de medir resultado.",
   };
 }
 
@@ -487,25 +487,25 @@ function motivoNaoRecomendar(params: {
   href: string | null;
 }) {
   if (params.dadosSensiveisOcultados) {
-    return "Nao recomendo acao para este perfil porque parte dos dados sensiveis esta oculta.";
+    return "Não recomendo ação para este perfil porque parte dos dados sensíveis está oculta.";
   }
   if (params.evidencias.amostraPequena || params.evidencias.sinalInicial) {
-    return "Nao recomendo escalar agora: a amostra ainda e pequena.";
+    return "Não recomendo escalar agora: a amostra ainda é pequena.";
   }
   if (params.evidencia === "SEM_EVIDENCIA" || params.evidencia === "FRACA") {
-    return "Sinal acompanhado, mas sem evidencia suficiente para decisao.";
+    return "Sinal acompanhado, mas sem evidência suficiente para decisão.";
   }
   if (!temAcaoClara(params.recomendacao)) {
-    return "Nao ha acao manual clara o suficiente para recomendar agora.";
+    return "Não há ação manual clara o suficiente para recomendar agora.";
   }
   if (params.recomendacao.linkAcao && !params.href) {
-    return "O link de acao aponta para uma area sem permissao para este perfil.";
+    return "O link de ação aponta para uma área sem permissão para este perfil.";
   }
   if (params.recomendacao.status === "CONCLUIDA") {
-    return "A recomendacao ja foi concluida; agora o melhor passo e avaliar impacto.";
+    return "A recomendação já foi concluída; agora o melhor passo é avaliar impacto.";
   }
   if (params.recomendacao.status === "IGNORADA") {
-    return "A recomendacao foi ignorada conscientemente.";
+    return "A recomendação foi ignorada conscientemente.";
   }
 
   return null;
@@ -585,21 +585,21 @@ function explicacaoExecutiva(params: {
   motivoParaNaoRecomendar?: string | null;
 }) {
   if (params.grupo === "FACA_HOJE") {
-    return `Entrou em Faca hoje por combinar prioridade ${params.prioridade.toLowerCase()}, evidencia ${params.evidencia.toLowerCase()} e acao manual clara.`;
+    return "Vale agir agora porque a prioridade, a evidência e a ação sugerida estão alinhadas.";
   }
   if (params.grupo === "ACOMPANHE") {
     if (params.impactoPendente) {
-      return "Acompanhe porque a acao ja teve andamento e ainda precisa de avaliacao de impacto.";
+      return "A ação já teve andamento e ainda precisa de avaliação de impacto.";
     }
     return params.estadoImpacto === "SEM_ACAO_EXECUTADA"
-      ? "Acompanhe porque ainda nao ha acao executada para atribuir impacto."
-      : "Acompanhe porque ha sinal util, mas a decisao ainda nao exige acao imediata.";
+      ? "Ainda não há ação executada para atribuir impacto."
+      : "Há sinal útil, mas a decisão ainda não exige ação imediata.";
   }
   if (params.grupo === "BAIXA_EVIDENCIA") {
-    return "Sinal acompanhado: use para observacao, nao como decisao comercial ainda.";
+    return "Sinal acompanhado: use para observação, não como decisão comercial ainda.";
   }
 
-  return params.motivoParaNaoRecomendar || "Nao recomendo acao agora.";
+  return params.motivoParaNaoRecomendar || "Não recomendo ação agora.";
 }
 
 function ctaPorHref(href: string | null, recomendacao: RecomendacaoGerencialResumo) {
@@ -608,8 +608,8 @@ function ctaPorHref(href: string | null, recomendacao: RecomendacaoGerencialResu
   if (href.startsWith("/pedidos")) return "Abrir pedido";
   if (href.startsWith("/clientes")) return "Abrir cliente";
   if (href.startsWith("/compras/campanhas")) return "Abrir campanha";
-  if (href.startsWith("/compras/intencao")) return "Abrir intencao";
-  if (href.startsWith("/compras/precificacao")) return "Abrir precificacao";
+  if (href.startsWith("/compras/intencao")) return "Abrir intenção";
+  if (href.startsWith("/compras/precificacao")) return "Abrir precificação";
   if (recomendacao.campanhas?.length) return "Ver campanha";
   return "Ver detalhes";
 }
@@ -685,7 +685,7 @@ function montarItemCopiloto(
     motivo:
       recomendacao.motivo ||
       grupo.motivoParaNaoRecomendar ||
-      "Recomendacao sem motivo detalhado.",
+      "Recomendação sem motivo detalhado.",
     explicacaoExecutiva: explicacaoExecutiva({
       grupo: grupo.grupo,
       evidencia,
