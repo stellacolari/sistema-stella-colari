@@ -400,6 +400,7 @@ const menuSections: MenuSection[] = [
         activePrefixes: [
           "/configuracoes/integracoes",
           "/configuracoes/perfis",
+          "/configuracoes/usuarios",
           "/lixeira",
         ],
       },

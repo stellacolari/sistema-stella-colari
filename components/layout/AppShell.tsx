@@ -162,6 +162,15 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes/usuarios")) {
+    return {
+      eyebrow: "Sistema",
+      title: "Usuarios Administrativos",
+      description: "Contas internas, acesso base e status dos usuarios.",
+      showLojaButton: false,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes")) {
     return {
       eyebrow: "Sistema",

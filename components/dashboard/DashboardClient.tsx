@@ -169,7 +169,7 @@ function primeiroNomeUsuario(nome?: string | null, email?: string | null) {
 function saudacaoDashboard(nome?: string | null, email?: string | null) {
   const primeiroNome = primeiroNomeUsuario(nome, email);
 
-  return primeiroNome ? `Bom trabalho, ${primeiroNome}` : "Bom trabalho";
+  return primeiroNome ? `Olá, ${primeiroNome}` : "Olá";
 }
 
 function toneClasses(tone: Tone) {

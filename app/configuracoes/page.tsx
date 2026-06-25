@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Store,
   Trash2,
+  UserCog,
 } from "lucide-react";
 import { exigirAdmin } from "@/lib/auth/admin";
 import { usuarioTemPermissao } from "@/lib/permissoes/perfis";
@@ -107,6 +108,7 @@ export default async function ConfiguracoesPage() {
   const podeVerNotificacoes =
     usuario.perfil === "ACESSO_GERAL" ||
     usuarioTemPermissao(usuario, "notificacoes", "ver");
+  const podeGerenciarUsuarios = usuario.perfil === "ACESSO_GERAL";
 
   return (
     <main className="space-y-6">
@@ -153,6 +155,15 @@ export default async function ConfiguracoesPage() {
               icon={ShieldCheck}
               tone="system"
             />
+            {podeGerenciarUsuarios ? (
+              <HubCard
+                href="/configuracoes/usuarios"
+                title="Usuarios Administrativos"
+                description="Contas internas, acesso base, status e troca segura de senha."
+                icon={UserCog}
+                tone="system"
+              />
+            ) : null}
             <HubCard
               href="/notificacoes"
               title="Notificacoes"
