@@ -69,6 +69,8 @@ export default function PerfilClienteLink({
     senha: "",
     confirmarSenha: "",
   });
+  const [cadastroConsentimentoWhatsapp, setCadastroConsentimentoWhatsapp] =
+    useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -239,7 +241,10 @@ export default function PerfilClienteLink({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(cadastroForm),
+        body: JSON.stringify({
+          ...cadastroForm,
+          consentimentoWhatsapp: cadastroConsentimentoWhatsapp,
+        }),
       });
 
       const data = await lerRespostaApi(response);
@@ -255,11 +260,12 @@ export default function PerfilClienteLink({
     setCadastroForm({
       nome: "",
       telefone: "",
-      email: "",
-      documento: "",
-      senha: "",
-      confirmarSenha: "",
-    });
+        email: "",
+        documento: "",
+        senha: "",
+        confirmarSenha: "",
+      });
+      setCadastroConsentimentoWhatsapp(false);
     } catch {
       setErro("Erro ao criar conta.");
     } finally {
@@ -581,6 +587,23 @@ export default function PerfilClienteLink({
                       />
                     </label>
                   </div>
+
+                  <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={cadastroConsentimentoWhatsapp}
+                      onChange={(event) =>
+                        setCadastroConsentimentoWhatsapp(event.target.checked)
+                      }
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--brand-blue)]"
+                    />
+
+                    <span>
+                      Quero receber novidades, lancamentos e ofertas da Stella
+                      Colari pelo WhatsApp. Posso revogar quando quiser na Minha
+                      Conta.
+                    </span>
+                  </label>
 
                   <button
                     type="button"

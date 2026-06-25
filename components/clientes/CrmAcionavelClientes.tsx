@@ -70,10 +70,10 @@ function dataCurta(dataIso: string | null) {
 }
 
 function consentimentoLabel(status: string) {
-  if (status === "AUTORIZADO") return "contato autorizado";
-  if (status === "REVOGADO") return "contato revogado";
+  if (status === "AUTORIZADO") return "WhatsApp autorizado";
+  if (status === "REVOGADO") return "WhatsApp revogado";
 
-  return "sem consentimento";
+  return "sem WhatsApp";
 }
 
 function consentimentoClass(status: string) {
@@ -279,7 +279,7 @@ export default function CrmAcionavelClientes({
     { label: "Eventos comerciais", disponivel: dados.dados.eventosComerciais },
     { label: "Favoritos persistidos", disponivel: dados.dados.favoritosPersistidos },
     {
-      label: "Consentimento de marketing persistido",
+      label: "Consentimento WhatsApp persistido",
       disponivel: dados.dados.consentimentoMarketingPersistido,
     },
     { label: "Datas especiais", disponivel: dados.dados.dataEspecial },

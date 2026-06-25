@@ -431,6 +431,7 @@ export default function CheckoutClient({
     estado: clienteLogado?.estado || "",
     observacoes: "",
   });
+  const [consentimentoWhatsapp, setConsentimentoWhatsapp] = useState(false);
 
   const clienteEstaLogado = Boolean(clienteLogado);
   const compraComConta = clienteEstaLogado || modoCheckout === "COM_CADASTRO";
@@ -972,6 +973,7 @@ function preencherDadosClienteLogado() {
         },
         body: JSON.stringify({
           criarCadastro: criarCadastroNoCheckout,
+          consentimentoWhatsapp,
           cupomCodigo: cupomAplicado?.codigo || null,
           cashbackUsadoValor: cashbackUsado,
           freteOpcaoId: freteSelecionado.id,
@@ -1480,6 +1482,28 @@ function preencherDadosClienteLogado() {
                     </label>
                   </div>
                 )}
+
+                <label className="mt-5 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={consentimentoWhatsapp}
+                    onChange={(event) =>
+                      setConsentimentoWhatsapp(event.target.checked)
+                    }
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--brand-blue)]"
+                  />
+
+                  <span>
+                    Tambem quero receber novidades e ofertas pelo WhatsApp neste
+                    numero.
+                    {!clienteLogado && !criarCadastroNoCheckout && (
+                      <span className="block text-xs leading-5 text-slate-500">
+                        Em compra sem cadastro, esta preferencia nao sera salva
+                        para campanhas futuras.
+                      </span>
+                    )}
+                  </span>
+                </label>
               </section>
 
               <section className="border border-slate-200 bg-white p-5">

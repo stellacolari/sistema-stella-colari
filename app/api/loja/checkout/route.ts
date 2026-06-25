@@ -17,6 +17,7 @@ import {
   type ItemPedidoPlanoEmbalagem,
 } from "@/lib/embalagens/persistir-plano-pedido";
 import { validarEmbalagemPresenteCarrinho } from "@/lib/embalagens/presente-loja";
+import { registrarConsentimentoWhatsappPublico } from "@/lib/clientes/consentimentos-cliente";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
@@ -523,6 +524,7 @@ export async function POST(request: Request) {
 
     const clienteCookieId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
     const criarCadastro = Boolean(body.criarCadastro);
+    const consentimentoWhatsapp = body.consentimentoWhatsapp === true;
 
     const nomeCliente = String(body.nomeCliente || "").trim();
     const telefoneCliente = String(body.telefoneCliente || "").trim();
@@ -1365,6 +1367,7 @@ export async function POST(request: Request) {
           id: pedido.id,
           codigo: pedido.codigo,
           cashbackPrevistoValor,
+          clienteId,
         };
       },
       {
@@ -1372,6 +1375,20 @@ export async function POST(request: Request) {
         timeout: 120000,
       }
     );
+
+    if (consentimentoWhatsapp && pedidoCriado.clienteId) {
+      try {
+        await registrarConsentimentoWhatsappPublico({
+          clienteId: pedidoCriado.clienteId,
+          origem: "CHECKOUT",
+        });
+      } catch (error) {
+        console.error(
+          "Erro ao registrar consentimento publico no checkout:",
+          error
+        );
+      }
+    }
 
     return NextResponse.json({
       ok: true,

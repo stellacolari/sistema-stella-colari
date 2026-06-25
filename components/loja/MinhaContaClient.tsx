@@ -4,14 +4,18 @@ import Link from "next/link";
 import { useMemo, useState, type ComponentProps } from "react";
 import {
   ArrowRight,
+  Ban,
   CheckCircle2,
   CreditCard,
   History,
+  MessageCircle,
   Package,
   Save,
   Search,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
+  SlidersHorizontal,
   Truck,
   UserRound,
   Wallet,
@@ -19,10 +23,29 @@ import {
 } from "lucide-react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import SairClienteButton from "@/components/loja/SairClienteButton";
+import { abrirPreferenciasPrivacidade } from "@/lib/loja/consentimento-privacidade";
 
 type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
 
-type AbaConta = "PEDIDOS" | "CASHBACK" | "DADOS";
+type AbaConta = "PEDIDOS" | "CASHBACK" | "DADOS" | "PREFERENCIAS";
+type EstadoResumoConsentimentoCliente =
+  | "AUTORIZADO"
+  | "REVOGADO"
+  | "NAO_REGISTRADO";
+
+type ConsentimentoWhatsappPublicoResumo = {
+  status: EstadoResumoConsentimentoCliente;
+  label: string;
+  detalhe: string;
+  ultimaAtualizacaoEm: string | null;
+  origem: string | null;
+  finalidades: {
+    finalidade: "MARKETING" | "RELACIONAMENTO";
+    status: EstadoResumoConsentimentoCliente;
+    atualizadoEm: string | null;
+    origem: string | null;
+  }[];
+};
 
 export type MinhaContaClienteData = {
   id: string;
@@ -41,6 +64,7 @@ export type MinhaContaClienteData = {
   tipoCliente: string;
   cashbackSaldo: number;
   criadoEm: string;
+  consentimentoWhatsapp: ConsentimentoWhatsappPublicoResumo;
   pedidos: {
     id: string;
     codigo: string;
@@ -202,6 +226,41 @@ function cashbackTipoClass(tipo: string) {
   return "text-slate-700";
 }
 
+function labelConsentimentoStatus(status: EstadoResumoConsentimentoCliente) {
+  if (status === "AUTORIZADO") return "WhatsApp autorizado";
+  if (status === "REVOGADO") return "WhatsApp revogado";
+
+  return "Sem consentimento registrado";
+}
+
+function consentimentoStatusClass(status: EstadoResumoConsentimentoCliente) {
+  if (status === "AUTORIZADO") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  }
+
+  if (status === "REVOGADO") {
+    return "bg-red-50 text-red-700 ring-red-200";
+  }
+
+  return "bg-slate-100 text-slate-600 ring-slate-200";
+}
+
+function labelFinalidadeWhatsapp(finalidade: "MARKETING" | "RELACIONAMENTO") {
+  if (finalidade === "MARKETING") return "Marketing";
+
+  return "Relacionamento";
+}
+
+function labelOrigemConsentimento(origem: string | null | undefined) {
+  if (!origem) return "Nao registrada";
+  if (origem === "CADASTRO") return "Cadastro publico";
+  if (origem === "CHECKOUT") return "Checkout";
+  if (origem === "MINHA_CONTA") return "Minha conta";
+  if (origem === "ADMIN_MANUAL") return "Admin manual";
+
+  return origem.replaceAll("_", " ");
+}
+
 function AbaButton({
   ativa,
   children,
@@ -267,6 +326,13 @@ export default function MinhaContaClient({
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [erroDados, setErroDados] = useState("");
   const [sucessoDados, setSucessoDados] = useState("");
+  const [resumoWhatsapp, setResumoWhatsapp] = useState(
+    cliente.consentimentoWhatsapp
+  );
+  const [processandoConsentimento, setProcessandoConsentimento] =
+    useState(false);
+  const [erroConsentimento, setErroConsentimento] = useState("");
+  const [sucessoConsentimento, setSucessoConsentimento] = useState("");
 
   const [formDados, setFormDados] = useState({
     nome: getNomeCliente(cliente),
@@ -409,6 +475,44 @@ export default function MinhaContaClient({
     setEditandoDados(false);
   }
 
+  async function atualizarConsentimentoWhatsapp(acao: "AUTORIZAR" | "REVOGAR") {
+    setErroConsentimento("");
+    setSucessoConsentimento("");
+    setProcessandoConsentimento(true);
+
+    try {
+      const response = await fetch("/api/loja/minha-conta/consentimentos", {
+        method: acao === "AUTORIZAR" ? "POST" : "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setErroConsentimento(
+          data.error || "Nao foi possivel atualizar a preferencia."
+        );
+        return;
+      }
+
+      if (data.resumo) {
+        setResumoWhatsapp(data.resumo);
+      }
+
+      setSucessoConsentimento(
+        acao === "AUTORIZAR"
+          ? "Preferencia de WhatsApp autorizada."
+          : "Preferencia de WhatsApp revogada."
+      );
+    } catch {
+      setErroConsentimento("Erro ao atualizar a preferencia de WhatsApp.");
+    } finally {
+      setProcessandoConsentimento(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
@@ -521,6 +625,13 @@ export default function MinhaContaClient({
               onClick={() => setAbaAtiva("DADOS")}
             >
               Dados
+            </AbaButton>
+
+            <AbaButton
+              ativa={abaAtiva === "PREFERENCIAS"}
+              onClick={() => setAbaAtiva("PREFERENCIAS")}
+            >
+              Preferencias
             </AbaButton>
           </div>
 
@@ -999,6 +1110,193 @@ export default function MinhaContaClient({
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {abaAtiva === "PREFERENCIAS" && (
+              <div>
+                <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="h-5 w-5 text-slate-500" />
+
+                    <div>
+                      <h2 className="text-lg font-medium text-slate-950">
+                        Preferencias
+                      </h2>
+
+                      <p className="mt-1 text-sm font-light text-slate-500">
+                        Gerencie comunicacoes por WhatsApp e privacidade.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {(erroConsentimento || sucessoConsentimento) && (
+                  <div className="border-b border-slate-200 px-5 py-4">
+                    {erroConsentimento && (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        {erroConsentimento}
+                      </div>
+                    )}
+
+                    {sucessoConsentimento && (
+                      <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                        <CheckCircle2 className="h-4 w-4" />
+                        {sucessoConsentimento}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid gap-0 lg:grid-cols-[360px_1fr]">
+                  <div className="border-b border-slate-200 bg-slate-50 p-5 lg:border-b-0 lg:border-r">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                      <MessageCircle className="h-5 w-5 text-slate-600" />
+                    </div>
+
+                    <h3 className="mt-4 text-base font-semibold text-slate-950">
+                      WhatsApp
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      A autorizacao vale para mensagens de relacionamento,
+                      novidades e ofertas. A falta de registro nao autoriza
+                      campanhas.
+                    </p>
+                  </div>
+
+                  <div className="space-y-5 p-5">
+                    <section className="rounded-3xl border border-slate-200 p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-5 w-5 text-slate-500" />
+
+                            <h3 className="text-base font-semibold text-slate-950">
+                              Consentimento de WhatsApp
+                            </h3>
+                          </div>
+
+                          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                            Voce pode autorizar ou revogar quando quiser. A
+                            revogacao fica registrada no historico de
+                            consentimentos.
+                          </p>
+                        </div>
+
+                        <span
+                          className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold ring-1 ${consentimentoStatusClass(
+                            resumoWhatsapp.status
+                          )}`}
+                        >
+                          {labelConsentimentoStatus(resumoWhatsapp.status)}
+                        </span>
+                      </div>
+
+                      <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Atualizado em
+                          </dt>
+                          <dd className="mt-1 text-slate-950">
+                            {dataCurta(resumoWhatsapp.ultimaAtualizacaoEm)}
+                          </dd>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Origem
+                          </dt>
+                          <dd className="mt-1 text-slate-950">
+                            {labelOrigemConsentimento(resumoWhatsapp.origem)}
+                          </dd>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Status
+                          </dt>
+                          <dd className="mt-1 text-slate-950">
+                            {resumoWhatsapp.label}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        {resumoWhatsapp.finalidades.map((finalidade) => (
+                          <div
+                            key={finalidade.finalidade}
+                            className="rounded-2xl border border-slate-200 px-4 py-3"
+                          >
+                            <p className="text-sm font-semibold text-slate-950">
+                              {labelFinalidadeWhatsapp(finalidade.finalidade)}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {labelConsentimentoStatus(finalidade.status)}
+                              {" · "}
+                              {labelOrigemConsentimento(finalidade.origem)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            atualizarConsentimentoWhatsapp("AUTORIZAR")
+                          }
+                          disabled={
+                            processandoConsentimento ||
+                            resumoWhatsapp.status === "AUTORIZADO"
+                          }
+                          className="inline-flex h-11 items-center justify-center gap-2 brand-button px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Autorizar WhatsApp
+                        </button>
+
+                        {resumoWhatsapp.status === "AUTORIZADO" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              atualizarConsentimentoWhatsapp("REVOGAR")
+                            }
+                            disabled={processandoConsentimento}
+                            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-red-200 px-5 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Ban className="h-4 w-4" />
+                            Revogar WhatsApp
+                          </button>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="rounded-3xl border border-slate-200 p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="text-base font-semibold text-slate-950">
+                            Privacidade e cookies
+                          </h3>
+
+                          <p className="mt-2 text-sm leading-6 text-slate-500">
+                            Ajuste as preferencias de cookies e uso de dados da
+                            loja publica.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={abrirPreferenciasPrivacidade}
+                          className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 px-5 text-sm font-medium text-slate-700 transition hover:border-slate-950 hover:text-slate-950"
+                        >
+                          Abrir preferencias
+                        </button>
+                      </div>
+                    </section>
+                  </div>
+                </div>
               </div>
             )}
           </div>

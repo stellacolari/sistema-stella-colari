@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { obterResumoWhatsappPublicoCliente } from "@/lib/clientes/consentimentos-cliente";
 import MinhaContaClient, {
   type MinhaContaClienteData,
 } from "@/components/loja/MinhaContaClient";
@@ -115,6 +116,10 @@ export default async function MinhaContaPage() {
     redirect("/loja/entrar");
   }
 
+  const consentimentoWhatsapp = await obterResumoWhatsappPublicoCliente(
+    clienteRaw.id
+  );
+
   const cliente: MinhaContaClienteData = {
     id: clienteRaw.id,
     codigo: clienteRaw.codigo,
@@ -132,6 +137,7 @@ export default async function MinhaContaPage() {
     tipoCliente: clienteRaw.tipoCliente,
     cashbackSaldo: Number(clienteRaw.cashbackSaldo || 0),
     criadoEm: clienteRaw.criadoEm.toISOString(),
+    consentimentoWhatsapp,
     pedidos: clienteRaw.pedidosOnline.map((pedido) => ({
       id: pedido.id,
       codigo: pedido.codigo,

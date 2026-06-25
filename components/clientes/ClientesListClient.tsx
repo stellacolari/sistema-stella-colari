@@ -53,6 +53,13 @@ const STATUS_OPTIONS = [
   { value: "NA_LIXEIRA", label: "Na lixeira" },
 ];
 
+const CONSENTIMENTO_WHATSAPP_OPTIONS = [
+  { value: "TODOS", label: "Todos" },
+  { value: "AUTORIZADO", label: "WhatsApp autorizado" },
+  { value: "REVOGADO", label: "WhatsApp revogado" },
+  { value: "NAO_REGISTRADO", label: "Sem WhatsApp" },
+];
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -110,10 +117,10 @@ function statusIcon(status: string) {
 }
 
 function consentimentoLabel(status: EstadoResumoConsentimentoCliente) {
-  if (status === "AUTORIZADO") return "Contato autorizado";
-  if (status === "REVOGADO") return "Revogado";
+  if (status === "AUTORIZADO") return "WhatsApp autorizado";
+  if (status === "REVOGADO") return "WhatsApp revogado";
 
-  return "Sem consentimento";
+  return "Sem WhatsApp";
 }
 
 function consentimentoClass(status: EstadoResumoConsentimentoCliente) {
@@ -136,6 +143,8 @@ export default function ClientesListClient({
 
   const [busca, setBusca] = useState("");
   const [statusSelecionado, setStatusSelecionado] = useState("ATIVOS");
+  const [consentimentoSelecionado, setConsentimentoSelecionado] =
+    useState("TODOS");
   const [clientesSelecionados, setClientesSelecionados] = useState<string[]>(
     []
   );
@@ -159,6 +168,13 @@ export default function ClientesListClient({
         return false;
       }
 
+      if (
+        consentimentoSelecionado !== "TODOS" &&
+        cliente.consentimento !== consentimentoSelecionado
+      ) {
+        return false;
+      }
+
       if (!termo) {
         return true;
       }
@@ -177,7 +193,7 @@ export default function ClientesListClient({
 
       return texto.includes(termo);
     });
-  }, [busca, clientes, statusSelecionado]);
+  }, [busca, clientes, consentimentoSelecionado, statusSelecionado]);
 
   const clientesSelecionaveis = useMemo(() => {
     return clientesFiltrados.filter(
@@ -210,6 +226,7 @@ export default function ClientesListClient({
   function limparFiltros() {
     setBusca("");
     setStatusSelecionado("ATIVOS");
+    setConsentimentoSelecionado("TODOS");
     setClientesSelecionados([]);
   }
 
@@ -401,7 +418,7 @@ export default function ClientesListClient({
           </button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+        <div className="grid gap-4 lg:grid-cols-[1fr_240px_240px]">
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Search className="h-4 w-4 text-slate-400" />
@@ -431,6 +448,27 @@ export default function ClientesListClient({
               {STATUS_OPTIONS.map((status) => (
                 <option key={status.value} value={status.value}>
                   {status.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-700">
+              WhatsApp
+            </span>
+
+            <select
+              value={consentimentoSelecionado}
+              onChange={(event) => {
+                setConsentimentoSelecionado(event.target.value);
+                setClientesSelecionados([]);
+              }}
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400"
+            >
+              {CONSENTIMENTO_WHATSAPP_OPTIONS.map((opcao) => (
+                <option key={opcao.value} value={opcao.value}>
+                  {opcao.label}
                 </option>
               ))}
             </select>
@@ -516,7 +554,7 @@ export default function ClientesListClient({
                   <th className="px-6 py-4 font-semibold">Tipo</th>
                   <th className="px-6 py-4 font-semibold">Vendas</th>
                   <th className="px-6 py-4 font-semibold">Cashback</th>
-                  <th className="px-6 py-4 font-semibold">Consentimento</th>
+                  <th className="px-6 py-4 font-semibold">WhatsApp</th>
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 text-right font-semibold">Ações</th>
                 </tr>

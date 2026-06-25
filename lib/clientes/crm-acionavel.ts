@@ -6,7 +6,7 @@ import {
   normalizarCanalConsentimentoCliente,
   normalizarFinalidadeConsentimentoCliente,
   normalizarStatusConsentimentoCliente,
-  resumirConsentimentosCliente,
+  resumirConsentimentoWhatsappPublico,
   type ConsentimentoClienteItem,
   type EstadoResumoConsentimentoCliente,
 } from "@/lib/clientes/consentimentos-cliente";
@@ -315,7 +315,7 @@ function serializarConsentimentoCrm(
 
 function analisarCliente(cliente: ClienteCrmRaw, agora: Date): AnaliseCliente {
   const compras = comprasValidas(cliente);
-  const consentimentoResumo = resumirConsentimentosCliente(
+  const consentimentoResumo = resumirConsentimentoWhatsappPublico(
     cliente.consentimentos.map(serializarConsentimentoCrm)
   );
   const totalComprado = compras.reduce((total, compra) => total + compra.valor, 0);
@@ -366,9 +366,9 @@ function analisarCliente(cliente: ClienteCrmRaw, agora: Date): AnaliseCliente {
     temPresente: compras.some((compra) => compra.temPresente),
     intencaoForte: eventoForteRecente,
     intencaoFraca: eventoFracoRecente,
-    consentimentoStatus: consentimentoResumo.statusGeral,
-    contatoAutorizado: consentimentoResumo.statusGeral === "AUTORIZADO",
-    contatoRevogado: consentimentoResumo.statusGeral === "REVOGADO",
+    consentimentoStatus: consentimentoResumo.status,
+    contatoAutorizado: consentimentoResumo.status === "AUTORIZADO",
+    contatoRevogado: consentimentoResumo.status === "REVOGADO",
     sinalPrincipal: descreverSinal(cliente),
   };
 }
@@ -620,9 +620,9 @@ function montarSegmentos(analises: AnaliseCliente[]): SegmentoCrmCliente[] {
     },
     {
       id: "consentimento-marketing",
-      nome: "Contato autorizado",
+      nome: "WhatsApp autorizado",
       quantidade: consentimentoAutorizado.length,
-      explicacao: "Ha pelo menos um canal/finalidade autorizado no consentimento persistido.",
+      explicacao: "Ha consentimento de WhatsApp autorizado e persistido.",
       acaoSugerida: "Usar somente para contato manual responsavel e contextual.",
       href: "/clientes",
       confiabilidade: "ALTA",
@@ -630,9 +630,9 @@ function montarSegmentos(analises: AnaliseCliente[]): SegmentoCrmCliente[] {
     },
     {
       id: "consentimento-ausente",
-      nome: "Sem consentimento",
+      nome: "Sem WhatsApp",
       quantidade: consentimentoAusente.length,
-      explicacao: "Clientes sem autorizacao ou revogacao registrada.",
+      explicacao: "Clientes sem autorizacao ou revogacao de WhatsApp registrada.",
       acaoSugerida: "Revisar consentimento antes de qualquer contato ativo.",
       href: "/clientes",
       confiabilidade: "ALTA",
@@ -640,9 +640,9 @@ function montarSegmentos(analises: AnaliseCliente[]): SegmentoCrmCliente[] {
     },
     {
       id: "consentimento-revogado",
-      nome: "Consentimento revogado",
+      nome: "WhatsApp revogado",
       quantidade: consentimentoRevogado.length,
-      explicacao: "Clientes com revogacao registrada e sem canal autorizado.",
+      explicacao: "Clientes com revogacao de WhatsApp registrada.",
       acaoSugerida: "Nao sugerir contato ativo; respeitar revogacao.",
       href: "/clientes",
       confiabilidade: "ALTA",

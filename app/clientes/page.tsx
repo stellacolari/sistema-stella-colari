@@ -6,7 +6,7 @@ import {
   normalizarCanalConsentimentoCliente,
   normalizarFinalidadeConsentimentoCliente,
   normalizarStatusConsentimentoCliente,
-  resumirConsentimentosCliente,
+  resumirConsentimentoWhatsappPublico,
   type ConsentimentoClienteItem,
 } from "@/lib/clientes/consentimentos-cliente";
 import ClientesListClient, {
@@ -116,7 +116,7 @@ export default async function ClientesPage() {
         (total: number, venda) => total + Number(venda.valorTotal),
         0
       );
-      const consentimento = resumirConsentimentosCliente(
+      const consentimento = resumirConsentimentoWhatsappPublico(
         cliente.consentimentos.map(serializarConsentimentoLista)
       );
 
@@ -136,7 +136,7 @@ export default async function ClientesPage() {
         totalVendas: cliente.vendas.length,
         totalVendasAtivas: vendasAtivas.length,
         valorTotalComprado,
-        consentimento: consentimento.statusGeral,
+        consentimento: consentimento.status,
       };
     }
   );

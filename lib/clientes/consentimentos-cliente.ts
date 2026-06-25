@@ -74,6 +74,25 @@ export type ConsentimentoClienteResumo = {
   historico: ConsentimentoClienteItem[];
 };
 
+export type OrigemConsentimentoWhatsappPublico =
+  | "CADASTRO"
+  | "CHECKOUT"
+  | "MINHA_CONTA";
+
+export type ConsentimentoWhatsappPublicoResumo = {
+  status: EstadoResumoConsentimentoCliente;
+  label: string;
+  detalhe: string;
+  ultimaAtualizacaoEm: string | null;
+  origem: string | null;
+  finalidades: {
+    finalidade: Extract<FinalidadeConsentimentoCliente, "MARKETING" | "RELACIONAMENTO">;
+    status: EstadoResumoConsentimentoCliente;
+    atualizadoEm: string | null;
+    origem: string | null;
+  }[];
+};
+
 type ClienteConsentimentoRaw = Prisma.ClienteConsentimentoGetPayload<{
   select: typeof clienteConsentimentoSelect;
 }>;
@@ -104,6 +123,12 @@ export type RevogarConsentimentoClienteInput = {
 };
 
 const ORIGEM_MANUAL_PADRAO = "ADMIN_MANUAL";
+const CANAL_WHATSAPP_PUBLICO: CanalConsentimentoCliente = "WHATSAPP";
+const FINALIDADES_WHATSAPP_PUBLICO = [
+  "MARKETING",
+  "RELACIONAMENTO",
+] as const;
+const VERSAO_POLITICA_CLIENTE_ATUAL = "2026-06-privacidade-v1";
 
 const clienteConsentimentoSelect =
   Prisma.validator<Prisma.ClienteConsentimentoSelect>()({
@@ -224,9 +249,7 @@ function chaveResumo(finalidade: string, canal: string) {
   return `${finalidade}:${canal}`;
 }
 
-export function resumirConsentimentosCliente(
-  consentimentos: ConsentimentoClienteItem[]
-): ConsentimentoClienteResumo {
+function ultimoPorFinalidadeCanal(consentimentos: ConsentimentoClienteItem[]) {
   const ultimosPorChave = new Map<string, ConsentimentoClienteItem>();
 
   [...consentimentos]
@@ -240,6 +263,14 @@ export function resumirConsentimentosCliente(
         ultimosPorChave.set(chave, consentimento);
       }
     });
+
+  return ultimosPorChave;
+}
+
+export function resumirConsentimentosCliente(
+  consentimentos: ConsentimentoClienteItem[]
+): ConsentimentoClienteResumo {
+  const ultimosPorChave = ultimoPorFinalidadeCanal(consentimentos);
 
   const canaisAutorizados: ConsentimentoClienteResumoCanal[] = [];
   const canaisRevogados: ConsentimentoClienteResumoCanal[] = [];
@@ -300,6 +331,52 @@ export function resumirConsentimentosCliente(
   };
 }
 
+export function resumirConsentimentoWhatsappPublico(
+  consentimentos: ConsentimentoClienteItem[]
+): ConsentimentoWhatsappPublicoResumo {
+  const ultimosPorChave = ultimoPorFinalidadeCanal(consentimentos);
+  const finalidades = FINALIDADES_WHATSAPP_PUBLICO.map((finalidade) => {
+    const atual = ultimosPorChave.get(
+      chaveResumo(finalidade, CANAL_WHATSAPP_PUBLICO)
+    );
+
+    return {
+      finalidade,
+      status: (atual?.status || "NAO_REGISTRADO") as EstadoResumoConsentimentoCliente,
+      atualizadoEm: atual?.criadoEm ?? null,
+      origem: atual?.origem ?? null,
+    };
+  });
+  const ultimaAtualizacao = [...finalidades]
+    .filter((item) => item.atualizadoEm)
+    .sort(
+      (a, b) =>
+        new Date(b.atualizadoEm || "").getTime() -
+        new Date(a.atualizadoEm || "").getTime()
+    )[0];
+  let status: EstadoResumoConsentimentoCliente = "NAO_REGISTRADO";
+
+  if (finalidades.some((item) => item.status === "AUTORIZADO")) {
+    status = "AUTORIZADO";
+  } else if (finalidades.some((item) => item.status === "REVOGADO")) {
+    status = "REVOGADO";
+  }
+
+  return {
+    status,
+    label: labelStatusConsentimentoCliente(status),
+    detalhe:
+      status === "AUTORIZADO"
+        ? "WhatsApp autorizado para novidades, ofertas e relacionamento."
+        : status === "REVOGADO"
+          ? "WhatsApp revogado para mensagens de relacionamento e marketing."
+          : "WhatsApp ainda sem autorizacao para relacionamento e ofertas.",
+    ultimaAtualizacaoEm: ultimaAtualizacao?.atualizadoEm ?? null,
+    origem: ultimaAtualizacao?.origem ?? null,
+    finalidades,
+  };
+}
+
 export async function listarConsentimentosCliente(clienteId: string) {
   const consentimentos = await prisma.clienteConsentimento.findMany({
     where: {
@@ -316,6 +393,12 @@ export async function listarConsentimentosCliente(clienteId: string) {
 
 export async function obterResumoConsentimentosCliente(clienteId: string) {
   return resumirConsentimentosCliente(
+    await listarConsentimentosCliente(clienteId)
+  );
+}
+
+export async function obterResumoWhatsappPublicoCliente(clienteId: string) {
+  return resumirConsentimentoWhatsappPublico(
     await listarConsentimentosCliente(clienteId)
   );
 }
@@ -416,4 +499,101 @@ export async function revogarConsentimentoCliente(
     observacao: input.observacao,
     registradoPorAdmin: input.registradoPorAdmin,
   });
+}
+
+async function obterUltimosConsentimentosWhatsappPublico(clienteId: string) {
+  const consentimentos = await prisma.clienteConsentimento.findMany({
+    where: {
+      clienteId,
+      canal: CANAL_WHATSAPP_PUBLICO,
+      finalidade: {
+        in: [...FINALIDADES_WHATSAPP_PUBLICO],
+      },
+    },
+    orderBy: {
+      criadoEm: "desc",
+    },
+    select: clienteConsentimentoSelect,
+  });
+
+  return ultimoPorFinalidadeCanal(consentimentos.map(serializarConsentimento));
+}
+
+export async function registrarConsentimentoWhatsappPublico({
+  clienteId,
+  origem,
+  versaoPolitica = VERSAO_POLITICA_CLIENTE_ATUAL,
+  observacao,
+}: {
+  clienteId?: string | null;
+  origem: OrigemConsentimentoWhatsappPublico;
+  versaoPolitica?: string | null;
+  observacao?: string | null;
+}) {
+  if (!clienteId) return [];
+
+  await validarClienteExiste(clienteId);
+
+  const ultimos = await obterUltimosConsentimentosWhatsappPublico(clienteId);
+  const criados: ConsentimentoClienteItem[] = [];
+
+  for (const finalidade of FINALIDADES_WHATSAPP_PUBLICO) {
+    const atual = ultimos.get(chaveResumo(finalidade, CANAL_WHATSAPP_PUBLICO));
+
+    if (atual?.status === "AUTORIZADO") continue;
+
+    criados.push(
+      await registrarConsentimentoManualCliente({
+        clienteId,
+        finalidade,
+        canal: CANAL_WHATSAPP_PUBLICO,
+        status: "AUTORIZADO",
+        origem,
+        versaoPolitica,
+        observacao:
+          observacao ||
+          "Cliente autorizou mensagens da Stella Colari pelo WhatsApp.",
+      })
+    );
+  }
+
+  return criados;
+}
+
+export async function revogarConsentimentoWhatsappPublico({
+  clienteId,
+  origem,
+  observacao,
+}: {
+  clienteId?: string | null;
+  origem: OrigemConsentimentoWhatsappPublico;
+  observacao?: string | null;
+}) {
+  if (!clienteId) return [];
+
+  await validarClienteExiste(clienteId);
+
+  const ultimos = await obterUltimosConsentimentosWhatsappPublico(clienteId);
+  const criados: ConsentimentoClienteItem[] = [];
+
+  for (const finalidade of FINALIDADES_WHATSAPP_PUBLICO) {
+    const atual = ultimos.get(chaveResumo(finalidade, CANAL_WHATSAPP_PUBLICO));
+
+    if (atual?.status === "REVOGADO") continue;
+
+    criados.push(
+      await registrarConsentimentoManualCliente({
+        clienteId,
+        finalidade,
+        canal: CANAL_WHATSAPP_PUBLICO,
+        status: "REVOGADO",
+        origem,
+        observacao:
+          observacao ||
+          "Cliente revogou mensagens da Stella Colari pelo WhatsApp.",
+      })
+    );
+  }
+
+  return criados;
 }

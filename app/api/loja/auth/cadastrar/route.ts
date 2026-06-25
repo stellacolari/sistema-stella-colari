@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { pbkdf2Sync, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { registrarConsentimentoWhatsappPublico } from "@/lib/clientes/consentimentos-cliente";
 
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
 
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     const documento = normalizarCpf(body.documento);
     const senha = String(body.senha || "");
     const confirmarSenha = String(body.confirmarSenha || "");
+    const consentimentoWhatsapp = body.consentimentoWhatsapp === true;
 
     if (!nome) {
       return NextResponse.json(
@@ -165,6 +167,20 @@ export async function POST(req: Request) {
         tipoCliente: true,
       },
     });
+
+    if (consentimentoWhatsapp) {
+      try {
+        await registrarConsentimentoWhatsappPublico({
+          clienteId: cliente.id,
+          origem: "CADASTRO",
+        });
+      } catch (error) {
+        console.error(
+          "Erro ao registrar consentimento publico no cadastro:",
+          error
+        );
+      }
+    }
 
     const response = NextResponse.json({
       ok: true,

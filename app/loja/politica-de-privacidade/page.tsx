@@ -26,6 +26,7 @@ export default function PoliticaDePrivacidadePage() {
           title: "Uso das informacoes",
           paragraphs: [
             "Os dados podem ser usados para processar pedidos, confirmar pagamentos, organizar entregas, prestar suporte e cumprir obrigacoes legais aplicaveis.",
+            "Quando voce autoriza expressamente, a loja pode usar o WhatsApp informado para relacionamento, novidades, ofertas e recomendacoes. A autorizacao e opcional e pode ser revogada na area Minha conta.",
             "A Stella Colari deve revisar os canais oficiais de contato e os provedores usados antes da publicacao final desta politica.",
           ],
         },
@@ -35,7 +36,8 @@ export default function PoliticaDePrivacidadePage() {
             "A loja usa recursos essenciais para manter carrinho, login, seguranca e funcionamento do checkout. Esses recursos sao necessarios para a experiencia de compra.",
             "Com a sua escolha, a loja tambem pode registrar sinais de analytics, como busca, produto visualizado, favoritos, carrinho e inicio de checkout, sempre com metadata limitada e sem incluir dados sensiveis como telefone, e-mail, documento ou endereco.",
             "Favoritos, buscas recentes e preferencias de privacidade podem ser salvos no navegador do visitante. Voce pode revisar as preferencias pelo link no rodape da loja.",
-            "Preferencias de relacionamento informadas em atendimento podem ser registradas no painel administrativo por canal e finalidade, com possibilidade de revogacao.",
+            "Preferencias de relacionamento informadas em cadastro, checkout, Minha conta ou atendimento podem ser registradas por canal e finalidade, com possibilidade de revogacao.",
+            "A falta de consentimento registrado nao autoriza campanhas de WhatsApp. Desmarcar a opcao no cadastro ou no checkout nao revoga uma autorizacao anterior; a revogacao deve ser feita de forma explicita.",
             "Recursos de marketing e CRM podem ser evoluidos futuramente, mas nao disparam automacoes nesta versao de preparacao.",
           ],
         },
