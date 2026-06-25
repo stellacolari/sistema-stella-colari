@@ -113,14 +113,63 @@ function jsonRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function recomendacaoTemBoaEvidencia(evidenciasJson: unknown) {
-  const evidencias = jsonRecord(evidenciasJson);
+type RecomendacaoCentralEvidencia = {
+  titulo: string;
+  descricao: string;
+  motivo: string | null;
+  risco: string | null;
+  acaoSugerida: string | null;
+  tipo: string;
+  evidenciasJson: unknown;
+};
+
+function normalizarTextoCentral(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function recomendacaoDeMargemSaudavelCentral(
+  recomendacao: RecomendacaoCentralEvidencia
+) {
+  const texto = normalizarTextoCentral(
+    [
+      recomendacao.titulo,
+      recomendacao.descricao,
+      recomendacao.motivo,
+      recomendacao.risco,
+      recomendacao.acaoSugerida,
+      recomendacao.tipo,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const falaDeMargemProtegida =
+    texto.includes("proteger margem") ||
+    texto.includes("preservar margem") ||
+    texto.includes("manter margem") ||
+    texto.includes("margem protegida") ||
+    texto.includes("margem saudavel");
+  const temRiscoContextual =
+    /risco|desconto|campanha|precificacao|preco|minimo|abaixo|queda|perda|negativo|revisar/.test(
+      texto
+    );
+
+  return falaDeMargemProtegida && !temRiscoContextual;
+}
+
+function recomendacaoTemBoaEvidencia(
+  recomendacao: RecomendacaoCentralEvidencia
+) {
+  const evidencias = jsonRecord(recomendacao.evidenciasJson);
   const nivel = String(evidencias.nivelEvidencia || "");
 
   return (
     ["EVIDENCIA_FORTE", "EVIDENCIA_MODERADA"].includes(nivel) &&
     !evidencias.amostraPequena &&
-    !evidencias.sinalInicial
+    !evidencias.sinalInicial &&
+    !recomendacaoDeMargemSaudavelCentral(recomendacao)
   );
 }
 
@@ -327,13 +376,19 @@ export async function montarCentralAcoesAdmin(
           status: "NOVA",
         },
         select: {
+          titulo: true,
+          descricao: true,
+          motivo: true,
+          risco: true,
+          acaoSugerida: true,
+          tipo: true,
           evidenciasJson: true,
         },
         take: 200,
       });
 
       return recomendacoes.filter((recomendacao) =>
-        recomendacaoTemBoaEvidencia(recomendacao.evidenciasJson)
+        recomendacaoTemBoaEvidencia(recomendacao)
       ).length;
     }),
     contarSe(podeVerRecomendacoes, () =>

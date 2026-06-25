@@ -18,7 +18,7 @@ import {
   RefreshCcw,
   ShieldAlert,
   Search,
-  XCircle,
+  X,
 } from "lucide-react";
 import type {
   CopilotoAdministrativoData,
@@ -792,6 +792,46 @@ export default function RecomendacoesGerenciaisClient({
         />
       </section>
 
+      {copiloto.resumo.ocultadas.total > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-950">
+                Fora da fila principal
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {copiloto.resumo.ocultadas.total}{" "}
+                {copiloto.resumo.ocultadas.total === 1
+                  ? "recomendação ficou agrupada porque não pede ação agora."
+                  : "recomendações ficaram agrupadas porque não pedem ação agora."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {copiloto.resumo.ocultadas.baixaEvidencia > 0 && (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+                  {copiloto.resumo.ocultadas.baixaEvidencia} baixa evidência
+                </span>
+              )}
+              {copiloto.resumo.ocultadas.naoFazer > 0 && (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">
+                  {copiloto.resumo.ocultadas.naoFazer} não fazer
+                </span>
+              )}
+              {copiloto.resumo.ocultadas.margemSaudavel > 0 && (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                  {copiloto.resumo.ocultadas.margemSaudavel} margem saudável
+                </span>
+              )}
+              {copiloto.resumo.ocultadas.semAcaoClara > 0 && (
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-800">
+                  {copiloto.resumo.ocultadas.semAcaoClara} sem ação clara
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-3xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
         <div className="grid gap-2 md:grid-cols-5">
           {GRUPO_OPTIONS.map((option) => (
@@ -933,19 +973,20 @@ function RecomendacaoCard({
     recomendacao.prioridade === "ALTA" && (evidencias.sinalInicial || evidencias.amostraPequena)
       ? "MEDIA"
       : copiloto.prioridade;
+  const statusNova = recomendacao.status === "NOVA";
+  const statusEmAndamento = ["ACEITA", "EM_EXECUCAO"].includes(recomendacao.status);
+  const statusAdiada = recomendacao.status === "ADIADA";
   const podeEditarAtiva =
     permissoes.podeEditarRecomendacoes &&
     recomendacao.status !== "CONCLUIDA" &&
     recomendacao.status !== "IGNORADA";
-  const podeAceitar =
-    permissoes.podeEditarRecomendacoes && recomendacao.status === "NOVA";
-  const podeIniciar =
-    permissoes.podeEditarRecomendacoes &&
-    ["NOVA", "ACEITA", "ADIADA"].includes(recomendacao.status);
-  const podeAdiar = podeEditarAtiva;
-  const podeConcluir = podeEditarAtiva;
+  const podeIniciar = podeEditarAtiva && statusNova;
+  const podeRetomar = podeEditarAtiva && statusAdiada;
+  const podeConcluir = podeEditarAtiva && statusEmAndamento;
+  const podeAdiar = podeEditarAtiva && (statusNova || statusEmAndamento);
   const podeIgnorar = podeEditarAtiva;
   const podeCriarCampanha =
+    podeEditarAtiva &&
     permissoes.podeExecutarCampanhas &&
     permissoes.podeVerCampanhas &&
     !(evidencias.revalidada && (evidencias.sinalInicial || evidencias.amostraPequena)) &&
@@ -962,11 +1003,7 @@ function RecomendacaoCard({
           label: "Abrir campanha",
         }
       : null;
-  const temMaisAcoes =
-    podeAceitar ||
-    podeConcluir ||
-    podeIgnorar ||
-    (podeCriarCampanha && !campanha);
+  const temMaisAcoes = podeAdiar || (podeCriarCampanha && !campanha);
 
   return (
             <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
@@ -1062,13 +1099,20 @@ function RecomendacaoCard({
                       onClick={() => onAcao(recomendacao, "INICIAR")}
                     />
                   )}
-                  {podeAdiar && (
+                  {podeRetomar && (
                     <AcaoButton
-                      icon={<PauseCircle className="h-4 w-4" />}
-                      label="Adiar"
-                      title="Tira temporariamente da fila principal."
-                      variant="secondary"
-                      onClick={() => onAcao(recomendacao, "ADIAR")}
+                      icon={<PlayCircle className="h-4 w-4" />}
+                      label="Retomar"
+                      title="Traz a recomendação adiada de volta para tratamento."
+                      onClick={() => onAcao(recomendacao, "INICIAR")}
+                    />
+                  )}
+                  {podeConcluir && (
+                    <AcaoButton
+                      icon={<CheckCircle2 className="h-4 w-4" />}
+                      label="Concluir ação"
+                      title="Use quando a ação foi realizada."
+                      onClick={() => onAcao(recomendacao, "CONCLUIR")}
                     />
                   )}
                   {temMaisAcoes && (
@@ -1078,22 +1122,13 @@ function RecomendacaoCard({
                         Mais ações
                       </summary>
                       <div className="right-0 z-10 mt-2 w-72 space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm xl:absolute">
-                        {podeAceitar && (
+                        {podeAdiar && (
                           <AcaoButton
-                            icon={<CheckCircle2 className="h-4 w-4" />}
-                            label="Aceitar recomendação"
-                            title="Marca que a sugestão faz sentido para acompanhamento."
+                            icon={<PauseCircle className="h-4 w-4" />}
+                            label="Adiar"
+                            title="Tira temporariamente da fila principal."
                             variant="secondary"
-                            onClick={() => onAcao(recomendacao, "ACEITAR")}
-                          />
-                        )}
-                        {podeConcluir && (
-                          <AcaoButton
-                            icon={<CheckCircle2 className="h-4 w-4" />}
-                            label="Concluir ação"
-                            title="Use quando a ação foi realizada."
-                            variant="secondary"
-                            onClick={() => onAcao(recomendacao, "CONCLUIR")}
+                            onClick={() => onAcao(recomendacao, "ADIAR")}
                           />
                         )}
                         {!campanha && podeCriarCampanha && (
@@ -1105,17 +1140,16 @@ function RecomendacaoCard({
                             onClick={() => onCriarCampanha(recomendacao)}
                           />
                         )}
-                        {podeIgnorar && (
-                          <AcaoButton
-                            icon={<XCircle className="h-4 w-4" />}
-                            label="Ignorar recomendação"
-                            title="Remove da fila quando a sugestão não faz sentido agora."
-                            variant="secondary"
-                            onClick={() => onAcao(recomendacao, "IGNORAR")}
-                          />
-                        )}
                       </div>
                     </details>
+                  )}
+                  {podeIgnorar && (
+                    <IconAcaoButton
+                      icon={<X className="h-4 w-4" />}
+                      label="Ignorar recomendação"
+                      title="Remove da fila quando a sugestão não faz sentido agora."
+                      onClick={() => onAcao(recomendacao, "IGNORAR")}
+                    />
                   )}
                 </div>
               </div>
@@ -1123,7 +1157,11 @@ function RecomendacaoCard({
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 <InfoBox
                   label="Por que apareceu"
-                  value={copiloto.motivo || copiloto.explicacaoExecutiva}
+                  value={
+                    copiloto.motivo ||
+                    recomendacao.motivo ||
+                    "Sinal identificado pelo Copiloto."
+                  }
                 />
                 <InfoBox
                   label="O que fazer agora"
@@ -1386,6 +1424,30 @@ function AcaoButton({
     >
       {icon}
       {label}
+    </button>
+  );
+}
+
+function IconAcaoButton({
+  icon,
+  label,
+  title,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={title || label}
+      onClick={onClick}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition hover:bg-red-50 hover:text-red-700"
+    >
+      {icon}
     </button>
   );
 }

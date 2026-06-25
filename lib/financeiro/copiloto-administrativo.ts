@@ -57,6 +57,14 @@ export type ResumoImpactosCopilotoAdministrativo = {
   negativos: number;
 };
 
+export type ResumoOcultadasCopilotoAdministrativo = {
+  total: number;
+  baixaEvidencia: number;
+  naoFazer: number;
+  margemSaudavel: number;
+  semAcaoClara: number;
+};
+
 export type PermissoesCopilotoAdministrativo = {
   podeVerDadosFinanceiros: boolean;
   podeEditarRecomendacoes: boolean;
@@ -107,6 +115,7 @@ export type CopilotoAdministrativoData = {
     total: number;
     impactosPendentes: number;
     impactos: ResumoImpactosCopilotoAdministrativo;
+    ocultadas: ResumoOcultadasCopilotoAdministrativo;
     grupos: Record<GrupoCopilotoAdministrativo, number>;
     classificacoes: Record<ClassificacaoCopilotoAdministrativo, number>;
   };
@@ -635,6 +644,80 @@ function scoreGrupo(grupo: GrupoCopilotoAdministrativo) {
   return 1;
 }
 
+type MotivoOcultacaoFilaPrincipal =
+  | "BAIXA_EVIDENCIA"
+  | "NAO_FAZER"
+  | "MARGEM_SAUDAVEL"
+  | "SEM_ACAO_CLARA";
+
+function normalizarAnaliseCopiloto(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function textoItemCopiloto(item: RecomendacaoCopilotoAdministrativo) {
+  return normalizarAnaliseCopiloto(
+    [
+      item.titulo,
+      item.tipo,
+      item.motivo,
+      item.risco,
+      item.acaoSugerida,
+      item.motivoParaNaoRecomendar,
+      item.recomendacao.descricao,
+      item.recomendacao.impactoEsperado,
+      item.recomendacao.origemTipo,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function recomendacaoDeMargemSaudavel(item: RecomendacaoCopilotoAdministrativo) {
+  const texto = textoItemCopiloto(item);
+  const falaDeMargemProtegida =
+    texto.includes("proteger margem") ||
+    texto.includes("preservar margem") ||
+    texto.includes("manter margem") ||
+    texto.includes("margem protegida") ||
+    texto.includes("margem saudavel");
+  const temRiscoContextual =
+    /risco|desconto|campanha|precificacao|preco|minimo|abaixo|queda|perda|negativo|revisar/.test(
+      texto
+    );
+
+  return falaDeMargemProtegida && !temRiscoContextual;
+}
+
+function temRiscoClaroDeAcaoErrada(item: RecomendacaoCopilotoAdministrativo) {
+  const texto = textoItemCopiloto(item);
+
+  return /risco|desconto|campanha|precificacao|preco|margem|caixa|custo|minimo|abaixo|perda|negativo|sem permissao|sensivel/.test(
+    texto
+  );
+}
+
+function motivoOcultacaoFilaPrincipal(
+  item: RecomendacaoCopilotoAdministrativo
+): MotivoOcultacaoFilaPrincipal | null {
+  if (recomendacaoDeMargemSaudavel(item)) return "MARGEM_SAUDAVEL";
+  if (item.grupo === "BAIXA_EVIDENCIA") return "BAIXA_EVIDENCIA";
+  if (item.grupo !== "NAO_MEXA_AINDA") return null;
+
+  const motivo = normalizarAnaliseCopiloto(
+    item.motivoParaNaoRecomendar || item.motivo || ""
+  );
+
+  if (motivo.includes("nao ha acao manual clara")) {
+    return "SEM_ACAO_CLARA";
+  }
+  if (!temRiscoClaroDeAcaoErrada(item)) return "NAO_FAZER";
+
+  return null;
+}
+
 function montarItemCopiloto(
   recomendacaoOriginal: RecomendacaoGerencialResumo,
   permissoes: PermissoesCopilotoAdministrativo
@@ -739,11 +822,37 @@ function resumoImpactosCopiloto(
   );
 }
 
+function resumoOcultadasCopiloto(
+  itens: RecomendacaoCopilotoAdministrativo[]
+): ResumoOcultadasCopilotoAdministrativo {
+  return itens.reduce<ResumoOcultadasCopilotoAdministrativo>(
+    (acc, item) => {
+      const motivo = motivoOcultacaoFilaPrincipal(item);
+      if (!motivo) return acc;
+
+      acc.total += 1;
+      if (motivo === "BAIXA_EVIDENCIA") acc.baixaEvidencia += 1;
+      if (motivo === "NAO_FAZER") acc.naoFazer += 1;
+      if (motivo === "MARGEM_SAUDAVEL") acc.margemSaudavel += 1;
+      if (motivo === "SEM_ACAO_CLARA") acc.semAcaoClara += 1;
+
+      return acc;
+    },
+    {
+      total: 0,
+      baixaEvidencia: 0,
+      naoFazer: 0,
+      margemSaudavel: 0,
+      semAcaoClara: 0,
+    }
+  );
+}
+
 export function montarCopilotoAdministrativo(
   recomendacoes: RecomendacaoGerencialResumo[],
   permissoes: PermissoesCopilotoAdministrativo
 ): CopilotoAdministrativoData {
-  const itens = recomendacoes
+  const itensTodos = recomendacoes
     .map((recomendacao) => montarItemCopiloto(recomendacao, permissoes))
     .sort((a, b) => {
       const grupo = scoreGrupo(b.grupo) - scoreGrupo(a.grupo);
@@ -760,16 +869,19 @@ export function montarCopilotoAdministrativo(
         new Date(a.recomendacao.criadoEm).getTime()
       );
     });
+  const ocultadas = resumoOcultadasCopiloto(itensTodos);
+  const itens = itensTodos.filter((item) => !motivoOcultacaoFilaPrincipal(item));
 
   const resumoImpactos = resumoImpactosCopiloto(itens);
 
   return {
-    recomendacoes: itens.map((item) => item.recomendacao),
+    recomendacoes: itensTodos.map((item) => item.recomendacao),
     itens,
     resumo: {
       total: itens.length,
       impactosPendentes: resumoImpactos.pendentes,
       impactos: resumoImpactos,
+      ocultadas,
       grupos: Object.fromEntries(
         GRUPOS.map((grupo) => [
           grupo,
