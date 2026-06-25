@@ -7,6 +7,7 @@ import MenuPublicoLoja, {
   type CategoriaMenuPublicoItem,
   type MenuPublicoItem,
 } from "@/components/loja/MenuPublicoLoja";
+import LojaFiltrosProdutos from "@/components/loja/LojaFiltrosProdutos";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
@@ -187,6 +188,31 @@ function SecaoProdutos({
   }
 
   if (produtos.length === 0) return null;
+
+  if (listaCompleta) {
+    return (
+      <section className="relative px-5 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+              {titulo}
+            </h2>
+          </div>
+
+          <LojaFiltrosProdutos
+            produtos={produtos}
+            defaultOrder="destaque"
+            renderProduto={(produto, index) => (
+              <ProdutoCardLoja
+                produto={produto}
+                revealDelayMs={index * 50}
+              />
+            )}
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="relative px-5 py-12 sm:px-6 lg:px-8">

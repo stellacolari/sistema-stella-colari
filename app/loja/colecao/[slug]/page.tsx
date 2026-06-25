@@ -138,6 +138,7 @@ export default async function LojaColecaoPage({ params }: PageProps) {
         limite: 48,
         layoutDesktop: "GRID",
         layoutMobile: "GRID",
+        habilitarFiltros: true,
         colunasDesktop: 4,
         colunasTablet: 3,
         colunasMobile: 2,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import LojaFiltrosProdutos from "@/components/loja/LojaFiltrosProdutos";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import CarouselScrollArea from "@/components/loja/paginas/CarouselScrollArea";
 import PublicRichTextRenderer from "@/components/loja/paginas/PublicRichTextRenderer";
@@ -22,25 +23,6 @@ import {
   type BlocoPublicoProps,
   type ProdutoPublico,
 } from "@/components/loja/paginas/blocos/utils";
-
-type FiltrosCategoria = {
-  tamanho: string;
-  ordenacao: string;
-  disponibilidade: string;
-};
-
-function precoFinalProduto(produto: ProdutoPublico) {
-  if (
-    produto.descontoAtivo &&
-    produto.precoPromocional !== null &&
-    produto.precoPromocional > 0 &&
-    produto.precoPromocional < produto.precoVenda
-  ) {
-    return produto.precoPromocional;
-  }
-
-  return produto.precoVenda;
-}
 
 function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unknown>) {
   const fonte = getString(config, "fonte", "TODOS");
@@ -125,55 +107,6 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
   return resultado.slice(0, Math.max(1, getNumber(config, "limite", 8)));
 }
 
-function aplicarFiltrosCategoria(
-  produtos: ProdutoPublico[],
-  filtros: FiltrosCategoria
-) {
-  let resultado = [...produtos];
-
-  if (filtros.tamanho) {
-    resultado = resultado.filter((produto) =>
-      produto.tamanhosDisponiveis?.some(
-        (tamanho) =>
-          tamanho.tamanhoAnel === filtros.tamanho &&
-          Number(tamanho.quantidadeAtual || 0) > 0
-      )
-    );
-  }
-
-  if (filtros.disponibilidade === "DISPONIVEL") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal > 0);
-  }
-
-  if (filtros.disponibilidade === "SEM_ESTOQUE") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal <= 0);
-  }
-
-  if (filtros.ordenacao === "MENOR_PRECO") {
-    resultado.sort((a, b) => precoFinalProduto(a) - precoFinalProduto(b));
-  }
-
-  if (filtros.ordenacao === "MAIOR_PRECO") {
-    resultado.sort((a, b) => precoFinalProduto(b) - precoFinalProduto(a));
-  }
-
-  if (filtros.ordenacao === "AZ") {
-    resultado.sort((a, b) => a.nome.localeCompare(b.nome));
-  }
-
-  if (filtros.ordenacao === "ZA") {
-    resultado.sort((a, b) => b.nome.localeCompare(a.nome));
-  }
-
-  if (filtros.ordenacao === "MAIS_RECENTES") {
-    resultado.sort(
-      (a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
-    );
-  }
-
-  return resultado;
-}
-
 export default function ListaProdutosPublico({
   bloco,
   produtos = [],
@@ -183,11 +116,6 @@ export default function ListaProdutosPublico({
   const corFundo = getString(config, "corFundo", "BRANCO");
   const colors = getTextColorForBackground(corFundo);
   const produtosFiltrados = filtrarProdutos(produtos, config);
-  const [filtrosCategoria, setFiltrosCategoria] = useState<FiltrosCategoria>({
-    tamanho: "",
-    ordenacao: "",
-    disponibilidade: "",
-  });
   const [mostrarTodos, setMostrarTodos] = useState(false);
   const layoutMobile = getString(config, "layoutMobile", "GRID");
   const layoutDesktop = getString(config, "layoutDesktop", "GRID");
@@ -225,25 +153,17 @@ export default function ListaProdutosPublico({
   const textoBotao = getStringWithDefault(config, "textoBotao", "Comprar");
   const ehListaCompletaCategoria =
     listaCompletaProdutos || getString(config, "fonte") === "CATEGORIA_ATUAL";
-  const tamanhosDisponiveis = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          produtosFiltrados.flatMap((produto) =>
-            (produto.tamanhosDisponiveis || [])
-              .filter((tamanho) => Number(tamanho.quantidadeAtual || 0) > 0)
-              .map((tamanho) => tamanho.tamanhoAnel)
-          )
-        )
-      ).sort((a, b) => a.localeCompare(b)),
-    [produtosFiltrados]
-  );
-  const exibirFiltrosCategoria =
-    ehListaCompletaCategoria && produtosFiltrados.length > 0;
-  const produtosComFiltros = exibirFiltrosCategoria
-    ? aplicarFiltrosCategoria(produtosFiltrados, filtrosCategoria)
-    : produtosFiltrados;
-  const deveLimitar = !ehListaCompletaCategoria && produtosComFiltros.length > 4;
+  const exibirFiltrosPublicos =
+    produtosFiltrados.length > 0 &&
+    !isCarousel &&
+    (ehListaCompletaCategoria ||
+      getBoolean(config, "habilitarFiltros", false) ||
+      getBoolean(config, "mostrarFiltros", false));
+  const produtosComFiltros = produtosFiltrados;
+  const deveLimitar =
+    !ehListaCompletaCategoria &&
+    !exibirFiltrosPublicos &&
+    produtosComFiltros.length > 4;
   const produtosVisiveis =
     deveLimitar && !mostrarTodos ? produtosComFiltros.slice(0, 4) : produtosComFiltros;
 
@@ -271,67 +191,29 @@ export default function ListaProdutosPublico({
           ) : null}
         </div>
 
-        {exibirFiltrosCategoria ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              {tamanhosDisponiveis.length > 0 ? (
-                <select
-                  value={filtrosCategoria.tamanho}
-                  onChange={(event) =>
-                    setFiltrosCategoria((current) => ({
-                      ...current,
-                      tamanho: event.target.value,
-                    }))
-                  }
-                  className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-                >
-                  <option value="">Todos os tamanhos</option>
-
-                  {tamanhosDisponiveis.map((tamanho) => (
-                    <option key={tamanho} value={tamanho}>
-                      {tamanho}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-
-              <select
-                value={filtrosCategoria.ordenacao}
-                onChange={(event) =>
-                  setFiltrosCategoria((current) => ({
-                    ...current,
-                    ordenacao: event.target.value,
-                  }))
-                }
-                className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="">Ordenar</option>
-                <option value="MAIS_RECENTES">Mais recentes</option>
-                <option value="MENOR_PRECO">Preço: menor para maior</option>
-                <option value="MAIOR_PRECO">Preço: maior para menor</option>
-                <option value="AZ">A-Z</option>
-                <option value="ZA">Z-A</option>
-              </select>
-
-              <select
-                value={filtrosCategoria.disponibilidade}
-                onChange={(event) =>
-                  setFiltrosCategoria((current) => ({
-                    ...current,
-                    disponibilidade: event.target.value,
-                  }))
-                }
-                className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="">Disponibilidade</option>
-                <option value="DISPONIVEL">Disponível</option>
-                <option value="SEM_ESTOQUE">Sem estoque</option>
-              </select>
-            </div>
-          </div>
+        {exibirFiltrosPublicos ? (
+          <LojaFiltrosProdutos
+            produtos={produtosFiltrados}
+            className="mt-8"
+            defaultOrder="destaque"
+            gridClassName={`grid gap-x-5 gap-y-10 ${getGridColumnsClass(
+              1,
+              getNumber(config, "colunasTablet", 3),
+              getNumber(config, "colunasDesktop", 4)
+            )}`}
+            renderProduto={(produto) => (
+              <ProdutoCardLoja
+                produto={produto}
+                exibirPreco={getBoolean(config, "exibirPreco", true)}
+                exibirBotao={getBoolean(config, "exibirBotao", true)}
+                exibirSeloDesconto={getBoolean(config, "exibirSeloDesconto", true)}
+                textoBotao={textoBotao}
+              />
+            )}
+          />
         ) : null}
 
-        {produtosComFiltros.length > 0 ? (
+        {!exibirFiltrosPublicos && produtosComFiltros.length > 0 ? (
           <CarouselScrollArea
             enabled={isCarousel}
             showArrows={exibirSetasCarrossel}
@@ -364,10 +246,6 @@ export default function ListaProdutosPublico({
               </div>
             ))}
           </CarouselScrollArea>
-        ) : exibirFiltrosCategoria ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm font-medium text-slate-500">
-            Nenhum produto encontrado com os filtros selecionados.
-          </div>
         ) : null}
 
         {deveLimitar && !mostrarTodos ? (

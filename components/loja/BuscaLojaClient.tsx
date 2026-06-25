@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Search, X } from "lucide-react";
+import LojaFiltrosProdutos from "@/components/loja/LojaFiltrosProdutos";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import type {
   BuscaLojaFiltrosDetectados,
@@ -14,8 +15,6 @@ import {
 } from "@/lib/loja/eventos-client";
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
-
-type OrdenacaoBusca = "RELEVANCIA" | "MENOR_PRECO" | "MAIOR_PRECO" | "AZ" | "ZA" | "RECENTES";
 
 type BuscaLojaClientProps = {
   termoInicial: string;
@@ -29,19 +28,6 @@ function moeda(valor: number) {
     style: "currency",
     currency: "BRL",
   }).format(valor);
-}
-
-function precoFinalProduto(produto: BuscaLojaProduto) {
-  if (
-    produto.descontoAtivo &&
-    produto.precoPromocional !== null &&
-    produto.precoPromocional > 0 &&
-    produto.precoPromocional < produto.precoVenda
-  ) {
-    return produto.precoPromocional;
-  }
-
-  return produto.precoVenda;
 }
 
 function lerBuscasRecentes() {
@@ -80,11 +66,6 @@ export default function BuscaLojaClient({
   filtrosDetectados,
 }: BuscaLojaClientProps) {
   const [termo, setTermo] = useState(termoInicial);
-  const [ordenacao, setOrdenacao] = useState<OrdenacaoBusca>("RELEVANCIA");
-  const [precoFiltro, setPrecoFiltro] = useState("");
-  const [disponibilidadeFiltro, setDisponibilidadeFiltro] = useState("");
-  const [tamanhoFiltro, setTamanhoFiltro] = useState(filtrosDetectados.medida || "");
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [buscasRecentes, setBuscasRecentes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -97,71 +78,6 @@ export default function BuscaLojaClient({
     salvarBuscaRecente(termoInicial);
     setBuscasRecentes(lerBuscasRecentes());
   }, [termoInicial]);
-
-  const tamanhosDisponiveis = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          produtos.flatMap((produto) =>
-            produto.tamanhosDisponiveis.map((tamanho) => tamanho.tamanhoAnel)
-          )
-        )
-      ).sort((a, b) => a.localeCompare(b)),
-    [produtos]
-  );
-
-  const produtosFiltrados = useMemo(() => {
-    let resultado = [...produtos];
-
-    if (precoFiltro) {
-      const [min, max] = precoFiltro.split("-").map(Number);
-
-      resultado = resultado.filter((produto) => {
-        const preco = precoFinalProduto(produto);
-
-        if (Number.isFinite(min) && preco < min) return false;
-        if (Number.isFinite(max) && max > 0 && preco > max) return false;
-
-        return true;
-      });
-    }
-
-    if (disponibilidadeFiltro === "DISPONIVEL") {
-      resultado = resultado.filter((produto) => produto.estoqueTotal > 0);
-    }
-
-    if (disponibilidadeFiltro === "SEM_ESTOQUE") {
-      resultado = resultado.filter((produto) => produto.estoqueTotal <= 0);
-    }
-
-    if (tamanhoFiltro) {
-      resultado = resultado.filter((produto) =>
-        produto.tamanhosDisponiveis.some(
-          (tamanho) => tamanho.tamanhoAnel === tamanhoFiltro
-        )
-      );
-    }
-
-    resultado.sort((a, b) => {
-      if (ordenacao === "MENOR_PRECO") return precoFinalProduto(a) - precoFinalProduto(b);
-      if (ordenacao === "MAIOR_PRECO") return precoFinalProduto(b) - precoFinalProduto(a);
-      if (ordenacao === "AZ") return a.nome.localeCompare(b.nome);
-      if (ordenacao === "ZA") return b.nome.localeCompare(a.nome);
-      if (ordenacao === "RECENTES") {
-        return new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime();
-      }
-
-      return b.relevancia - a.relevancia || a.nome.localeCompare(b.nome);
-    });
-
-    return resultado;
-  }, [
-    disponibilidadeFiltro,
-    ordenacao,
-    precoFiltro,
-    produtos,
-    tamanhoFiltro,
-  ]);
 
   const temResultados = produtos.length > 0;
 
@@ -291,125 +207,47 @@ export default function BuscaLojaClient({
           </div>
         ) : null}
 
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-950">
-              {produtosFiltrados.length} produto
-              {produtosFiltrados.length === 1 ? "" : "s"} encontrado
-              {produtosFiltrados.length === 1 ? "" : "s"}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setFiltrosAbertos((current) => !current)}
-            className="inline-flex h-11 items-center justify-center gap-2 border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-slate-500 sm:hidden"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filtros
-          </button>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className={`${filtrosAbertos ? "block" : "hidden"} lg:block`}>
-            <div className="space-y-3 border border-slate-200 bg-white p-4">
-              <select
-                value={ordenacao}
-                onChange={(event) => setOrdenacao(event.target.value as OrdenacaoBusca)}
-                className="h-11 w-full border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="RELEVANCIA">Mais relevantes</option>
-                <option value="MENOR_PRECO">Menor preco</option>
-                <option value="MAIOR_PRECO">Maior preco</option>
-                <option value="AZ">A-Z</option>
-                <option value="ZA">Z-A</option>
-                <option value="RECENTES">Mais recentes</option>
-              </select>
-
-              <select
-                value={precoFiltro}
-                onChange={(event) => setPrecoFiltro(event.target.value)}
-                className="h-11 w-full border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="">Todos os precos</option>
-                <option value="0-100">Ate R$ 100</option>
-                <option value="100-200">R$ 100 a R$ 200</option>
-                <option value="200-0">Acima de R$ 200</option>
-              </select>
-
-              {tamanhosDisponiveis.length > 0 ? (
-                <select
-                  value={tamanhoFiltro}
-                  onChange={(event) => setTamanhoFiltro(event.target.value)}
-                  className="h-11 w-full border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-                >
-                  <option value="">Todos os tamanhos</option>
-                  {tamanhosDisponiveis.map((tamanho) => (
-                    <option key={tamanho} value={tamanho}>
-                      {tamanho}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-
-              <select
-                value={disponibilidadeFiltro}
-                onChange={(event) => setDisponibilidadeFiltro(event.target.value)}
-                className="h-11 w-full border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="">Disponibilidade</option>
-                <option value="DISPONIVEL">Disponivel</option>
-                <option value="SEM_ESTOQUE">Sem estoque</option>
-              </select>
+        <div className="min-w-0 space-y-10">
+          <section>
+            <div className="mb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                Produtos encontrados
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                Resultados para compra
+              </h2>
             </div>
-          </aside>
 
-          <div className="min-w-0 space-y-10">
-            <section>
-              <div className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
-                  Produtos encontrados
-                </p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-950">
-                  Resultados para compra
-                </h2>
-              </div>
-
-              {produtosFiltrados.length > 0 ? (
-                <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-                  {produtosFiltrados.map((produto, index) => (
-                    <ProdutoCardLoja
-                      key={produto.id}
-                      produto={produto}
-                      revealDelayMs={index * 50}
-                      trackingOrigem="pagina_busca"
-                      trackingResultadoBusca={{
-                        termoBusca: termoInicial,
-                        posicao: index + 1,
-                      }}
-                      trackingMetadata={{
-                        relevancia: produto.relevancia,
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : temResultados ? (
-                <div className="border border-slate-200 bg-white px-6 py-12 text-center">
-                  <p className="text-lg font-semibold text-slate-950">
-                    Nenhum produto encontrado com os filtros selecionados.
-                  </p>
-                </div>
-              ) : (
-                <div className="border border-slate-200 bg-white px-6 py-12 text-center">
-                  <p className="text-lg font-semibold text-slate-950">
-                    Nenhum produto encontrado.
-                  </p>
-                  <p className="mt-3 text-sm text-slate-600">
-                    Confira a escrita ou tente termos como anel, brinco ou colar.
-                  </p>
-                </div>
+            <LojaFiltrosProdutos
+              produtos={produtos}
+              defaultOrder="relevancia"
+              gridClassName="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
+              emptyTitle={
+                temResultados
+                  ? "Nenhum produto encontrado com esses filtros."
+                  : "Nenhum produto encontrado."
+              }
+              emptyDescription={
+                temResultados
+                  ? "Tente remover algum filtro ou buscar por outro termo."
+                  : "Confira a escrita ou tente termos como anel, brinco ou colar."
+              }
+              renderProduto={(produto, index) => (
+                <ProdutoCardLoja
+                  produto={produto}
+                  revealDelayMs={index * 50}
+                  trackingOrigem="pagina_busca"
+                  trackingResultadoBusca={{
+                    termoBusca: termoInicial,
+                    posicao: index + 1,
+                  }}
+                  trackingMetadata={{
+                    relevancia: produto.relevancia,
+                  }}
+                />
               )}
-            </section>
+            />
+          </section>
 
             {sugestoes.length > 0 ? (
               <section>
@@ -434,7 +272,6 @@ export default function BuscaLojaClient({
                 </div>
               </section>
             ) : null}
-          </div>
         </div>
       </section>
     </main>
