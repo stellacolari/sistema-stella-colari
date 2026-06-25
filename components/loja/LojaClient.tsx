@@ -329,9 +329,9 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
   if (!bloco) return null;
 
   return (
-    <section className="py-8 lg:py-10">
-      <div className="grid w-full bg-slate-50 lg:h-[50vh] lg:min-h-[280px] lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="min-h-[220px] bg-slate-100 sm:min-h-[250px] lg:h-full lg:min-h-0">
+    <section className="py-10 lg:py-12">
+      <div className="grid w-full bg-slate-50 lg:min-h-[420px] lg:grid-cols-2">
+        <div className="min-h-[260px] overflow-hidden bg-slate-100 sm:min-h-[320px] lg:min-h-[420px]">
           {bloco.imagemUrl ? (
             <div className="relative h-full w-full">
               <img
@@ -349,13 +349,13 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
           )}
         </div>
 
-        <div className="flex items-center px-6 py-8 sm:px-10 lg:h-full lg:px-14 lg:py-8">
+        <div className="flex items-center px-6 py-10 sm:px-10 lg:px-14 lg:py-12">
           <div className="max-w-xl">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
               {bloco.titulo}
             </h2>
 
-            <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
+            <p className="mt-4 text-base font-medium leading-7 text-slate-600">
               {bloco.texto}
             </p>
 

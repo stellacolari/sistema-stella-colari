@@ -536,7 +536,7 @@ export default function ProdutoCardLoja({
   );
 
   const overlayHover = (
-    <div className="stella-product-hover-overlay pointer-events-none absolute inset-0 z-20 overflow-hidden bg-slate-100">
+    <div className="stella-product-hover-overlay pointer-events-none absolute -inset-2 z-20 overflow-hidden bg-slate-100">
       {imagemOverlayUrl ? (
         <img
           src={imagemOverlayUrl}

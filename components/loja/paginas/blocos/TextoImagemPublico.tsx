@@ -79,17 +79,36 @@ function getImageRadiusClass(widthMode: string, radius: number) {
   return "rounded-[2rem]";
 }
 
+type TextoImagemStyleRole = "titulo" | "texto" | "botao";
+
 function getTextoImagemStyle(
   config: Record<string, unknown>,
-  key: string
+  key: string,
+  role: TextoImagemStyleRole
 ): CSSProperties {
   const style = asConfig(config[key]);
-  const fontSizeMap: Record<string, string> = {
-    PEQUENO: "0.875rem",
-    MEDIO: "1rem",
-    GRANDE: "1.5rem",
-    EXTRA_GRANDE: "2.75rem",
-    EDITORIAL: "3rem",
+  const fontSizeMaps: Record<TextoImagemStyleRole, Record<string, string>> = {
+    titulo: {
+      PEQUENO: "1.5rem",
+      MEDIO: "2rem",
+      GRANDE: "2.5rem",
+      EXTRA_GRANDE: "3rem",
+      EDITORIAL: "3.5rem",
+    },
+    texto: {
+      PEQUENO: "0.9375rem",
+      MEDIO: "1rem",
+      GRANDE: "1.125rem",
+      EXTRA_GRANDE: "1.25rem",
+      EDITORIAL: "1.375rem",
+    },
+    botao: {
+      PEQUENO: "0.8125rem",
+      MEDIO: "0.875rem",
+      GRANDE: "1rem",
+      EXTRA_GRANDE: "1.125rem",
+      EDITORIAL: "1.125rem",
+    },
   };
   const fontWeightMap: Record<string, number> = {
     LIGHT: 300,
@@ -121,34 +140,71 @@ function getTextoImagemStyle(
     CENTRO: "center",
     DIREITA: "right",
   };
-  const colorPreset = getStringWithDefault(style, "colorPreset", "PADRAO");
-  const colorCustom = getString(style, "colorCustom");
-  const fontFamily = getStringWithDefault(style, "fontFamily", "PRINCIPAL");
+  const hasStyleConfig = Object.keys(style).length > 0;
 
-  return {
-    fontFamily:
+  if (!hasStyleConfig) {
+    return {};
+  }
+
+  const nextStyle: CSSProperties = {};
+  const fontFamily = getStringWithDefault(style, "fontFamily");
+  const fontSizePreset = getStringWithDefault(style, "fontSizePreset");
+  const fontWeight = getStringWithDefault(style, "fontWeight");
+  const colorPreset = getStringWithDefault(style, "colorPreset");
+  const colorCustom = getString(style, "colorCustom");
+  const letterSpacing = getStringWithDefault(style, "letterSpacing");
+  const lineHeight = getStringWithDefault(style, "lineHeight");
+  const textTransform = getStringWithDefault(style, "textTransform");
+  const textAlign = getStringWithDefault(style, "textAlign");
+
+  if (fontFamily) {
+    nextStyle.fontFamily =
       fontFamily === "EDITORIAL"
         ? "Georgia, 'Times New Roman', serif"
-        : "var(--font-primary)",
-    fontSize: fontSizeMap[getStringWithDefault(style, "fontSizePreset", "MEDIO")],
-    fontWeight: fontWeightMap[getStringWithDefault(style, "fontWeight", "REGULAR")],
-    color:
-      colorPreset === "PERSONALIZADO" && colorCustom
-        ? colorCustom
-        : colorMap[colorPreset],
-    letterSpacing:
-      letterSpacingMap[getStringWithDefault(style, "letterSpacing", "NORMAL")],
-    lineHeight: lineHeightMap[getStringWithDefault(style, "lineHeight", "NORMAL")],
-    textTransform:
-      getStringWithDefault(style, "textTransform", "NORMAL") === "UPPERCASE"
-        ? "uppercase"
-        : getStringWithDefault(style, "textTransform", "NORMAL") === "CAPITALIZE"
-          ? "capitalize"
-          : "none",
-    textAlign: textAlignMap[getStringWithDefault(style, "textAlign", "ESQUERDA")],
-    marginTop: `${Math.max(0, getNumber(style, "marginTop", 0))}px`,
-    marginBottom: `${Math.max(0, getNumber(style, "marginBottom", 0))}px`,
-  };
+        : "var(--font-primary)";
+  }
+
+  if (fontSizePreset && fontSizeMaps[role][fontSizePreset]) {
+    nextStyle.fontSize = fontSizeMaps[role][fontSizePreset];
+  }
+
+  if (fontWeight && fontWeightMap[fontWeight]) {
+    nextStyle.fontWeight = fontWeightMap[fontWeight];
+  }
+
+  if (colorPreset === "PERSONALIZADO" && colorCustom) {
+    nextStyle.color = colorCustom;
+  } else if (colorPreset && colorMap[colorPreset]) {
+    nextStyle.color = colorMap[colorPreset];
+  }
+
+  if (letterSpacing && letterSpacingMap[letterSpacing]) {
+    nextStyle.letterSpacing = letterSpacingMap[letterSpacing];
+  }
+
+  if (lineHeight && lineHeightMap[lineHeight]) {
+    nextStyle.lineHeight = lineHeightMap[lineHeight];
+  }
+
+  if (textTransform === "UPPERCASE") {
+    nextStyle.textTransform = "uppercase";
+  } else if (textTransform === "CAPITALIZE") {
+    nextStyle.textTransform = "capitalize";
+  }
+
+  if (textAlign && textAlignMap[textAlign]) {
+    nextStyle.textAlign = textAlignMap[textAlign];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(style, "marginTop")) {
+    nextStyle.marginTop = `${Math.max(0, getNumber(style, "marginTop", 0))}px`;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(style, "marginBottom")) {
+    nextStyle.marginBottom = `${Math.max(0, getNumber(style, "marginBottom", 0))}px`;
+  }
+
+  return nextStyle;
 }
 
 export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
@@ -199,9 +255,9 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const altText = getString(config, "imagemAlt", titulo);
   const zoomDesktop = Math.max(80, Math.min(180, getNumber(config, "mediaZoomDesktop", 100)));
   const zoomMobile = Math.max(80, Math.min(180, getNumber(config, "mediaZoomMobile", 100)));
-  const tituloStyle = getTextoImagemStyle(config, "tituloStyle");
-  const textoStyle = getTextoImagemStyle(config, "textoStyle");
-  const botaoStyle = getTextoImagemStyle(config, "botaoStyle");
+  const tituloStyle = getTextoImagemStyle(config, "tituloStyle", "titulo");
+  const textoStyle = getTextoImagemStyle(config, "textoStyle", "texto");
+  const botaoStyle = getTextoImagemStyle(config, "botaoStyle", "botao");
   const textoBotao = getStringWithDefault(config, ["textoBotao", "botaoTexto"]);
   const linkBotao = getButtonHref(config, ["linkBotao", "botaoLink", "linkUrl"]);
   const imageDesktop = getImageDesktop(config);

@@ -113,14 +113,6 @@ function getString(
   return fallback;
 }
 
-function getNumber(config: Record<string, unknown>, key: string, fallback = 0) {
-  const value = Number(config[key]);
-
-  if (Number.isFinite(value)) return value;
-
-  return fallback;
-}
-
 function getBoolean(
   config: Record<string, unknown>,
   key: string,
@@ -153,6 +145,43 @@ function getStringArray(config: Record<string, unknown>, key: string) {
   return [];
 }
 
+function clampNumber(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function getNumberInRange(
+  config: Record<string, unknown>,
+  key: string,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  return clampNumber(config[key], min, max, fallback);
+}
+
+function normalizarBlocosBuilder(blocos: LojaBuilderBloco[]) {
+  return blocos.map((bloco, index) => ({
+    ...bloco,
+    titulo:
+      typeof bloco.titulo === "string"
+        ? bloco.titulo.trim() || null
+        : bloco.titulo,
+    ordem: clampNumber(bloco.ordem, -1000, 10000, index),
+    configJson: asConfig(bloco.configJson),
+  }));
+}
+
 function produtoTemDesconto(produto: {
   descontoAtivo: boolean;
   precoPromocional: number | null;
@@ -182,7 +211,7 @@ function filtrarProdutosPorConfig(
   const fonte = getString(config, "fonte", "TODOS");
   const categorias = getStringArray(config, "categorias");
   const produtosIds = getStringArray(config, "produtosIds");
-  const limite = getNumber(config, "limite", 12);
+  const limite = getNumberInRange(config, "limite", 12, 1, 24);
 
   let resultado = [...produtos];
 
@@ -380,8 +409,20 @@ function BlocoBanner({ config }: { config: Record<string, unknown> }) {
   const imagemDesktop = getString(config, "imagemDesktop");
   const imagemMobile = getString(config, "imagemMobile") || imagemDesktop;
   const linkUrl = getString(config, "linkUrl");
-  const alturaDesktop = getNumber(config, "alturaDesktop", 520);
-  const alturaMobile = getNumber(config, "alturaMobile", 320);
+  const alturaDesktop = getNumberInRange(
+    config,
+    "alturaDesktop",
+    520,
+    240,
+    820,
+  );
+  const alturaMobile = getNumberInRange(
+    config,
+    "alturaMobile",
+    320,
+    220,
+    640,
+  );
 
   if (!imagemDesktop && !imagemMobile) return null;
 
@@ -498,7 +539,7 @@ function BlocoImagemTexto({ config }: { config: Record<string, unknown> }) {
   const posicaoImagem = getString(config, "posicaoImagem", "ESQUERDA");
   const textoBotao = getString(config, "textoBotao");
   const linkBotao = getString(config, "linkBotao");
-  const altura = getNumber(config, "altura", 420);
+  const altura = getNumberInRange(config, "altura", 420, 280, 760);
 
   if (!titulo && !texto && !imagemUrl) return null;
 
@@ -769,7 +810,7 @@ function BlocoCategoriaSubcategorias({
     "descricao",
     "Veja as subcategorias disponíveis.",
   );
-  const colunas = getNumber(config, "colunas", 4);
+  const colunas = getNumberInRange(config, "colunas", 4, 2, 4);
   const espacamento = getString(config, "espacamento", "MEDIO");
 
   const gridClass =
@@ -1444,8 +1485,14 @@ function BlocoProdutos({
         alinhamentoPrincipal={alinhamentoPrincipal}
         alinhamentoSecao={alinhamentoSecao}
         produtos={produtosDoBloco}
-        produtosPorLinha={getNumber(config, "produtosPorLinha", 4)}
-        linhasPorPagina={getNumber(config, "linhasPorPagina", 2)}
+        produtosPorLinha={getNumberInRange(
+          config,
+          "produtosPorLinha",
+          4,
+          2,
+          4,
+        )}
+        linhasPorPagina={getNumberInRange(config, "linhasPorPagina", 2, 1, 4)}
         paginacao={getString(config, "paginacao", "NUMEROS")}
         mostrarFiltros={mostrarFiltros}
         filtrosAtivos={filtrosAtivos}
@@ -1501,6 +1548,10 @@ export default function LojaPaginaBuilderClient({
   categoriaAtual?: LojaBuilderCategoriaAtual | null;
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
 }) {
+  const blocosNormalizados = useMemo(
+    () => normalizarBlocosBuilder(blocos),
+    [blocos],
+  );
   const menusPublicos: MenuPublicoItem[] = menus.map((menu) => ({
     id: menu.id,
     nome: menu.nome,
@@ -1508,7 +1559,7 @@ export default function LojaPaginaBuilderClient({
     destaque: menu.destaque,
     corDestaque: menu.corDestaque,
   }));
-  const primeiroBloco = blocos[0] || null;
+  const primeiroBloco = blocosNormalizados[0] || null;
   const bannerHeroV2Topo =
     primeiroBloco?.tipo === "BANNER_HERO_V2"
       ? normalizarBannerHeroV2Config(primeiroBloco.configJson)
@@ -1534,7 +1585,7 @@ export default function LojaPaginaBuilderClient({
       />
 
       <main>
-        {blocos.length === 0 ? (
+        {blocosNormalizados.length === 0 ? (
           <section className="mx-auto max-w-4xl px-5 py-20 text-center sm:px-6 lg:px-8">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
               {pagina.titulo}
@@ -1545,7 +1596,7 @@ export default function LojaPaginaBuilderClient({
             </p>
           </section>
         ) : (
-          blocos.map((bloco) => {
+          blocosNormalizados.map((bloco) => {
             const config = asConfig(bloco.configJson);
             let rendered: ReactNode = null;
 
@@ -1600,10 +1651,22 @@ export default function LojaPaginaBuilderClient({
                     fonte: getString(config, "fonte", "MAIS_VENDIDOS"),
                     categorias: getStringArray(config, "categorias"),
                     produtosIds: getStringArray(config, "produtosIds"),
-                    limite: getNumber(config, "limite", 8),
+                    limite: getNumberInRange(config, "limite", 8, 1, 24),
                     mostrarSetas: getBoolean(config, "mostrarSetas", true),
-                    produtosPorLinha: getNumber(config, "produtosPorLinha", 4),
-                    linhasPorPagina: getNumber(config, "linhasPorPagina", 2),
+                    produtosPorLinha: getNumberInRange(
+                      config,
+                      "produtosPorLinha",
+                      4,
+                      2,
+                      4,
+                    ),
+                    linhasPorPagina: getNumberInRange(
+                      config,
+                      "linhasPorPagina",
+                      2,
+                      1,
+                      4,
+                    ),
                     paginacao: getString(config, "paginacao", "NUMEROS"),
                     mostrarFiltros: getBoolean(config, "mostrarFiltros", false),
                     filtros: getObject(config, "filtros"),
