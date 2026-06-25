@@ -13,11 +13,18 @@ type CookieStoreLike = {
 };
 
 const SESSAO_DURACAO_SEGUNDOS = 60 * 60 * 8;
+export const SESSAO_ADMIN_PERSISTENTE_DURACAO_SEGUNDOS = 60 * 60 * 24 * 5;
+
+type OpcoesSessaoAdmin = {
+  maxAgeSeconds?: number;
+};
 
 function base64UrlEncode(value: Uint8Array | string) {
   const source =
     typeof value === "string" ? new TextEncoder().encode(value) : value;
-  const binary = Array.from(source, (byte) => String.fromCharCode(byte)).join("");
+  const binary = Array.from(source, (byte) => String.fromCharCode(byte)).join(
+    "",
+  );
 
   return btoa(binary)
     .replaceAll("+", "-")
@@ -29,7 +36,7 @@ function base64UrlDecode(value: string) {
   const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
   const padded = normalized.padEnd(
     normalized.length + ((4 - (normalized.length % 4)) % 4),
-    "="
+    "=",
   );
   const binary = atob(padded);
 
@@ -41,7 +48,7 @@ function getSessionSecret() {
 
   if (!secret) {
     throw new Error(
-      "ADMIN_SESSION_SECRET não configurado. Defina a variável de ambiente para proteger o painel administrativo."
+      "ADMIN_SESSION_SECRET não configurado. Defina a variável de ambiente para proteger o painel administrativo.",
     );
   }
 
@@ -57,7 +64,7 @@ async function getSigningKey() {
       hash: "SHA-256",
     },
     false,
-    ["sign", "verify"]
+    ["sign", "verify"],
   );
 }
 
@@ -75,31 +82,45 @@ function timingSafeEqual(a: string, b: string) {
   return diff === 0;
 }
 
-export function getSessaoAdminMaxAge() {
+function resolverSessaoAdminMaxAge(maxAgeSeconds?: number) {
+  if (
+    typeof maxAgeSeconds === "number" &&
+    Number.isFinite(maxAgeSeconds) &&
+    maxAgeSeconds > 0
+  ) {
+    return Math.floor(maxAgeSeconds);
+  }
+
   return SESSAO_DURACAO_SEGUNDOS;
 }
 
-export function getOpcoesCookieSessaoAdmin() {
+export function getSessaoAdminMaxAge(maxAgeSeconds?: number) {
+  return resolverSessaoAdminMaxAge(maxAgeSeconds);
+}
+
+export function getOpcoesCookieSessaoAdmin(opcoes: OpcoesSessaoAdmin = {}) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: getSessaoAdminMaxAge(),
+    maxAge: getSessaoAdminMaxAge(opcoes.maxAgeSeconds),
   };
 }
 
 export async function assinarSessaoAdmin(
-  payload: Omit<SessaoAdminPayload, "exp">
+  payload: Omit<SessaoAdminPayload, "exp">,
+  opcoes: OpcoesSessaoAdmin = {},
 ) {
+  const maxAge = resolverSessaoAdminMaxAge(opcoes.maxAgeSeconds);
   const sessao: SessaoAdminPayload = {
     ...payload,
-    exp: Math.floor(Date.now() / 1000) + SESSAO_DURACAO_SEGUNDOS,
+    exp: Math.floor(Date.now() / 1000) + maxAge,
   };
   const body = base64UrlEncode(JSON.stringify(sessao));
   const key = await getSigningKey();
   const signature = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body))
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)),
   );
 
   return `${body}.${base64UrlEncode(signature)}`;
@@ -118,7 +139,7 @@ export async function verificarSessaoAdminToken(token: string | undefined) {
 
   const key = await getSigningKey();
   const expectedSignature = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body))
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)),
   );
   const expected = base64UrlEncode(expectedSignature);
 
@@ -128,7 +149,7 @@ export async function verificarSessaoAdminToken(token: string | undefined) {
 
   try {
     const payload = JSON.parse(
-      new TextDecoder().decode(base64UrlDecode(body))
+      new TextDecoder().decode(base64UrlDecode(body)),
     ) as SessaoAdminPayload;
 
     if (!payload.sub || !payload.email || !payload.exp) {

@@ -24,7 +24,7 @@ export async function hashSenha(senha: string) {
   const derivedKey = (await scryptAsync(
     senha,
     salt,
-    HASH_KEY_LENGTH
+    HASH_KEY_LENGTH,
   )) as Buffer;
 
   return `${HASH_PREFIXO}:${salt}:${derivedKey.toString("hex")}`;
@@ -38,7 +38,11 @@ export async function verificarSenha(senha: string, senhaHash: string) {
   }
 
   const hashBuffer = Buffer.from(hash, "hex");
-  const derivedKey = (await scryptAsync(senha, salt, hashBuffer.length)) as Buffer;
+  const derivedKey = (await scryptAsync(
+    senha,
+    salt,
+    hashBuffer.length,
+  )) as Buffer;
 
   if (derivedKey.length !== hashBuffer.length) {
     return false;
@@ -47,21 +51,31 @@ export async function verificarSenha(senha: string, senhaHash: string) {
   return timingSafeEqual(derivedKey, hashBuffer);
 }
 
-export async function criarSessaoAdmin(usuario: {
-  id: string;
-  email: string;
-  nome: string;
-  perfil: string;
-}) {
+export async function criarSessaoAdmin(
+  usuario: {
+    id: string;
+    email: string;
+    nome: string;
+    perfil: string;
+  },
+  opcoes?: { maxAgeSeconds?: number },
+) {
   const cookieStore = await cookies();
-  const token = await assinarSessaoAdmin({
-    sub: usuario.id,
-    email: usuario.email,
-    nome: usuario.nome,
-    perfil: usuario.perfil,
-  });
+  const token = await assinarSessaoAdmin(
+    {
+      sub: usuario.id,
+      email: usuario.email,
+      nome: usuario.nome,
+      perfil: usuario.perfil,
+    },
+    opcoes,
+  );
 
-  cookieStore.set(ADMIN_SESSION_COOKIE, token, getOpcoesCookieSessaoAdmin());
+  cookieStore.set(
+    ADMIN_SESSION_COOKIE,
+    token,
+    getOpcoesCookieSessaoAdmin(opcoes),
+  );
 }
 
 export async function lerSessaoAdmin() {
@@ -118,13 +132,13 @@ export async function exigirAdminGeral() {
 export function usuarioTemPermissaoAdmin(
   usuario: Awaited<ReturnType<typeof exigirAdmin>>,
   modulo: string,
-  acao: string
+  acao: string,
 ) {
   return usuarioTemPermissao(usuario, modulo, acao);
 }
 
 export function usuarioPodeVerDadosFinanceirosAdmin(
-  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>,
 ) {
   return (
     usuarioTemPermissaoAdmin(usuario, "financeiro", "verFinanceiro") ||
@@ -139,7 +153,7 @@ export function usuarioPodeVerDadosFinanceirosAdmin(
 }
 
 export function usuarioPodeAlterarStatusPedidoAdmin(
-  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>,
 ) {
   return (
     usuarioTemPermissaoAdmin(usuario, "pedidos", "editar") ||
@@ -148,13 +162,13 @@ export function usuarioPodeAlterarStatusPedidoAdmin(
 }
 
 export function usuarioPodeExecutarAcaoSensivelPedidoAdmin(
-  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>,
 ) {
   return usuarioTemPermissaoAdmin(usuario, "pedidos", "executar");
 }
 
 export function usuarioPodeGerenciarPagamentoPedidoAdmin(
-  usuario: Awaited<ReturnType<typeof exigirAdmin>>
+  usuario: Awaited<ReturnType<typeof exigirAdmin>>,
 ) {
   return (
     usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario) ||
@@ -179,7 +193,9 @@ export async function exigirPermissaoAlterarStatusPedidoAdmin() {
   const usuario = await exigirAdmin();
 
   if (!usuarioPodeAlterarStatusPedidoAdmin(usuario)) {
-    throw new AdminPermissaoError("Acesso nao permitido para alterar status de pedido.");
+    throw new AdminPermissaoError(
+      "Acesso nao permitido para alterar status de pedido.",
+    );
   }
 
   return usuario;
@@ -189,7 +205,9 @@ export async function exigirPermissaoExecutarAcaoSensivelPedidoAdmin() {
   const usuario = await exigirAdmin();
 
   if (!usuarioPodeExecutarAcaoSensivelPedidoAdmin(usuario)) {
-    throw new AdminPermissaoError("Acesso nao permitido para executar esta acao de pedido.");
+    throw new AdminPermissaoError(
+      "Acesso nao permitido para executar esta acao de pedido.",
+    );
   }
 
   return usuario;
@@ -199,7 +217,9 @@ export async function exigirPermissaoGerenciarPagamentoPedidoAdmin() {
   const usuario = await exigirAdmin();
 
   if (!usuarioPodeGerenciarPagamentoPedidoAdmin(usuario)) {
-    throw new AdminPermissaoError("Acesso nao permitido para alterar pagamento de pedido.");
+    throw new AdminPermissaoError(
+      "Acesso nao permitido para alterar pagamento de pedido.",
+    );
   }
 
   return usuario;

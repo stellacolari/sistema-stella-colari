@@ -18,6 +18,9 @@ type NotificacaoContadores = {
   campanhas: number;
   precificacao: number;
 };
+type NotificacoesAtualizadasEvent = CustomEvent<{
+  contadores?: NotificacaoContadores;
+}>;
 
 function getPageInfo(pathname: string) {
   if (pathname.startsWith("/pedidos")) {
@@ -153,7 +156,8 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Sistema",
       title: "Perfis e Permissoes",
-      description: "Cargos administrativos, acessos e distribuicao de notificacoes.",
+      description:
+        "Cargos administrativos, acessos e distribuicao de notificacoes.",
       showLojaButton: false,
     };
   }
@@ -309,7 +313,8 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Compras e Financeiro",
       title: "Compras e Financeiro",
-      description: "Central de compras de estoque, gastos financeiros e reposição.",
+      description:
+        "Central de compras de estoque, gastos financeiros e reposição.",
       showLojaButton: false,
     };
   }
@@ -447,13 +452,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
           return;
         }
 
-        setPerfil(typeof perfilResposta === "string" && perfilResposta ? perfilResposta : "VENDEDOR");
+        setPerfil(
+          typeof perfilResposta === "string" && perfilResposta
+            ? perfilResposta
+            : "VENDEDOR",
+        );
         setPermissoes(data.usuario?.permissoes);
 
-        const notificacoesResponse = await fetch("/api/notificacoes/contadores", {
-          cache: "no-store",
-        });
-        const notificacoesData = await notificacoesResponse.json().catch(() => ({}));
+        const notificacoesResponse = await fetch(
+          "/api/notificacoes/contadores",
+          {
+            cache: "no-store",
+          },
+        );
+        const notificacoesData = await notificacoesResponse
+          .json()
+          .catch(() => ({}));
 
         if (ativo && notificacoesData.contadores) {
           setNotificacoes(notificacoesData.contadores);
@@ -469,6 +483,54 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
     return () => {
       ativo = false;
+    };
+  }, [isPublicShell]);
+
+  useEffect(() => {
+    if (isPublicShell) {
+      return;
+    }
+
+    let ativo = true;
+
+    async function carregarContadores() {
+      try {
+        const response = await fetch("/api/notificacoes/contadores", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (ativo && data.contadores) {
+          setNotificacoes(data.contadores);
+        }
+      } catch {
+        // Mantem o ultimo contador conhecido se a consulta falhar.
+      }
+    }
+
+    function onNotificacoesAtualizadas(event: Event) {
+      const contadoresAtualizados = (event as NotificacoesAtualizadasEvent)
+        .detail?.contadores;
+
+      if (contadoresAtualizados) {
+        setNotificacoes(contadoresAtualizados);
+        return;
+      }
+
+      void carregarContadores();
+    }
+
+    window.addEventListener(
+      "stella:notificacoes-atualizadas",
+      onNotificacoesAtualizadas,
+    );
+
+    return () => {
+      ativo = false;
+      window.removeEventListener(
+        "stella:notificacoes-atualizadas",
+        onNotificacoesAtualizadas,
+      );
     };
   }, [isPublicShell]);
 

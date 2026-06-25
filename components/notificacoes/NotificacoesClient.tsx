@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
   ArrowRight,
@@ -34,17 +34,19 @@ type NotificacaoResumo = {
   arquivadaEm: string | null;
 };
 
+type NotificacaoContadores = {
+  total: number;
+  pedidos: number;
+  reposicao: number;
+  recomendacoes: number;
+  campanhas: number;
+  precificacao: number;
+};
+
 type Props = {
   perfil: string;
   notificacoes: NotificacaoResumo[];
-  contadores: {
-    total: number;
-    pedidos: number;
-    reposicao: number;
-    recomendacoes: number;
-    campanhas: number;
-    precificacao: number;
-  };
+  contadores: NotificacaoContadores;
 };
 
 const tabs = [
@@ -78,11 +80,16 @@ function dataCurta(value: string) {
 
 function categoriaClass(categoria: string) {
   if (categoria === "PEDIDO") return "border-red-200 bg-red-50 text-red-900";
-  if (categoria === "OPERACIONAL") return "border-orange-200 bg-orange-50 text-orange-900";
-  if (categoria === "REPOSICAO" || categoria === "ESTOQUE") return "border-amber-200 bg-amber-50 text-amber-900";
-  if (categoria === "RECOMENDACAO") return "border-blue-200 bg-blue-50 text-blue-900";
-  if (categoria === "CAMPANHA") return "border-emerald-200 bg-emerald-50 text-emerald-900";
-  if (categoria === "PRECIFICACAO") return "border-violet-200 bg-violet-50 text-violet-900";
+  if (categoria === "OPERACIONAL")
+    return "border-orange-200 bg-orange-50 text-orange-900";
+  if (categoria === "REPOSICAO" || categoria === "ESTOQUE")
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  if (categoria === "RECOMENDACAO")
+    return "border-blue-200 bg-blue-50 text-blue-900";
+  if (categoria === "CAMPANHA")
+    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (categoria === "PRECIFICACAO")
+    return "border-violet-200 bg-violet-50 text-violet-900";
   return "border-slate-200 bg-slate-50 text-slate-800";
 }
 
@@ -95,15 +102,53 @@ function prioridadeClass(prioridade: string) {
 }
 
 function label(value: string) {
-  return value.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (item) => item.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (item) => item.toUpperCase());
 }
 
-export default function NotificacoesClient({ perfil, notificacoes, contadores }: Props) {
+function contarNaoLidasLocal(
+  items: NotificacaoResumo[],
+): NotificacaoContadores {
+  const novas = items.filter((item) => item.status === "NOVA");
+
+  return {
+    total: novas.length,
+    pedidos: novas.filter((item) => item.categoria === "PEDIDO").length,
+    reposicao: novas.filter((item) =>
+      ["ESTOQUE", "REPOSICAO"].includes(item.categoria),
+    ).length,
+    recomendacoes: novas.filter((item) => item.categoria === "RECOMENDACAO")
+      .length,
+    campanhas: novas.filter((item) => item.categoria === "CAMPANHA").length,
+    precificacao: novas.filter((item) => item.categoria === "PRECIFICACAO")
+      .length,
+  };
+}
+
+function avisarContadoresAtualizados(contadores: NotificacaoContadores) {
+  window.dispatchEvent(
+    new CustomEvent("stella:notificacoes-atualizadas", {
+      detail: { contadores },
+    }),
+  );
+}
+
+export default function NotificacoesClient({
+  perfil,
+  notificacoes,
+  contadores,
+}: Props) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const categoriaInicial = searchParams.get("categoria") || "TODAS";
   const [items, setItems] = useState(notificacoes);
+  const [contadoresAtuais, setContadoresAtuais] = useState(contadores);
   const [categoria, setCategoria] = useState(
-    tabs.some((tab) => tab.value === categoriaInicial) ? categoriaInicial : "TODAS"
+    tabs.some((tab) => tab.value === categoriaInicial)
+      ? categoriaInicial
+      : "TODAS",
   );
   const [prioridade, setPrioridade] = useState("TODAS");
   const [status, setStatus] = useState("TODAS");
@@ -114,19 +159,34 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
   const sistemaNaoLidas = items.filter(
     (item) =>
       item.status === "NOVA" &&
-      (item.categoria === "SISTEMA" || item.categoria === "OPERACIONAL")
+      (item.categoria === "SISTEMA" || item.categoria === "OPERACIONAL"),
   ).length;
+
+  useEffect(() => {
+    setItems(notificacoes);
+    setContadoresAtuais(contadores);
+    setSelecionadas([]);
+  }, [contadores, notificacoes]);
 
   const filtradas = useMemo(() => {
     const termo = normalizar(busca);
 
     return items
-      .filter((item) => (categoria === "TODAS" ? true : item.categoria === categoria || (categoria === "REPOSICAO" && item.categoria === "ESTOQUE")))
-      .filter((item) => (prioridade === "TODAS" ? true : item.prioridade === prioridade))
+      .filter((item) =>
+        categoria === "TODAS"
+          ? true
+          : item.categoria === categoria ||
+            (categoria === "REPOSICAO" && item.categoria === "ESTOQUE"),
+      )
+      .filter((item) =>
+        prioridade === "TODAS" ? true : item.prioridade === prioridade,
+      )
       .filter((item) => (status === "TODAS" ? true : item.status === status))
       .filter((item) =>
         termo
-          ? normalizar(`${item.titulo} ${item.descricao} ${item.origemTipo}`).includes(termo)
+          ? normalizar(
+              `${item.titulo} ${item.descricao} ${item.origemTipo}`,
+            ).includes(termo)
           : true,
       )
       .sort((a, b) => {
@@ -136,26 +196,78 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
       });
   }, [busca, categoria, items, prioridade, status]);
 
-  function atualizarLocal(ids: string[], patch: Partial<NotificacaoResumo>) {
-    setItems((current) => current.map((item) => (ids.includes(item.id) ? { ...item, ...patch } : item)));
+  async function atualizarContadoresServidor() {
+    const response = await fetch("/api/notificacoes/contadores", {
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok && data.contadores) {
+      setContadoresAtuais(data.contadores);
+      avisarContadoresAtualizados(data.contadores);
+    }
+  }
+
+  function atualizarListaLocal(
+    producer: (current: NotificacaoResumo[]) => NotificacaoResumo[],
+  ) {
+    setItems((current) => {
+      const next = producer(current);
+      const novosContadores = contarNaoLidasLocal(next);
+
+      setContadoresAtuais(novosContadores);
+      avisarContadoresAtualizados(novosContadores);
+
+      return next;
+    });
     setSelecionadas([]);
+  }
+
+  function atualizarLocal(ids: string[], patch: Partial<NotificacaoResumo>) {
+    atualizarListaLocal((current) =>
+      current.map((item) =>
+        ids.includes(item.id) ? { ...item, ...patch } : item,
+      ),
+    );
   }
 
   function acaoIndividual(id: string, acao: string) {
     startTransition(async () => {
-      await fetch(`/api/notificacoes/${id}`, {
+      const response = await fetch(`/api/notificacoes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ acao }),
       });
-      if (acao === "EXCLUIR") setItems((current) => current.filter((item) => item.id !== id));
-      if (acao === "LIDA") atualizarLocal([id], { status: "LIDA", lidaEm: new Date().toISOString() });
-      if (acao === "ARQUIVAR") atualizarLocal([id], { status: "ARQUIVADA", arquivadaEm: new Date().toISOString() });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setMensagem(data.error || "Nao foi possivel alterar a notificacao.");
+        return;
+      }
+
+      if (acao === "EXCLUIR")
+        atualizarListaLocal((current) =>
+          current.filter((item) => item.id !== id),
+        );
+      if (acao === "LIDA")
+        atualizarLocal([id], {
+          status: "LIDA",
+          lidaEm: new Date().toISOString(),
+        });
+      if (acao === "ARQUIVAR")
+        atualizarLocal([id], {
+          status: "ARQUIVADA",
+          arquivadaEm: new Date().toISOString(),
+        });
+      setMensagem("Acao aplicada.");
+      await atualizarContadoresServidor();
+      router.refresh();
     });
   }
 
   function acaoMassa(acao: string) {
     const ids = acao === "EXCLUIR_TUDO" ? [] : selecionadas;
+    const idsSelecionadas = [...selecionadas];
     startTransition(async () => {
       const response = await fetch("/api/notificacoes/bulk", {
         method: "POST",
@@ -169,19 +281,39 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
       }
 
       if (acao === "EXCLUIR" || acao === "EXCLUIR_TUDO") {
-        setItems((current) => (acao === "EXCLUIR_TUDO" ? [] : current.filter((item) => !selecionadas.includes(item.id))));
+        atualizarListaLocal((current) =>
+          acao === "EXCLUIR_TUDO"
+            ? []
+            : current.filter((item) => !idsSelecionadas.includes(item.id)),
+        );
       }
-      if (acao === "LIDA") atualizarLocal(selecionadas, { status: "LIDA", lidaEm: new Date().toISOString() });
-      if (acao === "ARQUIVAR") atualizarLocal(selecionadas, { status: "ARQUIVADA", arquivadaEm: new Date().toISOString() });
+      if (acao === "LIDA")
+        atualizarLocal(idsSelecionadas, {
+          status: "LIDA",
+          lidaEm: new Date().toISOString(),
+        });
+      if (acao === "ARQUIVAR")
+        atualizarLocal(idsSelecionadas, {
+          status: "ARQUIVADA",
+          arquivadaEm: new Date().toISOString(),
+        });
       setMensagem("Acao aplicada.");
+      await atualizarContadoresServidor();
+      router.refresh();
     });
   }
 
   function sincronizar() {
     startTransition(async () => {
-      const response = await fetch("/api/notificacoes/sincronizar", { method: "POST" });
+      const response = await fetch("/api/notificacoes/sincronizar", {
+        method: "POST",
+      });
       const data = await response.json().catch(() => ({}));
-      setMensagem(response.ok ? "Notificacoes sincronizadas." : data.error || "Nao foi possivel sincronizar.");
+      setMensagem(
+        response.ok
+          ? "Notificacoes sincronizadas."
+          : data.error || "Nao foi possivel sincronizar.",
+      );
     });
   }
 
@@ -190,10 +322,15 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
       <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-slate-500">Caixa de Entrada</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">Notificacoes e acoes</h1>
+            <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
+              Caixa de Entrada
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
+              Notificacoes e acoes
+            </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Pedidos aparecem primeiro. Alertas estrategicos respeitam o perfil de acesso.
+              Pedidos aparecem primeiro. Alertas estrategicos respeitam o perfil
+              de acesso.
             </p>
           </div>
           {perfil === "ACESSO_GERAL" && (
@@ -211,12 +348,28 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
       </section>
 
       <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
-        <Resumo label="Novas" value={contadores.total} tone="slate" />
-        <Resumo label="Pedidos" value={contadores.pedidos} tone="red" />
-        <Resumo label="Reposicao" value={contadores.reposicao} tone="amber" />
-        <Resumo label="Recomendacoes" value={contadores.recomendacoes} tone="blue" />
-        <Resumo label="Campanhas" value={contadores.campanhas} tone="emerald" />
-        <Resumo label="Precificacao" value={contadores.precificacao} tone="violet" />
+        <Resumo label="Novas" value={contadoresAtuais.total} tone="slate" />
+        <Resumo label="Pedidos" value={contadoresAtuais.pedidos} tone="red" />
+        <Resumo
+          label="Reposicao"
+          value={contadoresAtuais.reposicao}
+          tone="amber"
+        />
+        <Resumo
+          label="Recomendacoes"
+          value={contadoresAtuais.recomendacoes}
+          tone="blue"
+        />
+        <Resumo
+          label="Campanhas"
+          value={contadoresAtuais.campanhas}
+          tone="emerald"
+        />
+        <Resumo
+          label="Precificacao"
+          value={contadoresAtuais.precificacao}
+          tone="violet"
+        />
         <Resumo label="Sistema" value={sistemaNaoLidas} tone="slate" />
       </section>
 
@@ -235,25 +388,25 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
             <AtencaoLink
               href="/notificacoes?categoria=PEDIDO"
               label="Pedidos"
-              value={contadores.pedidos}
+              value={contadoresAtuais.pedidos}
               tone="red"
             />
             <AtencaoLink
               href="/compras/reposicao"
               label="Reposicao"
-              value={contadores.reposicao}
+              value={contadoresAtuais.reposicao}
               tone="amber"
             />
             <AtencaoLink
               href="/compras/recomendacoes"
               label="Recomendacoes"
-              value={contadores.recomendacoes}
+              value={contadoresAtuais.recomendacoes}
               tone="blue"
             />
             <AtencaoLink
               href="/compras/campanhas"
               label="Campanhas"
-              value={contadores.campanhas}
+              value={contadoresAtuais.campanhas}
               tone="emerald"
             />
             <AtencaoLink
@@ -266,7 +419,11 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
         </div>
       </section>
 
-      {mensagem && <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{mensagem}</div>}
+      {mensagem && (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+          {mensagem}
+        </div>
+      )}
 
       <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -277,7 +434,9 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
                 type="button"
                 onClick={() => setCategoria(tab.value)}
                 className={`rounded-2xl px-3 py-2 text-sm font-semibold transition ${
-                  categoria === tab.value ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  categoria === tab.value
+                    ? "bg-slate-950 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {tab.label}
@@ -294,21 +453,66 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none"
               />
             </label>
-            <select value={prioridade} onChange={(event) => setPrioridade(event.target.value)} className="h-11 rounded-2xl border border-slate-200 px-3 text-sm">
-              {prioridades.map((item) => <option key={item}>{item}</option>)}
+            <select
+              value={prioridade}
+              onChange={(event) => setPrioridade(event.target.value)}
+              className="h-11 rounded-2xl border border-slate-200 px-3 text-sm"
+            >
+              {prioridades.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
             </select>
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-11 rounded-2xl border border-slate-200 px-3 text-sm">
-              {statuses.map((item) => <option key={item}>{item}</option>)}
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="h-11 rounded-2xl border border-slate-200 px-3 text-sm"
+            >
+              {statuses.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={() => setSelecionadas(filtradas.map((item) => item.id))} className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">Selecionar visiveis</button>
-          <button type="button" onClick={() => acaoMassa("LIDA")} disabled={!selecionadas.length} className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50">Marcar como lidas</button>
-          <button type="button" onClick={() => acaoMassa("ARQUIVAR")} disabled={!selecionadas.length} className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50">Arquivar</button>
-          <button type="button" onClick={() => acaoMassa("EXCLUIR")} disabled={!selecionadas.length} className="rounded-2xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-50">Excluir selecionadas</button>
-          <button type="button" onClick={() => acaoMassa("EXCLUIR_TUDO")} className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">Excluir tudo</button>
+          <button
+            type="button"
+            onClick={() => setSelecionadas(filtradas.map((item) => item.id))}
+            className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
+          >
+            Selecionar visiveis
+          </button>
+          <button
+            type="button"
+            onClick={() => acaoMassa("LIDA")}
+            disabled={!selecionadas.length}
+            className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+          >
+            Marcar como lidas
+          </button>
+          <button
+            type="button"
+            onClick={() => acaoMassa("ARQUIVAR")}
+            disabled={!selecionadas.length}
+            className="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+          >
+            Arquivar
+          </button>
+          <button
+            type="button"
+            onClick={() => acaoMassa("EXCLUIR")}
+            disabled={!selecionadas.length}
+            className="rounded-2xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
+          >
+            Excluir selecionadas
+          </button>
+          <button
+            type="button"
+            onClick={() => acaoMassa("EXCLUIR_TUDO")}
+            className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+          >
+            Excluir tudo
+          </button>
         </div>
       </section>
 
@@ -319,7 +523,10 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
           </div>
         ) : (
           filtradas.map((item) => (
-            <article key={item.id} className={`rounded-3xl border p-4 shadow-sm ${categoriaClass(item.categoria)}`}>
+            <article
+              key={item.id}
+              className={`rounded-3xl border p-4 shadow-sm ${categoriaClass(item.categoria)}`}
+            >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="flex min-w-0 gap-3">
                   <input
@@ -327,14 +534,18 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
                     checked={selecionadas.includes(item.id)}
                     onChange={(event) =>
                       setSelecionadas((current) =>
-                        event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                        event.target.checked
+                          ? [...current, item.id]
+                          : current.filter((id) => id !== item.id),
                       )
                     }
                     className="mt-2 h-4 w-4"
                   />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${prioridadeClass(item.prioridade)}`}>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${prioridadeClass(item.prioridade)}`}
+                      >
                         {label(item.prioridade)}
                       </span>
                       <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">
@@ -343,24 +554,47 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
                       <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold">
                         {label(item.status)}
                       </span>
-                      <span className="text-xs font-semibold opacity-75">{dataCurta(item.criadoEm)}</span>
+                      <span className="text-xs font-semibold opacity-75">
+                        {dataCurta(item.criadoEm)}
+                      </span>
                     </div>
-                    <h2 className="mt-3 text-lg font-black text-slate-950">{item.titulo}</h2>
-                    <p className="mt-1 max-w-4xl text-sm leading-6">{item.descricao}</p>
-                    <p className="mt-2 text-xs font-semibold opacity-75">Origem: {label(item.origemTipo)}</p>
+                    <h2 className="mt-3 text-lg font-black text-slate-950">
+                      {item.titulo}
+                    </h2>
+                    <p className="mt-1 max-w-4xl text-sm leading-6">
+                      {item.descricao}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold opacity-75">
+                      Origem: {label(item.origemTipo)}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   {item.linkAcao && (
-                    <Link href={item.linkAcao} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800">
+                    <Link
+                      href={item.linkAcao}
+                      className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
+                    >
                       {item.acaoLabel || "Ir para acao"}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
-                  <IconButton label="Lida" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => acaoIndividual(item.id, "LIDA")} />
-                  <IconButton label="Arquivar" icon={<Archive className="h-4 w-4" />} onClick={() => acaoIndividual(item.id, "ARQUIVAR")} />
-                  <IconButton label="Excluir" icon={<Trash2 className="h-4 w-4" />} onClick={() => acaoIndividual(item.id, "EXCLUIR")} />
+                  <IconButton
+                    label="Lida"
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                    onClick={() => acaoIndividual(item.id, "LIDA")}
+                  />
+                  <IconButton
+                    label="Arquivar"
+                    icon={<Archive className="h-4 w-4" />}
+                    onClick={() => acaoIndividual(item.id, "ARQUIVAR")}
+                  />
+                  <IconButton
+                    label="Excluir"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    onClick={() => acaoIndividual(item.id, "EXCLUIR")}
+                  />
                 </div>
               </div>
             </article>
@@ -371,7 +605,15 @@ export default function NotificacoesClient({ perfil, notificacoes, contadores }:
   );
 }
 
-function Resumo({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Resumo({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+}) {
   const classes: Record<string, string> = {
     red: "bg-red-50 text-red-800 ring-red-100",
     amber: "bg-amber-50 text-amber-800 ring-amber-100",
@@ -382,7 +624,9 @@ function Resumo({ label, value, tone }: { label: string; value: number; tone: st
   };
 
   return (
-    <div className={`rounded-3xl p-4 shadow-sm ring-1 ${classes[tone] || classes.slate}`}>
+    <div
+      className={`rounded-3xl p-4 shadow-sm ring-1 ${classes[tone] || classes.slate}`}
+    >
       <div className="flex items-center gap-2 text-sm font-bold">
         <Bell className="h-4 w-4" />
         {label}
@@ -404,11 +648,26 @@ function AtencaoLink({
   tone: string;
 }) {
   const classes: Record<string, string> = {
-    red: value > 0 ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-50 text-slate-500",
-    amber: value > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-500",
-    blue: value > 0 ? "border-blue-200 bg-blue-50 text-blue-800" : "border-slate-200 bg-slate-50 text-slate-500",
-    emerald: value > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-50 text-slate-500",
-    slate: value > 0 ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-50 text-slate-500",
+    red:
+      value > 0
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-slate-200 bg-slate-50 text-slate-500",
+    amber:
+      value > 0
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-slate-200 bg-slate-50 text-slate-500",
+    blue:
+      value > 0
+        ? "border-blue-200 bg-blue-50 text-blue-800"
+        : "border-slate-200 bg-slate-50 text-slate-500",
+    emerald:
+      value > 0
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+        : "border-slate-200 bg-slate-50 text-slate-500",
+    slate:
+      value > 0
+        ? "border-slate-300 bg-white text-slate-800"
+        : "border-slate-200 bg-slate-50 text-slate-500",
   };
 
   return (

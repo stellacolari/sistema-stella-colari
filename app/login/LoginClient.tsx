@@ -6,6 +6,7 @@ import { LockKeyhole } from "lucide-react";
 export default function LoginClient({ next }: { next: string }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [manterConectado, setManterConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
@@ -24,6 +25,7 @@ export default function LoginClient({ next }: { next: string }) {
           email,
           senha,
           next,
+          manterConectado,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -71,6 +73,23 @@ export default function LoginClient({ next }: { next: string }) {
           className="mt-2 h-12 w-full rounded-2xl border border-slate-300 bg-white px-4 text-sm outline-none transition focus:border-slate-500"
           required
         />
+      </label>
+
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <input
+          type="checkbox"
+          checked={manterConectado}
+          onChange={(event) => setManterConectado(event.target.checked)}
+          className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-500"
+        />
+        <span>
+          <span className="block text-sm font-semibold text-slate-800">
+            Manter conectado
+          </span>
+          <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+            Mantem o acesso neste dispositivo por 5 dias.
+          </span>
+        </span>
       </label>
 
       <button

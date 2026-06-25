@@ -76,8 +76,7 @@ function getTipoMovimentacaoLabel(tipo: string) {
 
 export default async function DashboardPage() {
   const usuario = await exigirAdminComPermissao("dashboard", "ver");
-  const podeVerDadosFinanceiros =
-    usuarioPodeVerDadosFinanceirosAdmin(usuario);
+  const podeVerDadosFinanceiros = usuarioPodeVerDadosFinanceirosAdmin(usuario);
   const [
     centralAcoes,
     vendasRaw,
@@ -177,51 +176,50 @@ export default async function DashboardPage() {
       : [];
 
   const vendasOperacionais = vendas.filter(
-    (venda) => venda.status !== "CANCELADA" && venda.status !== "NA_LIXEIRA"
+    (venda) => venda.status !== "CANCELADA" && venda.status !== "NA_LIXEIRA",
   );
 
   const comprasOperacionais = compras.filter(
-    (compra) => compra.status !== "CANCELADA" && compra.status !== "NA_LIXEIRA"
+    (compra) => compra.status !== "CANCELADA" && compra.status !== "NA_LIXEIRA",
   );
 
   const clientesAtivos = clientes.filter(
-    (cliente) => cliente.status !== "NA_LIXEIRA"
+    (cliente) => cliente.status !== "NA_LIXEIRA",
   );
 
   const totalVendidoVendas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.valorTotal),
-    0
+    0,
   );
 
   const lucroTotalVendas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.lucroTotal),
-    0
+    0,
   );
 
   const gastoTotalVendasInternas = vendasOperacionais.reduce(
     (total: number, venda) => total + Number(venda.gastoTotal),
-    0
+    0,
   );
 
   const totalPedidosOnlinePagos = pedidosOnline.reduce(
     (total, pedido) => total + Number(pedido.total || 0),
-    0
+    0,
   );
 
   const gastoPedidosOnlinePagos = movimentacoesPedidosOnline.reduce(
     (total, movimentacao) => total + Number(movimentacao.custo || 0),
-    0
+    0,
   );
 
   const totalVendido = totalVendidoVendas + totalPedidosOnlinePagos;
-  const gastoTotalVendas =
-    gastoTotalVendasInternas + gastoPedidosOnlinePagos;
+  const gastoTotalVendas = gastoTotalVendasInternas + gastoPedidosOnlinePagos;
   const lucroTotal =
     lucroTotalVendas + (totalPedidosOnlinePagos - gastoPedidosOnlinePagos);
 
   const totalComprado = comprasOperacionais.reduce(
     (total: number, compra) => total + Number(compra.valorTotalFinal),
-    0
+    0,
   );
 
   const quantidadeItensVendidosVendas = vendasOperacionais.reduce(
@@ -229,16 +227,16 @@ export default async function DashboardPage() {
       total +
       venda.itens.reduce(
         (subtotal: number, item) => subtotal + item.quantidade,
-        0
+        0,
       ),
-    0
+    0,
   );
 
   const quantidadeItensPedidosOnline = pedidosOnline.reduce(
     (total, pedido) =>
       total +
       pedido.itens.reduce((subtotal, item) => subtotal + item.quantidade, 0),
-    0
+    0,
   );
 
   const quantidadeItensVendidos =
@@ -249,37 +247,37 @@ export default async function DashboardPage() {
       total +
       compra.itens.reduce(
         (subtotal: number, item) => subtotal + item.quantidade,
-        0
+        0,
       ),
-    0
+    0,
   );
 
   const valorEstoqueProdutos = estoqueProdutos.reduce(
     (total: number, estoque) => total + Number(estoque.valorAcumulado),
-    0
+    0,
   );
 
   const valorEstoqueAdicionais = estoqueAdicionais.reduce(
     (total: number, estoque) => total + Number(estoque.valorAcumulado),
-    0
+    0,
   );
 
   const quantidadeProdutosEmEstoque = estoqueProdutos.reduce(
     (total: number, estoque) => total + estoque.quantidadeAtual,
-    0
+    0,
   );
 
   const quantidadeAdicionaisEmEstoque = estoqueAdicionais.reduce(
     (total: number, estoque) => total + estoque.quantidadeAtual,
-    0
+    0,
   );
 
   const estoqueProdutosBaixo = estoqueProdutos.filter(
-    (estoque) => estoque.quantidadeAtual <= 5
+    (estoque) => estoque.quantidadeAtual <= 5,
   );
 
   const estoqueAdicionaisBaixo = estoqueAdicionais.filter(
-    (estoque) => estoque.quantidadeAtual <= 5
+    (estoque) => estoque.quantidadeAtual <= 5,
   );
 
   const alertasEstoque: DashboardEstoqueAlertaItem[] = [
@@ -327,12 +325,12 @@ export default async function DashboardPage() {
   vendas.forEach((venda) => {
     vendasPorStatusMap.set(
       venda.status,
-      (vendasPorStatusMap.get(venda.status) ?? 0) + 1
+      (vendasPorStatusMap.get(venda.status) ?? 0) + 1,
     );
   });
 
   const vendasPorStatus: DashboardStatusItem[] = Array.from(
-    vendasPorStatusMap.entries()
+    vendasPorStatusMap.entries(),
   ).map(([status, quantidade]) => ({
     status,
     label: getStatusLabel(status),
@@ -345,7 +343,7 @@ export default async function DashboardPage() {
       codigoMovimentacao: movimentacao.codigoMovimentacao,
       tipoMovimentacao: movimentacao.tipoMovimentacao,
       tipoMovimentacaoLabel: getTipoMovimentacaoLabel(
-        movimentacao.tipoMovimentacao
+        movimentacao.tipoMovimentacao,
       ),
       origemTipo: movimentacao.origemTipo,
       codigoItem: movimentacao.codigoItem,
@@ -358,7 +356,7 @@ export default async function DashboardPage() {
         : 0,
       criadoEm: movimentacao.criadoEm.toISOString(),
       status: movimentacao.status,
-    })
+    }),
   );
   const permissoesDashboard = {
     pedidos: usuarioTemPermissaoAdmin(usuario, "pedidos", "ver"),
@@ -370,7 +368,7 @@ export default async function DashboardPage() {
     intencaoComercial: usuarioTemPermissaoAdmin(
       usuario,
       "intencaoComercial",
-      "ver"
+      "ver",
     ),
     lojaOnline: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "ver"),
     notificacoes: usuarioTemPermissaoAdmin(usuario, "notificacoes", "ver"),
@@ -456,9 +454,7 @@ export default async function DashboardPage() {
       quantidadeItensComprados,
       quantidadeProdutosEmEstoque,
       quantidadeAdicionaisEmEstoque,
-      valorEstoqueProdutos: podeVerDadosFinanceiros
-        ? valorEstoqueProdutos
-        : 0,
+      valorEstoqueProdutos: podeVerDadosFinanceiros ? valorEstoqueProdutos : 0,
       valorEstoqueAdicionais: podeVerDadosFinanceiros
         ? valorEstoqueAdicionais
         : 0,
@@ -471,7 +467,12 @@ export default async function DashboardPage() {
 
   return (
     <main className="space-y-8">
-      <DashboardClient data={dashboardData} centralAcoes={centralAcoes} />
+      <DashboardClient
+        data={dashboardData}
+        centralAcoes={centralAcoes}
+        usuarioNome={usuario.nome}
+        usuarioEmail={usuario.email}
+      />
       <section id="central-acoes-detalhada">
         <CentralAcoesAdmin data={centralAcoes} />
       </section>

@@ -117,7 +117,7 @@ function ResumoCard({ item }: { item: ResumoCentralAcoesItem }) {
           <p className={`text-sm font-semibold ${classe.text}`}>
             {item.titulo}
           </p>
-          <p className={`mt-2 text-3xl font-black ${classe.value}`}>
+          <p className={`mt-2 text-3xl font-semibold ${classe.value}`}>
             {numero(item.valor)}
           </p>
         </div>
@@ -163,8 +163,8 @@ function AcaoItem({ acao }: { acao: AcaoAdmin }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span
-                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${prioridadeClasse(
-                  acao.prioridade
+                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${prioridadeClasse(
+                  acao.prioridade,
                 )}`}
               >
                 {acao.prioridade}
@@ -173,7 +173,7 @@ function AcaoItem({ acao }: { acao: AcaoAdmin }) {
                 {AREA_LABEL[acao.area]}
               </span>
               {typeof acao.quantidade === "number" ? (
-                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">
+                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">
                   {numero(acao.quantidade)}
                 </span>
               ) : null}
@@ -214,7 +214,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
               Central de comando
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
               Central de acoes
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
@@ -238,14 +238,14 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-slate-950">
+              <h2 className="text-lg font-semibold text-slate-950">
                 Acoes prioritarias
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Até 8 sinais ordenados por urgência e impacto operacional.
               </p>
             </div>
-            <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-black text-white">
+            <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
               {numero(data.acoes.length)}
             </span>
           </div>
@@ -255,7 +255,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
                 <div>
-                  <h3 className="font-black">Nenhuma ação crítica agora.</h3>
+                  <h3 className="font-semibold">Nenhuma ação crítica agora.</h3>
                   <p className="mt-1 text-sm leading-6">
                     A operação está em dia. Use os links rápidos para revisar
                     rotinas ou acompanhar indicadores.
@@ -276,7 +276,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-slate-700" />
-              <h2 className="text-base font-black text-slate-950">
+              <h2 className="text-base font-semibold text-slate-950">
                 Proximos passos
               </h2>
             </div>
@@ -305,7 +305,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-black text-slate-950">
+            <h2 className="text-base font-semibold text-slate-950">
               Links rápidos
             </h2>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">

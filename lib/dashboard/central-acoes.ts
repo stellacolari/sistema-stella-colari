@@ -89,16 +89,16 @@ function usuarioPodeVerModulo(usuario: UsuarioAdmin, modulo: ModuloAdmin) {
 
 function escolherHref(
   usuario: UsuarioAdmin,
-  candidatos: { href: string; modulo?: ModuloAdmin }[]
+  candidatos: { href: string; modulo?: ModuloAdmin }[],
 ) {
   return candidatos.find((candidato) =>
-    candidato.modulo ? usuarioPodeVerModulo(usuario, candidato.modulo) : true
+    candidato.modulo ? usuarioPodeVerModulo(usuario, candidato.modulo) : true,
   )?.href;
 }
 
 async function contarSe(
   podeConsultar: boolean,
-  consulta: () => Promise<number>
+  consulta: () => Promise<number>,
 ) {
   if (!podeConsultar) {
     return 0;
@@ -131,7 +131,7 @@ function normalizarTextoCentral(value: string) {
 }
 
 function recomendacaoDeMargemSaudavelCentral(
-  recomendacao: RecomendacaoCentralEvidencia
+  recomendacao: RecomendacaoCentralEvidencia,
 ) {
   const texto = normalizarTextoCentral(
     [
@@ -143,7 +143,7 @@ function recomendacaoDeMargemSaudavelCentral(
       recomendacao.tipo,
     ]
       .filter(Boolean)
-      .join(" ")
+      .join(" "),
   );
   const falaDeMargemProtegida =
     texto.includes("proteger margem") ||
@@ -153,14 +153,14 @@ function recomendacaoDeMargemSaudavelCentral(
     texto.includes("margem saudavel");
   const temRiscoContextual =
     /risco|desconto|campanha|precificacao|preco|minimo|abaixo|queda|perda|negativo|revisar/.test(
-      texto
+      texto,
     );
 
   return falaDeMargemProtegida && !temRiscoContextual;
 }
 
 function recomendacaoTemBoaEvidencia(
-  recomendacao: RecomendacaoCentralEvidencia
+  recomendacao: RecomendacaoCentralEvidencia,
 ) {
   const evidencias = jsonRecord(recomendacao.evidenciasJson);
   const nivel = String(evidencias.nivelEvidencia || "");
@@ -173,7 +173,9 @@ function recomendacaoTemBoaEvidencia(
   );
 }
 
-function criarAcao(params: AcaoAdmin & { quantidade: number }): AcaoAdmin | null {
+function criarAcao(
+  params: AcaoAdmin & { quantidade: number },
+): AcaoAdmin | null {
   if (params.quantidade <= 0) {
     return null;
   }
@@ -183,7 +185,8 @@ function criarAcao(params: AcaoAdmin & { quantidade: number }): AcaoAdmin | null
 
 function ordenarAcoes(acoes: AcaoAdmin[]) {
   return [...acoes].sort((a, b) => {
-    const prioridade = PRIORIDADE_PESO[b.prioridade] - PRIORIDADE_PESO[a.prioridade];
+    const prioridade =
+      PRIORIDADE_PESO[b.prioridade] - PRIORIDADE_PESO[a.prioridade];
 
     if (prioridade !== 0) {
       return prioridade;
@@ -193,7 +196,10 @@ function ordenarAcoes(acoes: AcaoAdmin[]) {
   });
 }
 
-function tomResumo(valor: number, critico = false): ResumoCentralAcoesItem["tom"] {
+function tomResumo(
+  valor: number,
+  critico = false,
+): ResumoCentralAcoesItem["tom"] {
   if (valor <= 0) {
     return "positivo";
   }
@@ -203,15 +209,17 @@ function tomResumo(valor: number, critico = false): ResumoCentralAcoesItem["tom"
 
 function filtrarLinksPermitidos(
   usuario: UsuarioAdmin,
-  links: (LinkRapidoCentralAcoes & { modulo?: ModuloAdmin })[]
+  links: (LinkRapidoCentralAcoes & { modulo?: ModuloAdmin })[],
 ) {
   return links
-    .filter((link) => !link.modulo || usuarioPodeVerModulo(usuario, link.modulo))
+    .filter(
+      (link) => !link.modulo || usuarioPodeVerModulo(usuario, link.modulo),
+    )
     .map(({ modulo: _modulo, ...link }) => link);
 }
 
 export async function montarCentralAcoesAdmin(
-  usuario: UsuarioAdmin
+  usuario: UsuarioAdmin,
 ): Promise<CentralAcoesAdminData> {
   const podeVerPedidos = usuarioPodeVerModulo(usuario, "pedidos");
   const podeVerProdutos = usuarioPodeVerModulo(usuario, "produtos");
@@ -276,7 +284,7 @@ export async function montarCentralAcoesAdmin(
             },
           ],
         },
-      })
+      }),
     ),
     contarSe(podeVerPedidos, () =>
       prisma.pedidoOnline.count({
@@ -286,7 +294,7 @@ export async function montarCentralAcoesAdmin(
             in: ["PEDIDO_RECEBIDO", "EM_SEPARACAO"],
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerPedidos, () =>
       prisma.pedidoOnline.count({
@@ -295,7 +303,7 @@ export async function montarCentralAcoesAdmin(
             in: ["PROBLEMA", "PROBLEMA_OPERACIONAL"],
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerPedidos, () =>
       prisma.pedidoEnvio.count({
@@ -305,7 +313,7 @@ export async function montarCentralAcoesAdmin(
             in: ["PENDENTE", "EM_PREPARACAO"],
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerPedidos, () =>
       prisma.pedidoEnvio.count({
@@ -313,7 +321,7 @@ export async function montarCentralAcoesAdmin(
           tipoEntrega: "RETIRADA",
           statusEnvio: "AGUARDANDO_RETIRADA",
         },
-      })
+      }),
     ),
     contarSe(podeVerCatalogo, () =>
       prisma.produto.count({
@@ -324,7 +332,7 @@ export async function montarCentralAcoesAdmin(
           },
           OR: [{ imagemUrl: null }, { imagemUrl: "" }],
         },
-      })
+      }),
     ),
     contarSe(podeVerEstoque || podeVerProdutos, () =>
       prisma.produto.count({
@@ -341,7 +349,7 @@ export async function montarCentralAcoesAdmin(
             },
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerLoja || podeVerProdutos, () =>
       prisma.categoriaProduto.count({
@@ -359,7 +367,7 @@ export async function montarCentralAcoesAdmin(
             },
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerRecomendacoes, () =>
       prisma.recomendacaoGerencial.count({
@@ -368,7 +376,7 @@ export async function montarCentralAcoesAdmin(
             in: ["NOVA", "ACEITA", "EM_EXECUCAO", "ADIADA"],
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerRecomendacoes, async () => {
       const recomendacoes = await prisma.recomendacaoGerencial.findMany({
@@ -388,7 +396,7 @@ export async function montarCentralAcoesAdmin(
       });
 
       return recomendacoes.filter((recomendacao) =>
-        recomendacaoTemBoaEvidencia(recomendacao)
+        recomendacaoTemBoaEvidencia(recomendacao),
       ).length;
     }),
     contarSe(podeVerRecomendacoes, () =>
@@ -432,7 +440,7 @@ export async function montarCentralAcoesAdmin(
             },
           ],
         },
-      })
+      }),
     ),
     contarSe(podeVerCampanhas, () =>
       prisma.campanhaComercial.count({
@@ -441,7 +449,7 @@ export async function montarCentralAcoesAdmin(
             in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"],
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerIntencao || podeVerLoja, () =>
       prisma.eventoComercial.count({
@@ -451,7 +459,7 @@ export async function montarCentralAcoesAdmin(
             gte: trintaDiasAtras,
           },
         },
-      })
+      }),
     ),
     contarSe(podeVerClientes, () =>
       prisma.cliente.count({
@@ -461,7 +469,7 @@ export async function montarCentralAcoesAdmin(
             lt: trintaDiasAtras,
           },
         },
-      })
+      }),
     ),
     podeVerNotificacoes
       ? listarNotificacoes({
@@ -474,7 +482,7 @@ export async function montarCentralAcoesAdmin(
 
   const alertasCriticos = notificacoesVisiveis.filter(
     (notificacao) =>
-      notificacao.status === "NOVA" && notificacao.prioridade === "CRITICA"
+      notificacao.status === "NOVA" && notificacao.prioridade === "CRITICA",
   ).length;
 
   const hrefPedidos = escolherHref(usuario, [
@@ -518,7 +526,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefPedidos,
         cta: "Abrir pedidos",
         quantidade: pedidosComProblema,
-        explicacao: "Pedidos em status de problema operacional pedem decisão manual.",
+        explicacao:
+          "Pedidos em status de problema operacional pedem decisão manual.",
       }),
       criarAcao({
         id: "pedidos-pagos-preparo",
@@ -531,7 +540,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefPedidos,
         cta: "Separar pedidos",
         quantidade: pedidosPagosAguardandoPreparo,
-        explicacao: "Pedido pago parado aumenta risco de atraso e contato do cliente.",
+        explicacao:
+          "Pedido pago parado aumenta risco de atraso e contato do cliente.",
       }),
       criarAcao({
         id: "envios-pendentes",
@@ -544,7 +554,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefPedidos,
         cta: "Ver envios",
         quantidade: enviosPendentes,
-        explicacao: "Envios pendentes podem travar a promessa de prazo da loja.",
+        explicacao:
+          "Envios pendentes podem travar a promessa de prazo da loja.",
       }),
       criarAcao({
         id: "retiradas-pendentes",
@@ -557,7 +568,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefPedidos,
         cta: "Ver retiradas",
         quantidade: retiradasPendentes,
-        explicacao: "Retirada parada precisa de acompanhamento simples e rapido.",
+        explicacao:
+          "Retirada parada precisa de acompanhamento simples e rapido.",
       }),
       criarAcao({
         id: "produtos-sem-imagem",
@@ -570,7 +582,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefProdutos,
         cta: "Revisar produtos",
         quantidade: produtosSemImagem,
-        explicacao: "Produto sem imagem reduz confianca e conversao na loja publica.",
+        explicacao:
+          "Produto sem imagem reduz confianca e conversao na loja publica.",
       }),
       criarAcao({
         id: "produtos-sem-estoque",
@@ -583,7 +596,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefProdutos,
         cta: "Ver catalogo",
         quantidade: produtosSemEstoque,
-        explicacao: "Produto ativo sem estoque pode gerar frustracao ou vitrine fraca.",
+        explicacao:
+          "Produto ativo sem estoque pode gerar frustracao ou vitrine fraca.",
       }),
       criarAcao({
         id: "categorias-vazias",
@@ -637,7 +651,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefIntencao,
         cta: "Ver intencao",
         quantidade: buscasSemResultado,
-        explicacao: "Busca sem resultado mostra demanda que a loja ainda não respondeu.",
+        explicacao:
+          "Busca sem resultado mostra demanda que a loja ainda não respondeu.",
       }),
       criarAcao({
         id: "clientes-recorrentes-sem-atualizacao",
@@ -650,7 +665,8 @@ export async function montarCentralAcoesAdmin(
         href: hrefClientes,
         cta: "Abrir clientes",
         quantidade: clientesRecorrentesSemAtualizacao,
-        explicacao: "Clientes recorrentes merecem acompanhamento antes de perder ritmo.",
+        explicacao:
+          "Clientes recorrentes merecem acompanhamento antes de perder ritmo.",
       }),
       criarAcao({
         id: "notificacoes-criticas",
@@ -661,9 +677,10 @@ export async function montarCentralAcoesAdmin(
         prioridade: "CRITICA",
         perfilAlvo: ["ADMIN_GERAL", "OPERACAO_PEDIDOS", "VENDEDOR"],
         href: hrefNotificacoes,
-        cta: "Abrir caixa",
+        cta: "Abrir Caixa de Entrada",
         quantidade: alertasCriticos,
-        explicacao: "Alertas criticos concentram os sinais mais urgentes do sistema.",
+        explicacao:
+          "Alertas criticos concentram os sinais mais urgentes do sistema.",
       }),
       criarAcao({
         id: "campanhas-abertas",
@@ -676,9 +693,10 @@ export async function montarCentralAcoesAdmin(
         href: hrefCampanhas,
         cta: "Ver campanhas",
         quantidade: campanhasAbertas,
-        explicacao: "Campanhas abertas podem virar ação comercial depois das urgências.",
+        explicacao:
+          "Campanhas abertas podem virar ação comercial depois das urgências.",
       }),
-    ].filter((acao): acao is AcaoAdmin => Boolean(acao))
+    ].filter((acao): acao is AcaoAdmin => Boolean(acao)),
   ).slice(0, 8);
 
   const resumo: ResumoCentralAcoesItem[] = [
@@ -724,7 +742,7 @@ export async function montarCentralAcoesAdmin(
       valor: alertasCriticos,
       descricao: "Notificacoes criticas ainda novas.",
       href: hrefNotificacoes,
-      cta: "Abrir caixa",
+      cta: "Abrir Caixa de Entrada",
       tom: tomResumo(alertasCriticos, true),
     },
   ];
@@ -825,7 +843,8 @@ export async function montarCentralAcoesAdmin(
     },
   ]).filter(
     (link) =>
-      link.id !== "financeiro" || (podeVerFinanceiro && podeVerDadosFinanceiros)
+      link.id !== "financeiro" ||
+      (podeVerFinanceiro && podeVerDadosFinanceiros),
   );
 
   return {

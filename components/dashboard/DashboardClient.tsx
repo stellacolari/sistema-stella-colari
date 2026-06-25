@@ -23,10 +23,12 @@ import type {
   CentralAcoesAdminData,
 } from "@/lib/dashboard/central-acoes";
 
-const DASHBOARD_DESTAQUE_URL = "";
+const DASHBOARD_DESTAQUE_IMAGEM_URL =
+  "/uploads/loja/1777647841602-banner-stella.jpg";
+const DASHBOARD_DESTAQUE_LINK_URL = "/loja";
 const DASHBOARD_DESTAQUE_TITULO = "Conteudo em destaque";
 const DASHBOARD_DESTAQUE_DESCRICAO =
-  "Adicione aqui um link de campanha, relatorio ou conteudo externo.";
+  "Acompanhe a vitrine publica da loja em um atalho visual.";
 
 export type DashboardStatusItem = {
   status: string;
@@ -112,6 +114,8 @@ export type DashboardData = {
 type DashboardClientProps = {
   data: DashboardData;
   centralAcoes: CentralAcoesAdminData;
+  usuarioNome?: string | null;
+  usuarioEmail?: string | null;
 };
 
 type Tone = "slate" | "emerald" | "blue" | "amber" | "red" | "violet";
@@ -150,6 +154,26 @@ function periodoCurto(dataIso: string) {
     day: "2-digit",
     month: "long",
   }).format(data);
+}
+
+function primeiroNomeUsuario(nome?: string | null, email?: string | null) {
+  const nomeLimpo = String(nome || "").trim();
+
+  if (nomeLimpo) {
+    return nomeLimpo.split(/\s+/)[0];
+  }
+
+  const emailLimpo = String(email || "").trim();
+  const prefixoEmail = emailLimpo.includes("@") ? emailLimpo.split("@")[0] : "";
+  const nomePorEmail = prefixoEmail.replace(/[._-]+/g, " ").trim();
+
+  return nomePorEmail ? nomePorEmail.split(/\s+/)[0] : "";
+}
+
+function saudacaoDashboard(nome?: string | null, email?: string | null) {
+  const primeiroNome = primeiroNomeUsuario(nome, email);
+
+  return primeiroNome ? `Bom trabalho, ${primeiroNome}` : "Bom trabalho";
 }
 
 function toneClasses(tone: Tone) {
@@ -214,7 +238,10 @@ function resumoPorId(data: CentralAcoesAdminData, ids: string[]) {
   return data.resumo.find((item) => ids.includes(item.id));
 }
 
-function quantidadePorArea(data: CentralAcoesAdminData, areas: AreaAcaoAdmin[]) {
+function quantidadePorArea(
+  data: CentralAcoesAdminData,
+  areas: AreaAcaoAdmin[],
+) {
   return data.acoes
     .filter((acao) => areas.includes(acao.area))
     .reduce((total, acao) => total + (acao.quantidade ?? 1), 0);
@@ -222,7 +249,7 @@ function quantidadePorArea(data: CentralAcoesAdminData, areas: AreaAcaoAdmin[]) 
 
 function prioridadeAlta(data: CentralAcoesAdminData) {
   return data.acoes.filter((acao) =>
-    ["CRITICA", "ALTA"].includes(acao.prioridade)
+    ["CRITICA", "ALTA"].includes(acao.prioridade),
   );
 }
 
@@ -248,7 +275,7 @@ function indicador({
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-black">{value}</p>
+      <p className="mt-2 text-2xl font-semibold">{value}</p>
       <p className="mt-1 text-xs leading-5 text-white/65">{detail}</p>
     </div>
   );
@@ -271,89 +298,46 @@ function QuickActionLink({ atalho }: { atalho: DashboardAtalhoRapido }) {
 }
 
 function DashboardDestaqueExterno() {
-  const url = DASHBOARD_DESTAQUE_URL.trim();
+  const imagemUrl = DASHBOARD_DESTAQUE_IMAGEM_URL.trim();
 
   return (
-    <section className="flex min-h-[390px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-4 px-6 py-5">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Destaque
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-            {DASHBOARD_DESTAQUE_TITULO}
-          </h2>
-          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-            {url
-              ? "Conteudo externo configurado para acompanhamento visual."
-              : DASHBOARD_DESTAQUE_DESCRICAO}
-          </p>
-        </div>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-slate-100 text-slate-700">
-          <Store className="h-5 w-5" />
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 px-6 pb-6">
-        {url ? (
-          <div className="flex min-h-[240px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
-            <iframe
-              title={DASHBOARD_DESTAQUE_TITULO}
-              src={url}
-              sandbox="allow-forms allow-popups allow-same-origin"
-              referrerPolicy="no-referrer"
-              loading="lazy"
-              className="min-h-[240px] w-full flex-1"
-            />
-          </div>
-        ) : (
-          <div className="flex w-full flex-1 flex-col justify-between rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {["Campanha", "Relatorio", "Conteudo"].map((label, index) => (
-                <div
-                  key={label}
-                  className="rounded-3xl border border-slate-200 bg-white p-4"
-                >
-                  <div className="h-2 w-10 rounded-full bg-slate-200" />
-                  <div
-                    className={`mt-8 h-20 rounded-3xl ${
-                      index === 0
-                        ? "bg-emerald-100"
-                        : index === 1
-                          ? "bg-blue-100"
-                          : "bg-amber-100"
-                    }`}
-                  />
-                  <p className="mt-3 text-sm font-bold text-slate-700">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-5 text-sm leading-6 text-slate-500">
-              Configure a constante `DASHBOARD_DESTAQUE_URL` neste componente
-              para exibir um link visual sem usar `.env`.
+    <section
+      className="relative flex min-h-[390px] overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 bg-cover bg-center shadow-sm"
+      style={
+        imagemUrl
+          ? {
+              backgroundImage: `url("${imagemUrl}")`,
+            }
+          : undefined
+      }
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/82 via-slate-950/34 to-slate-950/10" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/80 to-transparent" />
+      <div className="relative z-10 flex min-h-[390px] w-full flex-col justify-between p-6 text-white sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/70">
+              Destaque
+            </p>
+            <h2 className="mt-2 max-w-md text-2xl font-semibold tracking-tight sm:text-3xl">
+              {DASHBOARD_DESTAQUE_TITULO}
+            </h2>
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/75">
+              {DASHBOARD_DESTAQUE_DESCRICAO}
             </p>
           </div>
-        )}
-      </div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-white/14 text-white ring-1 ring-white/20">
+            <Store className="h-5 w-5" />
+          </div>
+        </div>
 
-      <div className="border-t border-slate-100 px-6 py-4">
-        {url ? (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-950"
-          >
-            Abrir conteudo
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        ) : (
-          <span className="text-sm font-semibold text-slate-400">
-            Conteudo externo ainda nao configurado.
-          </span>
-        )}
+        <Link
+          href={DASHBOARD_DESTAQUE_LINK_URL}
+          className="inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-slate-100"
+        >
+          Ver loja
+          <ExternalLink className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );
@@ -384,19 +368,23 @@ function AreaCard({
       className={`flex h-full flex-col rounded-[2rem] border p-5 shadow-sm transition hover:shadow-md ${colors.card}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className={`rounded-full px-3 py-1 text-xs font-black ${colors.soft}`}>
+        <div
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${colors.soft}`}
+        >
           {title}
         </div>
-        <div className={`flex h-11 w-11 items-center justify-center rounded-3xl ${colors.icon}`}>
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-3xl ${colors.icon}`}
+        >
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-5 text-3xl font-black tracking-tight">{value}</p>
+      <p className="mt-5 text-3xl font-semibold tracking-tight">{value}</p>
       <p className={`mt-2 min-h-[48px] text-sm leading-6 ${colors.text}`}>
         {description}
       </p>
       {children ? <div className="mt-4">{children}</div> : null}
-      <span className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-black">
+      <span className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold">
         {cta}
         <ArrowRight className="h-4 w-4" />
       </span>
@@ -434,7 +422,9 @@ function StatusBars({ itens }: { itens: DashboardStatusItem[] }) {
           <div className="h-2 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-slate-900"
-              style={{ width: `${Math.max(8, (item.quantidade / max) * 100)}%` }}
+              style={{
+                width: `${Math.max(8, (item.quantidade / max) * 100)}%`,
+              }}
             />
           </div>
         </div>
@@ -443,11 +433,7 @@ function StatusBars({ itens }: { itens: DashboardStatusItem[] }) {
   );
 }
 
-function AtividadeRecente({
-  itens,
-}: {
-  itens: DashboardMovimentacaoItem[];
-}) {
+function AtividadeRecente({ itens }: { itens: DashboardMovimentacaoItem[] }) {
   if (itens.length === 0) {
     return (
       <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
@@ -474,7 +460,7 @@ function AtividadeRecente({
               {item.tipoMovimentacaoLabel} em {item.origemTipo}
             </p>
           </div>
-          <p className="text-sm font-black text-slate-900 sm:text-right">
+          <p className="text-sm font-semibold text-slate-900 sm:text-right">
             {numero(item.quantidade)}
           </p>
         </div>
@@ -486,6 +472,8 @@ function AtividadeRecente({
 export default function DashboardClient({
   data,
   centralAcoes,
+  usuarioNome,
+  usuarioEmail,
 }: DashboardClientProps) {
   const criticas = prioridadeAlta(centralAcoes);
   const acaoPrincipal = centralAcoes.acoes[0] || null;
@@ -543,7 +531,9 @@ export default function DashboardClient({
           tone: "violet" as Tone,
         }
       : null,
-    data.permissoes.produtos || data.permissoes.estoque || data.permissoes.lojaOnline
+    data.permissoes.produtos ||
+    data.permissoes.estoque ||
+    data.permissoes.lojaOnline
       ? {
           title: "Loja/Catalogo",
           value: numero(data.cards.alertasEstoque),
@@ -597,8 +587,8 @@ export default function DashboardClient({
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
               Dashboard administrativo
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Bom trabalho, Stella Colari
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              {saudacaoDashboard(usuarioNome, usuarioEmail)}
             </h1>
             <p className="mt-2 text-sm font-medium text-slate-500">
               {periodoCurto(data.geradoEm)}. Painel executivo da operacao.
@@ -624,7 +614,7 @@ export default function DashboardClient({
                   <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/55">
                     Resumo executivo
                   </p>
-                  <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl">
+                  <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                     {statusOperacaoTexto(criticas.length)}
                   </h2>
                   <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">
@@ -671,7 +661,7 @@ export default function DashboardClient({
                 {acaoPrincipal?.href ? (
                   <Link
                     href={acaoPrincipal.href}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-slate-100"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
                   >
                     {acaoPrincipal.cta || "Abrir prioridade"}
                     <ArrowRight className="h-4 w-4" />
@@ -679,7 +669,7 @@ export default function DashboardClient({
                 ) : null}
                 <Link
                   href="#central-acoes-detalhada"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
                   Central de acoes
                   <ArrowRight className="h-4 w-4" />
@@ -714,7 +704,7 @@ export default function DashboardClient({
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
                 Grafico simples
               </p>
-              <h2 className="mt-2 text-xl font-black text-slate-950">
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">
                 Vendas por status
               </h2>
             </div>
@@ -733,13 +723,13 @@ export default function DashboardClient({
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
                 Movimento
               </p>
-              <h2 className="mt-2 text-xl font-black text-slate-950">
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">
                 Atividade recente
               </h2>
             </div>
             <Link
               href={data.permissoes.estoque ? "/movimentacoes" : "/dashboard"}
-              className="inline-flex items-center gap-2 text-sm font-black text-slate-700 hover:text-slate-950"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-950"
             >
               Ver detalhes
               <ArrowRight className="h-4 w-4" />
@@ -775,7 +765,7 @@ export default function DashboardClient({
             title="Estoque"
             value={moeda(
               data.cards.valorEstoqueProdutos +
-                data.cards.valorEstoqueAdicionais
+                data.cards.valorEstoqueAdicionais,
             )}
             description="Valor em produtos e adicionais, visivel apenas para perfis autorizados."
             href={data.permissoes.estoque ? "/estoque" : undefined}
