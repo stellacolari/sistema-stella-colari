@@ -38,6 +38,13 @@ type ChipFiltro = {
   label: string;
 };
 
+const filterLabelClass =
+  "text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500";
+const filterFieldClass =
+  "mt-2 h-10 w-full rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white";
+const filterInputClass =
+  "h-10 min-w-0 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white";
+
 type LojaFiltrosProdutosProps<TProduto extends LojaProdutoFiltravel> = {
   produtos: TProduto[];
   className?: string;
@@ -193,8 +200,8 @@ export default function LojaFiltrosProdutos<
   gridClassName = "grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4",
   defaultOrder = "destaque",
   exibirCategoria = true,
-  emptyTitle = "Nenhum produto encontrado com esses filtros.",
-  emptyDescription = "Tente remover algum filtro ou buscar por outro termo.",
+  emptyTitle = "Nenhum produto encontrado.",
+  emptyDescription = "Tente remover algum filtro ou buscar outro termo.",
   renderProduto,
 }: LojaFiltrosProdutosProps<TProduto>) {
   const router = useRouter();
@@ -301,10 +308,10 @@ export default function LojaFiltrosProdutos<
         chave: filtrosUrl.precoMin ? "precoMin" : "precoMax",
         label:
           min && max
-            ? `${min} a ${max}`
+            ? `Preço: ${min}–${max}`
             : min
-              ? `A partir de ${min}`
-              : `Ate ${max}`,
+              ? `Preço: a partir de ${min}`
+              : `Preço: até ${max}`,
       });
     }
 
@@ -418,13 +425,17 @@ export default function LojaFiltrosProdutos<
     return (
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 rounded-md border border-slate-200 bg-white p-4"
+        className={`space-y-5 ${
+          mobile
+            ? ""
+            : "border-y border-slate-200 py-5"
+        }`}
       >
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Buscar nesta pagina
+          <label className={filterLabelClass}>
+            Buscar nesta página
           </label>
-          <div className="mt-2 flex h-11 items-center gap-2 rounded-md border border-slate-200 px-3 transition focus-within:border-[var(--brand-blue)]">
+          <div className="mt-2 flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 transition focus-within:border-slate-400 focus-within:bg-white">
             <Search className="h-4 w-4 text-slate-400" />
             <input
               value={draft.buscar}
@@ -434,15 +445,15 @@ export default function LojaFiltrosProdutos<
                   buscar: event.target.value,
                 }))
               }
-              placeholder="Nome ou categoria"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+              placeholder="Buscar produtos"
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Ordenar
+          <label className={filterLabelClass}>
+            Ordenar por
           </label>
           <select
             value={draft.ordem}
@@ -451,7 +462,7 @@ export default function LojaFiltrosProdutos<
                 ordem: event.target.value as LojaProdutoOrdenacao,
               })
             }
-            className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className={filterFieldClass}
           >
             {ordensPermitidas.map((ordem) => (
               <option key={ordem} value={ordem}>
@@ -463,7 +474,7 @@ export default function LojaFiltrosProdutos<
 
         {exibirFiltroCategoria ? (
           <div>
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <label className={filterLabelClass}>
               Categoria
             </label>
             <select
@@ -473,7 +484,7 @@ export default function LojaFiltrosProdutos<
                   categoria: event.target.value,
                 })
               }
-              className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+              className={filterFieldClass}
             >
               <option value="">Todas</option>
               {filtrosDisponiveis.categorias.map((categoria) => (
@@ -486,8 +497,8 @@ export default function LojaFiltrosProdutos<
         ) : null}
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Faixa de preco
+          <label className={filterLabelClass}>
+            Faixa de preço
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <input
@@ -503,10 +514,10 @@ export default function LojaFiltrosProdutos<
               }
               placeholder={
                 filtrosDisponiveis.precoMinimo !== null
-                  ? `Min. ${moeda(filtrosDisponiveis.precoMinimo)}`
-                  : "Min."
+                  ? `Mín. ${moeda(filtrosDisponiveis.precoMinimo)}`
+                  : "Mín."
               }
-              className="h-11 min-w-0 rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+              className={filterInputClass}
             />
             <input
               type="number"
@@ -521,17 +532,17 @@ export default function LojaFiltrosProdutos<
               }
               placeholder={
                 filtrosDisponiveis.precoMaximo !== null
-                  ? `Max. ${moeda(filtrosDisponiveis.precoMaximo)}`
-                  : "Max."
+                  ? `Máx. ${moeda(filtrosDisponiveis.precoMaximo)}`
+                  : "Máx."
               }
-              className="h-11 min-w-0 rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+              className={filterInputClass}
             />
           </div>
         </div>
 
         {filtrosDisponiveis.tamanhos.length > 0 ? (
           <div>
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <label className={filterLabelClass}>
               Tamanho
             </label>
             <select
@@ -541,7 +552,7 @@ export default function LojaFiltrosProdutos<
                   tamanho: event.target.value,
                 })
               }
-              className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+              className={filterFieldClass}
             >
               <option value="">Todos</option>
               {filtrosDisponiveis.tamanhos.map((tamanho) => (
@@ -554,7 +565,7 @@ export default function LojaFiltrosProdutos<
         ) : null}
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <label className={filterLabelClass}>
             Disponibilidade
           </label>
           <select
@@ -564,7 +575,7 @@ export default function LojaFiltrosProdutos<
                 estoque: event.target.value as LojaFiltroEstoque,
               })
             }
-            className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className={filterFieldClass}
           >
             <option value="todos">Todos</option>
             <option value="disponivel">Em estoque</option>
@@ -574,8 +585,8 @@ export default function LojaFiltrosProdutos<
 
         {exibirFiltroDesconto ? (
           <div>
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Promocao
+            <label className={filterLabelClass}>
+              Promoção
             </label>
             <select
               value={draft.desconto}
@@ -584,7 +595,7 @@ export default function LojaFiltrosProdutos<
                   desconto: event.target.value as LojaFiltroDesconto,
                 })
               }
-              className="mt-2 h-11 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+              className={filterFieldClass}
             >
               <option value="">Todos</option>
               <option value="com-desconto">Com desconto</option>
@@ -593,17 +604,17 @@ export default function LojaFiltrosProdutos<
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-2 pt-2">
+        <div className="grid grid-cols-2 gap-2 pt-1">
           <button
             type="button"
             onClick={() => limparFiltros(mobile)}
-            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+            className="h-10 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
           >
             Limpar
           </button>
           <button
             type="submit"
-            className="h-11 rounded-md bg-[var(--brand-blue)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-hover)]"
+            className="h-10 rounded-full bg-slate-950 px-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Aplicar filtros
           </button>
@@ -614,15 +625,15 @@ export default function LojaFiltrosProdutos<
 
   return (
     <div className={className}>
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-950">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             {produtosFiltrados.length} produto
             {produtosFiltrados.length === 1 ? "" : "s"} encontrado
             {produtosFiltrados.length === 1 ? "" : "s"}
           </p>
           {produtos.length > 0 ? (
-            <p className="mt-1 text-xs font-medium text-slate-500">
+            <p className="mt-1 text-sm text-slate-600">
               de {produtos.length} produto{produtos.length === 1 ? "" : "s"} nesta listagem
             </p>
           ) : null}
@@ -631,7 +642,7 @@ export default function LojaFiltrosProdutos<
         <button
           type="button"
           onClick={() => setPainelAberto(true)}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-slate-500 lg:hidden"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-slate-500 lg:hidden"
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filtrar
@@ -639,22 +650,22 @@ export default function LojaFiltrosProdutos<
       </div>
 
       {chips.length > 0 ? (
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {chips.map((chip) => (
             <button
               key={`${chip.chave}-${chip.label}`}
               type="button"
               onClick={() => removerFiltro(chip.chave)}
-              className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+              className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
             >
               <span className="truncate">{chip.label}</span>
-              <X className="h-3.5 w-3.5 shrink-0" />
+              <X className="h-3 w-3 shrink-0" />
             </button>
           ))}
           <button
             type="button"
             onClick={() => limparFiltros()}
-            className="px-2 py-1 text-xs font-semibold text-slate-500 transition hover:text-slate-950"
+            className="px-2 py-1 text-xs font-medium text-slate-500 underline-offset-4 transition hover:text-slate-950 hover:underline"
           >
             Limpar filtros
           </button>
@@ -667,15 +678,23 @@ export default function LojaFiltrosProdutos<
             type="button"
             aria-label="Fechar filtros"
             onClick={() => setPainelAberto(false)}
-            className="absolute inset-0 bg-slate-950/35"
+            className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px]"
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-lg bg-white p-4 shadow-2xl">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-950">Filtros</p>
+          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[1.5rem] bg-white px-5 pb-5 pt-4 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Filtros
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {produtosFiltrados.length} resultado
+                  {produtosFiltrados.length === 1 ? "" : "s"}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setPainelAberto(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
                 aria-label="Fechar filtros"
               >
                 <X className="h-4 w-4" />
@@ -686,8 +705,15 @@ export default function LojaFiltrosProdutos<
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[270px_minmax(0,1fr)]">
-        <aside className="hidden lg:block">{renderControles(false)}</aside>
+      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-24">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+              Refinar seleção
+            </p>
+            {renderControles(false)}
+          </div>
+        </aside>
 
         <div className="min-w-0">
           {produtosFiltrados.length > 0 ? (
@@ -697,14 +723,14 @@ export default function LojaFiltrosProdutos<
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-slate-200 bg-white px-6 py-12 text-center">
+            <div className="border-y border-slate-200 bg-white px-6 py-14 text-center">
               <p className="text-lg font-semibold text-slate-950">{emptyTitle}</p>
               <p className="mt-3 text-sm text-slate-600">{emptyDescription}</p>
               {filtrosAtivos ? (
                 <button
                   type="button"
                   onClick={() => limparFiltros()}
-                  className="mt-5 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-500"
+                  className="mt-6 rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-500"
                 >
                   Limpar filtros
                 </button>
@@ -724,8 +750,8 @@ function getLabelOrdenacao(
   if (ordem === "destaque") return "Destaque";
   if (ordem === "relevancia") return "Mais relevantes";
   if (ordem === "recentes") return "Mais recentes";
-  if (ordem === "menor-preco") return "Menor preco";
-  if (ordem === "maior-preco") return "Maior preco";
+  if (ordem === "menor-preco") return "Menor preço";
+  if (ordem === "maior-preco") return "Maior preço";
   if (ordem === "mais-vendidos") return "Mais vendidos";
   if (ordem === "az") return "A-Z";
   if (ordem === "za") return "Z-A";

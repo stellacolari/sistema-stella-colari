@@ -1054,7 +1054,7 @@ function FiltrosProdutosGrade({
   }
 
   return (
-    <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="mb-8 border-y border-slate-200 py-4">
       <div className="grid gap-3 md:grid-cols-4">
         {Boolean(filtrosAtivos.categoria) && (
           <select
@@ -1065,7 +1065,7 @@ function FiltrosProdutosGrade({
                 categoria: event.target.value,
               }))
             }
-            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className="h-10 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           >
             <option value="">Todas as categorias</option>
 
@@ -1086,7 +1086,7 @@ function FiltrosProdutosGrade({
                 tamanho: event.target.value,
               }))
             }
-            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className="h-10 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           >
             <option value="">Todos os tamanhos</option>
 
@@ -1107,7 +1107,7 @@ function FiltrosProdutosGrade({
                 ordenacao: event.target.value,
               }))
             }
-            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className="h-10 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           >
             <option value="">Ordenar</option>
             <option value="MAIS_RECENTES">Mais recentes</option>
@@ -1127,7 +1127,7 @@ function FiltrosProdutosGrade({
                 desconto: event.target.value,
               }))
             }
-            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className="h-10 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           >
             <option value="">Todos</option>
             <option value="COM_DESCONTO">Com desconto</option>
@@ -1144,7 +1144,7 @@ function FiltrosProdutosGrade({
                 disponibilidade: event.target.value,
               }))
             }
-            className="h-11 rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[var(--brand-blue)]"
+            className="h-10 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
           >
             <option value="">Disponibilidade</option>
             <option value="DISPONIVEL">Disponível</option>
@@ -1395,7 +1395,7 @@ function ProdutosGrade({
       )}
 
       {produtosPagina.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm font-medium text-slate-500">
+        <div className="border-y border-slate-200 bg-white px-6 py-12 text-center text-sm font-medium text-slate-500">
           Nenhum produto encontrado com os filtros selecionados.
         </div>
       ) : (
