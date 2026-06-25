@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   Megaphone,
+  MessageCircle,
   MousePointerClick,
   Package,
   Plus,
@@ -62,6 +63,8 @@ type MenuGroup = {
   highlight?: boolean;
   quickAddHref?: string;
   quickAddLabel?: string;
+  quickAddModulo?: string;
+  quickAddAcao?: string;
   tone?: MenuTone;
   activePrefixes?: string[];
   modulo?: string;
@@ -73,6 +76,7 @@ type MenuGroup = {
     exact?: boolean;
     activePrefixes?: string[];
     modulo?: string;
+    acao?: string;
   }[];
 };
 
@@ -90,6 +94,7 @@ type QuickAction = {
   icon: ElementType;
   tone?: MenuTone;
   modulo?: string;
+  acao?: string;
 };
 
 const menuSections: MenuSection[] = [
@@ -124,19 +129,38 @@ const menuSections: MenuSection[] = [
         highlight: true,
       },
       {
-        type: "link",
+        type: "group",
         href: "/vendas",
         modulo: "vendas",
         label: "Vendas",
         icon: ShoppingBag,
+        quickAddHref: "/vendas/nova-v2",
+        quickAddLabel: "Nova venda",
+        quickAddModulo: "vendas",
+        activePrefixes: ["/vendas"],
+        links: [
+          { href: "/vendas", label: "Lista de vendas", icon: ClipboardList, exact: true, modulo: "vendas" },
+          { href: "/vendas/nova-v2", label: "Nova venda", icon: Plus, modulo: "vendas" },
+        ],
         description: "Histórico de vendas",
       },
       {
-        type: "link",
+        type: "group",
         href: "/clientes",
         modulo: "clientes",
         label: "Clientes",
         icon: Users,
+        quickAddHref: "/clientes/novo",
+        quickAddLabel: "Novo cliente",
+        quickAddModulo: "clientes",
+        quickAddAcao: "criar",
+        activePrefixes: ["/clientes"],
+        links: [
+          { href: "/clientes", label: "Lista de clientes", icon: Users, exact: true, modulo: "clientes" },
+          { href: "/clientes/novo", label: "Novo cliente", icon: Plus, modulo: "clientes", acao: "criar" },
+          { href: "/clientes/relacionamento", label: "CRM acionavel", icon: Sparkles, exact: true, modulo: "clientes" },
+          { href: "/clientes/relacionamento/campanhas", label: "Rascunhos WhatsApp", icon: MessageCircle, modulo: "clientes" },
+        ],
         description: "Cadastro e histórico",
       },
     ],
@@ -146,11 +170,20 @@ const menuSections: MenuSection[] = [
     description: "Produtos, estoque e insumos",
     items: [
       {
-        type: "link",
+        type: "group",
         href: "/produtos",
         modulo: "produtos",
         label: "Produtos",
         icon: Package,
+        quickAddHref: "/produtos/novo",
+        quickAddLabel: "Novo produto",
+        quickAddModulo: "produtos",
+        quickAddAcao: "editar",
+        activePrefixes: ["/produtos"],
+        links: [
+          { href: "/produtos", label: "Lista de produtos", icon: Package, exact: true, modulo: "produtos" },
+          { href: "/produtos/novo", label: "Novo produto", icon: Plus, modulo: "produtos", acao: "editar" },
+        ],
         description: "Cadastro, variações e famílias",
       },
       {
@@ -277,6 +310,7 @@ const vendedorMenuSections: MenuSection[] = [
       {
         type: "link",
         href: "/pedidos",
+        modulo: "pedidos",
         label: "Pedidos",
         icon: ClipboardList,
         description: "Central operacional",
@@ -285,23 +319,45 @@ const vendedorMenuSections: MenuSection[] = [
       {
         type: "link",
         href: "/notificacoes",
+        modulo: "notificacoes",
         label: "Caixa de Entrada",
         icon: Bell,
         description: "Acoes pendentes",
         highlight: true,
       },
       {
-        type: "link",
+        type: "group",
         href: "/vendas",
+        modulo: "vendas",
         label: "Vendas",
         icon: ShoppingBag,
+        quickAddHref: "/vendas/nova-v2",
+        quickAddLabel: "Nova venda",
+        quickAddModulo: "vendas",
+        activePrefixes: ["/vendas"],
+        links: [
+          { href: "/vendas", label: "Lista de vendas", icon: ClipboardList, exact: true, modulo: "vendas" },
+          { href: "/vendas/nova-v2", label: "Nova venda", icon: Plus, modulo: "vendas" },
+        ],
         description: "Histórico de vendas",
       },
       {
-        type: "link",
+        type: "group",
         href: "/clientes",
+        modulo: "clientes",
         label: "Clientes",
         icon: Users,
+        quickAddHref: "/clientes/novo",
+        quickAddLabel: "Novo cliente",
+        quickAddModulo: "clientes",
+        quickAddAcao: "criar",
+        activePrefixes: ["/clientes"],
+        links: [
+          { href: "/clientes", label: "Lista de clientes", icon: Users, exact: true, modulo: "clientes" },
+          { href: "/clientes/novo", label: "Novo cliente", icon: Plus, modulo: "clientes", acao: "criar" },
+          { href: "/clientes/relacionamento", label: "CRM acionavel", icon: Sparkles, exact: true, modulo: "clientes" },
+          { href: "/clientes/relacionamento/campanhas", label: "Rascunhos WhatsApp", icon: MessageCircle, modulo: "clientes" },
+        ],
         description: "Cadastro e histórico",
       },
     ],
@@ -313,6 +369,7 @@ const vendedorMenuSections: MenuSection[] = [
       {
         type: "link",
         href: "/produtos",
+        modulo: "produtos",
         label: "Produtos",
         icon: Package,
         description: "Catálogo de produtos",
@@ -339,6 +396,7 @@ const quickActions: QuickAction[] = [
     label: "Novo produto",
     icon: Package,
     modulo: "produtos",
+    acao: "editar",
   },
 ];
 
@@ -510,9 +568,13 @@ function getQuickActions(perfil: PerfilAdmin) {
   return perfil === "VENDEDOR" ? vendedorQuickActions : quickActions;
 }
 
-function podeVerModulo(modulo: string | undefined, permissoes: PermissoesPerfil | undefined) {
+function podeVerModulo(
+  modulo: string | undefined,
+  permissoes: PermissoesPerfil | undefined,
+  acao = "ver"
+) {
   if (!modulo || !permissoes) return true;
-  return permissoes[modulo]?.includes("ver") || false;
+  return permissoes[modulo]?.includes(acao) || false;
 }
 
 function filtrarSectionsPorPermissao(sections: MenuSection[], permissoes: PermissoesPerfil | undefined) {
@@ -524,7 +586,12 @@ function filtrarSectionsPorPermissao(sections: MenuSection[], permissoes: Permis
       items: section.items
         .map((item) => {
           if (item.type === "group") {
-            return { ...item, links: item.links.filter((link) => podeVerModulo(link.modulo, permissoes)) };
+            return {
+              ...item,
+              links: item.links.filter((link) =>
+                podeVerModulo(link.modulo, permissoes, link.acao)
+              ),
+            };
           }
           return item;
         })
@@ -568,7 +635,13 @@ export default function SidebarMenu({
 }) {
   const pathname = usePathname();
   const sections = useMemo(() => filtrarSectionsPorPermissao(getMenuSections(perfil), permissoes), [perfil, permissoes]);
-  const actions = useMemo(() => getQuickActions(perfil).filter((action) => podeVerModulo(action.modulo, permissoes)), [perfil, permissoes]);
+  const actions = useMemo(
+    () =>
+      getQuickActions(perfil).filter((action) =>
+        podeVerModulo(action.modulo, permissoes, action.acao)
+      ),
+    [perfil, permissoes]
+  );
 
   const groups = useMemo(() => getSectionGroups(sections), [sections]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -849,6 +922,14 @@ export default function SidebarMenu({
                   const shouldShowSubItems =
                     (!compacto && isOpen) ||
                     (compacto && (groupIsActive || groupBadge > 0));
+                  const quickAddHref = item.quickAddHref;
+                  const canShowQuickAdd =
+                    quickAddHref &&
+                    podeVerModulo(
+                      item.quickAddModulo || item.modulo,
+                      permissoes,
+                      item.quickAddAcao || "ver"
+                    );
 
                   return (
                     <div
@@ -911,9 +992,9 @@ export default function SidebarMenu({
                           ) : null}
                         </button>
 
-                        {item.quickAddHref && !compacto ? (
+                        {canShowQuickAdd && quickAddHref && !compacto ? (
                           <Link
-                            href={item.quickAddHref}
+                            href={quickAddHref}
                             title={item.quickAddLabel || "Adicionar"}
                             onClick={onNavigate}
                             className={`flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 ${

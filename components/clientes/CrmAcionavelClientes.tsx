@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Heart,
   Info,
+  MessageCircle,
   Repeat2,
   ShieldCheck,
   Sparkles,
@@ -302,6 +303,13 @@ export default function CrmAcionavelClientes({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/clientes/relacionamento/campanhas"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Rascunhos WhatsApp
+            </Link>
             <Link
               href="/clientes"
               className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"

@@ -54,6 +54,66 @@ const relacionamentoClasses: Record<StatusRelacionamentoCliente, string> = {
   INATIVO: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
+function obterElegibilidadeWhatsappRascunho(ficha: Ficha360ClienteData) {
+  const telefoneDigitos = String(ficha.cliente.telefone || "").replace(
+    /\D/g,
+    ""
+  );
+  const telefoneValido =
+    telefoneDigitos.length === 10 || telefoneDigitos.length === 11;
+  const whatsappAutorizado = ficha.consentimento.canaisAutorizados.some(
+    (item) =>
+      item.canal === "WHATSAPP" &&
+      (item.finalidade === "MARKETING" ||
+        item.finalidade === "RELACIONAMENTO")
+  );
+  const whatsappRevogado = ficha.consentimento.canaisRevogados.some(
+    (item) =>
+      item.canal === "WHATSAPP" &&
+      (item.finalidade === "MARKETING" ||
+        item.finalidade === "RELACIONAMENTO")
+  );
+
+  if (whatsappAutorizado && telefoneValido) {
+    return {
+      titulo: "Elegivel para rascunho WhatsApp",
+      detalhe:
+        "Ha telefone valido e consentimento WhatsApp para relacionamento ou marketing.",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      iconClassName: "text-emerald-700",
+      bloqueado: false,
+    };
+  }
+
+  if (!telefoneValido) {
+    return {
+      titulo: "Bloqueado para rascunho WhatsApp",
+      detalhe: "Telefone ausente ou invalido bloqueia qualquer contato ativo.",
+      className: "border-amber-200 bg-amber-50 text-amber-900",
+      iconClassName: "text-amber-700",
+      bloqueado: true,
+    };
+  }
+
+  if (whatsappRevogado) {
+    return {
+      titulo: "WhatsApp revogado",
+      detalhe: "Revogacao vigente bloqueia contato ativo pelo CRM.",
+      className: "border-red-200 bg-red-50 text-red-900",
+      iconClassName: "text-red-700",
+      bloqueado: true,
+    };
+  }
+
+  return {
+    titulo: "Sem consentimento WhatsApp",
+    detalhe: "Ausencia de autorizacao bloqueia rascunhos de contato ativo.",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
+    iconClassName: "text-amber-700",
+    bloqueado: true,
+  };
+}
+
 function moeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -608,6 +668,33 @@ export default function Ficha360Cliente({
             resumoInicial={ficha.consentimento}
             podeEditar={podeEditarConsentimento}
           />
+
+          {(() => {
+            const elegibilidade = obterElegibilidadeWhatsappRascunho(ficha);
+            const Icone = elegibilidade.bloqueado
+              ? AlertTriangle
+              : ShieldCheck;
+
+            return (
+              <section
+                className={`rounded-3xl border p-5 shadow-sm ${elegibilidade.className}`}
+              >
+                <div className="flex gap-3">
+                  <Icone
+                    className={`mt-0.5 h-5 w-5 shrink-0 ${elegibilidade.iconClassName}`}
+                  />
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      {elegibilidade.titulo}
+                    </h2>
+                    <p className="mt-1 text-sm leading-6">
+                      {elegibilidade.detalhe}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
 
           <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
             <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-5">
