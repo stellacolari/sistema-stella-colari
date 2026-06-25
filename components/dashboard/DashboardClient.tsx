@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
-  Store,
   Warehouse,
 } from "lucide-react";
 import type {
@@ -26,9 +25,6 @@ import type {
 const DASHBOARD_DESTAQUE_IMAGEM_URL =
   "/uploads/loja/1777647841602-banner-stella.jpg";
 const DASHBOARD_DESTAQUE_LINK_URL = "/loja";
-const DASHBOARD_DESTAQUE_TITULO = "Conteudo em destaque";
-const DASHBOARD_DESTAQUE_DESCRICAO =
-  "Acompanhe a vitrine publica da loja em um atalho visual.";
 
 export type DashboardStatusItem = {
   status: string;
@@ -255,10 +251,10 @@ function prioridadeAlta(data: CentralAcoesAdminData) {
 
 function statusOperacaoTexto(totalPrioritario: number) {
   if (totalPrioritario > 0) {
-    return `Hoje sua loja precisa de atencao em ${numero(totalPrioritario)} ponto${totalPrioritario === 1 ? "" : "s"}.`;
+    return `Hoje sua loja precisa de atenção em ${numero(totalPrioritario)} ponto${totalPrioritario === 1 ? "" : "s"}.`;
   }
 
-  return "A operacao esta sem alerta critico no momento.";
+  return "A operação está sem alerta crítico no momento.";
 }
 
 function indicador({
@@ -302,7 +298,7 @@ function DashboardDestaqueExterno() {
 
   return (
     <section
-      className="relative flex min-h-[390px] overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 bg-cover bg-center shadow-sm"
+      className="relative min-h-[390px] overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-200 bg-cover bg-center shadow-sm"
       style={
         imagemUrl
           ? {
@@ -311,34 +307,16 @@ function DashboardDestaqueExterno() {
           : undefined
       }
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/82 via-slate-950/34 to-slate-950/10" />
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/80 to-transparent" />
-      <div className="relative z-10 flex min-h-[390px] w-full flex-col justify-between p-6 text-white sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/70">
-              Destaque
-            </p>
-            <h2 className="mt-2 max-w-md text-2xl font-semibold tracking-tight sm:text-3xl">
-              {DASHBOARD_DESTAQUE_TITULO}
-            </h2>
-            <p className="mt-3 max-w-md text-sm leading-6 text-white/75">
-              {DASHBOARD_DESTAQUE_DESCRICAO}
-            </p>
-          </div>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-white/14 text-white ring-1 ring-white/20">
-            <Store className="h-5 w-5" />
-          </div>
-        </div>
-
-        <Link
-          href={DASHBOARD_DESTAQUE_LINK_URL}
-          className="inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-slate-100"
-        >
-          Ver loja
-          <ExternalLink className="h-4 w-4" />
-        </Link>
-      </div>
+      {!imagemUrl ? (
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-white to-slate-300" />
+      ) : null}
+      <Link
+        href={DASHBOARD_DESTAQUE_LINK_URL}
+        className="absolute bottom-4 right-4 z-10 inline-flex min-h-9 items-center justify-center gap-2 rounded-full bg-white/95 px-3.5 py-2 text-xs font-semibold text-slate-950 shadow-sm ring-1 ring-slate-900/10 transition hover:bg-white"
+      >
+        Ver loja
+        <ExternalLink className="h-3.5 w-3.5" />
+      </Link>
     </section>
   );
 }
@@ -406,7 +384,7 @@ function StatusBars({ itens }: { itens: DashboardStatusItem[] }) {
   if (itens.length === 0) {
     return (
       <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-        Ainda sem dados suficientes para grafico.
+        Ainda sem dados suficientes para gráfico.
       </p>
     );
   }
@@ -437,7 +415,7 @@ function AtividadeRecente({ itens }: { itens: DashboardMovimentacaoItem[] }) {
   if (itens.length === 0) {
     return (
       <p className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-        Ainda sem movimentacoes recentes.
+        Ainda sem movimentações recentes.
       </p>
     );
   }
@@ -498,13 +476,13 @@ export default function DashboardClient({
   const cardsArea = [
     data.permissoes.pedidos
       ? {
-          title: "Operacao",
+          title: "Operação",
           value: numero(resumoPedidos?.valor ?? 0),
           description:
             resumoPedidos?.descricao ||
             "Pedidos e rotinas que precisam de acompanhamento.",
           href: resumoPedidos?.href || "/pedidos",
-          cta: "Abrir operacao",
+          cta: "Abrir operação",
           icon: ClipboardList,
           tone: (resumoPedidos?.tom === "critico" ? "red" : "blue") as Tone,
         }
@@ -524,7 +502,7 @@ export default function DashboardClient({
       ? {
           title: "Clientes/CRM",
           value: numero(data.cards.clientesAtivos),
-          description: `${numero(quantidadeClientes)} sinal(is) de relacionamento em atencao.`,
+          description: `${numero(quantidadeClientes)} sinal(is) de relacionamento em atenção.`,
           href: "/clientes/relacionamento/campanhas",
           cta: "Abrir CRM",
           icon: MessageCircle,
@@ -535,17 +513,17 @@ export default function DashboardClient({
     data.permissoes.estoque ||
     data.permissoes.lojaOnline
       ? {
-          title: "Loja/Catalogo",
+          title: "Loja/Catálogo",
           value: numero(data.cards.alertasEstoque),
           description:
             resumoCatalogo?.descricao ||
-            `${numero(totalEstoque)} item(ns) mapeados em estoque e catalogo.`,
+            `${numero(totalEstoque)} item(ns) mapeados em estoque e catálogo.`,
           href: data.permissoes.estoque
             ? "/estoque"
             : data.permissoes.produtos
               ? "/produtos"
               : "/configuracoes/loja",
-          cta: "Revisar catalogo",
+          cta: "Revisar catálogo",
           icon: PackageSearch,
           tone: (data.cards.alertasEstoque > 0 ? "amber" : "emerald") as Tone,
         }
@@ -556,9 +534,9 @@ export default function DashboardClient({
           value: numero(resumoRecomendacoes?.valor ?? 0),
           description:
             resumoRecomendacoes?.descricao ||
-            "Recomendacoes prontas para revisao administrativa.",
+            "Recomendações prontas para revisão administrativa.",
           href: resumoRecomendacoes?.href || "/compras/recomendacoes",
-          cta: "Ver recomendacoes",
+          cta: "Ver recomendações",
           icon: Lightbulb,
           tone: "amber" as Tone,
         }
@@ -568,7 +546,7 @@ export default function DashboardClient({
           title: "Funil/Analytics",
           value: numero(quantidadeMarketing),
           description:
-            "Sinais de busca, funil e intencao comercial para acompanhar.",
+            "Sinais de busca, funil e intenção comercial para acompanhar.",
           href: data.permissoes.intencaoComercial
             ? "/compras/intencao"
             : "/configuracoes/loja",
@@ -591,7 +569,7 @@ export default function DashboardClient({
               {saudacaoDashboard(usuarioNome, usuarioEmail)}
             </h1>
             <p className="mt-2 text-sm font-medium text-slate-500">
-              {periodoCurto(data.geradoEm)}. Painel executivo da operacao.
+              {periodoCurto(data.geradoEm)}. Painel executivo da operação.
             </p>
           </div>
 
@@ -620,7 +598,7 @@ export default function DashboardClient({
                   <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">
                     {acaoPrincipal
                       ? acaoPrincipal.descricao
-                      : "Use os atalhos para revisar pedidos, clientes, catalogo e recomendacoes sem perder o ritmo da loja."}
+                      : "Use os atalhos para revisar pedidos, clientes, catálogo e recomendações sem perder o ritmo da loja."}
                   </p>
                 </div>
                 <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-white text-slate-950 sm:flex">
@@ -634,7 +612,7 @@ export default function DashboardClient({
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {indicador({
-                  label: "Acoes",
+                  label: "Ações",
                   value: numero(centralAcoes.acoes.length),
                   detail: `${numero(criticas.length)} alta prioridade`,
                 })}
@@ -671,7 +649,7 @@ export default function DashboardClient({
                   href="#central-acoes-detalhada"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
-                  Central de acoes
+                  Central de ações
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -702,7 +680,7 @@ export default function DashboardClient({
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">
-                Grafico simples
+                Gráfico simples
               </p>
               <h2 className="mt-2 text-xl font-semibold text-slate-950">
                 Vendas por status
@@ -748,7 +726,7 @@ export default function DashboardClient({
             value={moeda(data.cards.totalVendido)}
             description={`Pedidos e vendas ativos. Online pago: ${moeda(data.cards.totalPedidosOnlinePagos)}.`}
             href={data.permissoes.relatorios ? "/relatorios" : undefined}
-            cta="Ver relatorios"
+            cta="Ver relatórios"
             icon={ReceiptText}
             tone="emerald"
           />
@@ -767,7 +745,7 @@ export default function DashboardClient({
               data.cards.valorEstoqueProdutos +
                 data.cards.valorEstoqueAdicionais,
             )}
-            description="Valor em produtos e adicionais, visivel apenas para perfis autorizados."
+            description="Valor em produtos e adicionais, visível apenas para perfis autorizados."
             href={data.permissoes.estoque ? "/estoque" : undefined}
             cta="Ver estoque"
             icon={Warehouse}

@@ -412,7 +412,7 @@ export default async function DashboardPage() {
       ? {
           id: "copiloto",
           titulo: "Copiloto",
-          descricao: "Revisar recomendacoes",
+          descricao: "Revisar recomendações",
           href: "/compras/recomendacoes",
         }
       : null,
@@ -420,13 +420,13 @@ export default async function DashboardPage() {
       ? {
           id: "loja",
           titulo: "Loja",
-          descricao: "Configuracoes publicas",
+          descricao: "Configurações públicas",
           href: "/configuracoes/loja",
         }
       : permissoesDashboard.produtos
         ? {
             id: "catalogo",
-            titulo: "Catalogo",
+            titulo: "Catálogo",
             descricao: "Produtos e vitrine",
             href: "/produtos",
           }

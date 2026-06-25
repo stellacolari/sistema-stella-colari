@@ -25,18 +25,18 @@ type NotificacoesAtualizadasEvent = CustomEvent<{
 function getPageInfo(pathname: string) {
   if (pathname.startsWith("/pedidos")) {
     return {
-      eyebrow: "Operacao",
+      eyebrow: "Operação",
       title: "Pedidos",
-      description: "Central operacional de pagamento, separacao e entrega.",
+      description: "Central operacional de pagamento, separação e entrega.",
       showLojaButton: false,
     };
   }
 
   if (pathname.startsWith("/notificacoes")) {
     return {
-      eyebrow: "Operacao",
+      eyebrow: "Operação",
       title: "Caixa de Entrada",
-      description: "Notificacoes internas e acoes pendentes da plataforma.",
+      description: "Notificações internas e ações pendentes da plataforma.",
       showLojaButton: false,
     };
   }
@@ -93,7 +93,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Loja online",
       title: "Paginas da loja",
-      description: "Paginas publicas e editor visual da loja online.",
+      description: "Páginas públicas e editor visual da loja online.",
       showLojaButton: true,
     };
   }
@@ -147,7 +147,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Integracoes",
       title: "Integracoes",
-      description: "Canais, importacoes e produtos vinculados.",
+      description: "Canais, importações e produtos vinculados.",
       showLojaButton: false,
     };
   }
@@ -157,7 +157,7 @@ function getPageInfo(pathname: string) {
       eyebrow: "Sistema",
       title: "Perfis e Permissoes",
       description:
-        "Cargos administrativos, acessos e distribuicao de notificacoes.",
+        "Cargos administrativos, acessos e distribuição de notificações.",
       showLojaButton: false,
     };
   }
@@ -165,8 +165,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/configuracoes")) {
     return {
       eyebrow: "Sistema",
-      title: "Configuracoes",
-      description: "Loja online, integracoes e manutencao do sistema.",
+      title: "Configurações",
+      description: "Loja online, integrações e manutenção do sistema.",
       showLojaButton: false,
     };
   }
@@ -201,7 +201,7 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/clientes")) {
     return {
-      eyebrow: "Operacao",
+      eyebrow: "Operação",
       title: "Clientes",
       description: "Cadastro, historico e analise de clientes.",
       showLojaButton: false,
@@ -210,7 +210,7 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/vendas")) {
     return {
-      eyebrow: "Operacao",
+      eyebrow: "Operação",
       title: "Vendas",
       description: "Registro, acompanhamento e gestao de vendas.",
       showLojaButton: false,
@@ -249,8 +249,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/compras/recomendacoes")) {
     return {
       eyebrow: "Compras e Gestao",
-      title: "Recomendacoes Gerenciais",
-      description: "Acoes sugeridas pela inteligencia e decisoes registradas.",
+      title: "Recomendações Gerenciais",
+      description: "Ações sugeridas pela inteligência e decisões registradas.",
       showLojaButton: false,
     };
   }
@@ -259,7 +259,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Compras e Gestao",
       title: "Campanhas Comerciais",
-      description: "Planejamento comercial em rascunho, revisao e execucao.",
+      description: "Planejamento comercial em rascunho, revisão e execução.",
       showLojaButton: false,
     };
   }
@@ -331,8 +331,8 @@ function getPageInfo(pathname: string) {
   if (pathname.startsWith("/movimentacoes")) {
     return {
       eyebrow: "Controle",
-      title: "Movimentacoes",
-      description: "Historico de entradas, saidas, vendas e compras.",
+      title: "Movimentações",
+      description: "Histórico de entradas, saídas, vendas e compras.",
       showLojaButton: false,
     };
   }
@@ -377,7 +377,7 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Relatorios",
       title: "Relatorio de estoque",
-      description: "Valor acumulado, itens criticos e rankings.",
+      description: "Valor acumulado, itens críticos e rankings.",
       showLojaButton: false,
     };
   }
@@ -395,14 +395,14 @@ function getPageInfo(pathname: string) {
     return {
       eyebrow: "Painel interno",
       title: "Dashboard",
-      description: "Visao geral da operacao.",
+      description: "Visão geral da operação.",
       showLojaButton: false,
     };
   }
 
   return {
     eyebrow: "Painel interno",
-    title: "Operacao e gestao",
+    title: "Operação e gestão",
     description: "Compras, vendas, estoque e clientes em um so lugar.",
     showLojaButton: false,
   };
@@ -740,7 +740,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   href="/loja"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-4"
                 >
-                  <span className="hidden sm:inline">Ver loja publica</span>
+                  <span className="hidden sm:inline">Ver loja pública</span>
                   <span className="sm:hidden">Loja</span>
                   <ExternalLink className="h-4 w-4" />
                 </Link>

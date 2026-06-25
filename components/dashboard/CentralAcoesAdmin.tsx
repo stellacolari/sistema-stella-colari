@@ -29,7 +29,7 @@ const AREA_LABEL: Record<AreaAcaoAdmin, string> = {
   CATALOGO: "Catálogo",
   CLIENTES: "Clientes",
   MARKETING: "Marketing",
-  OPERACAO: "Operacao",
+  OPERACAO: "Operação",
   FINANCEIRO: "Financeiro",
   SISTEMA: "Sistema",
 };
@@ -215,7 +215,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
               Central de comando
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-              Central de acoes
+              Central de ações
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
               Prioridades para operar a Stella Colari hoje.
@@ -239,7 +239,7 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-950">
-                Acoes prioritarias
+                Ações prioritárias
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Até 8 sinais ordenados por urgência e impacto operacional.
@@ -277,13 +277,13 @@ export default function CentralAcoesAdmin({ data }: CentralAcoesAdminProps) {
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-slate-700" />
               <h2 className="text-base font-semibold text-slate-950">
-                Proximos passos
+                Próximos passos
               </h2>
             </div>
             <div className="mt-4 space-y-3">
               {data.proximosPassos.length === 0 ? (
                 <p className="text-sm leading-6 text-slate-500">
-                  Nenhum proximo passo adicional para o perfil atual.
+                  Nenhum próximo passo adicional para o perfil atual.
                 </p>
               ) : (
                 data.proximosPassos.map((passo) => (

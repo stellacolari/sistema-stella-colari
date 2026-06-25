@@ -517,7 +517,7 @@ export async function montarCentralAcoesAdmin(
     [
       criarAcao({
         id: "pedidos-com-problema",
-        titulo: "Ha pedidos com problema.",
+        titulo: "Há pedidos com problema.",
         descricao:
           "Revise os pedidos sinalizados antes de seguir com preparo, envio ou atendimento.",
         area: "PEDIDOS",
@@ -531,9 +531,9 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "pedidos-pagos-preparo",
-        titulo: "Ha pedidos pagos aguardando preparo.",
+        titulo: "Há pedidos pagos aguardando preparo.",
         descricao:
-          "Comece pelos pedidos pagos que ainda estao recebidos ou em separacao.",
+          "Comece pelos pedidos pagos que ainda estão recebidos ou em separação.",
         area: "OPERACAO",
         prioridade: "CRITICA",
         perfilAlvo: ["ADMIN_GERAL", "OPERACAO_PEDIDOS", "VENDEDOR"],
@@ -545,9 +545,9 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "envios-pendentes",
-        titulo: "Ha envios pendentes de preparo.",
+        titulo: "Há envios pendentes de preparo.",
         descricao:
-          "Confira entregas que ainda precisam de preparo, etiqueta ou proximo passo logistico.",
+          "Confira entregas que ainda precisam de preparo, etiqueta ou próximo passo logístico.",
         area: "OPERACAO",
         prioridade: "ALTA",
         perfilAlvo: ["ADMIN_GERAL", "OPERACAO_PEDIDOS"],
@@ -559,7 +559,7 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "retiradas-pendentes",
-        titulo: "Ha retiradas locais aguardando cliente.",
+        titulo: "Há retiradas locais aguardando cliente.",
         descricao:
           "Verifique pedidos de retirada para manter atendimento e comunicacao em dia.",
         area: "OPERACAO",
@@ -573,7 +573,7 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "produtos-sem-imagem",
-        titulo: "Ha produtos publicos sem imagem.",
+        titulo: "Há produtos públicos sem imagem.",
         descricao:
           "Revise os produtos ativos sem foto principal antes de campanhas ou destaque na loja.",
         area: "CATALOGO",
@@ -583,25 +583,25 @@ export async function montarCentralAcoesAdmin(
         cta: "Revisar produtos",
         quantidade: produtosSemImagem,
         explicacao:
-          "Produto sem imagem reduz confianca e conversao na loja publica.",
+          "Produto sem imagem reduz confiança e conversão na loja pública.",
       }),
       criarAcao({
         id: "produtos-sem-estoque",
-        titulo: "Ha produtos ativos sem estoque disponivel.",
+        titulo: "Há produtos ativos sem estoque disponível.",
         descricao:
           "Confira produtos ativos sem saldo positivo antes de divulgar ou montar vitrines.",
         area: "CATALOGO",
         prioridade: "ALTA",
         perfilAlvo: ["ADMIN_GERAL", "ESTOQUE_REPOSICAO", "MARKETING_LOJA"],
         href: hrefProdutos,
-        cta: "Ver catalogo",
+        cta: "Ver catálogo",
         quantidade: produtosSemEstoque,
         explicacao:
           "Produto ativo sem estoque pode gerar frustracao ou vitrine fraca.",
       }),
       criarAcao({
         id: "categorias-vazias",
-        titulo: "Ha categorias do menu sem produtos ativos.",
+        titulo: "Há categorias do menu sem produtos ativos.",
         descricao:
           "Categorias vazias devem ser preenchidas, ocultadas ou revisadas antes de destaque.",
         area: "MARKETING",
@@ -610,7 +610,7 @@ export async function montarCentralAcoesAdmin(
         href: hrefCategorias,
         cta: "Revisar categorias",
         quantidade: categoriasVazias,
-        explicacao: "Categoria vazia cria caminho sem saida para o cliente.",
+        explicacao: "Categoria vazia cria caminho sem saída para o cliente.",
       }),
       criarAcao({
         id: "recomendacoes-impacto-pendente",
@@ -642,21 +642,21 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "buscas-sem-resultado",
-        titulo: "Ha buscas sem resultado na loja.",
+        titulo: "Há buscas sem resultado na loja.",
         descricao:
           "Use os termos buscados para ajustar nomes, tags, categorias ou vitrine.",
         area: "MARKETING",
         prioridade: "MEDIA",
         perfilAlvo: ["ADMIN_GERAL", "MARKETING_LOJA"],
         href: hrefIntencao,
-        cta: "Ver intencao",
+        cta: "Ver intenção",
         quantidade: buscasSemResultado,
         explicacao:
           "Busca sem resultado mostra demanda que a loja ainda não respondeu.",
       }),
       criarAcao({
         id: "clientes-recorrentes-sem-atualizacao",
-        titulo: "Ha clientes recorrentes sem atualizacao recente.",
+        titulo: "Há clientes recorrentes sem atualização recente.",
         descricao:
           "Revise clientes recorrentes parados ha mais de 30 dias para planejar reativacao.",
         area: "CLIENTES",
@@ -670,9 +670,9 @@ export async function montarCentralAcoesAdmin(
       }),
       criarAcao({
         id: "notificacoes-criticas",
-        titulo: "Ha alertas criticos na caixa de entrada.",
+        titulo: "Há alertas críticos na caixa de entrada.",
         descricao:
-          "Resolva primeiro as notificacoes criticas ainda novas para reduzir risco operacional.",
+          "Resolva primeiro as notificações críticas ainda novas para reduzir risco operacional.",
         area: "SISTEMA",
         prioridade: "CRITICA",
         perfilAlvo: ["ADMIN_GERAL", "OPERACAO_PEDIDOS", "VENDEDOR"],
@@ -680,11 +680,11 @@ export async function montarCentralAcoesAdmin(
         cta: "Abrir Caixa de Entrada",
         quantidade: alertasCriticos,
         explicacao:
-          "Alertas criticos concentram os sinais mais urgentes do sistema.",
+          "Alertas críticos concentram os sinais mais urgentes do sistema.",
       }),
       criarAcao({
         id: "campanhas-abertas",
-        titulo: "Ha campanhas comerciais abertas.",
+        titulo: "Há campanhas comerciais abertas.",
         descricao:
           "Revise rascunhos e campanhas em andamento para manter a comunicacao alinhada.",
         area: "MARKETING",
@@ -711,11 +711,11 @@ export async function montarCentralAcoesAdmin(
     },
     {
       id: "catalogo",
-      titulo: "Produtos com problema de publicacao",
+      titulo: "Produtos com problema de publicação",
       valor: produtosSemImagem + produtosSemEstoque + categoriasVazias,
       descricao: "Sem imagem, sem estoque ou categoria vazia.",
       href: hrefProdutos || hrefCategorias,
-      cta: "Revisar catalogo",
+      cta: "Revisar catálogo",
       tom: tomResumo(produtosSemImagem + produtosSemEstoque + categoriasVazias),
     },
     {
@@ -738,9 +738,9 @@ export async function montarCentralAcoesAdmin(
     },
     {
       id: "alertas",
-      titulo: "Alertas criticos",
+      titulo: "Alertas críticos",
       valor: alertasCriticos,
-      descricao: "Notificacoes criticas ainda novas.",
+      descricao: "Notificações críticas ainda novas.",
       href: hrefNotificacoes,
       cta: "Abrir Caixa de Entrada",
       tom: tomResumo(alertasCriticos, true),
@@ -751,20 +751,20 @@ export async function montarCentralAcoesAdmin(
     {
       id: "passo-pedidos",
       titulo: "Comece pelos pedidos pagos e com problema.",
-      descricao: "Eles afetam prazo, atendimento e confianca do cliente.",
+      descricao: "Eles afetam prazo, atendimento e confiança do cliente.",
       href: "/pedidos",
       modulo: "pedidos",
     },
     {
       id: "passo-notificacoes",
       titulo: "Depois limpe a caixa de entrada critica.",
-      descricao: "Use as notificacoes como lista curta de pendencias.",
+      descricao: "Use as notificações como lista curta de pendências.",
       href: "/notificacoes",
       modulo: "notificacoes",
     },
     {
       id: "passo-catalogo",
-      titulo: "Revise catalogo antes de divulgar produtos.",
+      titulo: "Revise catálogo antes de divulgar produtos.",
       descricao: "Imagem, estoque e categoria precisam estar coerentes.",
       href: "/produtos",
       modulo: "produtos",
@@ -789,7 +789,7 @@ export async function montarCentralAcoesAdmin(
     {
       id: "pedidos",
       titulo: "Pedidos",
-      descricao: "Operacao e envio",
+      descricao: "Operação e envio",
       href: "/pedidos",
       modulo: "pedidos",
     },
@@ -816,7 +816,7 @@ export async function montarCentralAcoesAdmin(
     },
     {
       id: "notificacoes",
-      titulo: "Notificacoes",
+      titulo: "Notificações",
       descricao: "Caixa de entrada",
       href: "/notificacoes",
       modulo: "notificacoes",
@@ -837,8 +837,8 @@ export async function montarCentralAcoesAdmin(
     },
     {
       id: "loja-publica",
-      titulo: "Loja publica",
-      descricao: "Ver experiencia do cliente",
+      titulo: "Loja pública",
+      descricao: "Ver experiência do cliente",
       href: "/loja",
     },
   ]).filter(

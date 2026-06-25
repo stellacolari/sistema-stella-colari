@@ -125,7 +125,7 @@ const menuSections: MenuSection[] = [
         modulo: "notificacoes",
         label: "Caixa de Entrada",
         icon: Bell,
-        description: "Notificacoes e acoes",
+        description: "Notificações e ações",
         highlight: true,
       },
       {
@@ -139,8 +139,19 @@ const menuSections: MenuSection[] = [
         quickAddModulo: "vendas",
         activePrefixes: ["/vendas"],
         links: [
-          { href: "/vendas", label: "Lista de vendas", icon: ClipboardList, exact: true, modulo: "vendas" },
-          { href: "/vendas/nova-v2", label: "Nova venda", icon: Plus, modulo: "vendas" },
+          {
+            href: "/vendas",
+            label: "Lista de vendas",
+            icon: ClipboardList,
+            exact: true,
+            modulo: "vendas",
+          },
+          {
+            href: "/vendas/nova-v2",
+            label: "Nova venda",
+            icon: Plus,
+            modulo: "vendas",
+          },
         ],
         description: "Histórico de vendas",
       },
@@ -156,10 +167,33 @@ const menuSections: MenuSection[] = [
         quickAddAcao: "criar",
         activePrefixes: ["/clientes"],
         links: [
-          { href: "/clientes", label: "Lista de clientes", icon: Users, exact: true, modulo: "clientes" },
-          { href: "/clientes/novo", label: "Novo cliente", icon: Plus, modulo: "clientes", acao: "criar" },
-          { href: "/clientes/relacionamento", label: "CRM acionavel", icon: Sparkles, exact: true, modulo: "clientes" },
-          { href: "/clientes/relacionamento/campanhas", label: "Rascunhos WhatsApp", icon: MessageCircle, modulo: "clientes" },
+          {
+            href: "/clientes",
+            label: "Lista de clientes",
+            icon: Users,
+            exact: true,
+            modulo: "clientes",
+          },
+          {
+            href: "/clientes/novo",
+            label: "Novo cliente",
+            icon: Plus,
+            modulo: "clientes",
+            acao: "criar",
+          },
+          {
+            href: "/clientes/relacionamento",
+            label: "CRM acionável",
+            icon: Sparkles,
+            exact: true,
+            modulo: "clientes",
+          },
+          {
+            href: "/clientes/relacionamento/campanhas",
+            label: "Rascunhos WhatsApp",
+            icon: MessageCircle,
+            modulo: "clientes",
+          },
         ],
         description: "Cadastro e histórico",
       },
@@ -181,8 +215,20 @@ const menuSections: MenuSection[] = [
         quickAddAcao: "editar",
         activePrefixes: ["/produtos"],
         links: [
-          { href: "/produtos", label: "Lista de produtos", icon: Package, exact: true, modulo: "produtos" },
-          { href: "/produtos/novo", label: "Novo produto", icon: Plus, modulo: "produtos", acao: "editar" },
+          {
+            href: "/produtos",
+            label: "Lista de produtos",
+            icon: Package,
+            exact: true,
+            modulo: "produtos",
+          },
+          {
+            href: "/produtos/novo",
+            label: "Novo produto",
+            icon: Plus,
+            modulo: "produtos",
+            acao: "editar",
+          },
         ],
         description: "Cadastro, variações e famílias",
       },
@@ -211,25 +257,60 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
-    title: "Gestao",
+    title: "Gestão",
     description: "Compras, gastos e reposição",
     items: [
       {
         type: "group",
         href: "/compras",
         modulo: "compras",
-        label: "Compras e Gestao",
+        label: "Compras e Gestão",
         icon: ShoppingCart,
-        description: "Reposicao, campanhas e margem",
+        description: "Reposição, campanhas e margem",
         activePrefixes: ["/compras"],
         links: [
-          { href: "/compras/reposicao", label: "Reposicao", icon: RefreshCcw, modulo: "reposicao" },
-          { href: "/compras/recomendacoes", label: "Recomendacoes", icon: Lightbulb, modulo: "recomendacoes" },
-          { href: "/compras/campanhas", label: "Campanhas", icon: Megaphone, modulo: "campanhas" },
-          { href: "/compras/precificacao", label: "Precificacao", icon: MousePointerClick, modulo: "precificacao" },
-          { href: "/compras/intencao", label: "Intencao", icon: Sparkles, modulo: "intencaoComercial" },
-          { href: "/compras/financeiro", label: "Financeiro", icon: CreditCard, modulo: "financeiro" },
-          { href: "/compras/resultado", label: "Resultado", icon: BarChart3, modulo: "resultado" },
+          {
+            href: "/compras/reposicao",
+            label: "Reposição",
+            icon: RefreshCcw,
+            modulo: "reposicao",
+          },
+          {
+            href: "/compras/recomendacoes",
+            label: "Recomendações",
+            icon: Lightbulb,
+            modulo: "recomendacoes",
+          },
+          {
+            href: "/compras/campanhas",
+            label: "Campanhas",
+            icon: Megaphone,
+            modulo: "campanhas",
+          },
+          {
+            href: "/compras/precificacao",
+            label: "Precificação",
+            icon: MousePointerClick,
+            modulo: "precificacao",
+          },
+          {
+            href: "/compras/intencao",
+            label: "Intenção",
+            icon: Sparkles,
+            modulo: "intencaoComercial",
+          },
+          {
+            href: "/compras/financeiro",
+            label: "Financeiro",
+            icon: CreditCard,
+            modulo: "financeiro",
+          },
+          {
+            href: "/compras/resultado",
+            label: "Resultado",
+            icon: BarChart3,
+            modulo: "resultado",
+          },
         ],
       },
     ],
@@ -259,10 +340,30 @@ const menuSections: MenuSection[] = [
           "/configuracoes/loja/paginas",
         ],
         links: [
-          { href: "/configuracoes/loja/paginas", label: "Paginas", icon: LayoutDashboard, modulo: "lojaOnline" },
-          { href: "/configuracoes/loja/colecoes-inteligentes", label: "Colecoes", icon: Sparkles, modulo: "lojaOnline" },
-          { href: "/configuracoes/loja/menu-rodape", label: "Menu e rodape", icon: SlidersHorizontal, modulo: "lojaOnline" },
-          { href: "/configuracoes/loja/categorias", label: "Categorias", icon: Boxes, modulo: "lojaOnline" },
+          {
+            href: "/configuracoes/loja/paginas",
+            label: "Páginas",
+            icon: LayoutDashboard,
+            modulo: "lojaOnline",
+          },
+          {
+            href: "/configuracoes/loja/colecoes-inteligentes",
+            label: "Coleções",
+            icon: Sparkles,
+            modulo: "lojaOnline",
+          },
+          {
+            href: "/configuracoes/loja/menu-rodape",
+            label: "Menu e rodapé",
+            icon: SlidersHorizontal,
+            modulo: "lojaOnline",
+          },
+          {
+            href: "/configuracoes/loja/categorias",
+            label: "Categorias",
+            icon: Boxes,
+            modulo: "lojaOnline",
+          },
         ],
       },
     ],
@@ -296,7 +397,11 @@ const menuSections: MenuSection[] = [
         description: "Loja, integrações e lixeira",
         tone: "system",
         exact: true,
-        activePrefixes: ["/configuracoes/integracoes", "/configuracoes/perfis", "/lixeira"],
+        activePrefixes: [
+          "/configuracoes/integracoes",
+          "/configuracoes/perfis",
+          "/lixeira",
+        ],
       },
     ],
   },
@@ -336,8 +441,19 @@ const vendedorMenuSections: MenuSection[] = [
         quickAddModulo: "vendas",
         activePrefixes: ["/vendas"],
         links: [
-          { href: "/vendas", label: "Lista de vendas", icon: ClipboardList, exact: true, modulo: "vendas" },
-          { href: "/vendas/nova-v2", label: "Nova venda", icon: Plus, modulo: "vendas" },
+          {
+            href: "/vendas",
+            label: "Lista de vendas",
+            icon: ClipboardList,
+            exact: true,
+            modulo: "vendas",
+          },
+          {
+            href: "/vendas/nova-v2",
+            label: "Nova venda",
+            icon: Plus,
+            modulo: "vendas",
+          },
         ],
         description: "Histórico de vendas",
       },
@@ -353,10 +469,33 @@ const vendedorMenuSections: MenuSection[] = [
         quickAddAcao: "criar",
         activePrefixes: ["/clientes"],
         links: [
-          { href: "/clientes", label: "Lista de clientes", icon: Users, exact: true, modulo: "clientes" },
-          { href: "/clientes/novo", label: "Novo cliente", icon: Plus, modulo: "clientes", acao: "criar" },
-          { href: "/clientes/relacionamento", label: "CRM acionavel", icon: Sparkles, exact: true, modulo: "clientes" },
-          { href: "/clientes/relacionamento/campanhas", label: "Rascunhos WhatsApp", icon: MessageCircle, modulo: "clientes" },
+          {
+            href: "/clientes",
+            label: "Lista de clientes",
+            icon: Users,
+            exact: true,
+            modulo: "clientes",
+          },
+          {
+            href: "/clientes/novo",
+            label: "Novo cliente",
+            icon: Plus,
+            modulo: "clientes",
+            acao: "criar",
+          },
+          {
+            href: "/clientes/relacionamento",
+            label: "CRM acionável",
+            icon: Sparkles,
+            exact: true,
+            modulo: "clientes",
+          },
+          {
+            href: "/clientes/relacionamento/campanhas",
+            label: "Rascunhos WhatsApp",
+            icon: MessageCircle,
+            modulo: "clientes",
+          },
         ],
         description: "Cadastro e histórico",
       },
@@ -413,11 +552,11 @@ function isPathActive(
   pathname: string,
   href: string,
   exact = false,
-  activePrefixes: string[] = []
+  activePrefixes: string[] = [],
 ) {
   if (
     activePrefixes.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
     )
   ) {
     return true;
@@ -571,13 +710,16 @@ function getQuickActions(perfil: PerfilAdmin) {
 function podeVerModulo(
   modulo: string | undefined,
   permissoes: PermissoesPerfil | undefined,
-  acao = "ver"
+  acao = "ver",
 ) {
   if (!modulo || !permissoes) return true;
   return permissoes[modulo]?.includes(acao) || false;
 }
 
-function filtrarSectionsPorPermissao(sections: MenuSection[], permissoes: PermissoesPerfil | undefined) {
+function filtrarSectionsPorPermissao(
+  sections: MenuSection[],
+  permissoes: PermissoesPerfil | undefined,
+) {
   if (!permissoes) return sections;
 
   return sections
@@ -589,14 +731,17 @@ function filtrarSectionsPorPermissao(sections: MenuSection[], permissoes: Permis
             return {
               ...item,
               links: item.links.filter((link) =>
-                podeVerModulo(link.modulo, permissoes, link.acao)
+                podeVerModulo(link.modulo, permissoes, link.acao),
               ),
             };
           }
           return item;
         })
         .filter((item) => {
-          if (item.type === "group") return podeVerModulo(item.modulo, permissoes) || item.links.length > 0;
+          if (item.type === "group")
+            return (
+              podeVerModulo(item.modulo, permissoes) || item.links.length > 0
+            );
           return podeVerModulo(item.modulo, permissoes);
         }),
     }))
@@ -612,7 +757,7 @@ function getSectionGroups(sections: MenuSection[]) {
         defaultOpen: group.defaultOpen ?? false,
         activePrefixes: group.activePrefixes ?? [],
         links: group.links,
-      }))
+      })),
   );
 }
 
@@ -634,13 +779,16 @@ export default function SidebarMenu({
   permissoes?: PermissoesPerfil;
 }) {
   const pathname = usePathname();
-  const sections = useMemo(() => filtrarSectionsPorPermissao(getMenuSections(perfil), permissoes), [perfil, permissoes]);
+  const sections = useMemo(
+    () => filtrarSectionsPorPermissao(getMenuSections(perfil), permissoes),
+    [perfil, permissoes],
+  );
   const actions = useMemo(
     () =>
       getQuickActions(perfil).filter((action) =>
-        podeVerModulo(action.modulo, permissoes, action.acao)
+        podeVerModulo(action.modulo, permissoes, action.acao),
       ),
-    [perfil, permissoes]
+    [perfil, permissoes],
   );
 
   const groups = useMemo(() => getSectionGroups(sections), [sections]);
@@ -654,12 +802,7 @@ export default function SidebarMenu({
         const groupIsActive =
           isPathActive(pathname, group.href, false, group.activePrefixes) ||
           group.links.some((link) =>
-            isPathActive(
-              pathname,
-              link.href,
-              link.exact,
-              link.activePrefixes
-            )
+            isPathActive(pathname, link.href, link.exact, link.activePrefixes),
           );
 
         if (typeof next[group.href] === "undefined") {
@@ -728,46 +871,50 @@ export default function SidebarMenu({
   const subItemPadding = compacto ? "px-2.5 py-1.5" : "px-3 py-2.5";
   const sectionTitleMargin = compacto ? "mb-1.5 px-2" : "mb-3 px-2";
   const panelPadding = compacto ? "px-2 py-3" : "px-3 py-4";
+  const panelOverflow = compacto ? "overflow-visible" : "overflow-y-auto";
   const groupPad = compacto ? "p-1" : "p-1.5";
-  const subItemsWrap = compacto ? "mt-1 space-y-0.5 pl-2" : "mt-2 space-y-1 pl-3";
+  const subItemsWrap = compacto
+    ? "mt-1 space-y-0.5 pl-2"
+    : "mt-2 space-y-1 pl-3";
   const quickActionSpacing = compacto ? "space-y-1" : "space-y-1.5";
 
   return (
-    <aside className="flex h-full w-full flex-col rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur">
+    <aside className="relative z-40 flex h-full w-full flex-col rounded-[2rem] border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur">
       {showCompactToggle && (
-      <div className="border-b border-slate-100 px-3 py-2.5">
-        <button
-          type="button"
-          onClick={alternarModoMenu}
-          title={compacto ? "Expandir menu" : "Compactar menu"}
-          className={`flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white px-3 py-2 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 ${
-            compacto ? "justify-center" : "justify-between"
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 ring-1 ring-slate-200">
-              <SlidersHorizontal className="h-4 w-4" />
+        <div className="border-b border-slate-100 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={alternarModoMenu}
+            title={compacto ? "Expandir menu" : "Compactar menu"}
+            aria-label={compacto ? "Expandir menu" : "Compactar menu"}
+            className={`flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white px-3 py-2 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 ${
+              compacto ? "justify-center" : "justify-between"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-600 ring-1 ring-slate-200">
+                <SlidersHorizontal className="h-4 w-4" />
+              </div>
+
+              {!compacto && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Menu {compacto ? "compacto" : "expandido"}
+                  </p>
+                </div>
+              )}
             </div>
 
             {!compacto && (
-            <div>
-              <p className="text-xs font-semibold text-slate-900">
-                Menu {compacto ? "compacto" : "extendido"}
-              </p>
-            </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                {compacto ? "Compacto" : "Extendido"}
+              </span>
             )}
-          </div>
-
-          {!compacto && (
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-            {compacto ? "Compacto" : "Extendido"}
-          </span>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
       )}
 
-      <div className={`min-h-0 flex-1 overflow-y-auto ${panelPadding}`}>
+      <div className={`min-h-0 flex-1 ${panelOverflow} ${panelPadding}`}>
         {actions.length > 0 ? (
           <div className={compacto ? "mb-3" : "mb-5"}>
             {!compacto ? (
@@ -789,6 +936,7 @@ export default function SidebarMenu({
                     key={action.href}
                     href={action.href}
                     title={action.label}
+                    aria-label={action.label}
                     onClick={onNavigate}
                     className={`group flex items-center ${itemGap} rounded-2xl border transition ${
                       compacto ? "justify-center px-2 py-2" : "px-3 py-2.5"
@@ -803,7 +951,7 @@ export default function SidebarMenu({
                         {
                           active,
                           tone,
-                        }
+                        },
                       )}`}
                     >
                       <Icon className="h-[17px] w-[17px]" />
@@ -826,9 +974,11 @@ export default function SidebarMenu({
             <div key={`${section.title || "sem-titulo"}-${sectionIndex}`}>
               {section.title ? (
                 <div className={sectionTitleMargin}>
-                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ${
-                    compacto ? "sr-only" : ""
-                  }`}>
+                  <p
+                    className={`text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ${
+                      compacto ? "sr-only" : ""
+                    }`}
+                  >
                     {section.title}
                   </p>
 
@@ -847,7 +997,7 @@ export default function SidebarMenu({
                       pathname,
                       item.href,
                       item.exact,
-                      item.activePrefixes
+                      item.activePrefixes,
                     );
                     const Icon = item.icon;
                     const tone = getItemTone(item);
@@ -858,13 +1008,14 @@ export default function SidebarMenu({
                         key={item.href}
                         href={item.href}
                         title={item.label}
+                        aria-label={item.label}
                         onClick={onNavigate}
                         className={`group relative flex items-center ${itemGap} rounded-2xl border transition ${itemPadding} ${getItemButtonClass(
                           {
                             active,
                             highlight: item.highlight,
                             tone,
-                          }
+                          },
                         )}`}
                       >
                         <div
@@ -872,13 +1023,17 @@ export default function SidebarMenu({
                             {
                               active,
                               tone,
-                            }
+                            },
                           )}`}
                         >
                           <Icon className="h-[17px] w-[17px]" />
                         </div>
 
-                        <div className={compacto ? "sr-only" : "min-w-0 flex-1 text-left"}>
+                        <div
+                          className={
+                            compacto ? "sr-only" : "min-w-0 flex-1 text-left"
+                          }
+                        >
                           <p className="truncate text-sm font-semibold">
                             {item.label}
                           </p>
@@ -891,10 +1046,15 @@ export default function SidebarMenu({
                         </div>
                         {compacto ? (
                           badge > 0 && (
-                            <span className={`absolute right-1 top-1 h-2.5 w-2.5 rounded-full ${item.href === "/pedidos" ? "bg-red-600" : "bg-slate-900"}`} />
+                            <span
+                              className={`absolute right-1 top-1 h-2.5 w-2.5 rounded-full ${item.href === "/pedidos" ? "bg-red-600" : "bg-slate-900"}`}
+                            />
                           )
                         ) : (
-                          <Badge total={badge} forte={item.href === "/pedidos"} />
+                          <Badge
+                            total={badge}
+                            forte={item.href === "/pedidos"}
+                          />
                         )}
                       </Link>
                     );
@@ -908,50 +1068,50 @@ export default function SidebarMenu({
                       pathname,
                       item.href,
                       false,
-                      item.activePrefixes
+                      item.activePrefixes,
                     ) ||
                     item.links.some((link) =>
                       isPathActive(
                         pathname,
                         link.href,
                         link.exact,
-                        link.activePrefixes
-                      )
+                        link.activePrefixes,
+                      ),
                     );
                   const isOpen = openGroups[item.href] ?? false;
-                  const shouldShowSubItems =
-                    (!compacto && isOpen) ||
-                    (compacto && (groupIsActive || groupBadge > 0));
+                  const shouldShowSubItems = !compacto && isOpen;
                   const quickAddHref = item.quickAddHref;
-                  const canShowQuickAdd =
+                  const canShowQuickAdd = Boolean(
                     quickAddHref &&
                     podeVerModulo(
                       item.quickAddModulo || item.modulo,
                       permissoes,
-                      item.quickAddAcao || "ver"
-                    );
+                      item.quickAddAcao || "ver",
+                    ),
+                  );
 
                   return (
                     <div
                       key={item.href}
-                      className={`rounded-[1.4rem] border transition ${groupPad} ${getGroupWrapperClass(
-                        {
-                          active: groupIsActive,
-                          tone,
-                        }
-                      )}`}
+                      className={`relative rounded-[1.4rem] border transition ${groupPad} ${
+                        compacto ? "group/menu" : ""
+                      } ${getGroupWrapperClass({
+                        active: groupIsActive,
+                        tone,
+                      })}`}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="relative flex items-center gap-2">
                         <button
                           type="button"
                           title={item.label}
+                          aria-label={item.label}
                           onClick={() => toggleGroup(item.href)}
                           className={`group relative flex min-w-0 flex-1 items-center ${itemGap} rounded-2xl border text-left transition ${itemPadding} ${getItemButtonClass(
                             {
                               active: groupIsActive,
                               highlight: item.highlight,
                               tone,
-                            }
+                            },
                           )}`}
                         >
                           <div
@@ -959,13 +1119,17 @@ export default function SidebarMenu({
                               {
                                 active: groupIsActive,
                                 tone,
-                              }
+                              },
                             )}`}
                           >
                             <Icon className="h-[17px] w-[17px]" />
                           </div>
 
-                          <div className={compacto ? "sr-only" : "min-w-0 flex-1 text-left"}>
+                          <div
+                            className={
+                              compacto ? "sr-only" : "min-w-0 flex-1 text-left"
+                            }
+                          >
                             <p className="truncate text-sm font-semibold">
                               {item.label}
                             </p>
@@ -978,33 +1142,136 @@ export default function SidebarMenu({
                           </div>
 
                           {!compacto && (
-                          <>
-                            <Badge total={groupBadge} />
-                            <ChevronDown
-                              className={`h-4 w-4 shrink-0 text-slate-400 transition ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </>
+                            <>
+                              <Badge total={groupBadge} />
+                              <ChevronDown
+                                className={`h-4 w-4 shrink-0 text-slate-400 transition ${
+                                  isOpen ? "rotate-180" : ""
+                                }`}
+                              />
+                            </>
                           )}
                           {compacto && groupBadge > 0 ? (
                             <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-slate-900" />
                           ) : null}
                         </button>
 
-                        {canShowQuickAdd && quickAddHref && !compacto ? (
+                        {canShowQuickAdd && quickAddHref ? (
                           <Link
                             href={quickAddHref}
                             title={item.quickAddLabel || "Adicionar"}
+                            aria-label={item.quickAddLabel || "Adicionar"}
                             onClick={onNavigate}
                             className={`flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 ${
-                              compacto ? "h-8 w-8 rounded-xl" : "h-11 w-11"
+                              compacto
+                                ? "absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-slate-950 text-white ring-2 ring-white hover:bg-slate-800 hover:text-white"
+                                : "h-11 w-11"
                             }`}
                           >
-                            <Plus className={compacto ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                            <Plus
+                              className={compacto ? "h-3.5 w-3.5" : "h-4 w-4"}
+                            />
                           </Link>
                         ) : null}
                       </div>
+
+                      {compacto ? (
+                        <div className="pointer-events-none invisible absolute left-[calc(100%+0.5rem)] top-0 z-50 w-72 translate-x-1 rounded-3xl border border-slate-200 bg-white p-3 opacity-0 shadow-2xl ring-1 ring-slate-950/5 transition group-hover/menu:pointer-events-auto group-hover/menu:visible group-hover/menu:translate-x-0 group-hover/menu:opacity-100 group-focus-within/menu:pointer-events-auto group-focus-within/menu:visible group-focus-within/menu:translate-x-0 group-focus-within/menu:opacity-100">
+                          <div className="border-b border-slate-100 px-2 pb-3">
+                            <p className="text-sm font-semibold text-slate-950">
+                              {item.label}
+                            </p>
+                            {item.description ? (
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                {item.description}
+                              </p>
+                            ) : null}
+                          </div>
+
+                          {canShowQuickAdd && quickAddHref ? (
+                            <Link
+                              href={quickAddHref}
+                              title={item.quickAddLabel || "Adicionar"}
+                              aria-label={item.quickAddLabel || "Adicionar"}
+                              onClick={onNavigate}
+                              className="mt-3 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            >
+                              <Plus className="h-4 w-4 shrink-0" />
+                              <span className="truncate">
+                                {item.quickAddLabel || "Adicionar"}
+                              </span>
+                            </Link>
+                          ) : null}
+
+                          <div className="mt-3 space-y-1">
+                            {item.links.length > 0 ? (
+                              item.links.map((link) => {
+                                const subActive = isPathActive(
+                                  pathname,
+                                  link.href,
+                                  link.exact,
+                                  link.activePrefixes,
+                                );
+                                const SubIcon = link.icon;
+                                const subTone = getItemTone(link);
+                                const subBadge = badgeForHref(link.href);
+
+                                return (
+                                  <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    title={link.label}
+                                    aria-label={link.label}
+                                    onClick={onNavigate}
+                                    className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${getSubItemClass(
+                                      {
+                                        active: subActive,
+                                        tone: subTone,
+                                      },
+                                    )}`}
+                                  >
+                                    {SubIcon ? (
+                                      <SubIcon className="h-4 w-4 shrink-0" />
+                                    ) : (
+                                      <span className="h-2 w-2 shrink-0 rounded-full bg-current opacity-60" />
+                                    )}
+                                    <span className="min-w-0 flex-1 truncate font-medium">
+                                      {link.label}
+                                    </span>
+                                    <Badge
+                                      total={subBadge}
+                                      forte={link.href === "/pedidos"}
+                                    />
+                                  </Link>
+                                );
+                              })
+                            ) : (
+                              <Link
+                                href={item.href}
+                                title={`Abrir ${item.label}`}
+                                aria-label={`Abrir ${item.label}`}
+                                onClick={onNavigate}
+                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition ${getSubItemClass(
+                                  {
+                                    active: isPathActive(
+                                      pathname,
+                                      item.href,
+                                      false,
+                                      item.activePrefixes,
+                                    ),
+                                    tone,
+                                  },
+                                )}`}
+                              >
+                                <BarChart3 className="h-4 w-4 shrink-0" />
+                                <span className="truncate font-medium">
+                                  Abrir {item.label.toLowerCase()}
+                                </span>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
 
                       {shouldShowSubItems ? (
                         <div className={subItemsWrap}>
@@ -1014,7 +1281,7 @@ export default function SidebarMenu({
                                 pathname,
                                 link.href,
                                 link.exact,
-                                link.activePrefixes
+                                link.activePrefixes,
                               );
                               const SubIcon = link.icon;
                               const subTone = getItemTone(link);
@@ -1025,15 +1292,14 @@ export default function SidebarMenu({
                                   key={link.href}
                                   href={link.href}
                                   title={link.label}
+                                  aria-label={link.label}
                                   onClick={onNavigate}
                                   className={`relative flex items-center rounded-2xl text-sm transition ${
                                     compacto ? "justify-center gap-0" : "gap-3"
-                                  } ${subItemPadding} ${getSubItemClass(
-                                    {
-                                      active: subActive,
-                                      tone: subTone,
-                                    }
-                                  )}`}
+                                  } ${subItemPadding} ${getSubItemClass({
+                                    active: subActive,
+                                    tone: subTone,
+                                  })}`}
                                 >
                                   {SubIcon ? (
                                     <SubIcon className="h-4 w-4 shrink-0" />
@@ -1041,7 +1307,13 @@ export default function SidebarMenu({
                                     <span className="h-2 w-2 shrink-0 rounded-full bg-current opacity-60" />
                                   )}
 
-                                  <span className={compacto ? "sr-only" : "truncate font-medium"}>
+                                  <span
+                                    className={
+                                      compacto
+                                        ? "sr-only"
+                                        : "truncate font-medium"
+                                    }
+                                  >
                                     {link.label}
                                   </span>
                                   {compacto ? (
@@ -1049,7 +1321,10 @@ export default function SidebarMenu({
                                       <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-slate-900" />
                                     )
                                   ) : (
-                                    <Badge total={subBadge} forte={link.href === "/pedidos"} />
+                                    <Badge
+                                      total={subBadge}
+                                      forte={link.href === "/pedidos"}
+                                    />
                                   )}
                                 </Link>
                               );
@@ -1058,6 +1333,8 @@ export default function SidebarMenu({
                             <Fragment>
                               <Link
                                 href={item.href}
+                                title={`Abrir ${item.label}`}
+                                aria-label={`Abrir ${item.label}`}
                                 onClick={onNavigate}
                                 className={`flex items-center gap-3 rounded-2xl text-sm transition ${subItemPadding} ${getSubItemClass(
                                   {
@@ -1065,10 +1342,10 @@ export default function SidebarMenu({
                                       pathname,
                                       item.href,
                                       false,
-                                      item.activePrefixes
+                                      item.activePrefixes,
                                     ),
                                     tone,
-                                  }
+                                  },
                                 )}`}
                               >
                                 <BarChart3 className="h-4 w-4 shrink-0" />
