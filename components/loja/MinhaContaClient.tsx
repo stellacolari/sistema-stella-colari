@@ -1121,7 +1121,7 @@ export default function MinhaContaClient({
 
                     <div>
                       <h2 className="text-lg font-medium text-slate-950">
-                        Preferencias
+                        Preferencias de relacionamento
                       </h2>
 
                       <p className="mt-1 text-sm font-light text-slate-500">
@@ -1234,7 +1234,7 @@ export default function MinhaContaClient({
 
                             <p className="mt-1 text-xs text-slate-500">
                               {labelConsentimentoStatus(finalidade.status)}
-                              {" · "}
+                              {" - "}
                               {labelOrigemConsentimento(finalidade.origem)}
                             </p>
                           </div>
