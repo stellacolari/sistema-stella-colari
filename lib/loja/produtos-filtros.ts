@@ -209,6 +209,20 @@ export function aplicarFiltrosProdutos<TProduto extends LojaProdutoFiltravel>(
 ) {
   const ordemOriginal = new Map(produtos.map((produto, index) => [produto.id, index]));
   let resultado = [...produtos];
+  const precoMin =
+    typeof filtros.precoMin === "number" &&
+    Number.isFinite(filtros.precoMin) &&
+    filtros.precoMin > 0
+      ? filtros.precoMin
+      : undefined;
+  const precoMax =
+    typeof filtros.precoMax === "number" &&
+    Number.isFinite(filtros.precoMax) &&
+    filtros.precoMax > 0
+      ? filtros.precoMax
+      : undefined;
+  const intervaloPrecoValido =
+    precoMin === undefined || precoMax === undefined || precoMin <= precoMax;
 
   if (filtros.busca) {
     resultado = resultado.filter((produto) =>
@@ -222,15 +236,15 @@ export function aplicarFiltrosProdutos<TProduto extends LojaProdutoFiltravel>(
     );
   }
 
-  if (typeof filtros.precoMin === "number" && Number.isFinite(filtros.precoMin)) {
+  if (precoMin !== undefined && intervaloPrecoValido) {
     resultado = resultado.filter(
-      (produto) => precoFinalProduto(produto) >= Number(filtros.precoMin),
+      (produto) => precoFinalProduto(produto) >= precoMin,
     );
   }
 
-  if (typeof filtros.precoMax === "number" && Number.isFinite(filtros.precoMax)) {
+  if (precoMax !== undefined && intervaloPrecoValido) {
     resultado = resultado.filter(
-      (produto) => precoFinalProduto(produto) <= Number(filtros.precoMax),
+      (produto) => precoFinalProduto(produto) <= precoMax,
     );
   }
 

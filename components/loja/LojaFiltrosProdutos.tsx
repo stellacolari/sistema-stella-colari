@@ -96,11 +96,34 @@ function limitarTexto(value: string | null, limite = 80) {
 }
 
 function normalizarPrecoParam(value: string | null) {
-  const numero = Number(String(value ?? "").replace(",", "."));
+  const valor = String(value ?? "").trim();
 
-  if (!Number.isFinite(numero) || numero < 0) return "";
+  if (!valor) return "";
+
+  const numero = Number(valor.replace(",", "."));
+
+  if (!Number.isFinite(numero) || numero <= 0) return "";
 
   return String(numero);
+}
+
+function normalizarFaixaPreco(
+  draft: Pick<FiltrosDraft, "precoMin" | "precoMax">,
+) {
+  const precoMin = normalizarPrecoParam(draft.precoMin);
+  const precoMax = normalizarPrecoParam(draft.precoMax);
+
+  if (precoMin && precoMax && Number(precoMin) > Number(precoMax)) {
+    return {
+      precoMin: "",
+      precoMax: "",
+    };
+  }
+
+  return {
+    precoMin,
+    precoMax,
+  };
 }
 
 function moeda(valor: number) {
@@ -114,18 +137,18 @@ function moeda(valor: number) {
 function montarFiltrosAplicaveis(draft: FiltrosDraft) {
   const precoMin = Number(draft.precoMin);
   const precoMax = Number(draft.precoMax);
+  const precoMinValido =
+    draft.precoMin && Number.isFinite(precoMin) && precoMin > 0;
+  const precoMaxValido =
+    draft.precoMax && Number.isFinite(precoMax) && precoMax > 0;
+  const intervaloValido =
+    !precoMinValido || !precoMaxValido || precoMin <= precoMax;
 
   return {
     busca: draft.buscar,
     categoria: draft.categoria,
-    precoMin:
-      draft.precoMin && Number.isFinite(precoMin) && precoMin >= 0
-        ? precoMin
-        : undefined,
-    precoMax:
-      draft.precoMax && Number.isFinite(precoMax) && precoMax >= 0
-        ? precoMax
-        : undefined,
+    precoMin: precoMinValido && intervaloValido ? precoMin : undefined,
+    precoMax: precoMaxValido && intervaloValido ? precoMax : undefined,
     estoque: draft.estoque,
     ordem: draft.ordem,
     tamanho: draft.tamanho,
@@ -143,8 +166,7 @@ function sanitizarDraft(
     descontoDisponivel: boolean;
   },
 ): FiltrosDraft {
-  const precoMin = normalizarPrecoParam(draft.precoMin);
-  const precoMax = normalizarPrecoParam(draft.precoMax);
+  const { precoMin, precoMax } = normalizarFaixaPreco(draft);
   const estoque: LojaFiltroEstoque =
     draft.estoque === "disponivel" || draft.estoque === "sem-estoque"
       ? draft.estoque
@@ -604,14 +626,20 @@ export default function LojaFiltrosProdutos<
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => limparFiltros(mobile)}
-            className="h-10 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
-          >
-            Limpar
-          </button>
+        <div
+          className={`grid gap-2 pt-1 ${
+            filtrosAtivos ? "grid-cols-2" : "grid-cols-1"
+          }`}
+        >
+          {filtrosAtivos ? (
+            <button
+              type="button"
+              onClick={() => limparFiltros(mobile)}
+              className="h-10 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
+            >
+              Limpar
+            </button>
+          ) : null}
           <button
             type="submit"
             className="h-10 rounded-full bg-slate-950 px-3 text-sm font-semibold text-white transition hover:bg-slate-800"
