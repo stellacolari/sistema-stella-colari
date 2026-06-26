@@ -18,10 +18,16 @@ import {
 } from "@/lib/embalagens/persistir-plano-pedido";
 import { validarEmbalagemPresenteCarrinho } from "@/lib/embalagens/presente-loja";
 import { registrarConsentimentoWhatsappPublico } from "@/lib/clientes/consentimentos-cliente";
+import {
+  buscarQuantidadeDisponivelPorTamanho,
+  calcularEstoqueProdutoVenda,
+} from "@/lib/loja/estoque";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
+const CHECKOUT_DISPONIBILIDADE_MESSAGE =
+  "Um ou mais produtos nao estao disponiveis no momento. Revise o carrinho.";
 
 type CheckoutItemPayload = {
   produtoId: string;
@@ -34,6 +40,23 @@ type CheckoutItemPayload = {
     id?: string;
   } | null;
 };
+
+type CheckoutItemIndisponivel = {
+  produtoId: string;
+  nome: string;
+  motivo: string;
+};
+
+class CheckoutDisponibilidadeError extends Error {
+  itens: CheckoutItemIndisponivel[];
+  status = 409;
+
+  constructor(itens: CheckoutItemIndisponivel[]) {
+    super(CHECKOUT_DISPONIBILIDADE_MESSAGE);
+    this.name = "CheckoutDisponibilidadeError";
+    this.itens = itens;
+  }
+}
 
 function gerarCodigoPedido(numero: number) {
   return `PO${String(numero).padStart(6, "0")}`;
@@ -235,13 +258,110 @@ function normalizarTamanhoAnel(tamanho: string | null | undefined) {
 
 type ProdutoCheckoutComVariacoes = Prisma.ProdutoGetPayload<{
   include: {
+    estoque: {
+      select: {
+        tamanhoAnel: true;
+        quantidadeAtual: true;
+      };
+    };
     variacoes: {
       include: {
         opcoes: true;
       };
     };
+    componentesDoKit: {
+      include: {
+        componenteProduto: {
+          include: {
+            estoque: {
+              select: {
+                tamanhoAnel: true;
+                quantidadeAtual: true;
+              };
+            };
+          };
+        };
+      };
+    };
   };
 }>;
+
+function erroItemIndisponivel(params: CheckoutItemIndisponivel) {
+  return new CheckoutDisponibilidadeError([params]);
+}
+
+function isCheckoutDisponibilidadeError(
+  error: unknown
+): error is CheckoutDisponibilidadeError {
+  return error instanceof CheckoutDisponibilidadeError;
+}
+
+function validarSaldoCheckout({
+  produto,
+  quantidade,
+  tamanhoAnel,
+}: {
+  produto: ProdutoCheckoutComVariacoes;
+  quantidade: number;
+  tamanhoAnel: string | null;
+}) {
+  if (!Number.isFinite(quantidade) || quantidade <= 0) {
+    throw erroItemIndisponivel({
+      produtoId: produto.id,
+      nome: produto.nome,
+      motivo: "Quantidade invalida.",
+    });
+  }
+
+  const produtoEhKit = produto.tipoProduto === "KIT";
+
+  if (produtoEhKit) {
+    const estoque = calcularEstoqueProdutoVenda({
+      tipoProduto: produto.tipoProduto,
+      estoque: produto.estoque,
+      componentesDoKit: produto.componentesDoKit,
+    });
+
+    if (estoque.estoqueAtual <= 0) {
+      throw erroItemIndisponivel({
+        produtoId: produto.id,
+        nome: produto.nome,
+        motivo: "Produto sem estoque no momento.",
+      });
+    }
+
+    if (quantidade > estoque.estoqueAtual) {
+      throw erroItemIndisponivel({
+        produtoId: produto.id,
+        nome: produto.nome,
+        motivo: "Quantidade solicitada indisponivel no momento.",
+      });
+    }
+
+    return;
+  }
+
+  const saldoDisponivel = buscarQuantidadeDisponivelPorTamanho(
+    produto.estoque,
+    tamanhoAnel
+  );
+
+  if (saldoDisponivel <= 0) {
+    throw erroItemIndisponivel({
+      produtoId: produto.id,
+      nome: produto.nome,
+      motivo: "Produto sem estoque no momento.",
+    });
+  }
+
+  if (quantidade > saldoDisponivel) {
+    throw erroItemIndisponivel({
+      produtoId: produto.id,
+      nome: produto.nome,
+      motivo: "Quantidade solicitada indisponivel no momento.",
+    });
+  }
+}
 
 function normalizarOpcaoProduto(value: string | null | undefined) {
   return String(value ?? "").trim();
@@ -735,20 +855,7 @@ export async function POST(request: Request) {
         type ItemProcessado = {
           item: CheckoutItemPayload;
           quantidade: number;
-          produto: Prisma.ProdutoGetPayload<{
-            include: {
-              componentesDoKit: {
-                include: {
-                  componenteProduto: true;
-                };
-              };
-              variacoes: {
-                include: {
-                  opcoes: true;
-                };
-              };
-            };
-          }>;
+          produto: ProdutoCheckoutComVariacoes;
           tamanhoAnel: string | null;
           preco: ReturnType<typeof calcularPrecoProduto>;
           totalProdutoItem: number;
@@ -774,9 +881,24 @@ export async function POST(request: Request) {
               id: item.produtoId,
             },
             include: {
+              estoque: {
+                select: {
+                  tamanhoAnel: true,
+                  quantidadeAtual: true,
+                },
+              },
               componentesDoKit: {
                 include: {
-                  componenteProduto: true,
+                  componenteProduto: {
+                    include: {
+                      estoque: {
+                        select: {
+                          tamanhoAnel: true,
+                          quantidadeAtual: true,
+                        },
+                      },
+                    },
+                  },
                 },
                 orderBy: {
                   criadoEm: "asc",
@@ -804,15 +926,21 @@ export async function POST(request: Request) {
           });
 
           if (!produto || !produto.ativo || produto.status === "NA_LIXEIRA") {
-            throw new Error("Um dos produtos do carrinho não está disponível.");
+            throw erroItemIndisponivel({
+              produtoId: item.produtoId,
+              nome: "Produto",
+              motivo: "Produto indisponivel.",
+            });
           }
 
           const produtoEhKit = produto.tipoProduto === "KIT";
 
           if (produtoEhKit && produto.componentesDoKit.length === 0) {
-            throw new Error(
-              `O kit ${produto.nome} não possui componentes cadastrados.`
-            );
+            throw erroItemIndisponivel({
+              produtoId: produto.id,
+              nome: produto.nome,
+              motivo: "Produto indisponivel.",
+            });
           }
 
           const exigeVariacao = !produtoEhKit && produtoExigeVariacao(produto);
@@ -832,12 +960,11 @@ export async function POST(request: Request) {
               : null;
 
           if (exigeVariacao && !opcaoVariacaoValida) {
-            const nomeVariacao =
-              getVariacaoPrincipalProduto(produto)?.nome || "opção";
-
-            throw new Error(
-              `Selecione uma opção válida de ${nomeVariacao} para o produto: ${produto.nome}`
-            );
+            throw erroItemIndisponivel({
+              produtoId: produto.id,
+              nome: produto.nome,
+              motivo: "Opcao selecionada indisponivel.",
+            });
           }
 
           const tamanhoAnel = exigeVariacao
@@ -847,10 +974,18 @@ export async function POST(request: Request) {
             : null;
 
           if (exigeTamanhoAnel && !tamanhoAnel) {
-            throw new Error(
-              `Selecione o tamanho do anel para o produto: ${produto.nome}`
-            );
+            throw erroItemIndisponivel({
+              produtoId: produto.id,
+              nome: produto.nome,
+              motivo: "Selecione uma opcao valida.",
+            });
           }
+
+          validarSaldoCheckout({
+            produto,
+            quantidade,
+            tamanhoAnel,
+          });
 
           const precoAdicionalVariacao = Number(
             opcaoVariacaoValida?.precoAdicional || 0
@@ -1389,6 +1524,16 @@ export async function POST(request: Request) {
       cashbackPrevistoValor: pedidoCriado.cashbackPrevistoValor,
     });
   } catch (error) {
+    if (isCheckoutDisponibilidadeError(error)) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          itens: error.itens,
+        },
+        { status: error.status }
+      );
+    }
+
     console.error("Erro ao finalizar pedido online:", error);
 
     const message =
