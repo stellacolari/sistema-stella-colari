@@ -363,10 +363,30 @@ async function buscarProdutosBuscaRaw() {
       nome: "asc",
     },
     take: 500,
-    include: {
+    select: {
+      id: true,
+      codigoInterno: true,
+      nome: true,
+      tipoProduto: true,
+      imagemUrl: true,
+      imagemHoverUrl: true,
+      categoria: true,
+      precoVenda: true,
+      descontoAtivo: true,
+      precoPromocional: true,
+      criadoEm: true,
+      descricaoLoja: true,
+      termosBusca: true,
+      tagsComerciais: true,
+      familiaMaterial: true,
+      familiaCorJoia: true,
       estoque: {
         orderBy: {
           tamanhoAnel: "asc",
+        },
+        select: {
+          tamanhoAnel: true,
+          quantidadeAtual: true,
         },
       },
       vendasItens: {

@@ -32,14 +32,6 @@ type CheckoutItemPayload = {
   opcaoAdicionalId?: string | null;
   opcaoAdicional?: {
     id?: string;
-    nome?: string;
-    descricao?: string | null;
-    valorVenda?: number | string | null;
-    itemPadraoSubstituidoId?: string | null;
-    itemPadraoSubstituidoNome?: string | null;
-    itemAdicionalConsumidoId?: string | null;
-    itemAdicionalConsumidoNome?: string | null;
-    custoUnitario?: number | string | null;
   } | null;
 };
 

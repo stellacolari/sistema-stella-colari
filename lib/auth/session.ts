@@ -14,10 +14,22 @@ type CookieStoreLike = {
 
 const SESSAO_DURACAO_SEGUNDOS = 60 * 60 * 8;
 export const SESSAO_ADMIN_PERSISTENTE_DURACAO_SEGUNDOS = 60 * 60 * 24 * 5;
+const ADMIN_SESSION_SECRET_MIN_LENGTH_PRODUCTION = 32;
+export const ADMIN_SESSION_SECRET_MISSING_MESSAGE =
+  "ADMIN_SESSION_SECRET não configurado. Defina um segredo forte no ambiente de produção antes de acessar o painel administrativo.";
+const ADMIN_SESSION_SECRET_WEAK_MESSAGE =
+  "ADMIN_SESSION_SECRET fraco para produção. Defina um segredo forte com pelo menos 32 caracteres.";
 
 type OpcoesSessaoAdmin = {
   maxAgeSeconds?: number;
 };
+
+export class AdminSessionSecretError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AdminSessionSecretError";
+  }
+}
 
 function base64UrlEncode(value: Uint8Array | string) {
   const source =
@@ -43,13 +55,32 @@ function base64UrlDecode(value: string) {
   return new Uint8Array(Array.from(binary, (char) => char.charCodeAt(0)));
 }
 
+function getAdminSessionSecretRaw() {
+  return String(process.env.ADMIN_SESSION_SECRET || "").trim();
+}
+
+export function isAdminSessionSecretConfigured() {
+  return Boolean(getAdminSessionSecretRaw());
+}
+
+export function isAdminSessionSecretError(
+  error: unknown,
+): error is AdminSessionSecretError {
+  return error instanceof AdminSessionSecretError;
+}
+
 function getSessionSecret() {
-  const secret = String(process.env.ADMIN_SESSION_SECRET || "").trim();
+  const secret = getAdminSessionSecretRaw();
 
   if (!secret) {
-    throw new Error(
-      "ADMIN_SESSION_SECRET não configurado. Defina a variável de ambiente para proteger o painel administrativo.",
-    );
+    throw new AdminSessionSecretError(ADMIN_SESSION_SECRET_MISSING_MESSAGE);
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    secret.length < ADMIN_SESSION_SECRET_MIN_LENGTH_PRODUCTION
+  ) {
+    throw new AdminSessionSecretError(ADMIN_SESSION_SECRET_WEAK_MESSAGE);
   }
 
   return secret;

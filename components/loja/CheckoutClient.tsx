@@ -71,14 +71,6 @@ type CarrinhoItemOpcaoAdicional = {
   nome: string;
   descricao?: string | null;
   valorVenda: number;
-
-  itemPadraoSubstituidoId?: string | null;
-  itemPadraoSubstituidoNome?: string | null;
-
-  itemAdicionalConsumidoId?: string | null;
-  itemAdicionalConsumidoNome?: string | null;
-
-  custoUnitario?: number | null;
 };
 
 type CarrinhoItem = {
@@ -199,19 +191,6 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
           nome: String(item.opcaoAdicional.nome || "Opção adicional"),
           descricao: item.opcaoAdicional.descricao ?? null,
           valorVenda: Number(item.opcaoAdicional.valorVenda || 0),
-          itemPadraoSubstituidoId:
-            item.opcaoAdicional.itemPadraoSubstituidoId ?? null,
-          itemPadraoSubstituidoNome:
-            item.opcaoAdicional.itemPadraoSubstituidoNome ?? null,
-          itemAdicionalConsumidoId:
-            item.opcaoAdicional.itemAdicionalConsumidoId ?? null,
-          itemAdicionalConsumidoNome:
-            item.opcaoAdicional.itemAdicionalConsumidoNome ?? null,
-          custoUnitario:
-            item.opcaoAdicional.custoUnitario === null ||
-            typeof item.opcaoAdicional.custoUnitario === "undefined"
-              ? null
-              : Number(item.opcaoAdicional.custoUnitario || 0),
         }
       : null,
     embalagemPresenteModeloId:
@@ -270,9 +249,17 @@ function lerCarrinho(): CarrinhoItem[] {
       return [];
     }
 
-    return parsed
+    const carrinho = parsed
       .map((item) => normalizarCarrinhoItem(item))
       .filter((item) => item.produtoId && item.nome);
+
+    const carrinhoSanitizado = JSON.stringify(carrinho);
+
+    if (carrinhoSanitizado !== raw) {
+      window.localStorage.setItem(CARRINHO_STORAGE_KEY, carrinhoSanitizado);
+    }
+
+    return carrinho;
   } catch {
     return [];
   }
@@ -985,27 +972,6 @@ function preencherDadosClienteLogado() {
             embalagemPresenteModeloId: item.embalagemPresenteModeloId || null,
             embalagemPresenteMensagem: item.embalagemPresenteMensagem || null,
             opcaoAdicionalId: item.opcaoAdicional?.id || null,
-            opcaoAdicional: item.opcaoAdicional
-              ? {
-                  id: item.opcaoAdicional.id,
-                  nome: item.opcaoAdicional.nome,
-                  descricao: item.opcaoAdicional.descricao ?? null,
-                  valorVenda: Number(item.opcaoAdicional.valorVenda || 0),
-                  itemPadraoSubstituidoId:
-                    item.opcaoAdicional.itemPadraoSubstituidoId ?? null,
-                  itemPadraoSubstituidoNome:
-                    item.opcaoAdicional.itemPadraoSubstituidoNome ?? null,
-                  itemAdicionalConsumidoId:
-                    item.opcaoAdicional.itemAdicionalConsumidoId ?? null,
-                  itemAdicionalConsumidoNome:
-                    item.opcaoAdicional.itemAdicionalConsumidoNome ?? null,
-                  custoUnitario:
-                    item.opcaoAdicional.custoUnitario === null ||
-                    typeof item.opcaoAdicional.custoUnitario === "undefined"
-                      ? null
-                      : Number(item.opcaoAdicional.custoUnitario || 0),
-                }
-              : null,
           })),
         }),
       });

@@ -33,14 +33,6 @@ type CarrinhoItemOpcaoAdicional = {
   nome: string;
   descricao?: string | null;
   valorVenda: number;
-
-  itemPadraoSubstituidoId?: string | null;
-  itemPadraoSubstituidoNome?: string | null;
-
-  itemAdicionalConsumidoId?: string | null;
-  itemAdicionalConsumidoNome?: string | null;
-
-  custoUnitario?: number | null;
 };
 
 type CarrinhoItem = {
@@ -135,19 +127,6 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
           nome: String(item.opcaoAdicional.nome || "Opção adicional"),
           descricao: item.opcaoAdicional.descricao ?? null,
           valorVenda: Number(item.opcaoAdicional.valorVenda || 0),
-          itemPadraoSubstituidoId:
-            item.opcaoAdicional.itemPadraoSubstituidoId ?? null,
-          itemPadraoSubstituidoNome:
-            item.opcaoAdicional.itemPadraoSubstituidoNome ?? null,
-          itemAdicionalConsumidoId:
-            item.opcaoAdicional.itemAdicionalConsumidoId ?? null,
-          itemAdicionalConsumidoNome:
-            item.opcaoAdicional.itemAdicionalConsumidoNome ?? null,
-          custoUnitario:
-            item.opcaoAdicional.custoUnitario === null ||
-            typeof item.opcaoAdicional.custoUnitario === "undefined"
-              ? null
-              : Number(item.opcaoAdicional.custoUnitario || 0),
         }
       : null,
     embalagemPresenteModeloId:
@@ -206,16 +185,28 @@ function lerCarrinho(): CarrinhoItem[] {
       return [];
     }
 
-    return parsed
+    const carrinho = parsed
       .map((item) => normalizarCarrinhoItem(item))
       .filter((item) => item.produtoId && item.nome);
+
+    const carrinhoSanitizado = JSON.stringify(carrinho);
+
+    if (carrinhoSanitizado !== raw) {
+      window.localStorage.setItem(CARRINHO_STORAGE_KEY, carrinhoSanitizado);
+    }
+
+    return carrinho;
   } catch {
     return [];
   }
 }
 
 function salvarCarrinho(itens: CarrinhoItem[]) {
-  window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(itens));
+  const carrinho = itens
+    .map((item) => normalizarCarrinhoItem(item))
+    .filter((item) => item.produtoId && item.nome);
+
+  window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(carrinho));
 }
 
 function itemTemDesconto(item: CarrinhoItem) {
@@ -602,16 +593,6 @@ export default function CarrinhoClient({
                                     + {moeda(valorAdicionalUnitario)} por item
                                   </p>
 
-                                  {item.opcaoAdicional
-                                    .itemAdicionalConsumidoNome && (
-                                    <p className="mt-1 text-[11px] font-light text-slate-400">
-                                      Inclui:{" "}
-                                      {
-                                        item.opcaoAdicional
-                                          .itemAdicionalConsumidoNome
-                                      }
-                                    </p>
-                                  )}
                                 </div>
                               </div>
                             </div>

@@ -6,6 +6,55 @@ type ProdutoPublicoRaw = Awaited<
   ReturnType<typeof buscarProdutosPublicosRaw>
 >[number];
 
+const produtoPublicoSelect = {
+  id: true,
+  codigoInterno: true,
+  nome: true,
+  tipoProduto: true,
+  imagemUrl: true,
+  imagemHoverUrl: true,
+  categoria: true,
+  precoVenda: true,
+  descontoAtivo: true,
+  precoPromocional: true,
+  criadoEm: true,
+  estoque: {
+    orderBy: {
+      tamanhoAnel: "asc" as const,
+    },
+  },
+  vendasItens: {
+    select: {
+      quantidade: true,
+    },
+  },
+  componentesDoKit: {
+    select: {
+      quantidade: true,
+      componenteProduto: {
+        select: {
+          estoque: {
+            select: {
+              quantidadeAtual: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  categoriasProduto: {
+    select: {
+      categoria: {
+        select: {
+          id: true,
+          nome: true,
+          slug: true,
+        },
+      },
+    },
+  },
+};
+
 async function buscarProdutosPublicosRaw() {
   return prisma.produto.findMany({
     where: {
@@ -17,43 +66,7 @@ async function buscarProdutosPublicosRaw() {
     orderBy: {
       nome: "asc",
     },
-    include: {
-      estoque: {
-        orderBy: {
-          tamanhoAnel: "asc",
-        },
-      },
-      vendasItens: {
-        select: {
-          quantidade: true,
-        },
-      },
-      componentesDoKit: {
-        select: {
-          quantidade: true,
-          componenteProduto: {
-            select: {
-              estoque: {
-                select: {
-                  quantidadeAtual: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      categoriasProduto: {
-        select: {
-          categoria: {
-            select: {
-              id: true,
-              nome: true,
-              slug: true,
-            },
-          },
-        },
-      },
-    },
+    select: produtoPublicoSelect,
   });
 }
 
@@ -117,43 +130,7 @@ export async function buscarProdutosPublicosPorCategoriaIds(
     orderBy: {
       nome: "asc",
     },
-    include: {
-      estoque: {
-        orderBy: {
-          tamanhoAnel: "asc",
-        },
-      },
-      vendasItens: {
-        select: {
-          quantidade: true,
-        },
-      },
-      componentesDoKit: {
-        select: {
-          quantidade: true,
-          componenteProduto: {
-            select: {
-              estoque: {
-                select: {
-                  quantidadeAtual: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      categoriasProduto: {
-        select: {
-          categoria: {
-            select: {
-              id: true,
-              nome: true,
-              slug: true,
-            },
-          },
-        },
-      },
-    },
+    select: produtoPublicoSelect,
   });
 
   return produtosRaw.map(formatarProdutoPublico);

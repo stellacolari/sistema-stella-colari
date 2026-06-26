@@ -44,13 +44,6 @@ export type ProdutoLojaOpcaoAdicional = {
   nome: string;
   descricao: string | null;
   valorVenda: number;
-
-  itemPadraoSubstituidoId: string | null;
-  itemPadraoSubstituidoNome: string | null;
-
-  itemAdicionalConsumidoId: string;
-  itemAdicionalConsumidoNome: string;
-  custoUnitario: number;
 };
 
 export type ProdutoLojaVariacao = {
@@ -62,7 +55,6 @@ export type ProdutoLojaVariacao = {
     nome: string;
     imagemUrl?: string | null;
     precoAdicional?: number;
-    custoAdicional?: number;
     quantidadeAtual: number;
   }[];
 };
@@ -146,14 +138,6 @@ type CarrinhoItemOpcaoAdicional = {
   nome: string;
   descricao?: string | null;
   valorVenda: number;
-
-  itemPadraoSubstituidoId?: string | null;
-  itemPadraoSubstituidoNome?: string | null;
-
-  itemAdicionalConsumidoId?: string | null;
-  itemAdicionalConsumidoNome?: string | null;
-
-  custoUnitario?: number | null;
 };
 
 type CarrinhoItem = {
@@ -264,14 +248,98 @@ function getCarrinhoAtual(): CarrinhoItem[] {
       return [];
     }
 
-    return parsed;
+    const carrinho = parsed
+      .map((item) => normalizarCarrinhoItem(item))
+      .filter((item) => item.produtoId && item.nome);
+
+    const carrinhoSanitizado = JSON.stringify(carrinho);
+
+    if (carrinhoSanitizado !== raw) {
+      window.localStorage.setItem(CARRINHO_STORAGE_KEY, carrinhoSanitizado);
+    }
+
+    return carrinho;
   } catch {
     return [];
   }
 }
 
 function salvarCarrinho(itens: CarrinhoItem[]) {
-  window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(itens));
+  const carrinho = itens
+    .map((item) => normalizarCarrinhoItem(item))
+    .filter((item) => item.produtoId && item.nome);
+
+  window.localStorage.setItem(CARRINHO_STORAGE_KEY, JSON.stringify(carrinho));
+}
+
+function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
+  return {
+    produtoId: String(item.produtoId || ""),
+    codigoInterno: String(item.codigoInterno || ""),
+    nome: String(item.nome || ""),
+    imagemUrl: item.imagemUrl ?? null,
+    categoria: String(item.categoria || ""),
+    precoVenda: Number(item.precoVenda || 0),
+    precoOriginal:
+      item.precoOriginal === null || typeof item.precoOriginal === "undefined"
+        ? null
+        : Number(item.precoOriginal || 0),
+    precoPromocional:
+      item.precoPromocional === null ||
+      typeof item.precoPromocional === "undefined"
+        ? null
+        : Number(item.precoPromocional || 0),
+    descontoPercentual:
+      typeof item.descontoPercentual === "number"
+        ? item.descontoPercentual
+        : null,
+    tamanhoAnel: item.tamanhoAnel ?? null,
+    quantidade: Math.max(1, Number(item.quantidade || 1)),
+    estoqueDisponivel: Number(item.estoqueDisponivel || 0),
+    opcaoAdicional: item.opcaoAdicional
+      ? {
+          id: String(item.opcaoAdicional.id || ""),
+          nome: String(item.opcaoAdicional.nome || "Opção adicional"),
+          descricao: item.opcaoAdicional.descricao ?? null,
+          valorVenda: Number(item.opcaoAdicional.valorVenda || 0),
+        }
+      : null,
+    embalagemPresenteModeloId:
+      item.embalagemPresenteModeloId ??
+      item.embalagemPresenteSnapshot?.modeloId ??
+      null,
+    embalagemPresenteNome:
+      item.embalagemPresenteNome ??
+      item.embalagemPresenteSnapshot?.nome ??
+      null,
+    embalagemPresenteImagemUrl:
+      item.embalagemPresenteImagemUrl ??
+      item.embalagemPresenteSnapshot?.imagemUrl ??
+      null,
+    embalagemPresentePreco:
+      item.embalagemPresentePreco === null ||
+      typeof item.embalagemPresentePreco === "undefined"
+        ? item.embalagemPresenteSnapshot
+          ? Number(item.embalagemPresenteSnapshot.preco || 0)
+          : null
+        : Number(item.embalagemPresentePreco || 0),
+    embalagemPresenteMensagem:
+      item.embalagemPresenteMensagem ??
+      item.embalagemPresenteSnapshot?.mensagem ??
+      null,
+    embalagemPresenteSnapshot: item.embalagemPresenteSnapshot
+      ? {
+          modeloId: String(item.embalagemPresenteSnapshot.modeloId || ""),
+          nome: String(item.embalagemPresenteSnapshot.nome || ""),
+          descricao: item.embalagemPresenteSnapshot.descricao ?? null,
+          imagemUrl: item.embalagemPresenteSnapshot.imagemUrl ?? null,
+          preco: Number(item.embalagemPresenteSnapshot.preco || 0),
+          mensagem: item.embalagemPresenteSnapshot.mensagem ?? null,
+          substituiEmbalagemPadrao:
+            item.embalagemPresenteSnapshot.substituiEmbalagemPadrao ?? null,
+        }
+      : null,
+  };
 }
 
 function getItemKey(item: {
@@ -955,15 +1023,6 @@ export default function ProdutoLojaClient({
             nome: opcaoAdicionalSelecionada.nome,
             descricao: opcaoAdicionalSelecionada.descricao,
             valorVenda: Number(opcaoAdicionalSelecionada.valorVenda || 0),
-            itemPadraoSubstituidoId:
-              opcaoAdicionalSelecionada.itemPadraoSubstituidoId,
-            itemPadraoSubstituidoNome:
-              opcaoAdicionalSelecionada.itemPadraoSubstituidoNome,
-            itemAdicionalConsumidoId:
-              opcaoAdicionalSelecionada.itemAdicionalConsumidoId,
-            itemAdicionalConsumidoNome:
-              opcaoAdicionalSelecionada.itemAdicionalConsumidoNome,
-            custoUnitario: Number(opcaoAdicionalSelecionada.custoUnitario || 0),
           }
         : null,
       embalagemPresenteModeloId: embalagemPresenteSelecionada?.id || null,

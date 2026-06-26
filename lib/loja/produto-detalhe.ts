@@ -71,7 +71,27 @@ async function buscarProdutoDetalheRaw(id: string) {
     where: {
       id,
     },
-    include: {
+    select: {
+      id: true,
+      codigoInterno: true,
+      nome: true,
+      tipoProduto: true,
+      ativo: true,
+      status: true,
+      imagemUrl: true,
+      imagemHoverUrl: true,
+      categoria: true,
+      precoVenda: true,
+      descontoAtivo: true,
+      precoPromocional: true,
+      descricaoLoja: true,
+      observacoes: true,
+      familiaId: true,
+      familiaMaterial: true,
+      familiaCorJoia: true,
+      embalagemClasseId: true,
+      permiteEmbalagemPresente: true,
+      embalagemPresentePadraoId: true,
       familia: {
         select: {
           id: true,
@@ -83,10 +103,17 @@ async function buscarProdutoDetalheRaw(id: string) {
         orderBy: {
           tamanhoAnel: "asc",
         },
+        select: {
+          tamanhoAnel: true,
+          quantidadeAtual: true,
+        },
       },
       imagens: {
         orderBy: {
           ordem: "asc",
+        },
+        select: {
+          imagemUrl: true,
         },
       },
       componentesDoKit: {
@@ -110,13 +137,22 @@ async function buscarProdutoDetalheRaw(id: string) {
         orderBy: {
           ordem: "asc",
         },
-        include: {
+        select: {
+          id: true,
+          nome: true,
+          obrigatoria: true,
           opcoes: {
             where: {
               ativo: true,
             },
             orderBy: {
               ordem: "asc",
+            },
+            select: {
+              id: true,
+              nome: true,
+              imagemUrl: true,
+              precoAdicional: true,
             },
           },
         },
@@ -159,7 +195,17 @@ async function buscarProdutosRelacionadosRaw({
       ? [{ atualizadoEm: "desc" }]
       : [{ criadoEm: "desc" }],
     take,
-    include: {
+    select: {
+      id: true,
+      codigoInterno: true,
+      nome: true,
+      tipoProduto: true,
+      imagemUrl: true,
+      imagemHoverUrl: true,
+      categoria: true,
+      precoVenda: true,
+      descontoAtivo: true,
+      precoPromocional: true,
       estoque: {
         select: {
           tamanhoAnel: true,
@@ -206,9 +252,19 @@ async function buscarProdutosFamiliaRaw({
       },
     },
     orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
-    include: {
+    select: {
+      imagemUrl: true,
       produto: {
-        include: {
+        select: {
+          id: true,
+          codigoInterno: true,
+          nome: true,
+          tipoProduto: true,
+          imagemUrl: true,
+          imagemHoverUrl: true,
+          familiaImagemUrl: true,
+          familiaMaterial: true,
+          familiaCorJoia: true,
           estoque: {
             select: {
               tamanhoAnel: true,
@@ -382,7 +438,6 @@ export async function buscarProdutoDetalhePublico(id: string) {
         nome: opcao.nome,
         imagemUrl: opcao.imagemUrl,
         precoAdicional: Number(opcao.precoAdicional || 0),
-        custoAdicional: Number(opcao.custoAdicional || 0),
         quantidadeAtual: Number(estoqueOpcao?.quantidadeAtual || 0),
       };
     });
@@ -458,7 +513,13 @@ export async function buscarProdutoDetalhePublico(id: string) {
   };
 
   return {
-    produtoRaw: produto,
+    produtoRaw: {
+      id: produto.id,
+      categoria: produto.categoria,
+      embalagemClasseId: produto.embalagemClasseId,
+      permiteEmbalagemPresente: produto.permiteEmbalagemPresente,
+      embalagemPresentePadraoId: produto.embalagemPresentePadraoId,
+    },
     produto: produtoFormatado,
   };
 }

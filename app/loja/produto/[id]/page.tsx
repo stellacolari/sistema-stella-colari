@@ -116,23 +116,11 @@ export default async function ProdutoLojaPage({
           orderBy: {
             criadoEm: "asc",
           },
-          include: {
-            itemPadraoSubstituido: {
-              select: {
-                id: true,
-                nome: true,
-                codigoInterno: true,
-                custoBase: true,
-              },
-            },
-            itemAdicionalConsumido: {
-              select: {
-                id: true,
-                nome: true,
-                codigoInterno: true,
-                custoBase: true,
-              },
-            },
+          select: {
+            id: true,
+            nome: true,
+            descricao: true,
+            valorVenda: true,
           },
         })
       : Promise.resolve([]),
@@ -163,13 +151,6 @@ export default async function ProdutoLojaPage({
       nome: opcao.nome,
       descricao: opcao.descricao,
       valorVenda: Number(opcao.valorVenda || 0),
-
-      itemPadraoSubstituidoId: opcao.itemPadraoSubstituidoId,
-      itemPadraoSubstituidoNome: opcao.itemPadraoSubstituido?.nome || null,
-
-      itemAdicionalConsumidoId: opcao.itemAdicionalConsumidoId,
-      itemAdicionalConsumidoNome: opcao.itemAdicionalConsumido.nome,
-      custoUnitario: Number(opcao.itemAdicionalConsumido.custoBase || 0),
     }));
 
   const produto = {

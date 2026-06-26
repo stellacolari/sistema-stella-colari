@@ -6,6 +6,7 @@ import {
   SESSAO_ADMIN_PERSISTENTE_DURACAO_SEGUNDOS,
   assinarSessaoAdmin,
   getOpcoesCookieSessaoAdmin,
+  isAdminSessionSecretError,
 } from "@/lib/auth/session";
 
 function normalizarNext(value: unknown) {
@@ -100,6 +101,12 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (isAdminSessionSecretError(error)) {
+      console.error(error.message);
+
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     console.error("Erro ao fazer login administrativo:", error);
 
     const message =
