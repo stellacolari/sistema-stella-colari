@@ -32,6 +32,8 @@ body {
   --store-hairline: #c9c7bf;
   --font-storefront: "Helvetica Neue", "Neue Haas Grotesk Text Pro", Arial,
     sans-serif;
+  --font-storefront-display: "Bodoni 72", Didot, "Bodoni MT", Georgia,
+    "Times New Roman", serif;
   --font-primary: var(--font-storefront);
   background: var(--store-paper);
   color: var(--store-ink);

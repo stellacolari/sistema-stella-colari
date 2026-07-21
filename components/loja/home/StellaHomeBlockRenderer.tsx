@@ -248,27 +248,8 @@ function getHeroPositionClass(posicao: string, viewport: "mobile" | "desktop") {
     : posicao.startsWith("INFERIOR")
       ? `${prefix}items-end`
       : `${prefix}items-center`;
-  const horizontal = posicao.endsWith("DIREITA")
-    ? `${prefix}justify-end`
-    : posicao.endsWith("CENTRO") || posicao === "CENTRO"
-      ? `${prefix}justify-center`
-      : `${prefix}justify-start`;
 
-  return `${vertical} ${horizontal}`;
-}
-
-function getHeroTextAlignClass(alinhamento: string) {
-  if (alinhamento === "CENTRO") return "text-center";
-  if (alinhamento === "DIREITA") return "text-right";
-
-  return "text-left";
-}
-
-function getHeroContentWidthClass(largura: string) {
-  if (largura === "COMPACTA") return "max-w-3xl";
-  if (largura === "LARGA") return "max-w-[90rem]";
-
-  return "max-w-6xl";
+  return `${vertical} ${prefix}justify-center`;
 }
 
 function getHeroContentVisibilityClass(
@@ -360,12 +341,6 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
       slide.conteudo.mostrarTitulo &&
       (desktopPosition !== "NENHUM" || mobilePosition !== "NENHUM")
   );
-  const heroFlowAlignmentClass =
-    slide.conteudo.alinhamento === "CENTRO"
-      ? styles.heroFlowCenter
-      : slide.conteudo.alinhamento === "DIREITA"
-        ? styles.heroFlowRight
-        : styles.heroFlowLeft;
   const overlayStyle = slide.overlay.ativo
     ? {
         backgroundColor: slide.overlay.cor,
@@ -430,9 +405,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
         <div
           className={`${styles.heroContent} mx-auto min-h-[inherit] w-full max-w-[100rem] px-5 pb-20 pt-24 sm:px-7 md:pb-24 md:pt-28 lg:px-12 ${config.headerTransparente ? "lg:pt-36" : "lg:pt-28"} ${getHeroContentVisibilityClass(desktopPosition, mobilePosition)} ${getHeroPositionClass(mobilePosition, "mobile")} ${getHeroPositionClass(desktopPosition, "desktop")}`}
         >
-          <div
-            className={`${styles.heroCopy} ${heroFlowAlignmentClass} ${getHeroContentWidthClass(slide.conteudo.largura)} ${getHeroTextAlignClass(slide.conteudo.alinhamento)}`}
-          >
+          <div className={styles.heroCopy}>
             {slide.conteudo.mostrarEyebrow && eyebrow ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:eyebrow`}
@@ -447,7 +420,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
               <h1
                 id={`stella-hero-${bloco.id}`}
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:titulo`}
-                className={`${styles.heroTitle} mt-5 max-w-[18ch] text-white`}
+                className={`${styles.heroTitle} mt-5 text-white`}
                 style={getHeroElementStyle(slide, "titulo")}
               >
                 <EditorialTitleText text={titulo} emphasisWords={2} />
@@ -457,7 +430,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
             {slide.conteudo.mostrarTexto && texto ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:texto`}
-                className={`${styles.heroBody} mt-7 max-w-xl text-base text-white/86 md:text-lg`}
+                className={`${styles.heroBody} mt-7 text-base text-white/86 md:text-lg`}
                 style={getHeroElementStyle(slide, "texto")}
               >
                 {texto}
@@ -744,21 +717,21 @@ function SectionHeading({
   descricao?: string;
 }) {
   return (
-    <div className={`${styles.sectionHeading} grid gap-6 border-t border-current/20 pt-5 md:grid-cols-[minmax(140px,0.35fr)_minmax(0,1fr)] md:items-start`}>
-      <p className={`${styles.sectionEyebrow} text-[10px] font-semibold uppercase text-current/70`}>
-        {eyebrow}
-      </p>
-      <div>
+    <div className={`${styles.sectionHeading} border-t border-current/20 pt-5`}>
+      <div className={styles.sectionHeadingCopy}>
+        <p className={`${styles.sectionEyebrow} text-[10px] font-semibold uppercase text-current/70`}>
+          {eyebrow}
+        </p>
         <h2
           data-stella-inline-field="titulo"
-          className={`${styles.sectionTitle} max-w-[22ch] text-[clamp(2.4rem,5.2vw,6.4rem)] uppercase text-current`}
+          className={`${styles.sectionTitle} uppercase text-current`}
         >
           <EditorialTitleText text={titulo} />
         </h2>
         {descricao ? (
           <p
             data-stella-inline-field="subtitulo"
-            className={`${styles.sectionDescription} mt-5 max-w-xl text-sm text-current/65 md:text-base`}
+            className={`${styles.sectionDescription} text-sm text-current/65 md:text-base`}
           >
             {descricao}
           </p>
@@ -903,7 +876,7 @@ function StellaEditorialFeature({
             {hasTitulo ? (
               <h2
                 data-stella-inline-field="titulo"
-                className={`${styles.editorialTitle} mt-6 text-[clamp(2.65rem,5.8vw,7rem)] font-medium uppercase`}
+                className={`${styles.editorialTitle} mt-6 uppercase`}
               >
                 <EditorialTitleText text={content.titulo} />
               </h2>
@@ -1108,7 +1081,7 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
           </p>
           <h2
             data-stella-inline-field="titulo"
-            className={`${styles.trustTitle} mt-6 text-[clamp(2.6rem,5vw,6.2rem)] font-medium uppercase text-[#171916]`}
+            className={`${styles.trustTitle} mt-6 uppercase text-[#171916]`}
           >
             <EditorialTitleText
               text={getStringWithDefault(
@@ -1345,7 +1318,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
         {hasTitulo ? (
           <h2
             data-stella-inline-field="titulo"
-            className={`${styles.finalCtaTitle} mx-auto mt-7 max-w-[16ch] text-[clamp(3rem,8vw,9rem)] font-medium uppercase`}
+            className={`${styles.finalCtaTitle} mx-auto mt-7 max-w-[16ch] uppercase`}
           >
             <EditorialTitleText text={titulo} />
           </h2>
