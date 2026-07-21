@@ -104,7 +104,7 @@ export default function ConsentimentoPrivacidadeBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#27251f]/20 bg-[#f4f0e8]/95 backdrop-blur-md">
+    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#27251f]/20 bg-white/95 backdrop-blur-md">
       <section className="mx-auto max-w-7xl px-5 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center border border-[#27251f]/20 text-[#27251f] sm:flex">
@@ -147,7 +147,7 @@ export default function ConsentimentoPrivacidadeBanner() {
                       key={categoria.id}
                       className={`border px-3 py-3 text-sm ${
                         ativo
-                          ? "border-[#27251f] bg-[#ebe5da]"
+                          ? "border-[#27251f] bg-[#f3f3f1]"
                           : "border-[#27251f]/20 bg-transparent"
                       }`}
                     >
@@ -185,21 +185,21 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Somente essenciais
                   </button>
                   <button
                     type="button"
                     onClick={() => setModo("preferencias")}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Personalizar
                   </button>
                   <button
                     type="button"
                     onClick={aceitarTodos}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#f8f4ec] transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Aceitar todos
                   </button>
@@ -209,21 +209,21 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={redefinir}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#716a5e] transition hover:border-[#27251f] hover:bg-[#ebe5da] hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#716a5e] transition hover:border-[#27251f] hover:bg-[#f3f3f1] hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Redefinir escolha
                   </button>
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Somente essenciais
                   </button>
                   <button
                     type="button"
                     onClick={salvarPreferencias}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#f8f4ec] transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Salvar preferencias
                   </button>

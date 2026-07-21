@@ -1,6 +1,6 @@
 .storefront {
   min-height: 100vh;
-  background: #f7f4ed;
+  background: #fff;
   color: #1b2021;
 }
 
@@ -99,7 +99,7 @@
 
 .valueStrip {
   border-block: 1px solid rgb(24 32 34 / 18%);
-  background: #f7f4ed;
+  background: #fff;
 }
 
 .valueStripInner {
@@ -202,7 +202,7 @@
   justify-content: center;
   border: 1px solid #1b2021;
   border-radius: 0;
-  background: rgb(247 244 237 / 94%);
+  background: rgb(255 255 255 / 94%);
   color: #1b2021;
 }
 

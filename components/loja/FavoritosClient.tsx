@@ -51,7 +51,7 @@ export default function FavoritosClient({
   );
 
   return (
-    <div className="min-h-screen bg-[#f4f0e8] text-[#27251f]">
+    <div className="min-h-screen bg-white text-[#27251f]">
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
@@ -78,7 +78,7 @@ export default function FavoritosClient({
             <p className="mt-4 text-sm text-[#645e54]">Salve produtos para encontrar rapidamente depois.</p>
             <Link
               href="/loja"
-              className="mt-8 inline-flex min-h-11 items-center justify-center border border-[#27251f] bg-[#27251f] px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#f8f4ec] transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#27251f]"
+              className="mt-8 inline-flex min-h-11 items-center justify-center border border-[#27251f] bg-[#27251f] px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#27251f]"
             >
               Voltar para a loja
             </Link>

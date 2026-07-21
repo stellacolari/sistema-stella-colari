@@ -127,7 +127,7 @@ export default function BuscaLojaClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f0e8] text-[#27251f]">
+    <main className="min-h-screen bg-white text-[#27251f]">
       <section className="border-b border-[#27251f]/20 px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
@@ -177,7 +177,7 @@ export default function BuscaLojaClient({
                 <Link
                   key={busca}
                   href={`/loja/busca?q=${encodeURIComponent(busca)}`}
-                  className="border border-[#27251f]/20 px-3 py-1.5 text-xs font-medium text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#ebe5da]"
+                  className="border border-[#27251f]/20 px-3 py-1.5 text-xs font-medium text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#f3f3f1]"
                 >
                   {busca}
                 </Link>
@@ -261,7 +261,7 @@ export default function BuscaLojaClient({
                     <Link
                       key={sugestao}
                       href={`/loja/busca?q=${encodeURIComponent(sugestao)}`}
-                      className="border border-[#27251f]/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#ebe5da]"
+                      className="border border-[#27251f]/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#f3f3f1]"
                     >
                       {sugestao}
                     </Link>

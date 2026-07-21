@@ -195,7 +195,7 @@
   gap: 0.5rem;
   border: 1px solid rgb(24 32 34 / 18%);
   border-radius: 0;
-  background: #f6f3ec;
+  background: #fff;
   padding: 0.4rem 0.65rem;
   color: #343938;
   font-size: 0.65rem;
@@ -254,7 +254,7 @@
   max-height: 90vh;
   overflow-y: auto;
   border-top: 1px solid #1b2021;
-  background: #f8f6f0;
+  background: #fff;
   padding: 1rem 1.25rem 1.25rem;
   box-shadow: 0 -20px 60px rgb(0 0 0 / 13%);
 }
@@ -302,7 +302,7 @@
 
 .emptyState {
   border-block: 1px solid rgb(24 32 34 / 16%);
-  background: #f8f6f0;
+  background: #fff;
   padding: 3.75rem 1.5rem;
   text-align: center;
 }

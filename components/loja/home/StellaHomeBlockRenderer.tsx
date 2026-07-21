@@ -695,7 +695,7 @@ function StellaProductCard({
         textoBotao={getStringWithDefault(config, "textoBotao", "Ver peça")}
         trackingOrigem="home-stella"
         imageLoading="lazy"
-        exibirImagemHover={false}
+        exibirImagemHover
       />
     </div>
   );
@@ -751,7 +751,7 @@ function StellaNewArrivals({
   const descricao = getStringWithDefault(config, ["descricao", "subtitulo", "texto"]);
 
   return (
-    <RevealSection className={`${styles.productsSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
+    <RevealSection className={`${styles.productsSection} bg-white px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
         <SectionHeading eyebrow="Seleção atual" titulo={titulo} descricao={descricao} />
         <CarouselScrollArea
@@ -766,7 +766,7 @@ function StellaNewArrivals({
           {itens.map((produto) => (
             <div
               key={produto.id}
-              className="w-[78vw] max-w-[360px] shrink-0 snap-start bg-[#f7f5ef] sm:w-[43vw] lg:w-[24vw]"
+              className="w-[78vw] max-w-[360px] shrink-0 snap-start bg-white sm:w-[43vw] lg:w-[24vw]"
             >
               <StellaProductCard produto={produto} config={config} />
             </div>
@@ -837,8 +837,8 @@ function StellaEditorialFeature({
   const sectionClass = gift
     ? "bg-[#171916] text-white"
     : story
-      ? "bg-[#dcd8cd] text-[#171916]"
-      : "bg-[#e8e5dc] text-[#171916]";
+      ? "bg-[#f2f2f0] text-[#171916]"
+      : "bg-[#f6f6f4] text-[#171916]";
 
   return (
     <RevealSection className={`${styles.editorialFeature} border-y border-black/15 ${sectionClass}`}>
@@ -954,7 +954,7 @@ function StellaCategoryDiscovery({
 
   if (compact) {
     return (
-      <RevealSection className={`${styles.categoriesCompact} bg-[#edeae2] px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
+      <RevealSection className={`${styles.categoriesCompact} bg-[#f5f5f3] px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
         <div className="mx-auto max-w-[100rem]">
           <SectionHeading eyebrow="Descobrir" titulo={titulo} descricao={descricao} />
           <div className="mt-10 grid grid-cols-2 gap-px border border-[#c5c2b9] bg-[#c5c2b9] md:mt-14 md:grid-cols-4">
@@ -962,7 +962,7 @@ function StellaCategoryDiscovery({
               <SmartLink
                 key={item.id}
                 href={item.href}
-                className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-[#edeae2]`}
+                className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-[#f5f5f3]`}
                 ariaLabel={`Explorar categoria ${item.titulo}`}
               >
                 <Media
@@ -987,7 +987,7 @@ function StellaCategoryDiscovery({
   }
 
   return (
-    <RevealSection className={`${styles.categoriesSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+    <RevealSection className={`${styles.categoriesSection} bg-white px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
         <SectionHeading eyebrow="Navegue" titulo={titulo} descricao={descricao} />
         <div
@@ -997,7 +997,7 @@ function StellaCategoryDiscovery({
             <SmartLink
               key={item.id}
               href={item.href}
-              className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-[#f7f5ef]`}
+              className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-white`}
               ariaLabel={`Explorar categoria ${item.titulo}`}
             >
               <div className="relative overflow-hidden">
@@ -1038,7 +1038,7 @@ function StellaFeaturedSelection({
   if (itens.length === 0) return null;
 
   return (
-    <RevealSection className={`${styles.featuredSection} bg-[#dcd8cd] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+    <RevealSection className={`${styles.featuredSection} bg-[#f2f2f0] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
         <SectionHeading
           eyebrow="Curadoria"
@@ -1049,7 +1049,7 @@ function StellaFeaturedSelection({
           <StellaProductCard produto={itens[0]} config={config} />
           <div className="grid grid-cols-2 gap-px bg-black/20">
             {itens.slice(1).map((produto) => (
-              <div key={produto.id} className="bg-[#dcd8cd]">
+              <div key={produto.id} className="bg-[#f2f2f0]">
                 <StellaProductCard produto={produto} config={config} />
               </div>
             ))}
@@ -1067,7 +1067,7 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
   if (cards.length === 0) return null;
 
   return (
-    <RevealSection className={`${styles.trustSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+    <RevealSection className={`${styles.trustSection} bg-white px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
       <div className="mx-auto grid max-w-[100rem] gap-12 border-t border-[#c5c2b9] pt-6 lg:grid-cols-[.8fr_1.2fr] lg:gap-20">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#62645e]">
@@ -1089,7 +1089,7 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
         </div>
         <div className="grid gap-px border border-[#c5c2b9] bg-[#c5c2b9] sm:grid-cols-2">
           {cards.map((card, index) => (
-            <article key={card.id} className="bg-[#f7f5ef] p-7 md:min-h-64 md:p-9">
+            <article key={card.id} className="bg-white p-7 md:min-h-64 md:p-9">
               <p className="text-[10px] font-semibold tracking-[0.24em] text-[#62645e]">
                 {String(index + 1).padStart(2, "0")}
               </p>
@@ -1149,7 +1149,7 @@ function StellaEditorialGallery({
   const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
 
   return (
-    <RevealSection className={`${styles.gallerySection} bg-[#dcd8cd] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+    <RevealSection className={`${styles.gallerySection} bg-[#f2f2f0] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
         <SectionHeading
           eyebrow="Atmosfera"
@@ -1216,7 +1216,7 @@ function StellaEditorialGallery({
               <div
                 key={itemId}
                 data-stella-editorial-gallery-item-id={itemId}
-                className={`${styles.mediaGroup} min-w-0 bg-[#dcd8cd] ${quantidade <= 2 ? "" : index === 0 ? "md:col-span-3" : "md:col-span-1"}`}
+                className={`${styles.mediaGroup} min-w-0 bg-[#f2f2f0] ${quantidade <= 2 ? "" : index === 0 ? "md:col-span-3" : "md:col-span-1"}`}
               >
                 {href ? (
                   <SmartLink href={href} className="block h-full" ariaLabel={label}>
@@ -1260,7 +1260,7 @@ function StellaInlineCta({ bloco }: { bloco: StellaHomeBlock }) {
   }
 
   return (
-    <RevealSection className="bg-[#f7f5ef] px-5 pb-20 text-center text-[#171916] sm:px-7 md:pb-28 lg:px-12">
+    <RevealSection className="bg-white px-5 pb-20 text-center text-[#171916] sm:px-7 md:pb-28 lg:px-12">
       <SmartLink
         href={href}
         className="inline-flex min-h-11 items-center gap-4 border-b border-[#171916]/55 pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#171916] hover:border-[#171916]"

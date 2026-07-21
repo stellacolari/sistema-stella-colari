@@ -903,7 +903,7 @@ export default function MenuPublicoLoja({
         } ${
           headerTransparenteAtivo
             ? "border-transparent bg-transparent"
-            : "border-b border-[#1b1b18]/15 bg-[#f7f4ed]/95 text-[#1b1b18] backdrop-blur-md"
+            : "border-b border-[#1b1b18]/15 bg-white/95 text-[#1b1b18] backdrop-blur-md"
         }`}
       >
         <div className="mx-auto grid h-16 max-w-[1600px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-[72px] sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:px-6 lg:h-20 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-10">
@@ -1047,7 +1047,7 @@ export default function MenuPublicoLoja({
             id="busca-publica"
             role="search"
             aria-label="Busca de produtos"
-            className="absolute left-0 right-0 top-full z-50 border-y border-[#1b1b18]/15 bg-[#f7f4ed] px-4 py-5 text-[#1b1b18] sm:px-6 sm:py-7 lg:px-10"
+            className="absolute left-0 right-0 top-full z-50 border-y border-[#1b1b18]/15 bg-white px-4 py-5 text-[#1b1b18] sm:px-6 sm:py-7 lg:px-10"
           >
             <div className="mx-auto max-w-4xl">
               <div className="flex items-center justify-between gap-3">
@@ -1230,7 +1230,7 @@ export default function MenuPublicoLoja({
             aria-modal="true"
             aria-label="Menu principal"
             tabIndex={-1}
-            className={`absolute left-0 top-0 h-full w-[94vw] max-w-[480px] border-r border-[#1b1b18]/20 bg-[#f7f4ed] text-[#1b1b18] transition-transform duration-300 ease-out motion-reduce:duration-0 lg:w-[46vw] lg:max-w-[520px] xl:w-[560px] xl:max-w-[560px] ${
+            className={`absolute left-0 top-0 h-full w-[94vw] max-w-[480px] border-r border-[#1b1b18]/20 bg-white text-[#1b1b18] transition-transform duration-300 ease-out motion-reduce:duration-0 lg:w-[46vw] lg:max-w-[520px] xl:w-[560px] xl:max-w-[560px] ${
               menuVisivel ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -1261,7 +1261,7 @@ export default function MenuPublicoLoja({
                 <div className="border-b border-[#1b1b18]/15 py-5 lg:hidden">
                   <div className="grid grid-cols-2 gap-px bg-[#1b1b18]/15">
                     {mostrarPerfil && (
-                      <div className="flex items-center gap-3 bg-[#f7f4ed] px-3 py-3.5">
+                      <div className="flex items-center gap-3 bg-white px-3 py-3.5">
                         <PerfilClienteLink className="h-9 w-9" />
                         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#1b1b18]">
                           Minha conta
@@ -1273,7 +1273,7 @@ export default function MenuPublicoLoja({
                       <Link
                         href="/loja/favoritos"
                         onClick={fecharMenu}
-                        className="flex items-center gap-3 bg-[#f7f4ed] px-3 py-3.5"
+                        className="flex items-center gap-3 bg-white px-3 py-3.5"
                       >
                         <Heart className="h-5 w-5 stroke-[1.5] text-[#1b1b18]" />
                         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#1b1b18]">
@@ -1286,7 +1286,7 @@ export default function MenuPublicoLoja({
                       <Link
                         href="/loja/carrinho"
                         onClick={fecharMenu}
-                        className="flex items-center gap-3 bg-[#f7f4ed] px-3 py-3.5"
+                        className="flex items-center gap-3 bg-white px-3 py-3.5"
                       >
                         <ShoppingBag className="h-5 w-5 stroke-[1.5] text-[#1b1b18]" />
                         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#1b1b18]">
@@ -1478,7 +1478,7 @@ export default function MenuPublicoLoja({
                     </div>
                   ) : (
                     <div
-                      className="h-[42vh] min-h-64 w-full bg-[radial-gradient(circle_at_30%_20%,#f7f4ed_0%,#ebe7de_44%,#d8e4e5_100%)]"
+                      className="h-[42vh] min-h-64 w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f3f3f1_48%,#e4edef_100%)]"
                       aria-hidden="true"
                     />
                   )}
