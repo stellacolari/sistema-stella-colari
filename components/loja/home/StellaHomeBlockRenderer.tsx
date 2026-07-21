@@ -238,10 +238,10 @@ function getHeroTextAlignClass(alinhamento: string) {
 }
 
 function getHeroContentWidthClass(largura: string) {
-  if (largura === "COMPACTA") return "max-w-lg";
-  if (largura === "LARGA") return "max-w-4xl";
+  if (largura === "COMPACTA") return "max-w-3xl";
+  if (largura === "LARGA") return "max-w-[90rem]";
 
-  return "max-w-3xl";
+  return "max-w-6xl";
 }
 
 function getHeroContentVisibilityClass(
@@ -348,7 +348,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
 
   return (
     <section
-      className={`relative isolate overflow-hidden bg-[#183743] text-white ${getHeroHeightClass(config.altura)}`}
+      className={`${styles.hero} relative isolate overflow-hidden bg-[#171916] text-white ${getHeroHeightClass(config.altura)}`}
       aria-labelledby={`stella-hero-${bloco.id}`}
     >
       <div className="absolute inset-0 -z-20">
@@ -385,7 +385,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
       {slide.overlay.ativo ? (
         <div className="absolute inset-0 -z-10" style={overlayStyle} />
       ) : null}
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(10,29,36,.02),rgba(10,29,36,.58))]" />
+      <div className={`${styles.heroShade} absolute inset-0 -z-10`} />
 
       {!hasVisibleTitle ? (
         <h1 id={`stella-hero-${bloco.id}`} className="sr-only">
@@ -395,15 +395,15 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
 
       {slide.conteudo.ativo ? (
         <div
-          className={`mx-auto min-h-[inherit] w-full max-w-7xl px-5 py-24 sm:px-6 md:py-28 lg:px-8 ${getHeroContentVisibilityClass(desktopPosition, mobilePosition)} ${getHeroPositionClass(mobilePosition, "mobile")} ${getHeroPositionClass(desktopPosition, "desktop")}`}
+          className={`${styles.heroContent} mx-auto min-h-[inherit] w-full max-w-[100rem] px-5 pb-20 pt-24 sm:px-7 md:pb-24 md:pt-28 lg:px-12 ${config.headerTransparente ? "lg:pt-36" : "lg:pt-28"} ${getHeroContentVisibilityClass(desktopPosition, mobilePosition)} ${getHeroPositionClass(mobilePosition, "mobile")} ${getHeroPositionClass(desktopPosition, "desktop")}`}
         >
           <div
-            className={`${getHeroContentWidthClass(slide.conteudo.largura)} ${getHeroTextAlignClass(slide.conteudo.alinhamento)}`}
+            className={`${styles.heroCopy} ${getHeroContentWidthClass(slide.conteudo.largura)} ${getHeroTextAlignClass(slide.conteudo.alinhamento)}`}
           >
             {slide.conteudo.mostrarEyebrow && eyebrow ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:eyebrow`}
-                className="text-xs font-semibold uppercase tracking-[0.28em] text-white/78"
+                className={`${styles.heroEyebrow} text-xs font-medium uppercase text-white/80`}
                 style={getHeroElementStyle(slide, "eyebrow")}
               >
                 {eyebrow}
@@ -414,7 +414,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
               <h1
                 id={`stella-hero-${bloco.id}`}
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:titulo`}
-                className="mt-4 max-w-[12ch] text-[clamp(2.8rem,7.2vw,7.6rem)] font-medium leading-[0.92] tracking-[-0.045em] text-white"
+                className={`${styles.heroTitle} mt-5 max-w-[18ch] text-white`}
                 style={getHeroElementStyle(slide, "titulo")}
               >
                 {titulo}
@@ -424,7 +424,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
             {slide.conteudo.mostrarTexto && texto ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:texto`}
-                className="mt-6 max-w-xl text-base leading-7 text-white/84 md:text-lg"
+                className={`${styles.heroBody} mt-7 max-w-xl text-base text-white/86 md:text-lg`}
                 style={getHeroElementStyle(slide, "texto")}
               >
                 {texto}
@@ -432,7 +432,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
             ) : null}
 
             {slide.conteudo.botoes.length > 0 ? (
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className={`${styles.heroActions} mt-9 flex flex-wrap gap-3`}>
                 {slide.conteudo.botoes.slice(0, 2).map((botao, index) => {
                   const href = getHeroHref(botao.linkTipo, botao.linkValor);
                   if (!botao.texto || !href) return null;
@@ -445,8 +445,8 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
                       ariaLabel={botao.abrirNovaAba ? `${botao.texto} (abre em nova aba)` : undefined}
                       className={
                         index === 0
-                          ? "inline-flex min-h-11 items-center justify-center bg-white px-6 text-sm font-semibold text-[#17343f] transition hover:bg-[#e7f2f6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-                          : "inline-flex min-h-11 items-center justify-center border border-white/70 px-6 text-sm font-semibold text-white transition hover:bg-white hover:text-[#17343f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                          ? `${styles.heroPrimaryButton} inline-flex min-h-12 items-center justify-center bg-white px-7 text-xs font-semibold uppercase text-[#171916] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`
+                          : `${styles.heroSecondaryButton} inline-flex min-h-12 items-center justify-center border border-white/70 px-7 text-xs font-semibold uppercase text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`
                       }
                       style={getHeroButtonStyle(botao)}
                     >
@@ -463,6 +463,11 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
           </div>
         </div>
       ) : null}
+
+      <div className={styles.heroFooter} aria-hidden="true">
+        <span>Stella Colari</span>
+        <span>↓</span>
+      </div>
     </section>
   );
 }
@@ -563,24 +568,24 @@ function StellaBrandValues({ bloco }: { bloco: StellaHomeBlock }) {
   if (cards.length === 0) return null;
 
   return (
-    <RevealSection className="border-b border-[#d9e2e5] bg-[#f6f7f4]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 px-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+    <RevealSection className={`${styles.brandValues} border-b border-[#cbc8bf] bg-[#f1efe8]`}>
+      <div className={`${styles.brandValuesGrid} mx-auto grid max-w-[100rem] grid-cols-1 px-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-4 lg:px-12`}>
         {cards.map((card, index) => (
           <article
             key={card.id}
-            className="border-b border-[#d9e2e5] py-7 sm:border-l sm:pl-6 lg:border-b-0 lg:py-8 first:sm:border-l-0 first:sm:pl-0"
+            className={`${styles.brandValueCard} border-b border-[#cbc8bf] py-7 sm:border-l sm:px-6 lg:border-b-0 lg:py-9 first:sm:border-l-0 first:sm:pl-0 last:sm:pr-0`}
           >
             <StellaBrandValueVisual card={card} index={index} />
-            <h2 className="mt-3 text-base font-semibold tracking-[-0.01em] text-[#142832]">
+            <h2 className={`${styles.brandValueTitle} mt-4 text-sm font-semibold uppercase text-[#171916]`}>
               {card.titulo}
             </h2>
             {card.texto ? (
-              <p className="mt-2 max-w-xs text-sm leading-6 text-slate-600">{card.texto}</p>
+              <p className="mt-2 max-w-xs text-sm leading-6 text-[#61635e]">{card.texto}</p>
             ) : null}
             {card.href && card.textoBotao ? (
               <SmartLink
                 href={card.href}
-                className="mt-4 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#245f76] underline-offset-4 hover:underline"
+                className="mt-4 inline-flex min-h-11 items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#171916] underline-offset-4 hover:underline"
               >
                 {card.textoBotao}
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -706,21 +711,21 @@ function SectionHeading({
   descricao?: string;
 }) {
   return (
-    <div className="grid gap-5 md:grid-cols-[180px_minmax(0,1fr)] md:items-end">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#245f76]">
+    <div className={`${styles.sectionHeading} grid gap-6 border-t border-current/20 pt-5 md:grid-cols-[minmax(140px,0.35fr)_minmax(0,1fr)] md:items-start`}>
+      <p className={`${styles.sectionEyebrow} text-[10px] font-semibold uppercase text-current/70`}>
         {eyebrow}
       </p>
       <div>
         <h2
           data-stella-inline-field="titulo"
-          className="max-w-[18ch] text-[clamp(2rem,4vw,4.4rem)] font-medium leading-[0.98] tracking-[-0.035em] text-[#132b35]"
+          className={`${styles.sectionTitle} max-w-[16ch] text-[clamp(2.4rem,5.2vw,6.4rem)] font-medium uppercase text-current`}
         >
           {titulo}
         </h2>
         {descricao ? (
           <p
             data-stella-inline-field="subtitulo"
-            className="mt-4 max-w-xl text-sm leading-7 text-slate-600 md:text-base"
+            className={`${styles.sectionDescription} mt-5 max-w-xl text-sm text-current/65 md:text-base`}
           >
             {descricao}
           </p>
@@ -746,8 +751,8 @@ function StellaNewArrivals({
   const descricao = getStringWithDefault(config, ["descricao", "subtitulo", "texto"]);
 
   return (
-    <RevealSection className="bg-white px-5 py-20 sm:px-6 md:py-28 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <RevealSection className={`${styles.productsSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
+      <div className="mx-auto max-w-[100rem]">
         <SectionHeading eyebrow="Seleção atual" titulo={titulo} descricao={descricao} />
         <CarouselScrollArea
           enabled
@@ -756,12 +761,12 @@ function StellaNewArrivals({
           arrowStyle="MINIMALISTA"
           scrollMode="ITEM"
           itemLabel="produtos"
-          containerClassName="mt-10 flex snap-x gap-5 overflow-x-auto scroll-smooth pb-3 md:mt-14 md:gap-6"
+          containerClassName="mt-10 flex snap-x gap-px overflow-x-auto scroll-smooth bg-[#c9c7bf] pb-px md:mt-14"
         >
           {itens.map((produto) => (
             <div
               key={produto.id}
-              className="w-[76vw] max-w-[310px] shrink-0 snap-start sm:w-[42vw] lg:w-[24vw]"
+              className="w-[78vw] max-w-[360px] shrink-0 snap-start bg-[#f7f5ef] sm:w-[43vw] lg:w-[24vw]"
             >
               <StellaProductCard produto={produto} config={config} />
             </div>
@@ -830,19 +835,19 @@ function StellaEditorialFeature({
   const gift = variant === "gift";
   const story = variant === "story";
   const sectionClass = gift
-    ? "bg-[#173946] text-white"
+    ? "bg-[#171916] text-white"
     : story
-      ? "bg-[#eee7df] text-[#142832]"
-      : "bg-[#eef3f3] text-[#142832]";
+      ? "bg-[#dcd8cd] text-[#171916]"
+      : "bg-[#e8e5dc] text-[#171916]";
 
   return (
-    <RevealSection className={sectionClass}>
+    <RevealSection className={`${styles.editorialFeature} border-y border-black/15 ${sectionClass}`}>
       <div
-        className={`grid min-h-[620px] ${content.exibirMidia ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}
+        className={`grid min-h-[680px] ${content.exibirMidia ? "lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,.92fr)]" : "lg:grid-cols-1"}`}
       >
         {content.exibirMidia ? (
           <div
-            className={`${styles.mediaGroup} min-h-[430px] overflow-hidden lg:min-h-[720px] ${content.imagemPrimeiro ? "lg:order-1" : "lg:order-2"}`}
+            className={`${styles.mediaGroup} min-h-[500px] overflow-hidden lg:min-h-[820px] ${content.imagemPrimeiro ? "lg:order-1" : "lg:order-2"}`}
           >
             <Media
               desktop={content.desktop}
@@ -854,18 +859,18 @@ function StellaEditorialFeature({
         ) : null}
 
         <div
-          className={`flex items-center px-5 py-16 sm:px-10 md:px-14 lg:py-24 xl:px-20 ${content.imagemPrimeiro ? "lg:order-2" : "lg:order-1"}`}
+          className={`${styles.editorialCopyColumn} flex items-center border-black/15 px-5 py-18 sm:px-10 md:px-14 lg:border-l lg:py-24 xl:px-20 ${content.imagemPrimeiro ? "lg:order-2" : "lg:order-1 lg:border-l-0 lg:border-r"}`}
         >
           <div className="max-w-xl">
             <p
-              className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${gift ? "text-white/85" : "text-[#245f76]"}`}
+              className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${gift ? "text-white/70" : "text-[#555750]"}`}
             >
               {gift ? "Presentes" : story ? "História" : "Editorial Stella"}
             </p>
             {hasTitulo ? (
               <h2
                 data-stella-inline-field="titulo"
-                className="mt-5 text-[clamp(2.25rem,5vw,5.6rem)] font-medium leading-[0.94] tracking-[-0.04em]"
+                className={`${styles.editorialTitle} mt-6 text-[clamp(2.65rem,5.8vw,7rem)] font-medium uppercase`}
               >
                 {content.titulo}
               </h2>
@@ -873,7 +878,7 @@ function StellaEditorialFeature({
             {hasTexto ? (
               <p
                 data-stella-inline-field="texto"
-                className={`mt-7 max-w-lg text-base leading-8 ${gift ? "text-white/88" : "text-slate-600"}`}
+                className={`${styles.editorialBody} mt-8 max-w-lg text-base ${gift ? "text-white/72" : "text-[#595b56]"}`}
               >
                 {content.texto}
               </p>
@@ -881,7 +886,7 @@ function StellaEditorialFeature({
             {hasBotao ? (
               <SmartLink
                 href={content.href}
-                className={`mt-9 inline-flex min-h-11 items-center gap-3 border-b pb-1 text-sm font-semibold transition ${gift ? "border-white/70 text-white hover:border-white" : "border-[#2e7b99]/60 text-[#173946] hover:border-[#2e7b99]"}`}
+                className={`mt-10 inline-flex min-h-11 items-center gap-4 border-b pb-1 text-xs font-semibold uppercase tracking-[0.14em] transition ${gift ? "border-white/55 text-white hover:border-white" : "border-[#171916]/50 text-[#171916] hover:border-[#171916]"}`}
               >
                 <span data-stella-inline-field="textoBotao">{content.textoBotao}</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -949,15 +954,15 @@ function StellaCategoryDiscovery({
 
   if (compact) {
     return (
-      <RevealSection className="bg-[#f7f5f0] px-5 py-18 sm:px-6 md:py-24 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+      <RevealSection className={`${styles.categoriesCompact} bg-[#edeae2] px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
+        <div className="mx-auto max-w-[100rem]">
           <SectionHeading eyebrow="Descobrir" titulo={titulo} descricao={descricao} />
-          <div className="mt-10 grid grid-cols-2 gap-3 md:mt-14 md:grid-cols-4 md:gap-5">
-            {itens.map((item) => (
+          <div className="mt-10 grid grid-cols-2 gap-px border border-[#c5c2b9] bg-[#c5c2b9] md:mt-14 md:grid-cols-4">
+            {itens.map((item, index) => (
               <SmartLink
                 key={item.id}
                 href={item.href}
-                className={`${styles.mediaGroup} group block min-w-0`}
+                className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-[#edeae2]`}
                 ariaLabel={`Explorar categoria ${item.titulo}`}
               >
                 <Media
@@ -966,8 +971,11 @@ function StellaCategoryDiscovery({
                   alt={item.alt}
                   className="aspect-[4/5] w-full"
                 />
-                <div className="flex items-center justify-between gap-3 border-b border-[#b9c9cf] py-3 text-sm font-semibold text-[#173946]">
-                  <span>{item.titulo}</span>
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-5 text-sm font-semibold uppercase text-[#171916]">
+                  <span className="text-[10px] font-medium tracking-[0.18em] text-[#666861]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="tracking-[0.08em]">{item.titulo}</span>
                   <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
                 </div>
               </SmartLink>
@@ -979,17 +987,17 @@ function StellaCategoryDiscovery({
   }
 
   return (
-    <RevealSection className="bg-white px-5 py-20 sm:px-6 md:py-28 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <RevealSection className={`${styles.categoriesSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+      <div className="mx-auto max-w-[100rem]">
         <SectionHeading eyebrow="Navegue" titulo={titulo} descricao={descricao} />
         <div
-          className={`scrollbar-hidden mt-11 grid grid-flow-col auto-cols-[78%] gap-4 overflow-x-auto pb-3 md:mt-16 md:grid-flow-row md:auto-cols-auto md:overflow-visible ${itens.length === 3 ? "md:grid-cols-4" : "md:grid-cols-6"}`}
+          className="scrollbar-hidden mt-12 grid grid-flow-col auto-cols-[84%] gap-px overflow-x-auto border-y border-[#c5c2b9] bg-[#c5c2b9] pb-px md:mt-20 md:grid-flow-row md:auto-cols-auto md:grid-cols-4 md:overflow-visible"
         >
           {itens.map((item, index) => (
             <SmartLink
               key={item.id}
               href={item.href}
-              className={`${styles.mediaGroup} group block min-w-0 ${index === 0 ? (itens.length === 3 ? "md:col-span-2" : "md:col-span-3") : "md:col-span-1"}`}
+              className={`${styles.mediaGroup} ${styles.categoryCard} group block min-w-0 bg-[#f7f5ef]`}
               ariaLabel={`Explorar categoria ${item.titulo}`}
             >
               <div className="relative overflow-hidden">
@@ -997,17 +1005,17 @@ function StellaCategoryDiscovery({
                   desktop={item.desktop}
                   mobile={item.mobile}
                   alt={item.alt}
-                  className={`w-full ${index === 0 ? "aspect-[7/6] md:aspect-[8/7]" : "aspect-[4/5] md:aspect-[4/5]"}`}
+                  className="aspect-[4/5] w-full"
                 />
-                <span className="absolute left-4 top-4 bg-white/92 px-3 py-1.5 text-[10px] font-semibold tracking-[0.18em] text-[#173946]">
+                <span className="absolute left-4 top-4 border border-white/45 bg-black/20 px-3 py-1.5 text-[10px] font-semibold tracking-[0.2em] text-white backdrop-blur-sm">
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-4 py-4">
-                <h3 className="text-xl font-medium tracking-[-0.025em] text-[#142832] md:text-2xl">
+              <div className="flex items-center justify-between gap-4 px-4 py-5 md:px-5 md:py-6">
+                <h3 className={`${styles.categoryTitle} text-xl font-medium uppercase text-[#171916] md:text-2xl`}>
                   {item.titulo}
                 </h3>
-                <ArrowRight className="h-5 w-5 shrink-0 text-[#2e7b99] transition group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden="true" />
+                <ArrowRight className="h-5 w-5 shrink-0 text-[#171916] transition group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden="true" />
               </div>
             </SmartLink>
           ))}
@@ -1030,18 +1038,20 @@ function StellaFeaturedSelection({
   if (itens.length === 0) return null;
 
   return (
-    <RevealSection className="bg-[#f6f7f4] px-5 py-20 sm:px-6 md:py-28 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <RevealSection className={`${styles.featuredSection} bg-[#dcd8cd] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+      <div className="mx-auto max-w-[100rem]">
         <SectionHeading
           eyebrow="Curadoria"
           titulo={getStringWithDefault(config, "titulo", "Destaques")}
           descricao={getStringWithDefault(config, ["descricao", "subtitulo"])}
         />
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1.08fr_.92fr] lg:gap-10">
+        <div className="mt-12 grid gap-px bg-black/20 lg:grid-cols-[1.08fr_.92fr]">
           <StellaProductCard produto={itens[0]} config={config} />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-6">
+          <div className="grid grid-cols-2 gap-px bg-black/20">
             {itens.slice(1).map((produto) => (
-              <StellaProductCard key={produto.id} produto={produto} config={config} />
+              <div key={produto.id} className="bg-[#dcd8cd]">
+                <StellaProductCard produto={produto} config={config} />
+              </div>
             ))}
           </div>
         </div>
@@ -1057,15 +1067,15 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
   if (cards.length === 0) return null;
 
   return (
-    <RevealSection className="bg-white px-5 py-20 sm:px-6 md:py-28 lg:px-8">
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-20">
+    <RevealSection className={`${styles.trustSection} bg-[#f7f5ef] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+      <div className="mx-auto grid max-w-[100rem] gap-12 border-t border-[#c5c2b9] pt-6 lg:grid-cols-[.8fr_1.2fr] lg:gap-20">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#245f76]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#62645e]">
             Informações reais
           </p>
           <h2
             data-stella-inline-field="titulo"
-            className="mt-5 text-[clamp(2.2rem,4.5vw,5rem)] font-medium leading-[0.95] tracking-[-0.04em] text-[#142832]"
+            className={`${styles.trustTitle} mt-6 text-[clamp(2.6rem,5vw,6.2rem)] font-medium uppercase text-[#171916]`}
           >
             {getStringWithDefault(
               config,
@@ -1073,26 +1083,26 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
               "Informações para sua compra"
             )}
           </h2>
-          <p className="mt-6 max-w-md text-base leading-8 text-slate-600">
+          <p className="mt-7 max-w-md text-base leading-8 text-[#5b5d57]">
             {getStringWithDefault(config, ["descricao", "subtitulo"])}
           </p>
         </div>
-        <div className="grid gap-px bg-[#cfdbde] sm:grid-cols-2">
+        <div className="grid gap-px border border-[#c5c2b9] bg-[#c5c2b9] sm:grid-cols-2">
           {cards.map((card, index) => (
-            <article key={card.id} className="bg-[#f6f7f4] p-7 md:p-9">
-              <p className="text-[11px] font-semibold tracking-[0.22em] text-[#245f76]">
+            <article key={card.id} className="bg-[#f7f5ef] p-7 md:min-h-64 md:p-9">
+              <p className="text-[10px] font-semibold tracking-[0.24em] text-[#62645e]">
                 {String(index + 1).padStart(2, "0")}
               </p>
-              <h3 className="mt-7 text-xl font-medium tracking-[-0.025em] text-[#142832]">
+              <h3 className="mt-8 text-xl font-medium uppercase tracking-[-0.015em] text-[#171916]">
                 {card.titulo}
               </h3>
               {card.texto ? (
-                <p className="mt-3 text-sm leading-7 text-slate-600">{card.texto}</p>
+                <p className="mt-3 text-sm leading-7 text-[#5b5d57]">{card.texto}</p>
               ) : null}
               {card.href && card.textoBotao ? (
                 <SmartLink
                   href={card.href}
-                  className="mt-6 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#245f76] underline-offset-4 hover:underline"
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#171916] underline-offset-4 hover:underline"
                 >
                   {card.textoBotao}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1139,15 +1149,15 @@ function StellaEditorialGallery({
   const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
 
   return (
-    <RevealSection className="bg-[#f5f2ed] px-5 py-20 sm:px-6 md:py-28 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <RevealSection className={`${styles.gallerySection} bg-[#dcd8cd] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
+      <div className="mx-auto max-w-[100rem]">
         <SectionHeading
           eyebrow="Atmosfera"
           titulo={getStringWithDefault(config, "titulo", "Galeria editorial")}
           descricao={getStringWithDefault(config, "descricao")}
         />
         <div
-          className={`scrollbar-hidden mt-11 grid grid-flow-col auto-cols-[82%] gap-3 overflow-x-auto pb-3 md:mt-16 md:grid-flow-row md:auto-cols-auto md:overflow-visible ${quantidade === 1 ? "md:grid-cols-1" : quantidade === 2 ? "md:grid-cols-2" : "md:grid-cols-6"}`}
+          className={`scrollbar-hidden mt-12 grid grid-flow-col auto-cols-[85%] gap-px overflow-x-auto border-y border-[#aaa79f] bg-[#aaa79f] pb-px md:mt-20 md:grid-flow-row md:auto-cols-auto md:overflow-visible ${quantidade === 1 ? "md:grid-cols-1" : quantidade === 2 ? "md:grid-cols-2" : "md:grid-cols-6"}`}
         >
           {itens.map((item, index) => {
             const itemId = getString(item, "id", `galeria-${index + 1}`);
@@ -1206,7 +1216,7 @@ function StellaEditorialGallery({
               <div
                 key={itemId}
                 data-stella-editorial-gallery-item-id={itemId}
-                className={`${styles.mediaGroup} min-w-0 ${quantidade <= 2 ? "" : index === 0 ? "md:col-span-3" : "md:col-span-1"}`}
+                className={`${styles.mediaGroup} min-w-0 bg-[#dcd8cd] ${quantidade <= 2 ? "" : index === 0 ? "md:col-span-3" : "md:col-span-1"}`}
               >
                 {href ? (
                   <SmartLink href={href} className="block h-full" ariaLabel={label}>
@@ -1250,10 +1260,10 @@ function StellaInlineCta({ bloco }: { bloco: StellaHomeBlock }) {
   }
 
   return (
-    <RevealSection className="bg-white px-5 pb-20 text-center sm:px-6 md:pb-28 lg:px-8">
+    <RevealSection className="bg-[#f7f5ef] px-5 pb-20 text-center text-[#171916] sm:px-7 md:pb-28 lg:px-12">
       <SmartLink
         href={href}
-        className="inline-flex min-h-11 items-center gap-3 border-b border-[#2e7b99]/60 pb-1 text-sm font-semibold text-[#173946] hover:border-[#2e7b99]"
+        className="inline-flex min-h-11 items-center gap-4 border-b border-[#171916]/55 pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#171916] hover:border-[#171916]"
       >
         <span data-stella-inline-field="textoBotao">{texto}</span>
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -1292,16 +1302,15 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
   if (!hasTitulo && !hasTexto && !hasPrimario && !hasSecundario) return null;
 
   return (
-    <RevealSection className="relative overflow-hidden bg-[#2e7b99] px-5 py-20 text-white sm:px-6 md:py-28 lg:px-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,rgba(255,255,255,.16),transparent_27%),radial-gradient(circle_at_16%_88%,rgba(255,255,255,.1),transparent_30%)]" aria-hidden="true" />
-      <div className="relative mx-auto max-w-4xl text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white">
+    <RevealSection className={`${styles.finalCta} relative overflow-hidden border-y border-white/15 bg-[#171916] px-5 py-24 text-white sm:px-7 md:py-36 lg:px-12`}>
+      <div className="relative mx-auto max-w-[100rem] text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
           Stella Colari
         </p>
         {hasTitulo ? (
           <h2
             data-stella-inline-field="titulo"
-            className="mt-5 text-[clamp(2.4rem,6vw,6.2rem)] font-medium leading-[0.94] tracking-[-0.045em]"
+            className={`${styles.finalCtaTitle} mx-auto mt-7 max-w-[16ch] text-[clamp(3rem,8vw,9rem)] font-medium uppercase`}
           >
             {titulo}
           </h2>
@@ -1309,16 +1318,16 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
         {hasTexto ? (
           <p
             data-stella-inline-field="texto"
-            className="mx-auto mt-6 max-w-xl text-base leading-8 text-white"
+            className="mx-auto mt-8 max-w-xl text-base leading-8 text-white/70"
           >
             {texto}
           </p>
         ) : null}
-        <div className="mt-9 flex flex-wrap justify-center gap-3">
+        <div className="mt-11 flex flex-wrap justify-center gap-3">
           {hasPrimario ? (
             <SmartLink
               href={primarioHref}
-              className="inline-flex min-h-11 items-center bg-white px-6 text-sm font-semibold text-[#173946] hover:bg-[#e7f2f6]"
+              className="inline-flex min-h-12 items-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#171916] hover:bg-transparent hover:text-white"
             >
               <span data-stella-inline-field="textoBotao">{primarioTexto}</span>
             </SmartLink>
@@ -1326,7 +1335,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
           {hasSecundario ? (
             <SmartLink
               href={secundarioHref}
-              className="inline-flex min-h-11 items-center border border-white/70 px-6 text-sm font-semibold text-white hover:bg-white hover:text-[#173946]"
+              className="inline-flex min-h-12 items-center border border-white/55 px-7 text-xs font-semibold uppercase tracking-[0.14em] text-white hover:border-white hover:bg-white hover:text-[#171916]"
             >
               <span data-stella-inline-field="textoBotaoSecundario">{secundarioTexto}</span>
             </SmartLink>

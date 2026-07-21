@@ -1558,7 +1558,7 @@ export default function LojaPaginaBuilderClient({
       : null;
 
   return (
-    <div className="stella-storefront-render min-h-screen bg-white text-slate-950">
+    <div className="stella-storefront-render min-h-screen bg-[#f7f5ef] text-[#171916]">
       <a
         href="#conteudo-principal"
         className="fixed left-3 top-3 z-[100] -translate-y-24 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#245f76]"

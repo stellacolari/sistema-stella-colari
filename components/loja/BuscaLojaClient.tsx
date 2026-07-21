@@ -127,18 +127,18 @@ export default function BuscaLojaClient({
   }
 
   return (
-    <main className="bg-slate-50">
-      <section className="border-b border-slate-200 bg-white px-5 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#f4f0e8] text-[#27251f]">
+      <section className="border-b border-[#27251f]/20 px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] brand-text">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#70695e]">
                 Loja Stella Colari
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              <h1 className="mt-4 text-4xl font-normal uppercase leading-none tracking-[-0.04em] text-[#27251f] sm:text-6xl">
                 Busca
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-[#645e54] sm:text-base">
                 {termoInicial
                   ? `Resultados para "${termoInicial}"`
                   : "Encontre joias, acessorios e presentes."}
@@ -146,20 +146,20 @@ export default function BuscaLojaClient({
             </div>
 
             <form onSubmit={handleSubmit} className="relative">
-              <label className="flex h-14 items-center gap-3 border border-slate-300 bg-white px-4 transition focus-within:border-[var(--brand-blue)]">
-                <Search className="h-5 w-5 text-slate-400" />
+              <label className="flex h-14 items-center gap-3 border-b border-[#27251f] bg-transparent px-0 transition focus-within:border-[#7b7161]">
+                <Search className="h-5 w-5 text-[#70695e]" />
                 <input
                   value={termo}
                   onChange={(event) => setTermo(event.target.value)}
                   placeholder="Buscar por anel dourado, presente ate 100..."
-                  className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-slate-400"
+                  className="h-full min-w-0 flex-1 bg-transparent text-base text-[#27251f] outline-none placeholder:text-[#8d8578]"
                 />
                 {termo ? (
                   <button
                     type="button"
                     onClick={() => setTermo("")}
                     aria-label="Limpar busca"
-                    className="text-slate-400 transition hover:text-slate-900"
+                    className="text-[#81796c] transition hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#27251f]"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -170,14 +170,14 @@ export default function BuscaLojaClient({
 
           {buscasRecentes.length > 0 ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#777064]">
                 Recentes
               </span>
               {buscasRecentes.map((busca) => (
                 <Link
                   key={busca}
                   href={`/loja/busca?q=${encodeURIComponent(busca)}`}
-                  className="border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                  className="border border-[#27251f]/20 px-3 py-1.5 text-xs font-medium text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#ebe5da]"
                 >
                   {busca}
                 </Link>
@@ -185,7 +185,7 @@ export default function BuscaLojaClient({
               <button
                 type="button"
                 onClick={limparHistorico}
-                className="px-2 py-1.5 text-xs font-semibold text-slate-400 transition hover:text-slate-900"
+                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#81796c] transition hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
               >
                 Limpar
               </button>
@@ -194,15 +194,15 @@ export default function BuscaLojaClient({
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
         {termoInicial && filtrosDetectados.precoMaximo ? (
-          <div className="mb-4 border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
+          <div className="mb-4 border-y border-[#27251f]/20 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#5f594f]">
             Preco maximo detectado: {moeda(filtrosDetectados.precoMaximo)}
           </div>
         ) : null}
 
         {termoInicial && filtrosDetectados.medida ? (
-          <div className="mb-4 border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600">
+          <div className="mb-4 border-y border-[#27251f]/20 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#5f594f]">
             Medida detectada: aro/tamanho {filtrosDetectados.medida}
           </div>
         ) : null}
@@ -210,10 +210,10 @@ export default function BuscaLojaClient({
         <div className="min-w-0 space-y-10">
           <section>
             <div className="mb-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#777064]">
                 Produtos encontrados
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-950">
+              <h2 className="mt-2 text-2xl font-normal uppercase tracking-[-0.02em] text-[#27251f]">
                 Resultados para compra
               </h2>
             </div>
@@ -249,10 +249,10 @@ export default function BuscaLojaClient({
             {sugestoes.length > 0 ? (
               <section>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] brand-text">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#777064]">
                     Sugestões
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold text-slate-950">
+                  <h2 className="mt-2 text-2xl font-normal uppercase tracking-[-0.02em] text-[#27251f]">
                     Continue buscando
                   </h2>
                 </div>
@@ -261,7 +261,7 @@ export default function BuscaLojaClient({
                     <Link
                       key={sugestao}
                       href={`/loja/busca?q=${encodeURIComponent(sugestao)}`}
-                      className="border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                      className="border border-[#27251f]/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#ebe5da]"
                     >
                       {sugestao}
                     </Link>

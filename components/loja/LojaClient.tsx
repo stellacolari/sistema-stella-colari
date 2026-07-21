@@ -12,6 +12,7 @@ import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import styles from "./LojaClient.module.css";
 
 export type LojaProdutoItem = ProdutoPublico;
 
@@ -89,21 +90,38 @@ function slugify(value: string) {
 
 function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
   const conteudo = (
-    <picture className="block w-full">
-      {banner.imagemMobileUrl && (
-        <source media="(max-width: 768px)" srcSet={banner.imagemMobileUrl} />
-      )}
+    <div className={styles.hero}>
+      <picture className={styles.heroPicture}>
+        {banner.imagemMobileUrl && (
+          <source media="(max-width: 768px)" srcSet={banner.imagemMobileUrl} />
+        )}
 
-      <img
-        src={banner.imagemUrl}
-        alt={banner.titulo || "Banner da loja"}
-        className="h-[420px] w-full object-cover md:h-auto md:min-h-0"
-      />
-    </picture>
+        <img
+          src={banner.imagemUrl}
+          alt={banner.titulo || "Banner da loja"}
+          className={styles.heroImage}
+        />
+      </picture>
+
+      {banner.titulo || banner.subtitulo ? (
+        <div className={styles.heroOverlay}>
+          <div className={styles.heroCopy}>
+            {banner.subtitulo ? (
+              <p className={styles.heroEyebrow}>{banner.subtitulo}</p>
+            ) : null}
+            {banner.titulo ? (
+              <h1 className={styles.heroTitle}>{banner.titulo}</h1>
+            ) : null}
+            {banner.linkUrl ? (
+              <span className={styles.heroAction}>Descobrir coleção</span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 
-  const wrapperClass =
-    "block w-full overflow-hidden max-md:h-[70vh] max-md:[&_img]:h-full max-md:[&_img]:object-cover";
+  const wrapperClass = styles.heroWrapper;
 
   if (banner.linkUrl) {
     return (
@@ -125,18 +143,17 @@ function MicroFaixaDiferenciais() {
   ];
 
   return (
-    <section className="mt-2 bg-[var(--brand-blue)] text-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-center gap-4 overflow-x-auto px-5 py-3 text-center sm:px-6 lg:px-8">
+    <section className={styles.valueStrip} aria-label="Atalhos da loja">
+      <div className={styles.valueStripInner}>
         {diferenciais.map((item, index) => (
           <div
             key={`${item}-${index}`}
-            className="flex shrink-0 items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.18em]"
+            className={styles.valueItem}
           >
-            <span className="whitespace-nowrap">{item}</span>
-
-            {index < diferenciais.length - 1 && (
-              <span className="h-1 w-1 rounded-full bg-white/70" />
-            )}
+            <span className={styles.valueIndex}>
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span>{item}</span>
           </div>
         ))}
       </div>
@@ -172,10 +189,11 @@ function SecaoProdutos({
 
   if (listaCompleta) {
     return (
-      <section className="relative px-5 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+      <section className={styles.catalogSection}>
+        <div className={styles.sectionInner}>
+          <div className={styles.sectionHeader}>
+            <p className={styles.sectionEyebrow}>Catálogo</p>
+            <h2 className={styles.sectionTitle}>
               {titulo}
             </h2>
           </div>
@@ -196,16 +214,17 @@ function SecaoProdutos({
   }
 
   return (
-    <section className="relative px-5 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+    <section className={styles.productSection}>
+      <div className={styles.sectionInner}>
+        <div className={styles.sectionHeader}>
+          <p className={styles.sectionEyebrow}>Seleção</p>
+          <h2 className={styles.sectionTitle}>
             {titulo}
           </h2>
         </div>
 
-        <div className="relative">
-          <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={styles.productGridWrapper}>
+          <div className={styles.productGrid}>
             {produtosDaPagina.map((produto, index) => (
               <ProdutoCardLoja
                 key={produto.id}
@@ -221,24 +240,24 @@ function SecaoProdutos({
               onClick={proximaPagina}
               disabled={paginaAtual >= totalPaginas - 1}
               aria-label={`Ver próximos produtos em ${titulo}`}
-              className="absolute right-0 top-[38%] z-10 hidden h-12 w-12 translate-x-1/2 -translate-y-1/2 items-center justify-center border brand-border bg-white/95 brand-text shadow-lg backdrop-blur transition hover:border-[var(--brand-blue)] hover:bg-[var(--brand-blue-soft)] disabled:pointer-events-none disabled:opacity-30 lg:flex"
+              className={styles.carouselNext}
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           )}
 
           {totalPaginas > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-2">
+            <div className={styles.pagination}>
               {Array.from({ length: totalPaginas }).map((_, index) => (
                 <button
                   key={`${titulo}-pagina-${index}`}
                   type="button"
                   onClick={() => setPaginaAtual(index)}
                   aria-label={`Ir para a página ${index + 1} da seção ${titulo}`}
-                  className={`h-2.5 transition ${
+                  className={`${styles.paginationDot} ${
                     index === paginaAtual
-                      ? "w-8 bg-[var(--brand-blue)]"
-                      : "w-2.5 bg-slate-300"
+                      ? styles.paginationDotActive
+                      : ""
                   }`}
                 />
               ))}
@@ -246,11 +265,11 @@ function SecaoProdutos({
           )}
 
           {deveLimitar && !mostrarTodos ? (
-            <div className="mt-8 flex justify-center">
+            <div className={styles.moreRow}>
               <button
                 type="button"
                 onClick={() => setMostrarTodos(true)}
-                className="brand-button-outline px-6 py-3 text-sm font-semibold"
+                className={styles.moreButton}
               >
                 Ver mais
               </button>
@@ -270,35 +289,35 @@ function ComprePorCategorias({
   if (categorias.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+    <section className={styles.categoriesSection}>
+      <div className={styles.categoriesHeader}>
+        <p className={styles.sectionEyebrow}>Universos Stella</p>
+        <h2 className={styles.sectionTitle}>
           Compre por categorias
         </h2>
       </div>
 
-      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3">
-        {categorias.slice(0, 6).map((item) => (
+      <div className={styles.categoriesGrid}>
+        {categorias.slice(0, 6).map((item, index) => (
           <Link
             key={item.id}
             href={`/loja/categoria/${encodeURIComponent(
               slugify(item.categoria)
             )}`}
-            className="group block text-center"
+            className={styles.categoryLink}
           >
-            <div className="relative aspect-square overflow-hidden bg-slate-100">
+            <div className={styles.categoryMedia}>
               <img
                 src={item.imagemUrl}
                 alt={item.titulo}
-                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                className={styles.categoryImage}
               />
-
-              <div className="pointer-events-none absolute inset-0 bg-black/5" />
             </div>
 
-            <p className="mt-3 text-sm font-medium tracking-wide text-slate-900 transition group-hover:text-[var(--brand-blue)]">
-              {item.titulo}
-            </p>
+            <div className={styles.categoryMeta}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <p>{item.titulo}</p>
+            </div>
           </Link>
         ))}
       </div>
@@ -310,42 +329,41 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
   if (!bloco) return null;
 
   return (
-    <section className="py-10 lg:py-12">
-      <div className="grid w-full bg-slate-50 lg:min-h-[420px] lg:grid-cols-2">
-        <div className="min-h-[260px] overflow-hidden bg-slate-100 sm:min-h-[320px] lg:min-h-[420px]">
+    <section className={styles.storySection}>
+      <div className={styles.storyGrid}>
+        <div className={styles.storyMedia}>
           {bloco.imagemUrl ? (
-            <div className="relative h-full w-full">
+            <div className={styles.storyMediaInner}>
               <img
                 src={bloco.imagemUrl}
                 alt={bloco.titulo}
-                className="h-full w-full object-cover"
+                className={styles.storyImage}
               />
-
-              <div className="pointer-events-none absolute inset-0 bg-black/5" />
             </div>
           ) : (
             <div
-              className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+              className={styles.storyPlaceholder}
               role="img"
               aria-label="Imagem da categoria ainda não disponível"
             />
           )}
         </div>
 
-        <div className="flex items-center px-6 py-10 sm:px-10 lg:px-14 lg:py-12">
-          <div className="max-w-xl">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+        <div className={styles.storyCopyColumn}>
+          <div className={styles.storyCopy}>
+            <p className={styles.storyEyebrow}>Stella Colari</p>
+            <h2 className={styles.storyTitle}>
               {bloco.titulo}
             </h2>
 
-            <p className="mt-4 text-base font-medium leading-7 text-slate-600">
+            <p className={styles.storyText}>
               {bloco.texto}
             </p>
 
             {bloco.textoBotao && bloco.linkBotao && (
               <Link
                 href={bloco.linkBotao}
-                className="mt-6 inline-flex brand-button px-6 py-3 text-sm font-semibold"
+                className={styles.storyButton}
               >
                 {bloco.textoBotao}
               </Link>
@@ -423,7 +441,7 @@ export default function LojaClient({
   }));
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className={styles.storefront}>
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -437,7 +455,7 @@ export default function LojaClient({
 
       <MicroFaixaDiferenciais />
 
-      <main>
+      <main className={styles.main}>
         <ComprePorCategorias categorias={categoriasHome} />
 
         {secoesComProdutos[0] && (
@@ -469,13 +487,13 @@ export default function LojaClient({
         )}
 
         {produtos.length === 0 && (
-          <section className="mx-auto max-w-7xl px-5 py-16 text-center sm:px-6 lg:px-8">
-            <div className="bg-white px-6 py-14 ring-1 ring-slate-200">
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+          <section className={styles.storeEmptySection}>
+            <div className={styles.storeEmpty}>
+              <h2 className={styles.storeEmptyTitle}>
                 {tituloVazio}
               </h2>
 
-              <p className="mt-3 text-sm font-medium text-slate-500">
+              <p className={styles.storeEmptyText}>
                 {textoVazio}
               </p>
             </div>

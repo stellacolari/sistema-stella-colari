@@ -47,9 +47,11 @@ function LinkRodape({
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
-      className="text-sm font-medium text-slate-600 transition hover:text-[var(--brand-blue)]"
+      className="group w-fit text-[12px] font-normal leading-6 text-[#f4f0e8]/65 transition hover:text-[#f4f0e8]"
     >
-      {children}
+      <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0_1px] bg-[position:0_100%] bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover:bg-[length:100%_1px]">
+        {children}
+      </span>
     </Link>
   );
 }
@@ -65,9 +67,11 @@ function BotaoRodape({
     <button
       type="button"
       onClick={onClick}
-      className="text-left text-sm font-medium text-slate-600 transition hover:text-[var(--brand-blue)]"
+      className="group w-fit text-left text-[12px] font-normal leading-6 text-[#f4f0e8]/65 transition hover:text-[#f4f0e8]"
     >
-      {children}
+      <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0_1px] bg-[position:0_100%] bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover:bg-[length:100%_1px]">
+        {children}
+      </span>
     </button>
   );
 }
@@ -102,149 +106,169 @@ export default function RodapePublicoLoja({
   );
 
   return (
-    <footer className="mt-12 border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] lg:px-8">
-        <div>
-          <Link href="/loja" className="inline-flex shrink-0 items-center">
-            <Image
-              src={LOGO_URL}
-              alt="Stella"
-              width={180}
-              height={48}
-              className="h-10 w-auto object-contain"
-            />
-          </Link>
-
-          <p className="mt-4 max-w-md text-sm font-medium leading-6 text-slate-500">
-            {config.rodape.textoInstitucional}
-          </p>
-
-          {redesAtivas.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {redesAtivas.map((rede) => (
-                <Link
-                  key={rede.id}
-                  href={rede.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                  {rede.nome}
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {selosAtivos.length > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              {selosAtivos.map((selo) => {
-                const imagem = (
-                  <img
-                    src={selo.imagemUrl}
-                    alt={selo.altText || selo.nome}
-                    className="h-10 max-w-[120px] object-contain"
-                  />
-                );
-
-                if (selo.linkUrl) {
-                  return (
-                    <Link
-                      key={selo.id}
-                      href={selo.linkUrl}
-                      target={isExternalUrl(selo.linkUrl) ? "_blank" : undefined}
-                      rel={isExternalUrl(selo.linkUrl) ? "noreferrer" : undefined}
-                      className="inline-flex rounded-xl border border-slate-200 bg-white px-3 py-2"
-                    >
-                      {imagem}
-                    </Link>
-                  );
-                }
-
-                return (
-                  <span
-                    key={selo.id}
-                    className="inline-flex rounded-xl border border-slate-200 bg-white px-3 py-2"
-                  >
-                    {imagem}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
-          {config.rodape.colunas.map((coluna, index) => (
-            <nav
-              key={coluna.id}
-              aria-label={`Rodapé — ${coluna.titulo}${index > 0 ? ` ${index + 1}` : ""}`}
-              className="space-y-3"
-            >
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
-                {coluna.titulo}
-              </p>
-
-              <div className="grid gap-2">
-                {coluna.links
-                  .filter((link) => link.ativo)
-                  .map((link) => (
-                    <LinkRodape
-                      key={link.id}
-                      href={link.href}
-                      novaAba={link.novaAba}
-                    >
-                      {link.label}
-                    </LinkRodape>
-                  ))}
-              </div>
-            </nav>
-          ))}
-
-          {(config.rodape.mostrarLinksMenu || config.rodape.mostrarCarrinho) &&
-            !possuiColunaLojaPersonalizada && (
-            <nav aria-label="Rodapé — navegação da loja" className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
-                Loja
-              </p>
-
-              <div className="grid gap-2">
-                <LinkRodape href="/loja">Home</LinkRodape>
-
-                {config.rodape.mostrarLinksMenu &&
-                  menus.map((menu) => (
-                    <LinkRodape key={menu.id} href={menu.href}>
-                      {menu.nome}
-                    </LinkRodape>
-                  ))}
-
-                {config.rodape.mostrarCarrinho && (
-                  <LinkRodape href="/loja/carrinho">Carrinho</LinkRodape>
-                )}
-              </div>
-            </nav>
-          )}
-
-          <nav aria-label="Rodapé — informações e privacidade" className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
-              Informações
+    <footer className="mt-16 bg-[#171815] text-[#f4f0e8] sm:mt-24">
+      <div className="border-b border-[#f4f0e8]/15">
+        <div className="mx-auto grid max-w-[1600px] gap-14 px-5 py-14 sm:px-7 sm:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)] lg:gap-20 lg:px-10 lg:py-20">
+          <div className="lg:pr-8">
+            <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#f4f0e8]/50">
+              Stella Colari
             </p>
 
-            <div className="grid gap-2">
-              {linksLegaisComplementares.map((link) => (
-                <LinkRodape key={link.href} href={link.href}>
-                  {link.label}
-                </LinkRodape>
-              ))}
-              <BotaoRodape onClick={abrirPreferenciasPrivacidade}>
-                Preferências de privacidade
-              </BotaoRodape>
-            </div>
-          </nav>
+            <p className="mt-6 max-w-xl text-[clamp(1.35rem,2.2vw,2.4rem)] font-light leading-[1.18] tracking-[-0.025em] text-[#f4f0e8]">
+              {config.rodape.textoInstitucional}
+            </p>
+
+            {redesAtivas.length > 0 && (
+              <div className="mt-9 flex flex-wrap gap-x-6 gap-y-2">
+                {redesAtivas.map((rede) => (
+                  <Link
+                    key={rede.id}
+                    href={rede.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="border-b border-[#f4f0e8]/30 py-2 text-[10px] font-medium uppercase tracking-[0.2em] text-[#f4f0e8]/70 transition hover:border-[#f4f0e8] hover:text-[#f4f0e8]"
+                  >
+                    {rede.nome}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {selosAtivos.length > 0 && (
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                {selosAtivos.map((selo) => {
+                  const imagem = (
+                    <img
+                      src={selo.imagemUrl}
+                      alt={selo.altText || selo.nome}
+                      className="h-9 max-w-[112px] object-contain"
+                    />
+                  );
+
+                  if (selo.linkUrl) {
+                    return (
+                      <Link
+                        key={selo.id}
+                        href={selo.linkUrl}
+                        target={isExternalUrl(selo.linkUrl) ? "_blank" : undefined}
+                        rel={isExternalUrl(selo.linkUrl) ? "noreferrer" : undefined}
+                        className="inline-flex border border-[#f4f0e8]/20 bg-white px-3 py-2 transition hover:border-[#f4f0e8]/60"
+                      >
+                        {imagem}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <span
+                      key={selo.id}
+                      className="inline-flex border border-[#f4f0e8]/20 bg-white px-3 py-2"
+                    >
+                      {imagem}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 border-t border-[#f4f0e8]/15 pt-10 sm:grid-cols-3 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
+            {config.rodape.colunas.map((coluna, index) => (
+              <nav
+                key={coluna.id}
+                aria-label={`Rodapé — ${coluna.titulo}${index > 0 ? ` ${index + 1}` : ""}`}
+                className="space-y-5"
+              >
+                <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-[#f4f0e8]/45">
+                  {coluna.titulo}
+                </p>
+
+                <div className="grid gap-1.5">
+                  {coluna.links
+                    .filter((link) => link.ativo)
+                    .map((link) => (
+                      <LinkRodape
+                        key={link.id}
+                        href={link.href}
+                        novaAba={link.novaAba}
+                      >
+                        {link.label}
+                      </LinkRodape>
+                    ))}
+                </div>
+              </nav>
+            ))}
+
+            {(config.rodape.mostrarLinksMenu || config.rodape.mostrarCarrinho) &&
+              !possuiColunaLojaPersonalizada && (
+                <nav aria-label="Rodapé — navegação da loja" className="space-y-5">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-[#f4f0e8]/45">
+                    Loja
+                  </p>
+
+                  <div className="grid gap-1.5">
+                    <LinkRodape href="/loja">Home</LinkRodape>
+
+                    {config.rodape.mostrarLinksMenu &&
+                      menus.map((menu) => (
+                        <LinkRodape key={menu.id} href={menu.href}>
+                          {menu.nome}
+                        </LinkRodape>
+                      ))}
+
+                    {config.rodape.mostrarCarrinho && (
+                      <LinkRodape href="/loja/carrinho">Carrinho</LinkRodape>
+                    )}
+                  </div>
+                </nav>
+              )}
+
+            <nav aria-label="Rodapé — informações e privacidade" className="space-y-5">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-[#f4f0e8]/45">
+                Informações
+              </p>
+
+              <div className="grid gap-1.5">
+                {linksLegaisComplementares.map((link) => (
+                  <LinkRodape key={link.href} href={link.href}>
+                    {link.label}
+                  </LinkRodape>
+                ))}
+                <BotaoRodape onClick={abrirPreferenciasPrivacidade}>
+                  Preferências de privacidade
+                </BotaoRodape>
+              </div>
+            </nav>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-slate-100 px-5 py-4 text-center text-xs font-medium text-slate-600">
-        © {new Date().getFullYear()} {config.rodape.copyright}
+      <div className="mx-auto max-w-[1600px] overflow-hidden px-5 pb-7 pt-9 sm:px-7 sm:pb-9 lg:px-10">
+        <Link
+          href="/loja"
+          aria-label="Ir para a página inicial da loja"
+          className="block"
+        >
+          <span className="block whitespace-nowrap text-center text-[clamp(2.5rem,11vw,10.5rem)] font-light uppercase leading-[0.82] tracking-[-0.065em] text-[#f4f0e8] transition hover:text-white">
+            Stella Colari
+          </span>
+        </Link>
+
+        <div className="mt-9 flex flex-col gap-5 border-t border-[#f4f0e8]/15 pt-6 text-[9px] font-medium uppercase tracking-[0.18em] text-[#f4f0e8]/45 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {new Date().getFullYear()} {config.rodape.copyright}
+          </p>
+
+          <Link href="/loja" className="inline-flex w-fit items-center gap-3">
+            <Image
+              src={LOGO_URL}
+              alt="Stella"
+              width={150}
+              height={40}
+              className="h-7 w-auto max-w-[132px] object-contain brightness-0 invert opacity-65 transition hover:opacity-100"
+            />
+          </Link>
+        </div>
       </div>
     </footer>
   );

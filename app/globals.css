@@ -25,8 +25,17 @@ body {
 }
 
 .stella-storefront-render {
-  color: #0f172a;
-  font-family: var(--font-primary);
+  --store-paper: #f7f5ef;
+  --store-paper-deep: #e8e5dc;
+  --store-ink: #171916;
+  --store-muted: #62645e;
+  --store-hairline: #c9c7bf;
+  --font-storefront: "Helvetica Neue", "Neue Haas Grotesk Text Pro", Arial,
+    sans-serif;
+  --font-primary: var(--font-storefront);
+  background: var(--store-paper);
+  color: var(--store-ink);
+  font-family: var(--font-storefront);
   font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -116,31 +125,15 @@ textarea:focus,
 select:focus {
   border-color: var(--brand-blue) !important;
 }
-/* Ajustes de peso visual para a loja pública */
-.loja-publica h2 {
-  font-weight: 600;
-}
-
-.loja-publica header nav a,
-.loja-publica footer nav a {
-  font-weight: 600;
-}
-
-.loja-publica .brand-button,
-.loja-publica .brand-button-outline {
-  font-weight: 600;
-}
-
-.loja-publica .text-3xl.font-light,
-.loja-publica .text-2xl.font-light,
-.loja-publica .text-xl.font-light {
-  font-weight: 600;
-}
-
-.loja-publica .text-sm.font-light.tracking-wide,
-.loja-publica .text-sm.font-light.text-slate-600,
-.loja-publica .text-sm.font-light.text-slate-700 {
+/* Sistema visual exclusivo da loja pública. */
+.loja-publica :where(h1, h2, h3) {
+  font-family: var(--font-storefront);
   font-weight: 500;
+  text-wrap: balance;
+}
+
+.loja-publica :where(button, a, input, select, textarea) {
+  border-radius: 0;
 }
 
 .loja-publica .line-through {
@@ -267,36 +260,18 @@ select:focus {
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
-/* Menu público da loja */
-.loja-publica header nav a {
-  text-transform: none !important;
-  font-size: 13px;
+/* Navegação pública: compacta, editorial e distinta do admin. */
+.loja-publica header nav a,
+.loja-publica footer nav a {
+  font-size: 0.6875rem;
   font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.loja-publica :where(.brand-button, .brand-button-outline, .brand-badge) {
+  border-radius: 0;
   letter-spacing: 0.12em;
-}
-
-.loja-publica header nav a.uppercase {
-  text-transform: none !important;
-}
-.loja-publica h2 {
-  font-family: var(--font-primary);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-/* Espaçamento de letras na loja pública */
-.loja-publica h1,
-.loja-publica h2 {
-  letter-spacing: 0.05em;
-}
-
-.loja-publica header nav a {
-  letter-spacing: 0.18em !important;
-}
-
-.loja-publica .brand-button,
-.loja-publica .brand-button-outline,
-.loja-publica .brand-badge {
-  letter-spacing: 0.05em;
 }
 
 @media (prefers-reduced-motion: no-preference) {

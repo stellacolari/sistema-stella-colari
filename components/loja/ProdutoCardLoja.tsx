@@ -19,6 +19,7 @@ import {
   registrarCliqueResultadoBusca,
   registrarFavoritoProduto,
 } from "@/lib/loja/eventos-client";
+import styles from "./ProdutoCardLoja.module.css";
 
 export type ProdutoCardLojaItem = {
   id: string;
@@ -219,19 +220,19 @@ function ProdutoPreco({ produto }: { produto: ProdutoCardLojaItem }) {
 
   if (!temDesconto || produto.precoPromocional === null) {
     return (
-      <p className="mt-2 text-sm font-medium tracking-wide text-slate-700">
+      <p className={styles.price}>
         {moeda(produto.precoVenda)}
       </p>
     );
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="text-xs font-normal tracking-wide text-slate-400 line-through">
+    <div className={styles.salePriceRow}>
+      <span className={styles.originalPrice}>
         {moeda(produto.precoVenda)}
       </span>
 
-      <span className="text-sm font-semibold tracking-wide brand-text">
+      <span className={styles.salePrice}>
         {moeda(produto.precoPromocional)}
       </span>
     </div>
@@ -476,16 +477,37 @@ export default function ProdutoCardLoja({
   const imagemOverlayUrl = produto.imagemHoverUrl || produto.imagemUrl;
   const previewTouchAtivo = touchPreview || globalTouchPreview;
   const cardClass = [
-    "group stella-product-card relative h-full overflow-hidden bg-white p-2",
+    `group stella-product-card ${styles.card}`,
     revelado ? "is-visible" : "",
     semEstoque ? "stella-product-card-out-of-stock" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const overlayHover = exibirImagemHover ? (
+    <div
+      className={`stella-product-hover-overlay ${styles.hoverMedia}`}
+      aria-hidden="true"
+    >
+      {imagemOverlayUrl ? (
+        <img
+          src={imagemOverlayUrl}
+          alt=""
+          loading={imageLoading}
+          decoding={imageLoading ? "async" : undefined}
+          draggable={false}
+          onDragStart={bloquearDragImagem}
+          className={`stella-product-hover-image ${styles.hoverImage}`}
+        />
+      ) : (
+        <div className={styles.placeholder} />
+      )}
+    </div>
+  ) : null;
+
   const conteudoNormal = (
-    <div className="stella-product-normal-content relative z-10 flex h-full flex-col">
-      <div className="relative aspect-square w-full overflow-hidden bg-slate-50">
+    <div className={styles.content}>
+      <div className={styles.media}>
         {produto.imagemUrl ? (
           <img
             src={produto.imagemUrl}
@@ -494,78 +516,50 @@ export default function ProdutoCardLoja({
             decoding={imageLoading ? "async" : undefined}
             draggable={false}
             onDragStart={bloquearDragImagem}
-            className="h-full w-full object-cover object-center"
+            className={styles.primaryImage}
           />
         ) : (
           <div
-            className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+            className={styles.placeholder}
             role="img"
             aria-label="Imagem do produto ainda não disponível"
           />
         )}
 
+        {overlayHover}
+
         {exibirSeloDesconto && desconto !== null ? (
-          <div className="pointer-events-none absolute left-2 top-2 z-10 brand-bg px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em]">
-            -{desconto}%
-          </div>
+          <div className={styles.discountBadge}>-{desconto}%</div>
         ) : null}
 
         {semEstoque ? (
           <div
-            className={`pointer-events-none absolute left-2 z-10 bg-white/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-700 ${
-              desconto !== null ? "top-10" : "top-2"
+            className={`${styles.stockBadge} ${
+              desconto !== null ? styles.stockBadgeWithDiscount : ""
             }`}
           >
             Sem estoque
           </div>
         ) : null}
-
-        <div className="pointer-events-none absolute inset-0 bg-black/5" />
       </div>
 
-      <div className="flex min-h-[88px] flex-col bg-white px-1 pb-1 pt-3">
-        <h3 className="line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-slate-900">
-          {produto.nome}
-        </h3>
+      <div className={styles.details}>
+        <div className={styles.detailsTopline}>
+          <h3 className={styles.name}>{produto.nome}</h3>
 
-        {exibirPreco ? (
-          <div className="mt-auto">
-            <ProdutoPreco produto={produto} />
-          </div>
-        ) : null}
+          {exibirPreco ? (
+            <div className={styles.priceColumn}>
+              <ProdutoPreco produto={produto} />
+            </div>
+          ) : null}
+        </div>
 
         {exibirBotao && textoBotao ? (
-          <span className="mt-3 inline-flex min-h-9 w-full items-center justify-center border border-slate-950 bg-slate-950 px-4 text-xs font-semibold text-white">
-            {textoBotao}
-          </span>
+          <span className={styles.cta}>{textoBotao}</span>
         ) : null}
       </div>
     </div>
   );
-
-  const overlayHover = exibirImagemHover ? (
-    <div className="stella-product-hover-overlay pointer-events-none absolute -inset-2 z-20 overflow-hidden bg-slate-100">
-      {imagemOverlayUrl ? (
-        <img
-          src={imagemOverlayUrl}
-          alt=""
-          aria-hidden="true"
-          loading={imageLoading}
-          decoding={imageLoading ? "async" : undefined}
-          draggable={false}
-          onDragStart={bloquearDragImagem}
-          className="stella-product-hover-image h-full w-full object-cover object-center"
-        />
-      ) : (
-        <div
-          className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
-          aria-hidden="true"
-        />
-      )}
-
-      <div className="pointer-events-none absolute inset-0 bg-black/10" />
-    </div>
-  ) : null;
 
   const favoritoButton = (
     <button
@@ -577,12 +571,10 @@ export default function ProdutoCardLoja({
           : `Adicionar ${produto.nome} aos favoritos`
       }
       aria-pressed={favorito}
-      className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center text-slate-700 transition hover:text-[var(--brand-blue)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
+      className={styles.favoriteButton}
     >
       <Heart
-        className={`h-5 w-5 drop-shadow-sm ${
-          favorito ? "fill-[var(--brand-blue)] text-[var(--brand-blue)]" : ""
-        }`}
+        className={favorito ? styles.favoriteActive : ""}
         fill={favorito ? "currentColor" : "none"}
       />
     </button>
@@ -598,9 +590,8 @@ export default function ProdutoCardLoja({
         data-image-hover={exibirImagemHover ? "true" : "false"}
         style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
       >
-        <div className="relative block h-full">
+        <div className={styles.previewWrapper}>
           {conteudoNormal}
-          {overlayHover}
         </div>
         {favoritoButton}
       </article>
@@ -618,7 +609,7 @@ export default function ProdutoCardLoja({
     >
       <Link
         href={produtoHref}
-        className="relative block h-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+        className={styles.productLink}
         aria-label={`Ver produto ${produto.nome}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -627,7 +618,6 @@ export default function ProdutoCardLoja({
         onClick={handleLinkClick}
       >
         {conteudoNormal}
-        {overlayHover}
       </Link>
 
       {favoritoButton}

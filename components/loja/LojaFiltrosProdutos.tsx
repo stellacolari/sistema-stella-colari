@@ -21,6 +21,7 @@ import {
   type LojaProdutoFiltravel,
   type LojaProdutoOrdenacao,
 } from "@/lib/loja/produtos-filtros";
+import styles from "./LojaFiltrosProdutos.module.css";
 
 type FiltrosDraft = {
   buscar: string;
@@ -38,12 +39,9 @@ type ChipFiltro = {
   label: string;
 };
 
-const filterLabelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500";
-const filterFieldClass =
-  "mt-2 h-10 w-full rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white";
-const filterInputClass =
-  "h-10 min-w-0 rounded-full border border-slate-200 bg-white/70 px-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white";
+const filterLabelClass = styles.label;
+const filterFieldClass = styles.field;
+const filterInputClass = styles.input;
 
 type LojaFiltrosProdutosProps<TProduto extends LojaProdutoFiltravel> = {
   produtos: TProduto[];
@@ -219,7 +217,8 @@ export default function LojaFiltrosProdutos<
 >({
   produtos,
   className = "",
-  gridClassName = "grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4",
+  gridClassName =
+    "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4",
   defaultOrder = "destaque",
   exibirCategoria = true,
   emptyTitle = "Nenhum produto encontrado.",
@@ -447,18 +446,16 @@ export default function LojaFiltrosProdutos<
     return (
       <form
         onSubmit={handleSubmit}
-        className={`space-y-5 ${
-          mobile
-            ? ""
-            : "border-y border-slate-200 py-5"
+        className={`${styles.filterForm} ${
+          mobile ? styles.filterFormMobile : ""
         }`}
       >
         <div>
           <label className={filterLabelClass}>
             Buscar nesta página
           </label>
-          <div className="mt-2 flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 transition focus-within:border-slate-400 focus-within:bg-white">
-            <Search className="h-4 w-4 text-slate-400" />
+          <div className={styles.searchField}>
+            <Search className={styles.searchIcon} />
             <input
               value={draft.buscar}
               onChange={(event) =>
@@ -468,7 +465,7 @@ export default function LojaFiltrosProdutos<
                 }))
               }
               placeholder="Buscar produtos"
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+              className={styles.searchInput}
             />
           </div>
         </div>
@@ -627,22 +624,22 @@ export default function LojaFiltrosProdutos<
         ) : null}
 
         <div
-          className={`grid gap-2 pt-1 ${
-            filtrosAtivos ? "grid-cols-2" : "grid-cols-1"
+          className={`${styles.actionGrid} ${
+            filtrosAtivos ? styles.actionGridSplit : ""
           }`}
         >
           {filtrosAtivos ? (
             <button
               type="button"
               onClick={() => limparFiltros(mobile)}
-              className="h-10 rounded-full border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
+              className={styles.secondaryButton}
             >
               Limpar
             </button>
           ) : null}
           <button
             type="submit"
-            className="h-10 rounded-full bg-slate-950 px-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className={styles.primaryButton}
           >
             Aplicar filtros
           </button>
@@ -653,15 +650,15 @@ export default function LojaFiltrosProdutos<
 
   return (
     <div className={className}>
-      <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={styles.toolbar}>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className={styles.resultCount}>
             {produtosFiltrados.length} produto
             {produtosFiltrados.length === 1 ? "" : "s"} encontrado
             {produtosFiltrados.length === 1 ? "" : "s"}
           </p>
           {produtos.length > 0 ? (
-            <p className="mt-1 text-sm text-slate-600">
+            <p className={styles.resultTotal}>
               de {produtos.length} produto{produtos.length === 1 ? "" : "s"} nesta listagem
             </p>
           ) : null}
@@ -670,7 +667,7 @@ export default function LojaFiltrosProdutos<
         <button
           type="button"
           onClick={() => setPainelAberto(true)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:border-slate-500 lg:hidden"
+          className={styles.mobileTrigger}
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filtrar
@@ -678,13 +675,13 @@ export default function LojaFiltrosProdutos<
       </div>
 
       {chips.length > 0 ? (
-        <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className={styles.chipBar}>
           {chips.map((chip) => (
             <button
               key={`${chip.chave}-${chip.label}`}
               type="button"
               onClick={() => removerFiltro(chip.chave)}
-              className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
+              className={styles.chip}
             >
               <span className="truncate">{chip.label}</span>
               <X className="h-3 w-3 shrink-0" />
@@ -693,7 +690,7 @@ export default function LojaFiltrosProdutos<
           <button
             type="button"
             onClick={() => limparFiltros()}
-            className="px-2 py-1 text-xs font-medium text-slate-500 underline-offset-4 transition hover:text-slate-950 hover:underline"
+            className={styles.clearLink}
           >
             Limpar filtros
           </button>
@@ -701,20 +698,20 @@ export default function LojaFiltrosProdutos<
       ) : null}
 
       {painelAberto ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className={styles.mobilePanel}>
           <button
             type="button"
             aria-label="Fechar filtros"
             onClick={() => setPainelAberto(false)}
-            className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px]"
+            className={styles.mobileBackdrop}
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[1.5rem] bg-white px-5 pb-5 pt-4 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className={styles.mobileDrawer}>
+            <div className={styles.mobileDrawerHeader}>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                <p className={styles.drawerEyebrow}>
                   Filtros
                 </p>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className={styles.drawerCount}>
                   {produtosFiltrados.length} resultado
                   {produtosFiltrados.length === 1 ? "" : "s"}
                 </p>
@@ -722,7 +719,7 @@ export default function LojaFiltrosProdutos<
               <button
                 type="button"
                 onClick={() => setPainelAberto(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-slate-400 hover:text-slate-950"
+                className={styles.closeButton}
                 aria-label="Fechar filtros"
               >
                 <X className="h-4 w-4" />
@@ -733,10 +730,10 @@ export default function LojaFiltrosProdutos<
         </div>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+      <div className={styles.catalogLayout}>
+        <aside className={styles.desktopAside}>
+          <div className={styles.stickyFilters}>
+            <p className={styles.asideTitle}>
               Refinar seleção
             </p>
             {renderControles(false)}
@@ -751,14 +748,14 @@ export default function LojaFiltrosProdutos<
               ))}
             </div>
           ) : (
-            <div className="border-y border-slate-200 bg-white px-6 py-14 text-center">
-              <p className="text-lg font-semibold text-slate-950">{emptyTitle}</p>
-              <p className="mt-3 text-sm text-slate-600">{emptyDescription}</p>
+            <div className={styles.emptyState}>
+              <p className={styles.emptyTitle}>{emptyTitle}</p>
+              <p className={styles.emptyDescription}>{emptyDescription}</p>
               {filtrosAtivos ? (
                 <button
                   type="button"
                   onClick={() => limparFiltros()}
-                  className="mt-6 rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-500"
+                  className={styles.emptyButton}
                 >
                   Limpar filtros
                 </button>

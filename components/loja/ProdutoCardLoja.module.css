@@ -1,0 +1,285 @@
+.card {
+  position: relative;
+  height: 100%;
+  overflow: visible;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-blue, #182b49) 16%, transparent);
+  background: transparent;
+  padding: 0 0 1.35rem;
+}
+
+.productLink,
+.previewWrapper,
+.content {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.productLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.productLink:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
+}
+
+.media {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  overflow: hidden;
+  background: #efede7;
+}
+
+.primaryImage,
+.hoverImage,
+.placeholder {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.primaryImage,
+.hoverImage {
+  object-fit: cover;
+  object-position: center;
+  transition: transform 650ms cubic-bezier(0.2, 0.65, 0.25, 1);
+}
+
+.placeholder {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 78%), transparent 52%),
+    #ebe9e2;
+}
+
+.hoverMedia {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  background: #efede7;
+}
+
+.discountBadge,
+.stockBadge {
+  pointer-events: none;
+  position: absolute;
+  left: 0.75rem;
+  z-index: 5;
+  border: 1px solid rgb(20 26 28 / 16%);
+  background: rgb(249 247 241 / 94%);
+  padding: 0.4rem 0.55rem;
+  color: #1b2021;
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  line-height: 1;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+
+.discountBadge {
+  top: 0.75rem;
+  border-color: transparent;
+  background: var(--brand-blue, #182b49);
+  color: #fff;
+}
+
+.stockBadge {
+  top: 0.75rem;
+}
+
+.stockBadgeWithDiscount {
+  top: 2.65rem;
+}
+
+.details {
+  display: flex;
+  min-height: 5.65rem;
+  flex: 1;
+  flex-direction: column;
+  padding-top: 0.9rem;
+}
+
+.detailsTopline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.8rem;
+}
+
+.name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #1b2021;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.075em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.priceColumn {
+  min-width: max-content;
+  text-align: right;
+}
+
+.price,
+.salePrice,
+.originalPrice {
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.035em;
+}
+
+.price,
+.salePrice {
+  color: #1b2021;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.salePriceRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.originalPrice {
+  color: #858984;
+  font-size: 0.65rem;
+  font-weight: 450;
+  text-decoration: line-through;
+}
+
+.salePrice {
+  color: var(--brand-blue, #182b49);
+}
+
+.cta {
+  display: inline-flex;
+  min-height: 2.6rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  border: 1px solid #1b2021;
+  background: transparent;
+  padding: 0.7rem 1rem;
+  color: #1b2021;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.favoriteButton {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 8;
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(20 26 28 / 13%);
+  border-radius: 0;
+  background: rgb(249 247 241 / 90%);
+  color: #1b2021;
+  backdrop-filter: blur(6px);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.favoriteButton svg {
+  height: 1rem;
+  width: 1rem;
+}
+
+.favoriteButton:hover,
+.favoriteButton:focus-visible {
+  background: #1b2021;
+  color: #fff;
+  outline: none;
+}
+
+.favoriteButton:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px #1b2021;
+}
+
+.favoriteActive {
+  color: var(--brand-blue, #182b49);
+  fill: currentColor;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .primaryImage,
+  .card:hover .hoverImage {
+    transform: scale(1.025);
+  }
+
+  .productLink:hover .cta {
+    background: #1b2021;
+    color: #fff;
+  }
+}
+
+@media (max-width: 639px) {
+  .card {
+    padding-bottom: 1rem;
+  }
+
+  .media {
+    aspect-ratio: 3 / 4;
+  }
+
+  .details {
+    min-height: 5.1rem;
+    padding-top: 0.75rem;
+  }
+
+  .detailsTopline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .priceColumn,
+  .salePriceRow {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .favoriteButton {
+    top: 0.55rem;
+    right: 0.55rem;
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .discountBadge,
+  .stockBadge {
+    top: 0.55rem;
+    left: 0.55rem;
+  }
+
+  .stockBadgeWithDiscount {
+    top: 2.45rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryImage,
+  .hoverImage,
+  .cta,
+  .favoriteButton {
+    transition: none;
+  }
+}

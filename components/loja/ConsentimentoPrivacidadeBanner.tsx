@@ -104,10 +104,10 @@ export default function ConsentimentoPrivacidadeBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] px-3 pb-3 sm:px-5 sm:pb-5">
-      <section className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-slate-950/10 backdrop-blur sm:p-5">
+    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#27251f]/20 bg-[#f4f0e8]/95 backdrop-blur-md">
+      <section className="mx-auto max-w-7xl px-5 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="flex items-start gap-3">
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 sm:flex">
+          <div className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center border border-[#27251f]/20 text-[#27251f] sm:flex">
             {modo === "preferencias" ? (
               <SlidersHorizontal className="h-5 w-5" />
             ) : (
@@ -118,10 +118,10 @@ export default function ConsentimentoPrivacidadeBanner() {
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-950">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#27251f]">
                   Privacidade na loja
                 </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[#5f5a50]">
                   Usamos recursos essenciais para a compra e, com sua escolha,
                   sinais de experiencia para melhorar busca, favoritos e funil.
                 </p>
@@ -130,7 +130,7 @@ export default function ConsentimentoPrivacidadeBanner() {
               <button
                 type="button"
                 onClick={fecharSeJaEscolheu}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-transparent text-[#777064] transition hover:border-[#27251f]/25 hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                 aria-label="Fechar preferencias de privacidade"
               >
                 <X className="h-4 w-4" />
@@ -145,14 +145,14 @@ export default function ConsentimentoPrivacidadeBanner() {
                   return (
                     <label
                       key={categoria.id}
-                      className={`rounded-xl border px-3 py-3 text-sm ${
+                      className={`border px-3 py-3 text-sm ${
                         ativo
-                          ? "border-slate-900 bg-slate-50"
-                          : "border-slate-200 bg-white"
+                          ? "border-[#27251f] bg-[#ebe5da]"
+                          : "border-[#27251f]/20 bg-transparent"
                       }`}
                     >
                       <span className="flex items-center justify-between gap-3">
-                        <span className="font-semibold text-slate-950">
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#27251f]">
                           {categoria.titulo}
                         </span>
                         <input
@@ -160,10 +160,10 @@ export default function ConsentimentoPrivacidadeBanner() {
                           checked={ativo}
                           disabled={categoria.obrigatoria}
                           onChange={() => alternarCategoria(categoria.id)}
-                          className="h-4 w-4 accent-slate-950"
+                          className="h-4 w-4 accent-[#27251f]"
                         />
                       </span>
-                      <span className="mt-2 block text-xs leading-5 text-slate-500">
+                      <span className="mt-2 block text-xs leading-5 text-[#716a5e]">
                         {categoria.descricao}
                       </span>
                     </label>
@@ -175,7 +175,7 @@ export default function ConsentimentoPrivacidadeBanner() {
             <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <Link
                 href="/loja/politica-de-privacidade"
-                className="text-xs font-semibold text-slate-500 underline-offset-4 transition hover:text-slate-900 hover:underline"
+                className="text-xs font-semibold uppercase tracking-[0.12em] text-[#665f54] underline-offset-4 transition hover:text-[#27251f] hover:underline"
               >
                 Ver Politica de Privacidade
               </Link>
@@ -185,21 +185,21 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Somente essenciais
                   </button>
                   <button
                     type="button"
                     onClick={() => setModo("preferencias")}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Personalizar
                   </button>
                   <button
                     type="button"
                     onClick={aceitarTodos}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#f8f4ec] transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Aceitar todos
                   </button>
@@ -209,21 +209,21 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={redefinir}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#716a5e] transition hover:border-[#27251f] hover:bg-[#ebe5da] hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Redefinir escolha
                   </button>
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#ebe5da] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Somente essenciais
                   </button>
                   <button
                     type="button"
                     onClick={salvarPreferencias}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#f8f4ec] transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Salvar preferencias
                   </button>
