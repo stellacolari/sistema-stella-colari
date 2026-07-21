@@ -46,6 +46,8 @@ type StellaHomeBlockRendererProps = {
   categorias: CategoriaMenuPublicoItem[];
 };
 
+const STELLA_HERO_TITLE = "Viva Stella Colari.";
+
 function normalizeHref(value: string) {
   const href = value.trim();
 
@@ -104,6 +106,31 @@ function SmartLink({
     >
       {children}
     </Link>
+  );
+}
+
+function EditorialTitleText({
+  text,
+  emphasisWords = 1,
+}: {
+  text: string;
+  emphasisWords?: number;
+}) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length <= emphasisWords) {
+    return <strong className={styles.titleStrong}>{words.join(" ")}</strong>;
+  }
+
+  const splitAt = words.length - emphasisWords;
+  const lightText = words.slice(0, splitAt).join(" ");
+  const strongText = words.slice(splitAt).join(" ");
+
+  return (
+    <>
+      <span className={styles.titleLight}>{lightText} </span>
+      <strong className={styles.titleStrong}>{strongText}</strong>
+    </>
   );
 }
 
@@ -321,7 +348,8 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
       ? slide.midia.mobileAlternativa
       : slide.midia.mobile;
   const mobileUrl = mobileCrop.url || desktopUrl;
-  const titulo = slide.conteudo.titulo.conteudo;
+  const tituloConfigurado = slide.conteudo.titulo.conteudo;
+  const titulo = STELLA_HERO_TITLE;
   const eyebrow = slide.conteudo.eyebrow.conteudo;
   const texto = slide.conteudo.texto.conteudo;
   const hasVideo = slide.tipoMidia === "VIDEO" && Boolean(slide.video.url);
@@ -330,9 +358,14 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
   const hasVisibleTitle = Boolean(
     slide.conteudo.ativo &&
       slide.conteudo.mostrarTitulo &&
-      titulo &&
       (desktopPosition !== "NENHUM" || mobilePosition !== "NENHUM")
   );
+  const heroFlowAlignmentClass =
+    slide.conteudo.alinhamento === "CENTRO"
+      ? styles.heroFlowCenter
+      : slide.conteudo.alinhamento === "DIREITA"
+        ? styles.heroFlowRight
+        : styles.heroFlowLeft;
   const overlayStyle = slide.overlay.ativo
     ? {
         backgroundColor: slide.overlay.cor,
@@ -371,7 +404,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
           <Media
             desktop={desktopUrl}
             mobile={mobileUrl}
-            alt={slide.midia.desktop.alt || titulo}
+            alt={slide.midia.desktop.alt || tituloConfigurado || titulo}
             className="h-full w-full"
             eager
             imageClassName={styles.heroMediaImage}
@@ -398,7 +431,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
           className={`${styles.heroContent} mx-auto min-h-[inherit] w-full max-w-[100rem] px-5 pb-20 pt-24 sm:px-7 md:pb-24 md:pt-28 lg:px-12 ${config.headerTransparente ? "lg:pt-36" : "lg:pt-28"} ${getHeroContentVisibilityClass(desktopPosition, mobilePosition)} ${getHeroPositionClass(mobilePosition, "mobile")} ${getHeroPositionClass(desktopPosition, "desktop")}`}
         >
           <div
-            className={`${styles.heroCopy} ${getHeroContentWidthClass(slide.conteudo.largura)} ${getHeroTextAlignClass(slide.conteudo.alinhamento)}`}
+            className={`${styles.heroCopy} ${heroFlowAlignmentClass} ${getHeroContentWidthClass(slide.conteudo.largura)} ${getHeroTextAlignClass(slide.conteudo.alinhamento)}`}
           >
             {slide.conteudo.mostrarEyebrow && eyebrow ? (
               <p
@@ -417,7 +450,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
                 className={`${styles.heroTitle} mt-5 max-w-[18ch] text-white`}
                 style={getHeroElementStyle(slide, "titulo")}
               >
-                {titulo}
+                <EditorialTitleText text={titulo} emphasisWords={2} />
               </h1>
             ) : null}
 
@@ -718,9 +751,9 @@ function SectionHeading({
       <div>
         <h2
           data-stella-inline-field="titulo"
-          className={`${styles.sectionTitle} max-w-[16ch] text-[clamp(2.4rem,5.2vw,6.4rem)] font-medium uppercase text-current`}
+          className={`${styles.sectionTitle} max-w-[22ch] text-[clamp(2.4rem,5.2vw,6.4rem)] uppercase text-current`}
         >
-          {titulo}
+          <EditorialTitleText text={titulo} />
         </h2>
         {descricao ? (
           <p
@@ -872,7 +905,7 @@ function StellaEditorialFeature({
                 data-stella-inline-field="titulo"
                 className={`${styles.editorialTitle} mt-6 text-[clamp(2.65rem,5.8vw,7rem)] font-medium uppercase`}
               >
-                {content.titulo}
+                <EditorialTitleText text={content.titulo} />
               </h2>
             ) : null}
             {hasTexto ? (
@@ -1077,11 +1110,13 @@ function StellaTrustSection({ bloco }: { bloco: StellaHomeBlock }) {
             data-stella-inline-field="titulo"
             className={`${styles.trustTitle} mt-6 text-[clamp(2.6rem,5vw,6.2rem)] font-medium uppercase text-[#171916]`}
           >
-            {getStringWithDefault(
-              config,
-              "titulo",
-              "Informações para sua compra"
-            )}
+            <EditorialTitleText
+              text={getStringWithDefault(
+                config,
+                "titulo",
+                "Informações para sua compra"
+              )}
+            />
           </h2>
           <p className="mt-7 max-w-md text-base leading-8 text-[#5b5d57]">
             {getStringWithDefault(config, ["descricao", "subtitulo"])}
@@ -1312,7 +1347,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
             data-stella-inline-field="titulo"
             className={`${styles.finalCtaTitle} mx-auto mt-7 max-w-[16ch] text-[clamp(3rem,8vw,9rem)] font-medium uppercase`}
           >
-            {titulo}
+            <EditorialTitleText text={titulo} />
           </h2>
         ) : null}
         {hasTexto ? (

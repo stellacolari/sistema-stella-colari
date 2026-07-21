@@ -248,8 +248,16 @@ select:focus {
   max-width: 100%;
 }
 
-.stella-storefront-render [data-studio-bloco-id] :where(h1, h2, h3, p) {
-  overflow-wrap: anywhere;
+.stella-storefront-render [data-studio-bloco-id] :where(h1, h2, h3) {
+  hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.stella-storefront-render [data-studio-bloco-id] p {
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: normal;
 }
 
 .scrollbar-hidden {

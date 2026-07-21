@@ -120,7 +120,10 @@
   font-weight: 650;
   letter-spacing: 0.075em;
   line-height: 1.45;
+  overflow-wrap: normal;
+  text-wrap: pretty;
   text-transform: uppercase;
+  word-break: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }

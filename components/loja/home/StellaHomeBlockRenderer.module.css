@@ -30,6 +30,26 @@
   width: min(100%, 72rem);
 }
 
+.heroFlowCenter .heroBody {
+  margin-inline: auto;
+}
+
+.heroFlowCenter .heroActions {
+  justify-content: center;
+}
+
+.heroFlowRight .heroBody {
+  margin-left: auto;
+}
+
+.heroFlowRight .heroActions {
+  justify-content: flex-end;
+}
+
+.heroFlowLeft .heroActions {
+  justify-content: flex-start;
+}
+
 .heroEyebrow {
   display: inline-flex;
   align-items: center;
@@ -52,14 +72,18 @@
   font-weight: 500;
   line-height: 0.84;
   letter-spacing: -0.058em;
+  overflow-wrap: normal;
   text-wrap: balance;
-  text-transform: uppercase;
+  word-break: normal;
 }
 
 .heroBody {
   font-weight: 400;
   line-height: 1.7;
   letter-spacing: 0.015em;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: normal;
 }
 
 .heroActions a {
@@ -125,12 +149,26 @@
   font-family: var(--font-primary);
   line-height: 0.88;
   letter-spacing: -0.052em;
+  overflow-wrap: normal;
   text-wrap: balance;
+  word-break: normal;
+}
+
+.titleLight {
+  font-weight: 300;
+}
+
+.titleStrong {
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .sectionDescription,
 .editorialBody {
   line-height: 1.75;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: normal;
 }
 
 .productsSection,
@@ -172,6 +210,9 @@
 .categoryTitle {
   letter-spacing: -0.025em;
   line-height: 1;
+  overflow-wrap: normal;
+  text-wrap: balance;
+  word-break: normal;
 }
 
 .featuredSection {
