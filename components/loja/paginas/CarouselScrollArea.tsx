@@ -85,7 +85,9 @@ export default function CarouselScrollArea({
 
     element.scrollBy({
       left: direction === "prev" ? -amount : amount,
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
     });
   }
 
@@ -159,7 +161,16 @@ export default function CarouselScrollArea({
 
         <div
           ref={scrollRef}
-          className={`${containerClassName} scrollbar-hidden overscroll-x-contain`}
+          role="region"
+          aria-label={`Carrossel de ${itemLabel}`}
+          tabIndex={canScroll ? 0 : undefined}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+            event.preventDefault();
+            scroll(event.key === "ArrowLeft" ? "prev" : "next");
+          }}
+          className={`${containerClassName} scrollbar-hidden overscroll-x-contain motion-reduce:scroll-auto`}
         >
           {children}
         </div>

@@ -21,7 +21,12 @@ import BlocoPublicoRenderer, {
 } from "@/components/loja/paginas/BlocoPublicoRenderer";
 import { normalizarBannerHeroV2Config } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
+import StellaHomeBlockRenderer, {
+  canRenderStellaHomeBlock,
+} from "@/components/loja/home/StellaHomeBlockRenderer";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import type { StellaHomeBlockKey } from "@/lib/loja/stella-home-contract";
 
 export type LojaBuilderPagina = {
   id: string;
@@ -35,30 +40,12 @@ export type LojaBuilderBloco = {
   tipo: string;
   titulo: string | null;
   ordem: number;
+  ativo?: boolean;
   configJson: unknown;
+  stellaHomeKey?: StellaHomeBlockKey | null;
 };
 
-export type LojaBuilderProduto = {
-  id: string;
-  codigoInterno: string;
-  nome: string;
-  imagemUrl?: string | null;
-  imagemHoverUrl?: string | null;
-  categoria: string;
-  categoriaIds?: string[];
-  categoriaSlugs?: string[];
-  categoriaNomes?: string[];
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueTotal: number;
-  vendidosTotal: number;
-  criadoEm: string;
-  tamanhosDisponiveis: {
-    tamanhoAnel: string;
-    quantidadeAtual: number;
-  }[];
-};
+export type LojaBuilderProduto = ProdutoPublico;
 
 export type LojaBuilderMenu = {
   id: string;
@@ -171,15 +158,17 @@ function getNumberInRange(
 }
 
 function normalizarBlocosBuilder(blocos: LojaBuilderBloco[]) {
-  return blocos.map((bloco, index) => ({
-    ...bloco,
-    titulo:
-      typeof bloco.titulo === "string"
-        ? bloco.titulo.trim() || null
-        : bloco.titulo,
-    ordem: clampNumber(bloco.ordem, -1000, 10000, index),
-    configJson: asConfig(bloco.configJson),
-  }));
+  return blocos
+    .filter((bloco) => bloco.ativo !== false)
+    .map((bloco, index) => ({
+      ...bloco,
+      titulo:
+        typeof bloco.titulo === "string"
+          ? bloco.titulo.trim() || null
+          : bloco.titulo,
+      ordem: clampNumber(bloco.ordem, -1000, 10000, index),
+      configJson: asConfig(bloco.configJson),
+    }));
 }
 
 function produtoTemDesconto(produto: {
@@ -240,7 +229,10 @@ function filtrarProdutosPorConfig(
   }
 
   if (fonte === "MAIS_VENDIDOS") {
-    resultado = resultado.sort((a, b) => b.vendidosTotal - a.vendidosTotal);
+    const ordem = new Map(produtosIds.map((id, index) => [id, index]));
+    resultado = resultado
+      .filter((produto) => ordem.has(produto.id))
+      .sort((a, b) => Number(ordem.get(a.id)) - Number(ordem.get(b.id)));
   }
 
   if (fonte === "CATEGORIA") {
@@ -293,7 +285,7 @@ function aplicarFiltrosGrade(
       produto.tamanhosDisponiveis?.some(
         (tamanho) =>
           tamanho.tamanhoAnel === filtros.tamanho &&
-          Number(tamanho.quantidadeAtual || 0) > 0,
+          tamanho.disponivel,
       ),
     );
   }
@@ -307,11 +299,11 @@ function aplicarFiltrosGrade(
   }
 
   if (filtros.disponibilidade === "DISPONIVEL") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal > 0);
+    resultado = resultado.filter((produto) => produto.disponivel);
   }
 
   if (filtros.disponibilidade === "SEM_ESTOQUE") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal <= 0);
+    resultado = resultado.filter((produto) => !produto.disponivel);
   }
 
   if (filtros.ordenacao === "MENOR_PRECO") {
@@ -1037,7 +1029,7 @@ function FiltrosProdutosGrade({
     new Set(
       produtos.flatMap((produto) =>
         (produto.tamanhosDisponiveis || [])
-          .filter((tamanho) => Number(tamanho.quantidadeAtual || 0) > 0)
+          .filter((tamanho) => tamanho.disponivel)
           .map((tamanho) => tamanho.tamanhoAnel),
       ),
     ),
@@ -1567,10 +1559,15 @@ export default function LojaPaginaBuilderClient({
 
   return (
     <div className="stella-storefront-render min-h-screen bg-white text-slate-950">
+      <a
+        href="#conteudo-principal"
+        className="fixed left-3 top-3 z-[100] -translate-y-24 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#245f76]"
+      >
+        Pular para o conteúdo principal
+      </a>
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
-        produtos={produtos}
         configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
@@ -1584,7 +1581,7 @@ export default function LojaPaginaBuilderClient({
         }
       />
 
-      <main>
+      <main id="conteudo-principal" tabIndex={-1}>
         {blocosNormalizados.length === 0 ? (
           <section className="mx-auto max-w-4xl px-5 py-20 text-center sm:px-6 lg:px-8">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
@@ -1598,9 +1595,25 @@ export default function LojaPaginaBuilderClient({
         ) : (
           blocosNormalizados.map((bloco) => {
             const config = asConfig(bloco.configJson);
+            const stellaHomeKey =
+              pagina.tipo === "HOME" && pagina.slug === "home"
+                ? bloco.stellaHomeKey ?? null
+                : null;
             let rendered: ReactNode = null;
 
-            if (isBlocoVisualPublico(bloco.tipo)) {
+            if (
+              stellaHomeKey &&
+              canRenderStellaHomeBlock(bloco, stellaHomeKey)
+            ) {
+              rendered = (
+                <StellaHomeBlockRenderer
+                  bloco={bloco}
+                  blockKey={stellaHomeKey}
+                  produtos={produtos}
+                  categorias={categoriasMenu}
+                />
+              );
+            } else if (isBlocoVisualPublico(bloco.tipo)) {
               rendered = (
                 <BlocoPublicoRenderer
                   bloco={bloco}

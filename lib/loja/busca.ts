@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { calcularEstoqueProdutoPublico } from "@/lib/loja/estoque";
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import type { Prisma } from "@prisma/client";
 
 export type BuscaLojaTipo = "todos" | "produtos" | "categorias" | "paginas";
@@ -17,7 +18,6 @@ export type BuscaLojaAutocompleteProduto = {
   imagemUrl: string | null;
   categoria: string;
   href: string;
-  relevancia: number;
   tipoResultado: "PRODUTO";
 };
 
@@ -26,9 +26,7 @@ export type BuscaLojaAutocompleteCategoria = {
   nome: string;
   slug: string;
   caminho: string | null;
-  quantidadeProdutos: number | null;
   href: string;
-  relevancia: number;
   tipoResultado: "CATEGORIA";
 };
 
@@ -38,7 +36,6 @@ export type BuscaLojaAutocompletePagina = {
   slug: string;
   tipo: string;
   href: string;
-  relevancia: number;
   tipoResultado: "PAGINA";
 };
 
@@ -50,34 +47,10 @@ export type BuscaLojaAutocompleteResultado = {
   sugestoes: string[];
   termoNormalizado: string;
   ordemGrupos: BuscaLojaGrupoResultado[];
-  debug?: {
-    duracaoMs: number;
-    cache: boolean;
-  };
 };
 
-export type BuscaLojaProduto = {
-  id: string;
-  codigoInterno: string;
-  nome: string;
-  imagemUrl: string | null;
-  imagemHoverUrl: string | null;
-  categoria: string;
-  categoriaIds: string[];
-  categoriaSlugs: string[];
-  categoriaNomes: string[];
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueTotal: number;
-  vendidosTotal: number;
-  criadoEm: string;
-  tamanhosDisponiveis: {
-    tamanhoAnel: string;
-    quantidadeAtual: number;
-  }[];
+export type BuscaLojaProduto = ProdutoPublico & {
   href: string;
-  relevancia: number;
 };
 
 export type BuscaLojaCategoria = {
@@ -87,7 +60,6 @@ export type BuscaLojaCategoria = {
   descricao: string | null;
   imagemUrl: string | null;
   href: string;
-  relevancia: number;
 };
 
 export type BuscaLojaPagina = {
@@ -97,7 +69,6 @@ export type BuscaLojaPagina = {
   tipo: string;
   descricao: string | null;
   href: string;
-  relevancia: number;
 };
 
 export type BuscaLojaFiltrosDetectados = {
@@ -301,7 +272,6 @@ function filtroTextoProdutoAutocomplete(termo: string): Prisma.ProdutoWhereInput
 
   return [
     { nome: contains },
-    { codigoInterno: contains },
     { categoria: contains },
     { descricaoLoja: contains },
     { termosBusca: contains },
@@ -311,7 +281,7 @@ function filtroTextoProdutoAutocomplete(termo: string): Prisma.ProdutoWhereInput
   ];
 }
 
-async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
+function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
   const termos = termosCandidatosBusca(q, tokens);
   const OR = termos.flatMap(filtroTextoProdutoAutocomplete);
 
@@ -327,7 +297,6 @@ async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
     take: 48,
     select: {
       id: true,
-      codigoInterno: true,
       nome: true,
       imagemUrl: true,
       categoria: true,
@@ -351,7 +320,7 @@ async function buscarProdutosAutocompleteRaw(q: string, tokens: string[]) {
   });
 }
 
-async function buscarProdutosBuscaRaw() {
+function buscarProdutosBuscaRaw() {
   return prisma.produto.findMany({
     where: {
       ativo: true,
@@ -365,7 +334,6 @@ async function buscarProdutosBuscaRaw() {
     take: 500,
     select: {
       id: true,
-      codigoInterno: true,
       nome: true,
       tipoProduto: true,
       imagemUrl: true,
@@ -387,11 +355,6 @@ async function buscarProdutosBuscaRaw() {
         select: {
           tamanhoAnel: true,
           quantidadeAtual: true,
-        },
-      },
-      vendasItens: {
-        select: {
-          quantidade: true,
         },
       },
       componentesDoKit: {
@@ -470,7 +433,7 @@ async function buscarProdutosBuscaRaw() {
   });
 }
 
-async function buscarCategoriasBuscaRaw() {
+function buscarCategoriasBuscaRaw() {
   return prisma.categoriaProduto.findMany({
     where: {
       ativo: true,
@@ -488,7 +451,7 @@ async function buscarCategoriasBuscaRaw() {
   });
 }
 
-async function buscarPaginasBuscaRaw() {
+function buscarPaginasBuscaRaw() {
   return prisma.lojaPagina.findMany({
     where: {
       ativo: true,
@@ -513,7 +476,6 @@ async function buscarPaginasBuscaRaw() {
 function montarTextoProduto(produto: ProdutoBuscaRaw) {
   return [
     produto.nome,
-    produto.codigoInterno,
     produto.categoria,
     produto.descricaoLoja,
     produto.termosBusca,
@@ -557,7 +519,6 @@ function scoreProduto({
   filtros: BuscaLojaFiltrosDetectados;
 }) {
   const nome = montarTextoIndexavel(produto.nome);
-  const codigo = montarTextoIndexavel(produto.codigoInterno);
   const categoriaPrincipal = montarTextoIndexavel(produto.categoria);
   const categorias = montarTextoIndexavel(
     produto.categoriasProduto.map((item) => item.categoria.nome).join(" ")
@@ -583,7 +544,6 @@ function scoreProduto({
   score += scoreTextoCampo(nome, tokens, 42);
   score += scoreTextoCampo(categoriaPrincipal, tokens, 34);
   score += scoreTextoCampo(categorias, tokens, 34);
-  score += scoreTextoCampo(codigo, tokens, 30);
   score += scoreTextoCampo(termosComerciais, tokens, 30);
   score += scoreTextoCampo(termosCategorias, tokens, 24);
   score += scoreTextoCampo(descricao, tokens, 16);
@@ -638,19 +598,11 @@ function scoreProduto({
   return score;
 }
 
-function formatarProdutoBusca(
-  produto: ProdutoBuscaRaw,
-  relevancia: number
-): BuscaLojaProduto {
+function formatarProdutoBusca(produto: ProdutoBuscaRaw): BuscaLojaProduto {
   const estoque = calcularEstoqueProdutoPublico(produto);
-  const vendidosTotal = produto.vendasItens.reduce(
-    (total, item) => total + Number(item.quantidade || 0),
-    0
-  );
 
   return {
     id: produto.id,
-    codigoInterno: produto.codigoInterno,
     nome: produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
     imagemUrl: produto.imagemUrl,
     imagemHoverUrl: produto.imagemHoverUrl,
@@ -663,12 +615,13 @@ function formatarProdutoBusca(
     precoPromocional: produto.precoPromocional
       ? Number(produto.precoPromocional)
       : null,
-    estoqueTotal: estoque.estoqueTotal,
-    vendidosTotal,
+    disponivel: estoque.estoqueTotal > 0,
     criadoEm: produto.criadoEm.toISOString(),
-    tamanhosDisponiveis: estoque.tamanhosDisponiveis,
+    tamanhosDisponiveis: estoque.tamanhosDisponiveis.map((item) => ({
+      tamanhoAnel: item.tamanhoAnel,
+      disponivel: item.quantidadeAtual > 0,
+    })),
     href: `/loja/produto/${produto.id}`,
-    relevancia,
   };
 }
 
@@ -723,7 +676,6 @@ function scorePagina(
 function montarTextoProdutoAutocomplete(produto: ProdutoAutocompleteRaw) {
   return [
     produto.nome,
-    produto.codigoInterno,
     produto.categoria,
     produto.descricaoLoja,
     produto.termosBusca,
@@ -758,7 +710,6 @@ function scoreProdutoAutocomplete({
   filtros: BuscaLojaFiltrosDetectados;
 }) {
   const nome = montarTextoIndexavel(produto.nome);
-  const codigo = montarTextoIndexavel(produto.codigoInterno);
   const categoriaPrincipal = montarTextoIndexavel(produto.categoria);
   const termosComerciais = montarTextoIndexavel(
     [produto.termosBusca, produto.tagsComerciais].join(" ")
@@ -780,7 +731,6 @@ function scoreProdutoAutocomplete({
   score += scoreTextoCampo(atributos, tokens, 34);
   score += scoreTextoCampo(termosComerciais, tokens, 30);
   score += scoreTextoCampo(categoriaPrincipal, tokens, 26);
-  score += scoreTextoCampo(codigo, tokens, 20);
   score += scoreTextoCampo(textoCompleto, tokens, 7);
 
   if (textoContemTodosTokens(textoCompleto, tokens)) score += 40;
@@ -806,8 +756,7 @@ function scoreProdutoAutocomplete({
 }
 
 function formatarProdutoAutocomplete(
-  produto: ProdutoAutocompleteRaw,
-  relevancia: number
+  produto: ProdutoAutocompleteRaw
 ): BuscaLojaAutocompleteProduto {
   return {
     id: produto.id,
@@ -816,7 +765,6 @@ function formatarProdutoAutocomplete(
     imagemUrl: produto.imagemUrl,
     categoria: produto.categoria,
     href: `/loja/produto/${produto.id}`,
-    relevancia,
     tipoResultado: "PRODUTO",
   };
 }
@@ -841,28 +789,6 @@ function resultadoAutocompleteVazio(
     sugestoes: sugestoesAutocomplete(),
     termoNormalizado,
     ordemGrupos,
-  };
-}
-
-function comDebugAutocomplete({
-  resultado,
-  inicio,
-  cache,
-}: {
-  resultado: BuscaLojaAutocompleteResultado;
-  inicio: number;
-  cache: boolean;
-}) {
-  if (process.env.NODE_ENV === "production") {
-    return resultado;
-  }
-
-  return {
-    ...resultado,
-    debug: {
-      duracaoMs: Date.now() - inicio,
-      cache,
-    },
   };
 }
 
@@ -898,7 +824,6 @@ export async function buscarLojaAutocomplete({
 }: {
   q: string;
 }): Promise<BuscaLojaAutocompleteResultado> {
-  const inicio = Date.now();
   const termoNormalizado = normalizarTextoBusca(q);
   const tokens = tokenizarBusca(q);
   const ordemGrupos = ordenarGruposAutocomplete();
@@ -912,49 +837,45 @@ export async function buscarLojaAutocomplete({
   const cache = autocompleteCache.get(cacheKey);
 
   if (cache && cache.expiraEm > Date.now()) {
-    return comDebugAutocomplete({
-      resultado: cache.resultado,
-      inicio,
-      cache: true,
-    });
+    return cache.resultado;
   }
 
   const filtrosDetectados = detectarFiltros(q, tokens);
-  const produtosRaw = await buscarProdutosAutocompleteRaw(q, tokens);
+  const produtos = await buscarProdutosAutocompleteRaw(q, tokens).then(
+    (produtosRaw) =>
+      produtosRaw
+        .map((produto) => ({
+          produto,
+          relevancia: scoreProdutoAutocomplete({
+            produto,
+            tokens,
+            termoNormalizado,
+            filtros: filtrosDetectados,
+          }),
+        }))
+        .filter(({ produto, relevancia }) => {
+          if (filtrosDetectados.precoMaximo !== null) {
+            const preco = precoFinalProduto({
+              precoVenda: Number(produto.precoVenda),
+              descontoAtivo: produto.descontoAtivo,
+              precoPromocional: produto.precoPromocional
+                ? Number(produto.precoPromocional)
+                : null,
+            });
 
-  const produtos = produtosRaw
-    .map((produto) => ({
-      produto,
-      relevancia: scoreProdutoAutocomplete({
-        produto,
-        tokens,
-        termoNormalizado,
-        filtros: filtrosDetectados,
-      }),
-    }))
-    .filter(({ produto, relevancia }) => {
-      if (filtrosDetectados.precoMaximo !== null) {
-        const preco = precoFinalProduto({
-          precoVenda: Number(produto.precoVenda),
-          descontoAtivo: produto.descontoAtivo,
-          precoPromocional: produto.precoPromocional
-            ? Number(produto.precoPromocional)
-            : null,
-        });
+            if (preco > filtrosDetectados.precoMaximo) return false;
+          }
 
-        if (preco > filtrosDetectados.precoMaximo) return false;
-      }
-
-      return relevancia > 0;
-    })
-    .sort(
-      (a, b) =>
-        b.relevancia - a.relevancia || a.produto.nome.localeCompare(b.produto.nome)
-    )
-    .slice(0, 6)
-    .map(({ produto, relevancia }) =>
-      formatarProdutoAutocomplete(produto, relevancia)
-    );
+          return relevancia > 0;
+        })
+        .sort(
+          (a, b) =>
+            b.relevancia - a.relevancia ||
+            a.produto.nome.localeCompare(b.produto.nome)
+        )
+        .slice(0, 6)
+        .map(({ produto }) => formatarProdutoAutocomplete(produto))
+  );
 
   const resultado: BuscaLojaAutocompleteResultado = {
     modo: "autocomplete",
@@ -981,11 +902,7 @@ export async function buscarLojaAutocomplete({
     }
   }
 
-  return comDebugAutocomplete({
-    resultado,
-    inicio,
-    cache: false,
-  });
+  return resultado;
 }
 
 export async function buscarLojaInteligente({
@@ -1008,95 +925,114 @@ export async function buscarLojaInteligente({
     tipoNormalizado === "todos" || tipoNormalizado === "categorias";
   const incluirPaginas = tipoNormalizado === "todos" || tipoNormalizado === "paginas";
 
-  const [produtosRaw, categoriasRaw, paginasRaw] = await Promise.all([
-    incluirProdutos ? buscarProdutosBuscaRaw() : Promise.resolve([]),
-    incluirCategorias ? buscarCategoriasBuscaRaw() : Promise.resolve([]),
-    incluirPaginas ? buscarPaginasBuscaRaw() : Promise.resolve([]),
+  const produtosPromise: Promise<BuscaLojaProduto[]> = incluirProdutos
+    ? buscarProdutosBuscaRaw().then((produtosRaw) =>
+        produtosRaw
+          .map((produto) => {
+            const relevancia = scoreProduto({
+              produto,
+              tokens,
+              termoNormalizado,
+              filtros: filtrosDetectados,
+            });
+
+            return { produto, relevancia };
+          })
+          .filter(({ produto, relevancia }) => {
+            if (filtrosDetectados.precoMaximo !== null) {
+              const preco = precoFinalProduto({
+                precoVenda: Number(produto.precoVenda),
+                descontoAtivo: produto.descontoAtivo,
+                precoPromocional: produto.precoPromocional
+                  ? Number(produto.precoPromocional)
+                  : null,
+              });
+
+              if (preco > filtrosDetectados.precoMaximo) return false;
+            }
+
+            if (!termoNormalizado && filtrosDetectados.precoMaximo === null) {
+              return false;
+            }
+
+            return relevancia > 0;
+          })
+          .sort(
+            (a, b) =>
+              b.relevancia - a.relevancia ||
+              a.produto.nome.localeCompare(b.produto.nome)
+          )
+          .slice(0, limiteSeguro)
+          .map(({ produto }) => formatarProdutoBusca(produto))
+      )
+    : Promise.resolve([]);
+
+  const categoriasPromise: Promise<{
+    resultados: BuscaLojaCategoria[];
+    sugestoes: string[];
+  }> = incluirCategorias
+    ? buscarCategoriasBuscaRaw().then((categoriasRaw) => ({
+        resultados: categoriasRaw
+          .map((categoria) => ({
+            categoria,
+            relevancia: scoreCategoria(categoria, tokens, termoNormalizado),
+          }))
+          .filter(({ relevancia }) => termoNormalizado && relevancia > 0)
+          .sort(
+            (a, b) =>
+              b.relevancia - a.relevancia ||
+              a.categoria.nome.localeCompare(b.categoria.nome)
+          )
+          .slice(0, tipoNormalizado === "categorias" ? limiteSeguro : 8)
+          .map(({ categoria }) => ({
+            id: categoria.id,
+            nome: categoria.nome,
+            slug: categoria.slug,
+            descricao: categoria.descricaoSeo || categoria.descricao,
+            imagemUrl: categoria.imagemUrl,
+            href: `/loja/categoria/${categoria.slug}`,
+          })),
+        sugestoes: categoriasRaw.map((categoria) => categoria.nome).slice(0, 6),
+      }))
+    : Promise.resolve({ resultados: [], sugestoes: [] });
+
+  const paginasPromise: Promise<BuscaLojaPagina[]> = incluirPaginas
+    ? buscarPaginasBuscaRaw().then((paginasRaw) =>
+        paginasRaw
+          .map((pagina) => ({
+            pagina,
+            relevancia: scorePagina(pagina, tokens, termoNormalizado),
+          }))
+          .filter(({ relevancia }) => termoNormalizado && relevancia > 0)
+          .sort(
+            (a, b) =>
+              b.relevancia - a.relevancia ||
+              a.pagina.titulo.localeCompare(b.pagina.titulo)
+          )
+          .slice(0, tipoNormalizado === "paginas" ? limiteSeguro : 6)
+          .map(({ pagina }) => ({
+            id: pagina.id,
+            titulo: pagina.titulo,
+            slug: pagina.slug,
+            tipo: pagina.tipo,
+            descricao: pagina.seoDescription,
+            href: `/loja/p/${pagina.slug}`,
+          }))
+      )
+    : Promise.resolve([]);
+
+  const [produtos, categoriasResultado, paginas] = await Promise.all([
+    produtosPromise,
+    categoriasPromise,
+    paginasPromise,
   ]);
-
-  const produtos = produtosRaw
-    .map((produto) => {
-      const relevancia = scoreProduto({
-        produto,
-        tokens,
-        termoNormalizado,
-        filtros: filtrosDetectados,
-      });
-
-      return { produto, relevancia };
-    })
-    .filter(({ produto, relevancia }) => {
-      if (filtrosDetectados.precoMaximo !== null) {
-        const preco = precoFinalProduto({
-          precoVenda: Number(produto.precoVenda),
-          descontoAtivo: produto.descontoAtivo,
-          precoPromocional: produto.precoPromocional
-            ? Number(produto.precoPromocional)
-            : null,
-        });
-
-        if (preco > filtrosDetectados.precoMaximo) return false;
-      }
-
-      if (!termoNormalizado && filtrosDetectados.precoMaximo === null) {
-        return false;
-      }
-
-      return relevancia > 0;
-    })
-    .sort((a, b) => b.relevancia - a.relevancia || a.produto.nome.localeCompare(b.produto.nome))
-    .slice(0, limiteSeguro)
-    .map(({ produto, relevancia }) => formatarProdutoBusca(produto, relevancia));
-
-  const categorias = categoriasRaw
-    .map((categoria) => ({
-      categoria,
-      relevancia: scoreCategoria(categoria, tokens, termoNormalizado),
-    }))
-    .filter(({ relevancia }) => termoNormalizado && relevancia > 0)
-    .sort(
-      (a, b) =>
-        b.relevancia - a.relevancia || a.categoria.nome.localeCompare(b.categoria.nome)
-    )
-    .slice(0, tipoNormalizado === "categorias" ? limiteSeguro : 8)
-    .map(({ categoria, relevancia }) => ({
-      id: categoria.id,
-      nome: categoria.nome,
-      slug: categoria.slug,
-      descricao: categoria.descricaoSeo || categoria.descricao,
-      imagemUrl: categoria.imagemUrl,
-      href: `/loja/categoria/${categoria.slug}`,
-      relevancia,
-    }));
-
-  const paginas = paginasRaw
-    .map((pagina) => ({
-      pagina,
-      relevancia: scorePagina(pagina, tokens, termoNormalizado),
-    }))
-    .filter(({ relevancia }) => termoNormalizado && relevancia > 0)
-    .sort((a, b) => b.relevancia - a.relevancia || a.pagina.titulo.localeCompare(b.pagina.titulo))
-    .slice(0, tipoNormalizado === "paginas" ? limiteSeguro : 6)
-    .map(({ pagina, relevancia }) => ({
-      id: pagina.id,
-      titulo: pagina.titulo,
-      slug: pagina.slug,
-      tipo: pagina.tipo,
-      descricao: pagina.seoDescription,
-      href: `/loja/p/${pagina.slug}`,
-      relevancia,
-    }));
-
-  const sugestoesCategorias = categoriasRaw
-    .map((categoria) => categoria.nome)
-    .slice(0, 6);
 
   return {
     produtos,
-    categorias,
+    categorias: categoriasResultado.resultados,
     paginas,
     sugestoes: Array.from(
-      new Set([...sugestoesCategorias, ...SUGESTOES_FIXAS])
+      new Set([...categoriasResultado.sugestoes, ...SUGESTOES_FIXAS])
     ).slice(0, 8),
     filtrosDetectados,
     termoNormalizado: tokens.join(" "),

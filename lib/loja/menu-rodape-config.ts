@@ -25,6 +25,22 @@ export async function salvarConfiguracaoMenuRodape(
   config: unknown
 ): Promise<LojaMenuRodapeConfig> {
   const configNormalizada = normalizarLojaMenuRodapeConfig(config);
+  const registroAtual = await prisma.lojaMenuRodapeConfiguracao.findUnique({
+    where: {
+      chave: LOJA_MENU_RODAPE_CHAVE,
+    },
+    select: {
+      configJson: true,
+    },
+  });
+  const configAtual = registroAtual?.configJson;
+  const stellaSetup =
+    configAtual && typeof configAtual === "object" && !Array.isArray(configAtual)
+      ? configAtual._stellaSetup
+      : undefined;
+  const configPersistida = stellaSetup
+    ? { ...configNormalizada, _stellaSetup: stellaSetup }
+    : configNormalizada;
 
   await prisma.lojaMenuRodapeConfiguracao.upsert({
     where: {
@@ -32,10 +48,10 @@ export async function salvarConfiguracaoMenuRodape(
     },
     create: {
       chave: LOJA_MENU_RODAPE_CHAVE,
-      configJson: configNormalizada as Prisma.InputJsonValue,
+      configJson: configPersistida as Prisma.InputJsonValue,
     },
     update: {
-      configJson: configNormalizada as Prisma.InputJsonValue,
+      configJson: configPersistida as Prisma.InputJsonValue,
     },
   });
 

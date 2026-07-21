@@ -43,16 +43,26 @@ function normalizarTamanhosDisponiveis(
     quantidadeAtual: number;
   }[]
 ) {
-  return estoque
-    .map((item) => ({
-      tamanhoAnel: normalizarTamanho(item.tamanhoAnel),
-      quantidadeAtual: item.quantidadeAtual,
-    }))
-    .filter((item) => item.tamanhoAnel)
-    .filter((item) => item.quantidadeAtual > 0)
-    .map((item) => ({
-      tamanhoAnel: item.tamanhoAnel as string,
-      quantidadeAtual: item.quantidadeAtual,
+  const disponibilidadePorTamanho = new Map<string, boolean>();
+
+  estoque.forEach((item) => {
+    const tamanhoAnel = normalizarTamanho(item.tamanhoAnel);
+
+    if (!tamanhoAnel) {
+      return;
+    }
+
+    disponibilidadePorTamanho.set(
+      tamanhoAnel,
+      Boolean(disponibilidadePorTamanho.get(tamanhoAnel)) ||
+        Number(item.quantidadeAtual || 0) > 0
+    );
+  });
+
+  return Array.from(disponibilidadePorTamanho.entries())
+    .map(([tamanhoAnel, disponivel]) => ({
+      tamanhoAnel,
+      disponivel,
     }))
     .sort((a, b) => {
       const numeroA = Number(a.tamanhoAnel);
@@ -66,14 +76,13 @@ function normalizarTamanhosDisponiveis(
     });
 }
 
-async function buscarProdutoDetalheRaw(id: string) {
+function buscarProdutoDetalheRaw(id: string) {
   return prisma.produto.findUnique({
     where: {
       id,
     },
     select: {
       id: true,
-      codigoInterno: true,
       nome: true,
       tipoProduto: true,
       ativo: true,
@@ -85,7 +94,6 @@ async function buscarProdutoDetalheRaw(id: string) {
       descontoAtivo: true,
       precoPromocional: true,
       descricaoLoja: true,
-      observacoes: true,
       familiaId: true,
       familiaMaterial: true,
       familiaCorJoia: true,
@@ -161,7 +169,7 @@ async function buscarProdutoDetalheRaw(id: string) {
   });
 }
 
-async function buscarProdutosRelacionadosRaw({
+function buscarProdutosRelacionadosRaw({
   produtoId,
   categoria,
   apenasDesconto = false,
@@ -197,7 +205,6 @@ async function buscarProdutosRelacionadosRaw({
     take,
     select: {
       id: true,
-      codigoInterno: true,
       nome: true,
       tipoProduto: true,
       imagemUrl: true,
@@ -257,7 +264,6 @@ async function buscarProdutosFamiliaRaw({
       produto: {
         select: {
           id: true,
-          codigoInterno: true,
           nome: true,
           tipoProduto: true,
           imagemUrl: true,
@@ -315,7 +321,6 @@ function formatarProdutoRelacionado(
 
   return {
     id: produto.id,
-    codigoInterno: produto.codigoInterno,
     nome: produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
     imagemUrl: produto.imagemUrl,
     imagemHoverUrl: produto.imagemHoverUrl,
@@ -325,7 +330,7 @@ function formatarProdutoRelacionado(
     precoPromocional: produto.precoPromocional
       ? Number(produto.precoPromocional)
       : null,
-    estoqueTotal: estoque.estoqueTotal,
+    disponivel: estoque.estoqueTotal > 0,
   };
 }
 
@@ -384,7 +389,6 @@ function formatarProdutoFamiliaRelacionado({
 
   return {
     id: produto.id,
-    codigoInterno: produto.codigoInterno,
     nome: produto.nome,
     nomeOpcao,
     imagemUrl:
@@ -396,160 +400,156 @@ function formatarProdutoFamiliaRelacionado({
     corJoia: corJoiaDinamica,
     href: `/loja/produto/${produto.id}`,
     selecionado: produto.id === produtoAtualId,
-    estoqueTotal: estoque.estoqueTotal,
+    disponivel: estoque.estoqueTotal > 0,
   };
 }
 
-export async function buscarProdutoDetalhePublico(id: string) {
-  const produto = await buscarProdutoDetalheRaw(id);
+export function buscarProdutoDetalhePublico(id: string) {
+  return buscarProdutoDetalheRaw(id).then((produto) => {
+    if (!produto || !produto.ativo || produto.status === "NA_LIXEIRA") {
+      return null;
+    }
 
-  if (!produto || !produto.ativo || produto.status === "NA_LIXEIRA") {
-    return null;
-  }
+    const estoque = calcularEstoqueProdutoPublico({
+      tipoProduto: produto.tipoProduto,
+      estoque: produto.estoque,
+      componentesDoKit: produto.componentesDoKit,
+    });
 
-  const [estoque, produtosFamiliaRaw] = await Promise.all([
-    Promise.resolve(
-      calcularEstoqueProdutoPublico({
-        tipoProduto: produto.tipoProduto,
-        estoque: produto.estoque,
-        componentesDoKit: produto.componentesDoKit,
-      })
-    ),
+    const imagens = produto.imagens.length
+      ? produto.imagens.map((imagem) => imagem.imagemUrl)
+      : [produto.imagemUrl, produto.imagemHoverUrl].filter(Boolean).map(String);
 
-    buscarProdutosFamiliaRaw({
-      produtoId: produto.id,
-      familiaId: produto.familiaId,
-    }),
-  ]);
+    const variacoes = produto.variacoes.map((variacao) => {
+      const opcoesComEstoque = variacao.opcoes.map((opcao) => {
+        const opcaoDisponivel = produto.estoque.some(
+          (item) =>
+            normalizarTexto(item.tamanhoAnel) === normalizarTexto(opcao.nome) &&
+            Number(item.quantidadeAtual || 0) > 0
+        );
 
-  const imagens = produto.imagens.length
-    ? produto.imagens.map((imagem) => imagem.imagemUrl)
-    : [produto.imagemUrl, produto.imagemHoverUrl].filter(Boolean).map(String);
-
-  const variacoes = produto.variacoes.map((variacao) => {
-    const opcoesComEstoque = variacao.opcoes.map((opcao) => {
-      const estoqueOpcao = produto.estoque.find(
-        (item) =>
-          normalizarTexto(item.tamanhoAnel) === normalizarTexto(opcao.nome)
-      );
+        return {
+          id: opcao.id,
+          nome: opcao.nome,
+          imagemUrl: opcao.imagemUrl,
+          precoAdicional: Number(opcao.precoAdicional || 0),
+          disponivel: opcaoDisponivel,
+        };
+      });
 
       return {
-        id: opcao.id,
-        nome: opcao.nome,
-        imagemUrl: opcao.imagemUrl,
-        precoAdicional: Number(opcao.precoAdicional || 0),
-        quantidadeAtual: Number(estoqueOpcao?.quantidadeAtual || 0),
+        id: variacao.id,
+        nome: variacao.nome,
+        obrigatoria: variacao.obrigatoria,
+        opcoes: opcoesComEstoque,
       };
     });
 
-    return {
-      id: variacao.id,
-      nome: variacao.nome,
-      obrigatoria: variacao.obrigatoria,
-      opcoes: opcoesComEstoque,
-    };
-  });
+    const possuiVariacao = variacoes.some(
+      (variacao) => variacao.opcoes.length > 0
+    );
 
-  const possuiVariacao = variacoes.some(
-    (variacao) => variacao.opcoes.length > 0
-  );
-
-  const tamanhosDisponiveis =
-    produto.tipoProduto === "KIT"
-      ? []
-      : possuiVariacao
-      ? variacoes
-          .flatMap((variacao) =>
+    const tamanhosDisponiveis =
+      produto.tipoProduto === "KIT"
+        ? []
+        : possuiVariacao
+        ? variacoes.flatMap((variacao) =>
             variacao.opcoes.map((opcao) => ({
               tamanhoAnel: opcao.nome,
-              quantidadeAtual: opcao.quantidadeAtual,
+              disponivel: opcao.disponivel,
             }))
           )
-          .filter((opcao) => opcao.quantidadeAtual > 0)
-      : normalizarTamanhosDisponiveis(produto.estoque);
+        : normalizarTamanhosDisponiveis(produto.estoque);
 
-  const familiaProdutos = produtosFamiliaRaw
-    .map((vinculo) =>
-      formatarProdutoFamiliaRelacionado({
-        vinculo,
-        produtoAtualId: produto.id,
-      })
-    )
-    .filter((item) => item.id !== produto.id || produtosFamiliaRaw.length > 1);
-
-  const produtoFormatado: ProdutoLojaDetalhe = {
-    id: produto.id,
-    codigoInterno: produto.codigoInterno,
-    nome: produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
-    imagemUrl: produto.imagemUrl,
-    imagemHoverUrl: produto.imagemHoverUrl,
-    imagens,
-    categoria: produto.categoria,
-    precoVenda: Number(produto.precoVenda),
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional: produto.precoPromocional
-      ? Number(produto.precoPromocional)
-      : null,
-    descricaoLoja: produto.descricaoLoja,
-    observacoes: produto.observacoes,
-    estoqueTotal: estoque.estoqueTotal,
-    tamanhosDisponiveis,
-    variacoes,
-    familia: produto.familia
-      ? {
-          id: produto.familia.id,
-          nome: produto.familia.nome,
-          slug: produto.familia.slug,
-        }
-      : null,
-    familiaMaterial: produto.familiaMaterial,
-    familiaCorJoia: produto.familiaCorJoia,
-    familiaProdutos,
-    garantia: {
-      titulo: "Garantia",
-      conteudo:
-        "Todas as peças passam por conferência antes do envio. A garantia cobre defeitos de fabricação, conforme análise interna. Danos por mau uso, queda, contato com produtos químicos ou desgaste natural não são cobertos.",
-    },
-  };
-
-  return {
-    produtoRaw: {
+    const produtoBase: Omit<ProdutoLojaDetalhe, "familiaProdutos"> = {
       id: produto.id,
+      nome:
+        produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
+      imagemUrl: produto.imagemUrl,
+      imagemHoverUrl: produto.imagemHoverUrl,
+      imagens,
       categoria: produto.categoria,
-      embalagemClasseId: produto.embalagemClasseId,
-      permiteEmbalagemPresente: produto.permiteEmbalagemPresente,
-      embalagemPresentePadraoId: produto.embalagemPresentePadraoId,
-    },
-    produto: produtoFormatado,
-  };
+      precoVenda: Number(produto.precoVenda),
+      descontoAtivo: produto.descontoAtivo,
+      precoPromocional: produto.precoPromocional
+        ? Number(produto.precoPromocional)
+        : null,
+      descricaoLoja: produto.descricaoLoja,
+      disponivel: estoque.estoqueTotal > 0,
+      tamanhosDisponiveis,
+      variacoes,
+      familia: produto.familia
+        ? {
+            id: produto.familia.id,
+            nome: produto.familia.nome,
+            slug: produto.familia.slug,
+          }
+        : null,
+      familiaMaterial: produto.familiaMaterial,
+      familiaCorJoia: produto.familiaCorJoia,
+      garantia: {
+        titulo: "Informações",
+        conteudo:
+          "Consulte a descrição disponível para esta peça e as páginas de atendimento da loja antes de finalizar a compra.",
+      },
+    };
+
+    return buscarProdutosFamiliaRaw({
+      produtoId: produto.id,
+      familiaId: produto.familiaId,
+    }).then((produtosFamiliaRaw) => {
+      const familiaProdutos = produtosFamiliaRaw
+        .map((vinculo) =>
+          formatarProdutoFamiliaRelacionado({
+            vinculo,
+            produtoAtualId: produto.id,
+          })
+        )
+        .filter(
+          (item) => item.id !== produto.id || produtosFamiliaRaw.length > 1
+        );
+
+      return {
+        produtoRaw: {
+          id: produto.id,
+          categoria: produto.categoria,
+          embalagemClasseId: produto.embalagemClasseId,
+          permiteEmbalagemPresente: produto.permiteEmbalagemPresente,
+          embalagemPresentePadraoId: produto.embalagemPresentePadraoId,
+        },
+        produto: {
+          ...produtoBase,
+          familiaProdutos,
+        },
+      };
+    });
+  });
 }
 
-export async function buscarRelacionadosProduto({
+export function buscarRelacionadosProduto({
   produtoId,
   categoria,
 }: {
   produtoId: string;
   categoria: string;
 }) {
-  const relacionadosRaw = await buscarProdutosRelacionadosRaw({
+  return buscarProdutosRelacionadosRaw({
     produtoId,
     categoria,
     take: 8,
-  });
-
-  return relacionadosRaw.map(formatarProdutoRelacionado);
+  }).then((relacionadosRaw) => relacionadosRaw.map(formatarProdutoRelacionado));
 }
 
-export async function buscarDescontosProduto({
+export function buscarDescontosProduto({
   produtoId,
 }: {
   produtoId: string;
 }) {
-  const descontosRaw = await buscarProdutosRelacionadosRaw({
+  return buscarProdutosRelacionadosRaw({
     produtoId,
     apenasDesconto: true,
     take: 8,
-  });
-
-  return descontosRaw.map(formatarProdutoRelacionado).filter(produtoTemDesconto);
+  }).then((descontosRaw) =>
+    descontosRaw.map(formatarProdutoRelacionado).filter(produtoTemDesconto)
+  );
 }

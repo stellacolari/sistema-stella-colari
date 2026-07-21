@@ -13,6 +13,7 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja } from "@/lib/loja/seo";
+import { serializarBlocoBuilderPublico } from "@/lib/loja/blocos-publicos.server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,24 +26,7 @@ type PageProps = {
 function serializarProdutosBuilder(
   produtosPublicos: Awaited<ReturnType<typeof buscarProdutosPublicos>>
 ) {
-  const produtos: LojaBuilderProduto[] = produtosPublicos.map((produto) => ({
-    id: produto.id,
-    codigoInterno: produto.codigoInterno,
-    nome: produto.nome,
-    imagemUrl: produto.imagemUrl,
-    imagemHoverUrl: produto.imagemHoverUrl,
-    categoria: produto.categoria,
-    categoriaIds: produto.categoriaIds,
-    categoriaSlugs: produto.categoriaSlugs,
-    categoriaNomes: produto.categoriaNomes,
-    precoVenda: produto.precoVenda,
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional: produto.precoPromocional,
-    estoqueTotal: produto.estoqueTotal,
-    vendidosTotal: produto.vendidosTotal,
-    criadoEm: produto.criadoEm,
-    tamanhosDisponiveis: produto.tamanhosDisponiveis,
-  }));
+  const produtos: LojaBuilderProduto[] = produtosPublicos;
 
   return produtos;
 }
@@ -125,7 +109,7 @@ export default async function LojaColecaoPage({ params }: PageProps) {
   };
 
   const blocos: LojaBuilderBloco[] = [
-    {
+    serializarBlocoBuilderPublico({
       id: `colecao-${colecao.id}`,
       tipo: "LISTA_PRODUTOS",
       titulo: colecao.nome,
@@ -148,7 +132,7 @@ export default async function LojaColecaoPage({ params }: PageProps) {
         corFundo: "BRANCO",
         espacamento: "PADRAO",
       },
-    },
+    }),
   ];
 
   const produtos = serializarProdutosBuilder(produtosPublicos);

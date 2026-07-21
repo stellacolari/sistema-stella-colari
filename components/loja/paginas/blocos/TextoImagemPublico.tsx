@@ -265,6 +265,11 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const videoDesktop = getString(config, "videoDesktopUrl");
   const videoMobile = getString(config, "videoMobileUrl");
   const exibirMidia = getBoolean(config, "exibirMidia", true);
+  const mostrarPlaceholderSemMidia = getBoolean(
+    config,
+    "mostrarPlaceholderSemMidia",
+    false
+  );
   const hasTitulo =
     getBoolean(config, "mostrarTitulo", true) &&
     getBoolean(config, "exibirTexto", true) &&
@@ -273,7 +278,15 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
     getBoolean(config, "exibirSubtitulo", true) &&
     hasTextContent(textoRichText, texto);
   const hasBotao = getBoolean(config, "exibirBotao", true) && textoBotao && linkBotao;
-  const hasMedia = exibirMidia && Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
+  const hasMedia =
+    exibirMidia &&
+    Boolean(
+      imageDesktop ||
+        imageMobile ||
+        videoDesktop ||
+        videoMobile ||
+        mostrarPlaceholderSemMidia
+    );
 
   if (!hasTitulo && !hasTexto && !hasBotao && !hasMedia) {
     return null;

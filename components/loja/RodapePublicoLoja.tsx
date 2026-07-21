@@ -21,8 +21,8 @@ type RodapePublicoLojaProps = {
 const LOGO_URL = "/logo-stella.png";
 const LEGAL_LINKS = [
   { href: "/loja/termos-de-uso", label: "Termos de Uso" },
-  { href: "/loja/politica-de-privacidade", label: "Politica de Privacidade" },
-  { href: "/loja/trocas-e-devolucoes", label: "Trocas e Devolucoes" },
+  { href: "/loja/politica-de-privacidade", label: "Política de Privacidade" },
+  { href: "/loja/trocas-e-devolucoes", label: "Trocas e Devoluções" },
   { href: "/loja/frete-e-prazos", label: "Frete e Prazos" },
   { href: "/loja/contato", label: "Contato" },
 ];
@@ -86,6 +86,20 @@ export default function RodapePublicoLoja({
     (rede) => rede.ativo && rede.url
   );
   const selosAtivos = config.selos.filter((selo) => selo.ativo && selo.imagemUrl);
+  const linksPersonalizadosAtivos = config.rodape.colunas.flatMap((coluna) =>
+    coluna.links.filter((link) => link.ativo)
+  );
+  const hrefsPersonalizados = new Set(
+    linksPersonalizadosAtivos.map((link) => link.href)
+  );
+  const possuiColunaLojaPersonalizada = config.rodape.colunas.some(
+    (coluna) =>
+      coluna.id.trim().toLowerCase() === "loja" ||
+      coluna.titulo.trim().toLowerCase() === "loja"
+  );
+  const linksLegaisComplementares = LEGAL_LINKS.filter(
+    (link) => !hrefsPersonalizados.has(link.href)
+  );
 
   return (
     <footer className="mt-12 border-t border-slate-200 bg-white">
@@ -160,9 +174,13 @@ export default function RodapePublicoLoja({
         </div>
 
         <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
-          {config.rodape.colunas.map((coluna) => (
-            <nav key={coluna.id} className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+          {config.rodape.colunas.map((coluna, index) => (
+            <nav
+              key={coluna.id}
+              aria-label={`Rodapé — ${coluna.titulo}${index > 0 ? ` ${index + 1}` : ""}`}
+              className="space-y-3"
+            >
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
                 {coluna.titulo}
               </p>
 
@@ -182,9 +200,10 @@ export default function RodapePublicoLoja({
             </nav>
           ))}
 
-          {(config.rodape.mostrarLinksMenu || config.rodape.mostrarCarrinho) && (
-            <nav className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+          {(config.rodape.mostrarLinksMenu || config.rodape.mostrarCarrinho) &&
+            !possuiColunaLojaPersonalizada && (
+            <nav aria-label="Rodapé — navegação da loja" className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
                 Loja
               </p>
 
@@ -205,26 +224,26 @@ export default function RodapePublicoLoja({
             </nav>
           )}
 
-          <nav className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
-              Informacoes
+          <nav aria-label="Rodapé — informações e privacidade" className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
+              Informações
             </p>
 
             <div className="grid gap-2">
-              {LEGAL_LINKS.map((link) => (
+              {linksLegaisComplementares.map((link) => (
                 <LinkRodape key={link.href} href={link.href}>
                   {link.label}
                 </LinkRodape>
               ))}
               <BotaoRodape onClick={abrirPreferenciasPrivacidade}>
-                Preferencias de privacidade
+                Preferências de privacidade
               </BotaoRodape>
             </div>
           </nav>
         </div>
       </div>
 
-      <div className="border-t border-slate-100 px-5 py-4 text-center text-xs font-medium text-slate-400">
+      <div className="border-t border-slate-100 px-5 py-4 text-center text-xs font-medium text-slate-600">
         © {new Date().getFullYear()} {config.rodape.copyright}
       </div>
     </footer>

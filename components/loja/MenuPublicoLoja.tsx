@@ -28,7 +28,7 @@ import {
 } from "@/lib/loja/eventos-client";
 
 const LOGO_URL = "/logo-stella.png";
-const CONTATO_URL = "/loja/quem-somos";
+const CONTATO_URL = "/loja/contato";
 
 export type MenuPublicoItem = {
   id: string;
@@ -55,17 +55,6 @@ type CategoriaMenuComFilhos = CategoriaMenuPublicoItem & {
 
 type CategoriaMenuNivelada = CategoriaMenuComFilhos & {
   nivel: number;
-};
-
-type ProdutoBuscaMenuItem = {
-  id: string;
-  codigoInterno: string;
-  nome: string;
-  categoria: string;
-  tamanhosDisponiveis?: {
-    tamanhoAnel: string;
-    quantidadeAtual: number;
-  }[];
 };
 
 type BuscaAutocompleteProduto = {
@@ -107,7 +96,6 @@ type BuscaAutocompleteClick = {
 type MenuPublicoLojaProps = {
   menus: MenuPublicoItem[];
   categorias?: CategoriaMenuPublicoItem[];
-  produtos?: ProdutoBuscaMenuItem[];
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
   mostrarBusca?: boolean;
   mostrarPerfil?: boolean;
@@ -490,6 +478,10 @@ export default function MenuPublicoLoja({
   const inputBuscaRef = useRef<HTMLInputElement | null>(null);
   const buscaContainerRef = useRef<HTMLDivElement | null>(null);
   const buscaAbortRef = useRef<AbortController | null>(null);
+  const buscaButtonRef = useRef<HTMLButtonElement | null>(null);
+  const abrirMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuDialogRef = useRef<HTMLElement | null>(null);
+  const fecharMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const configMenu = useMemo(
     () => normalizarLojaMenuRodapeConfig(configuracaoMenuRodape).menu,
@@ -617,10 +609,20 @@ export default function MenuPublicoLoja({
       fecharBusca();
     }
 
+    function handleSearchKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      fecharBusca();
+      window.requestAnimationFrame(() => buscaButtonRef.current?.focus());
+    }
+
     document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleSearchKeyDown);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleSearchKeyDown);
     };
   }, [buscaAberta]);
 
@@ -707,10 +709,52 @@ export default function MenuPublicoLoja({
 
     const frame = window.requestAnimationFrame(() => {
       setMenuVisivel(true);
+      fecharMenuButtonRef.current?.focus();
     });
+
+    function handleMenuKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        fecharMenu();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        menuDialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      ).filter(
+        (element) =>
+          element.offsetParent !== null && element.getAttribute("aria-hidden") !== "true"
+      );
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        menuDialogRef.current?.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleMenuKeyDown);
 
     return () => {
       window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleMenuKeyDown);
     };
   }, [menuAberto]);
 
@@ -809,7 +853,8 @@ export default function MenuPublicoLoja({
       setMenuAberto(false);
       setCategoriaSelecionadaId(null);
       setCategoriasMobileAbertas([]);
-    }, 280);
+      abrirMenuButtonRef.current?.focus();
+    }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 280);
   }
 
   function toggleCategoriaMobile(categoriaId: string) {
@@ -852,20 +897,15 @@ export default function MenuPublicoLoja({
             : "border-b border-slate-200 bg-white shadow-sm"
         }`}
       >
-        <div
-          className={`hidden px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] md:block lg:text-[13px] lg:tracking-[0.28em] ${
-            headerTransparenteAtivo ? "bg-transparent text-white/80" : "brand-bg text-white"
-          }`}
-        >
-          10% de cashback na primeira compra
-        </div>
-
         <div className="mx-auto grid h-14 max-w-7xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-16 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:px-5 lg:h-[68px] lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:px-8">
           <div className="flex min-w-0 items-center justify-start">
             <button
+              ref={abrirMenuButtonRef}
               type="button"
               onClick={abrirMenu}
               aria-label="Abrir menu"
+              aria-controls="menu-publico-dialog"
+              aria-expanded={menuAberto}
               className={`inline-flex h-10 w-10 shrink-0 items-center justify-center transition sm:h-11 sm:w-auto sm:justify-start sm:gap-2 ${headerButtonSurfaceClass} ${headerTextClass}`}
             >
               <Menu className="h-5 w-5" />
@@ -889,9 +929,12 @@ export default function MenuPublicoLoja({
 
             {mostrarBusca && (
               <button
+                ref={buscaButtonRef}
                 type="button"
                 onClick={buscaAberta ? fecharBusca : abrirBusca}
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
+                aria-controls="busca-publica"
+                aria-expanded={buscaAberta}
                 className={`inline-flex h-10 w-9 shrink-0 items-center justify-center transition sm:w-10 ${headerButtonSurfaceClass} ${headerTextClass}`}
               >
                 {buscaAberta ? (
@@ -947,11 +990,15 @@ export default function MenuPublicoLoja({
         {buscaAberta && (
           <div
             ref={buscaContainerRef}
+            id="busca-publica"
+            role="search"
+            aria-label="Busca de produtos"
             className="absolute left-0 right-0 top-full z-50 border-t border-slate-100 bg-white px-4 py-4 shadow-2xl sm:px-6 lg:px-8"
           >
             <div className="mx-auto max-w-2xl">
               <div className="flex items-center justify-between gap-3">
                 <label className="flex h-12 flex-1 items-center gap-2 border border-slate-200 bg-white px-4 transition focus-within:border-[var(--brand-blue)]">
+                  <span className="sr-only">Buscar produtos</span>
                   <Search className="h-4 w-4 text-slate-400" />
 
                   <input
@@ -1115,14 +1162,21 @@ export default function MenuPublicoLoja({
       {menuAberto && (
         <div className="fixed inset-0 z-[80]">
           <div
-            className={`absolute inset-0 bg-slate-950 transition-opacity duration-300 ease-out ${
+            aria-hidden="true"
+            className={`absolute inset-0 bg-slate-950 transition-opacity duration-300 ease-out motion-reduce:duration-0 ${
               menuVisivel ? "opacity-70" : "opacity-0"
             }`}
             onClick={fecharMenu}
           />
 
           <aside
-            className={`absolute left-0 top-0 h-full w-[92vw] max-w-[430px] bg-white shadow-2xl transition-transform duration-300 ease-out lg:w-[20vw] lg:max-w-none ${
+            ref={menuDialogRef}
+            id="menu-publico-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu principal"
+            tabIndex={-1}
+            className={`absolute left-0 top-0 h-full w-[92vw] max-w-[430px] bg-white shadow-2xl transition-transform duration-300 ease-out motion-reduce:duration-0 lg:w-[42vw] lg:max-w-[440px] xl:w-[20vw] xl:max-w-none ${
               menuVisivel ? "translate-x-0" : "-translate-x-full"
             }`}
           >
@@ -1130,6 +1184,7 @@ export default function MenuPublicoLoja({
               <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5 sm:h-[72px] sm:px-8">
                 <div className="flex items-center gap-3">
                   <button
+                    ref={fecharMenuButtonRef}
                     type="button"
                     onClick={fecharMenu}
                     className="flex h-10 w-10 items-center justify-center text-slate-900 transition hover:text-[var(--brand-blue)]"
@@ -1351,8 +1406,8 @@ export default function MenuPublicoLoja({
             <section
               className={`absolute top-0 hidden h-full bg-white shadow-2xl transition-all duration-300 ease-out lg:block ${
                 categoriaSelecionada && menuVisivel
-                  ? "left-[20vw] w-[25vw] translate-x-0 opacity-100"
-                  : "left-[20vw] w-[0vw] -translate-x-4 overflow-hidden opacity-0"
+                  ? "left-[440px] w-[420px] translate-x-0 opacity-100 xl:left-[20vw] xl:w-[25vw]"
+                  : "left-[440px] w-0 -translate-x-4 overflow-hidden opacity-0 xl:left-[20vw]"
               }`}
             >
               {categoriaSelecionada && (
@@ -1368,9 +1423,10 @@ export default function MenuPublicoLoja({
                       <div className="pointer-events-none absolute inset-0 bg-black/5" />
                     </div>
                   ) : (
-                    <div className="flex h-64 w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
-                      Sem imagem cadastrada
-                    </div>
+                    <div
+                      className="h-64 w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+                      aria-hidden="true"
+                    />
                   )}
 
                   <div className="px-10 pt-8">

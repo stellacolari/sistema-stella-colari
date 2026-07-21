@@ -93,7 +93,7 @@ export const lojaMenuRodapeConfigPadrao: LojaMenuRodapeConfig = {
           {
             id: "contato",
             label: "Fale conosco",
-            href: "/loja/quem-somos",
+            href: "/loja/contato",
             ativo: true,
           },
         ],

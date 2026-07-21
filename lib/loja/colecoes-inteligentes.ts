@@ -438,7 +438,7 @@ function extrairProdutoIdsDeJson(value: unknown) {
   return ids;
 }
 
-async function resolverFonteCampanhaBuilder({
+function resolverFonteCampanhaBuilder({
   campanhaId,
   produtosIds,
   limite,
@@ -446,14 +446,14 @@ async function resolverFonteCampanhaBuilder({
   campanhaId: string;
   produtosIds: string[];
   limite: number;
-}) {
+}): Promise<string[]> {
   if (produtosIds.length > 0) {
-    return produtosIds.slice(0, limite);
+    return Promise.resolve(produtosIds.slice(0, limite));
   }
 
-  if (!campanhaId) return [];
+  if (!campanhaId) return Promise.resolve([]);
 
-  const campanha = await prisma.campanhaComercial.findFirst({
+  return prisma.campanhaComercial.findFirst({
     where: {
       id: campanhaId,
       status: { in: ["RASCUNHO", "PLANEJADA", "EM_EXECUCAO"] },
@@ -462,17 +462,19 @@ async function resolverFonteCampanhaBuilder({
       produtoId: true,
       produtosJson: true,
     },
+  }).then((campanha) => {
+    if (!campanha) return [];
+
+    return [
+      ...(campanha.produtoId ? [campanha.produtoId] : []),
+      ...extrairProdutoIdsDeJson(campanha.produtosJson),
+    ].slice(0, limite);
   });
-
-  if (!campanha) return [];
-
-  return [
-    ...(campanha.produtoId ? [campanha.produtoId] : []),
-    ...extrairProdutoIdsDeJson(campanha.produtosJson),
-  ].slice(0, limite);
 }
 
-export async function resolverFonteProdutosBuilder(config: Record<string, unknown>) {
+export function resolverFonteProdutosBuilder(
+  config: Record<string, unknown>,
+): Promise<string[]> {
   const fonteConfig = getConfigObject(config.fonte);
   const fonteAninhada = String(fonteConfig.tipo || "");
   const fonte = fonteAninhada || String(config.fonte || "");
@@ -489,7 +491,46 @@ export async function resolverFonteProdutosBuilder(config: Record<string, unknow
     });
   }
 
-  if (fonte !== "COLECAO_INTELIGENTE") return [];
+  if (fonte === "MAIS_VENDIDOS") {
+    return prisma.produto.findMany({
+      where: {
+        ativo: true,
+        status: { not: "NA_LIXEIRA" },
+      },
+      select: {
+        id: true,
+        vendasItens: {
+          where: {
+            venda: {
+              status: { notIn: ["CANCELADA", "NA_LIXEIRA"] },
+            },
+          },
+          select: {
+            quantidade: true,
+          },
+        },
+      },
+    }).then((produtos) =>
+      produtos
+        .map((produto) => ({
+          id: produto.id,
+          quantidadeVendida: produto.vendasItens.reduce(
+            (total, item) => total + Number(item.quantidade || 0),
+            0,
+          ),
+        }))
+        .filter((produto) => produto.quantidadeVendida > 0)
+        .sort(
+          (a, b) =>
+            b.quantidadeVendida - a.quantidadeVendida ||
+            a.id.localeCompare(b.id),
+        )
+        .slice(0, limite)
+        .map((produto) => produto.id),
+    );
+  }
+
+  if (fonte !== "COLECAO_INTELIGENTE") return Promise.resolve([]);
 
   const colecaoId = String(
     fonteConfig.colecaoId || config.colecaoInteligenteId || ""
@@ -509,12 +550,12 @@ export async function resolverFonteProdutosBuilder(config: Record<string, unknow
         ? "MAIS_RECENTES"
         : ordenacao;
 
-  const colecao = await prisma.colecaoInteligente.findFirst({
+  return prisma.colecaoInteligente.findFirst({
     where: {
       status: "ATIVA",
       OR: [{ id: colecaoId || "__none" }, { slug: colecaoSlug || "__none" }],
     },
-    include: {
+    select: {
       produtos: {
         where: {
           status: { in: incluirSugeridos ? ["APROVADO", "SUGERIDO"] : ["APROVADO"] },
@@ -524,19 +565,36 @@ export async function resolverFonteProdutosBuilder(config: Record<string, unknow
             estoque: { some: { quantidadeAtual: { gt: 0 } } },
           },
         },
-        include: { produto: true },
+        select: {
+          produtoId: true,
+          score: true,
+          fixado: true,
+          ordem: true,
+          produto: {
+            select: {
+              criadoEm: true,
+            },
+          },
+        },
       },
     },
-  });
+  }).then((colecao) => {
+    if (!colecao) return [];
 
-  if (!colecao) return [];
-  const itens = [...colecao.produtos].sort((a, b) => {
-    if (ordenacaoNormalizada === "MAIOR_SCORE") return b.score - a.score;
-    if (ordenacaoNormalizada === "MAIS_RECENTES") return b.produto.criadoEm.getTime() - a.produto.criadoEm.getTime();
-    return Number(b.fixado) - Number(a.fixado) || a.ordem - b.ordem || b.score - a.score;
-  });
+    const itens = [...colecao.produtos].sort((a, b) => {
+      if (ordenacaoNormalizada === "MAIOR_SCORE") return b.score - a.score;
+      if (ordenacaoNormalizada === "MAIS_RECENTES") {
+        return b.produto.criadoEm.getTime() - a.produto.criadoEm.getTime();
+      }
+      return (
+        Number(b.fixado) - Number(a.fixado) ||
+        a.ordem - b.ordem ||
+        b.score - a.score
+      );
+    });
 
-  return itens.slice(0, limite).map((item) => item.produtoId);
+    return itens.slice(0, limite).map((item) => item.produtoId);
+  });
 }
 
 export async function aplicarColecoesEmBlocosBuilder<T extends { configJson: unknown }>(blocos: T[]) {
@@ -548,7 +606,9 @@ export async function aplicarColecoesEmBlocosBuilder<T extends { configJson: unk
       const fonteConfig = getConfigObject(config.fonte);
       const fonte = String(fonteConfig.tipo || config.fonte || "");
 
-      if (!["COLECAO_INTELIGENTE", "CAMPANHA"].includes(fonte)) return bloco;
+      if (!["COLECAO_INTELIGENTE", "CAMPANHA", "MAIS_VENDIDOS"].includes(fonte)) {
+        return bloco;
+      }
 
       const produtosIds = await resolverFonteProdutosBuilder(config);
       const configResolvido =

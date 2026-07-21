@@ -1,0 +1,162 @@
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+
+.heroFallback,
+.mediaFallback {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 25%, rgba(255, 255, 255, 0.58), transparent 25%),
+    radial-gradient(circle at 76% 18%, rgba(46, 123, 153, 0.26), transparent 30%),
+    linear-gradient(135deg, #dce8eb 0%, #b8cbd1 48%, #809ba5 100%);
+}
+
+.heroFallback::before,
+.heroFallback::after,
+.mediaFallback::before {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  filter: blur(1px);
+}
+
+.heroFallback::before {
+  width: min(58vw, 720px);
+  aspect-ratio: 1;
+  right: -12%;
+  top: -34%;
+}
+
+.heroFallback::after {
+  width: min(34vw, 420px);
+  aspect-ratio: 1;
+  left: 8%;
+  bottom: -32%;
+}
+
+.mediaFallback::before {
+  width: 65%;
+  aspect-ratio: 1;
+  right: -20%;
+  top: -20%;
+}
+
+.mediaImage {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transition: transform 700ms cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+
+.mediaGroup:hover .mediaImage {
+  transform: scale(1.025);
+}
+
+.heroMediaImage {
+  object-position: var(--stella-hero-position-desktop);
+  transform: scale(var(--stella-hero-zoom-desktop));
+  transform-origin: var(--stella-hero-position-desktop);
+}
+
+.galleryMediaImage {
+  object-position: var(--stella-gallery-position-desktop);
+  transform: scale(var(--stella-gallery-zoom-desktop));
+  transform-origin: var(--stella-gallery-position-desktop);
+}
+
+.valueIcon {
+  display: inline-flex;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b9cbd1;
+  border-radius: 999px;
+  background: #fff;
+  color: #245f76;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.valueMedia {
+  aspect-ratio: 4 / 3;
+  width: min(100%, 11rem);
+  border-radius: 0.125rem;
+}
+
+.valueMediaImage {
+  object-position: var(--stella-value-position-desktop);
+}
+
+.mediaGroup:hover .galleryMediaImage {
+  transform: scale(calc(var(--stella-gallery-zoom-desktop) + 0.025));
+}
+
+.productCardShell :global(.stella-product-card) {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .revealVisible {
+    animation: stellaHomeReveal 620ms cubic-bezier(0.2, 0.65, 0.3, 1) both;
+  }
+
+  @keyframes stellaHomeReveal {
+    from {
+      opacity: 0.72;
+      transform: translateY(14px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .heroMediaImage {
+    object-position: var(--stella-hero-position-mobile);
+    transform: scale(var(--stella-hero-zoom-mobile));
+    transform-origin: var(--stella-hero-position-mobile);
+  }
+
+  .galleryMediaImage {
+    object-position: var(--stella-gallery-position-mobile);
+    transform: scale(var(--stella-gallery-zoom-mobile));
+    transform-origin: var(--stella-gallery-position-mobile);
+  }
+
+  .valueMediaImage {
+    object-position: var(--stella-value-position-mobile);
+  }
+
+  .mediaGroup:hover .galleryMediaImage {
+    transform: scale(calc(var(--stella-gallery-zoom-mobile) + 0.025));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mediaImage,
+  .reveal {
+    transition: none !important;
+  }
+
+  .mediaGroup:hover .mediaImage {
+    transform: none;
+  }
+
+  .mediaGroup:hover .galleryMediaImage {
+    transform: scale(var(--stella-gallery-zoom-desktop));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 767px) {
+  .mediaGroup:hover .galleryMediaImage {
+    transform: scale(var(--stella-gallery-zoom-mobile));
+  }
+}

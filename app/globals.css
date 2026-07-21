@@ -9,7 +9,9 @@
   --brand-blue-soft: #e7f2f6;
   --brand-blue-border: #b8d8e4;
 
-  --font-primary: var(--font-outfit), Arial, Helvetica, sans-serif;
+  --font-outfit: "Outfit", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  --font-primary: var(--font-outfit);
 }
 
 html {
@@ -209,6 +211,15 @@ select:focus {
   transform: none;
 }
 
+.stella-product-card[data-image-hover="false"] .stella-product-hover-overlay {
+  display: none;
+}
+
+.stella-product-card[data-image-hover="false"][data-touch-preview="true"]
+  .stella-product-normal-content {
+  opacity: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .stella-product-card.is-visible:hover {
     background-color: #ffffff;
@@ -226,6 +237,11 @@ select:focus {
 
   .stella-product-card:hover .stella-product-hover-image {
     transform: none;
+  }
+
+  .stella-product-card[data-image-hover="false"]:hover
+    .stella-product-normal-content {
+    opacity: 1;
   }
 }
 

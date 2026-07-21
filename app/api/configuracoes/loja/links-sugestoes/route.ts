@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 
 function slugify(value: string) {
   return value
@@ -49,27 +50,6 @@ const linksEspeciais = [
   {
     tipo: "ESPECIAL",
     grupo: "Páginas especiais",
-    titulo: "Descontos",
-    subtitulo: "Produtos com preço promocional",
-    href: "/loja/descontos",
-  },
-  {
-    tipo: "ESPECIAL",
-    grupo: "Páginas especiais",
-    titulo: "Todas as categorias",
-    subtitulo: "Página geral de categorias",
-    href: "/loja/categorias",
-  },
-  {
-    tipo: "ESPECIAL",
-    grupo: "Páginas especiais",
-    titulo: "Quem somos",
-    subtitulo: "Página institucional",
-    href: "/loja/quem-somos",
-  },
-  {
-    tipo: "ESPECIAL",
-    grupo: "Páginas especiais",
     titulo: "Carrinho",
     subtitulo: "Carrinho da loja",
     href: "/loja/carrinho",
@@ -114,6 +94,7 @@ export async function GET() {
     const paginas = await prisma.lojaPagina.findMany({
       where: {
         ativo: true,
+        statusPublicacao: "PUBLICADA",
       },
       select: {
         id: true,
@@ -143,18 +124,7 @@ export async function GET() {
   }
 
   try {
-    const categorias = await prisma.categoriaProduto.findMany({
-      where: {
-        ativo: true,
-      },
-      select: {
-        id: true,
-        nome: true,
-        slug: true,
-        categoriaMaeId: true,
-      },
-      orderBy: [{ ordem: "asc" }, { nome: "asc" }],
-    });
+    const categorias = await buscarCategoriasMenuPublico();
 
     linksCategorias = categorias.map((categoria) => ({
       tipo: "CATEGORIA",

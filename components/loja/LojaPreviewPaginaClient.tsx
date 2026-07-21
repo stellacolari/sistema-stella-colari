@@ -271,7 +271,7 @@ export default function LojaPreviewPaginaClient({
   const pageId = pagina.id;
 
   const blocosAtivos = useMemo(() => {
-    return blocosPreview.filter((bloco) => bloco);
+    return blocosPreview.filter((bloco) => bloco && bloco.ativo !== false);
   }, [blocosPreview]);
 
   useEffect(() => {

@@ -33,9 +33,9 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error("Erro ao buscar na loja:", error);
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao buscar na loja.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel realizar a busca." },
+      { status: 500 }
+    );
   }
 }

@@ -7902,7 +7902,7 @@ function RenderBlocoPreview({
                       precoVenda,
                       descontoAtivo: temDesconto,
                       precoPromocional,
-                      estoqueTotal: index === 5 ? 0 : 4,
+                      disponivel: index !== 5,
                     }}
                     exibirPreco={exibirPrecoProdutos}
                     exibirBotao={exibirBotaoProdutos}
@@ -9372,15 +9372,18 @@ function ColecoesCategoriasModalFields({
 
 function toBannerProdutosPublicos(produtos: EditorVisualProduto[]) {
   return produtos.map((produto) => ({
-    ...produto,
+    id: produto.id,
+    nome: produto.nome,
     imagemUrl: produto.imagemUrl || null,
     imagemHoverUrl: null,
+    categoria: produto.categoria,
+    categoriaIds: produto.categoriaIds,
     categoriaSlugs: [],
+    categoriaNomes: produto.categoriaNomes,
     precoVenda: 0,
     descontoAtivo: false,
     precoPromocional: null,
-    estoqueTotal: 0,
-    vendidosTotal: 0,
+    disponivel: true,
     criadoEm: "",
     tamanhosDisponiveis: [],
   }));
@@ -11802,12 +11805,17 @@ function GaleriaEditorialEditor({
         };
 
   function aplicarConfig(patch: Partial<GaleriaEditorialConfig>) {
+    const configOriginal = getConfigObject(estado.bloco.configJson);
+    const stellaSetup = configOriginal._stellaSetup;
+
     onChange({
       bloco: {
         ...estado.bloco,
         configJson: {
+          ...configOriginal,
           ...configGaleria,
           ...patch,
+          ...(stellaSetup ? { _stellaSetup: stellaSetup } : {}),
         },
       },
     });
@@ -17262,9 +17270,15 @@ export default function EditorVisualPaginaClient({
   function atualizarBannerHeroV2ConfigDraft(config: BannerHeroV2Config) {
     if (!blocoSelecionado || blocoSelecionado.tipo !== "BANNER_HERO_V2") return;
 
-    const configJson = normalizarBannerHeroV2Config(
-      config
-    ) as unknown as Record<string, unknown>;
+    const configAtual = getConfigObject(blocoSelecionado.configJson);
+    const stellaSetup = configAtual._stellaSetup;
+    const configJson = {
+      ...(normalizarBannerHeroV2Config(config) as unknown as Record<
+        string,
+        unknown
+      >),
+      ...(stellaSetup ? { _stellaSetup: stellaSetup } : {}),
+    };
 
     inlineConfigDraftRef.current[blocoSelecionado.id] = configJson;
     atualizarConfigBlocoDraft(blocoSelecionado.id, configJson);

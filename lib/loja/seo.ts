@@ -22,7 +22,6 @@ type BuilderBlockLike = {
 
 type ProductJsonLdProduto = {
   id: string;
-  codigoInterno?: string | null;
   nome: string;
   imagemUrl?: string | null;
   imagens?: string[];
@@ -31,7 +30,7 @@ type ProductJsonLdProduto = {
   descontoAtivo?: boolean;
   precoPromocional?: number | null;
   descricaoLoja?: string | null;
-  estoqueTotal?: number;
+  disponivel?: boolean;
 };
 
 export function getLojaBaseUrl() {
@@ -125,7 +124,7 @@ export function criarJsonLdProduto(produto: ProductJsonLdProduto) {
     .filter((imagem): imagem is string => Boolean(imagem));
   const precoAtual = getPrecoAtualProduto(produto);
   const availability =
-    typeof produto.estoqueTotal === "number" && produto.estoqueTotal <= 0
+    produto.disponivel === false
       ? "https://schema.org/OutOfStock"
       : "https://schema.org/InStock";
 
@@ -135,7 +134,6 @@ export function criarJsonLdProduto(produto: ProductJsonLdProduto) {
     name: produto.nome,
     description: criarDescricaoProduto(produto),
     image: imagens.length > 0 ? imagens : undefined,
-    sku: produto.codigoInterno || produto.id,
     brand: {
       "@type": "Brand",
       name: LOJA_NOME,
@@ -265,7 +263,7 @@ function encontrarImagemEmObjeto(valor: unknown, profundidade = 0): string | nul
   }
 
   if (typeof valor === "string") {
-    return pareceImagem(valor) ? valor : null;
+    return null;
   }
 
   if (Array.isArray(valor)) {
@@ -306,6 +304,37 @@ function encontrarImagemEmObjeto(valor: unknown, profundidade = 0): string | nul
 
     if (typeof item === "string" && pareceImagem(item)) {
       return item;
+    }
+  }
+
+  const urlCrop = objeto.url;
+  const pareceCropDeImagem =
+    Object.prototype.hasOwnProperty.call(objeto, "aspectRatio") &&
+    (Object.prototype.hasOwnProperty.call(objeto, "positionX") ||
+      Object.prototype.hasOwnProperty.call(objeto, "positionY") ||
+      Object.prototype.hasOwnProperty.call(objeto, "zoom"));
+
+  if (
+    pareceCropDeImagem &&
+    typeof urlCrop === "string" &&
+    pareceImagem(urlCrop)
+  ) {
+    return urlCrop;
+  }
+
+  for (const chave of ["imagens", "images"]) {
+    const itens = objeto[chave];
+
+    if (!Array.isArray(itens)) continue;
+
+    for (const item of itens) {
+      if (typeof item === "string" && pareceImagem(item)) {
+        return item;
+      }
+
+      const imagem = encontrarImagemEmObjeto(item, profundidade + 1);
+
+      if (imagem) return imagem;
     }
   }
 

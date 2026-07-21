@@ -385,6 +385,7 @@ function ItemMedia({
     return (
       <div
         className={`overflow-hidden bg-[linear-gradient(135deg,#f8fafc,#e2e8f0_45%,#f8fafc)] ${className}`}
+        role="img"
         aria-label={alt}
       />
     );

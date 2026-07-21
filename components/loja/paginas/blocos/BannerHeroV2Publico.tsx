@@ -277,9 +277,7 @@ function getLinkHref(
   const clean = valor.trim();
   if (!clean) return "";
   if (tipo === "PRODUTO") {
-    const produto = produtos.find(
-      (item) => item.id === clean || item.codigoInterno === clean
-    );
+    const produto = produtos.find((item) => item.id === clean);
     return produto ? `/loja/produto/${produto.id}` : `/loja/produto/${clean}`;
   }
   if (tipo === "CATEGORIA") return `/loja/categoria/${clean}`;
@@ -373,15 +371,16 @@ function SlideText({
   className: string;
 }) {
   const element = slide.conteudo[field];
+  const Tag = field === "titulo" ? "h1" : "div";
 
   return (
-    <div
+    <Tag
       data-stella-inline-field={`bannerHeroV2:${slide.id}:${field}`}
       className={className}
       style={getTextStyle(slide, field)}
     >
       {renderInlineRichText(element.richText, element.conteudo)}
-    </div>
+    </Tag>
   );
 }
 
@@ -476,9 +475,10 @@ function SlideMedia({
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-slate-200 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-      Banner
-    </div>
+    <div
+      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#e7f2f6_42%,#bfd9e4_100%)]"
+      aria-hidden="true"
+    />
   );
 }
 

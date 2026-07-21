@@ -9,7 +9,7 @@ import {
   ShoppingCart,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ImageBox from "@/components/ui/ImageBox";
@@ -37,7 +37,6 @@ type CarrinhoItemOpcaoAdicional = {
 
 type CarrinhoItem = {
   produtoId: string;
-  codigoInterno: string;
   nome: string;
   imagemUrl?: string | null;
   categoria: string;
@@ -53,7 +52,9 @@ type CarrinhoItem = {
   tamanhoAnel: string | null;
 
   quantidade: number;
-  estoqueDisponivel: number;
+  disponivel: boolean;
+  /** Compatibilidade com o checkout legado: sentinela pública 1|0, nunca saldo. */
+  estoqueDisponivel: 0 | 1;
 
   opcaoAdicional?: CarrinhoItemOpcaoAdicional | null;
   embalagemPresenteModeloId?: string | null;
@@ -98,9 +99,13 @@ function getItemKey(item: {
 }
 
 function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
+  const disponivel =
+    typeof item.disponivel === "boolean"
+      ? item.disponivel
+      : Number(item.estoqueDisponivel || 0) > 0;
+
   return {
     produtoId: String(item.produtoId || ""),
-    codigoInterno: String(item.codigoInterno || ""),
     nome: String(item.nome || ""),
     imagemUrl: item.imagemUrl ?? null,
     categoria: String(item.categoria || ""),
@@ -120,7 +125,8 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
         : null,
     tamanhoAnel: item.tamanhoAnel ?? null,
     quantidade: Math.max(1, Number(item.quantidade || 1)),
-    estoqueDisponivel: Number(item.estoqueDisponivel || 0),
+    disponivel,
+    estoqueDisponivel: disponivel ? 1 : 0,
     opcaoAdicional: item.opcaoAdicional
       ? {
           id: String(item.opcaoAdicional.id || ""),
@@ -296,6 +302,21 @@ export default function CarrinhoClient({
   configuracaoMenuRodape,
 }: CarrinhoClientProps) {
   const [itens, setItens] = useState<CarrinhoItem[]>(() => lerCarrinho());
+  const [carrinhoCarregado, setCarrinhoCarregado] = useState(false);
+
+  useEffect(() => {
+    const itensPersistidos = lerCarrinho();
+    setItens(itensPersistidos);
+    setCarrinhoCarregado(true);
+  }, []);
+
+  useEffect(() => {
+    if (!carrinhoCarregado) {
+      return;
+    }
+
+    salvarCarrinho(itens);
+  }, [carrinhoCarregado, itens]);
 
   const subtotalProdutos = useMemo(() => {
     return itens.reduce(
@@ -341,7 +362,7 @@ export default function CarrinhoClient({
   }, [itens]);
 
   const possuiItemSemEstoque = useMemo(() => {
-    return itens.some((item) => item.estoqueDisponivel <= 0);
+    return itens.some((item) => !item.disponivel);
   }, [itens]);
 
   const possuiAdicionais = subtotalAdicionais > 0;
@@ -353,6 +374,10 @@ export default function CarrinhoClient({
   }
 
   function alterarQuantidade(itemKey: string, novaQuantidade: number) {
+    if (!Number.isFinite(novaQuantidade)) {
+      return;
+    }
+
     if (novaQuantidade <= 0) {
       removerItem(itemKey);
       return;
@@ -363,14 +388,9 @@ export default function CarrinhoClient({
         return item;
       }
 
-      const quantidadeSegura =
-        novaQuantidade > item.estoqueDisponivel
-          ? item.estoqueDisponivel
-          : novaQuantidade;
-
       return {
         ...item,
-        quantidade: quantidadeSegura > 0 ? quantidadeSegura : 1,
+        quantidade: Math.max(1, Math.floor(novaQuantidade)),
       };
     });
 
@@ -389,7 +409,6 @@ export default function CarrinhoClient({
         origem: "carrinho",
         metadata: {
           nome: itemRemovido.nome,
-          codigoInterno: itemRemovido.codigoInterno,
           categoria: itemRemovido.categoria,
           quantidade: itemRemovido.quantidade,
           tamanho: itemRemovido.tamanhoAnel,
@@ -413,7 +432,6 @@ export default function CarrinhoClient({
         origem: "limpar_carrinho",
         metadata: {
           nome: item.nome,
-          codigoInterno: item.codigoInterno,
           categoria: item.categoria,
           quantidade: item.quantidade,
           tamanho: item.tamanhoAnel,
@@ -489,7 +507,7 @@ export default function CarrinhoClient({
                 const valorAdicionalUnitario = getValorAdicionalUnitario(item);
                 const valorEmbalagemPresenteUnitario =
                   getValorEmbalagemPresenteUnitario(item);
-                const semEstoque = item.estoqueDisponivel <= 0;
+                const semEstoque = !item.disponivel;
                 const possuiOpcaoAdicional = Boolean(item.opcaoAdicional);
                 const possuiEmbalagemPresente = Boolean(
                   item.embalagemPresenteModeloId
@@ -528,11 +546,7 @@ export default function CarrinhoClient({
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
-                          <p className="text-xs font-light uppercase tracking-[0.2em] text-slate-400">
-                            {item.codigoInterno}
-                          </p>
-
-                          <h2 className="mt-1 text-lg font-medium text-slate-950">
+                          <h2 className="text-lg font-medium text-slate-950">
                             {item.nome}
                           </h2>
 
@@ -682,7 +696,6 @@ export default function CarrinhoClient({
                           <input
                             type="number"
                             min={1}
-                            max={item.estoqueDisponivel}
                             value={item.quantidade}
                             disabled={semEstoque}
                             onChange={(event) =>
@@ -699,18 +712,12 @@ export default function CarrinhoClient({
                             onClick={() =>
                               alterarQuantidade(itemKey, item.quantidade + 1)
                             }
-                            disabled={
-                              semEstoque ||
-                              item.quantidade >= item.estoqueDisponivel
-                            }
+                            disabled={semEstoque}
                             className="flex h-10 w-10 items-center justify-center border border-slate-300 text-slate-700 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
 
-                          <span className="text-xs font-light text-slate-500">
-                            Estoque: {item.estoqueDisponivel}
-                          </span>
                         </div>
 
                         <button

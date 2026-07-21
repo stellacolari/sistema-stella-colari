@@ -1,14 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import type { LojaProdutoItem } from "@/components/loja/LojaClient";
 import { calcularEstoqueProdutoPublico } from "@/lib/loja/estoque";
-
-type ProdutoPublicoRaw = Awaited<
-  ReturnType<typeof buscarProdutosPublicosRaw>
->[number];
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import type { Prisma } from "@prisma/client";
 
 const produtoPublicoSelect = {
   id: true,
-  codigoInterno: true,
   nome: true,
   tipoProduto: true,
   imagemUrl: true,
@@ -20,12 +16,11 @@ const produtoPublicoSelect = {
   criadoEm: true,
   estoque: {
     orderBy: {
-      tamanhoAnel: "asc" as const,
+      tamanhoAnel: "asc",
     },
-  },
-  vendasItens: {
     select: {
-      quantidade: true,
+      tamanhoAnel: true,
+      quantidadeAtual: true,
     },
   },
   componentesDoKit: {
@@ -53,34 +48,29 @@ const produtoPublicoSelect = {
       },
     },
   },
-};
+} satisfies Prisma.ProdutoSelect;
 
-async function buscarProdutosPublicosRaw() {
+type ProdutoPublicoRaw = Prisma.ProdutoGetPayload<{
+  select: typeof produtoPublicoSelect;
+}>;
+
+function consultarProdutosPublicos(
+  where: Prisma.ProdutoWhereInput,
+): Promise<ProdutoPublico[]> {
   return prisma.produto.findMany({
-    where: {
-      ativo: true,
-      status: {
-        not: "NA_LIXEIRA",
-      },
-    },
+    where,
     orderBy: {
       nome: "asc",
     },
     select: produtoPublicoSelect,
-  });
+  }).then((produtosRaw) => produtosRaw.map(formatarProdutoPublico));
 }
 
-function formatarProdutoPublico(produto: ProdutoPublicoRaw): LojaProdutoItem {
+function formatarProdutoPublico(produto: ProdutoPublicoRaw): ProdutoPublico {
   const estoque = calcularEstoqueProdutoPublico(produto);
-
-  const vendidosTotal = produto.vendasItens.reduce(
-    (total: number, item) => total + Number(item.quantidade || 0),
-    0
-  );
 
   return {
     id: produto.id,
-    codigoInterno: produto.codigoInterno,
     nome: produto.tipoProduto === "KIT" ? `${produto.nome} · Kit` : produto.nome,
     imagemUrl: produto.imagemUrl,
     imagemHoverUrl: produto.imagemHoverUrl,
@@ -93,28 +83,32 @@ function formatarProdutoPublico(produto: ProdutoPublicoRaw): LojaProdutoItem {
     precoPromocional: produto.precoPromocional
       ? Number(produto.precoPromocional)
       : null,
-    estoqueTotal: estoque.estoqueTotal,
-    vendidosTotal,
+    disponivel: estoque.estoqueTotal > 0,
     criadoEm: produto.criadoEm.toISOString(),
-    tamanhosDisponiveis: estoque.tamanhosDisponiveis,
+    tamanhosDisponiveis: estoque.tamanhosDisponiveis.map((tamanho) => ({
+      tamanhoAnel: tamanho.tamanhoAnel,
+      disponivel: tamanho.quantidadeAtual > 0,
+    })),
   };
 }
 
-export async function buscarProdutosPublicos(): Promise<LojaProdutoItem[]> {
-  const produtosRaw = await buscarProdutosPublicosRaw();
-
-  return produtosRaw.map(formatarProdutoPublico);
+export function buscarProdutosPublicos(): Promise<ProdutoPublico[]> {
+  return consultarProdutosPublicos({
+    ativo: true,
+    status: {
+      not: "NA_LIXEIRA",
+    },
+  });
 }
 
-export async function buscarProdutosPublicosPorCategoriaIds(
+export function buscarProdutosPublicosPorCategoriaIds(
   categoriaIds: string[]
-): Promise<LojaProdutoItem[]> {
+): Promise<ProdutoPublico[]> {
   if (categoriaIds.length === 0) {
-    return [];
+    return Promise.resolve([]);
   }
 
-  const produtosRaw = await prisma.produto.findMany({
-    where: {
+  return consultarProdutosPublicos({
       ativo: true,
       status: {
         not: "NA_LIXEIRA",
@@ -126,12 +120,5 @@ export async function buscarProdutosPublicosPorCategoriaIds(
           },
         },
       },
-    },
-    orderBy: {
-      nome: "asc",
-    },
-    select: produtoPublicoSelect,
   });
-
-  return produtosRaw.map(formatarProdutoPublico);
 }

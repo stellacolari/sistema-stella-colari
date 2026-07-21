@@ -46,6 +46,22 @@ const VENDEDOR_API_PREFIXES = [
   "/api/vendas",
 ];
 
+const LOJA_PREVIEW_PREFIX = "/loja/preview/pagina";
+
+function aplicarHeadersPreviewPrivado(response: NextResponse) {
+  response.headers.set(
+    "Cache-Control",
+    "private, no-store, max-age=0, must-revalidate",
+  );
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+
+  return response;
+}
+
+function isLojaPreviewPath(pathname: string) {
+  return matchesPrefix(pathname, LOJA_PREVIEW_PREFIX);
+}
+
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.includes(pathname)) {
     return true;
@@ -127,6 +143,26 @@ function redirectVendedor(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isLojaPreviewPath(pathname)) {
+    const tokenPreview = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+
+    if (!tokenPreview) {
+      return aplicarHeadersPreviewPrivado(redirectLogin(request));
+    }
+
+    try {
+      const sessaoPreview = await verificarSessaoAdminToken(tokenPreview);
+
+      if (!sessaoPreview) {
+        return aplicarHeadersPreviewPrivado(redirectLogin(request));
+      }
+
+      return aplicarHeadersPreviewPrivado(NextResponse.next());
+    } catch {
+      return aplicarHeadersPreviewPrivado(redirectLogin(request));
+    }
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();

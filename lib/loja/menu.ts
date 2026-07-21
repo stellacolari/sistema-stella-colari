@@ -36,15 +36,17 @@ export function getMenuHref(menu: {
   }
 
   if (menu.paginaEspecial === "TODAS_CATEGORIAS") {
-    return "/loja/categorias";
+    return "/loja";
   }
 
   if (menu.tipo === "CATEGORIA") return `/loja/categoria/${menu.slug}`;
-  if (menu.tipo === "CAMPANHA") return `/loja/campanha/${menu.slug}`;
+  if (menu.tipo === "CAMPANHA") return `/loja/p/${menu.slug}`;
 
   if (menu.tipo === "PAGINA" && menu.slug === "quem-somos") {
     return "/loja/quem-somos";
   }
+
+  if (menu.tipo === "PAGINA") return `/loja/p/${menu.slug}`;
 
   return "/loja";
 }
@@ -52,6 +54,20 @@ export function getMenuHref(menu: {
 export async function buscarMenusPublicos(): Promise<MenuPublicoItem[]> {
   const menusRaw = await prisma.menuLoja.findMany({
     orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+    select: {
+      id: true,
+      nome: true,
+      slug: true,
+      tipo: true,
+      linkUrl: true,
+      categoria: true,
+      paginaEspecial: true,
+      ativo: true,
+      dataInicio: true,
+      dataFim: true,
+      destaque: true,
+      corDestaque: true,
+    },
   });
 
   return menusRaw.filter(menuEstaAtivo).map((menu) => ({

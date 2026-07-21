@@ -547,9 +547,10 @@ export default function VitrineEditorialPublico({
                       </picture>
                     )
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Imagem em breve
-                    </div>
+                    <div
+                      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
 

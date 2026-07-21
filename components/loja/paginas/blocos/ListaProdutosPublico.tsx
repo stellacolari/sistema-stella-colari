@@ -47,7 +47,10 @@ function filtrarProdutos(produtos: ProdutoPublico[], config: Record<string, unkn
   }
 
   if (fonte === "MAIS_VENDIDOS") {
-    resultado = resultado.sort((a, b) => b.vendidosTotal - a.vendidosTotal);
+    const ordem = new Map(produtosIds.map((id, index) => [id, index]));
+    resultado = resultado
+      .filter((produto) => ordem.has(produto.id))
+      .sort((a, b) => Number(ordem.get(a.id)) - Number(ordem.get(b.id)));
   }
 
   if (fonte === "CATEGORIA") {
@@ -167,7 +170,7 @@ export default function ListaProdutosPublico({
   const produtosVisiveis =
     deveLimitar && !mostrarTodos ? produtosComFiltros.slice(0, 4) : produtosComFiltros;
 
-  if (!hasTitulo && !hasSubtitulo && produtosFiltrados.length === 0) {
+  if (produtosFiltrados.length === 0) {
     return null;
   }
 

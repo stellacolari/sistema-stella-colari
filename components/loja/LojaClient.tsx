@@ -11,28 +11,9 @@ import LojaFiltrosProdutos from "@/components/loja/LojaFiltrosProdutos";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 
-export type LojaProdutoItem = {
-  id: string;
-  codigoInterno: string;
-  nome: string;
-  imagemUrl?: string | null;
-  imagemHoverUrl?: string | null;
-  categoria: string;
-  categoriaIds?: string[];
-  categoriaSlugs?: string[];
-  categoriaNomes?: string[];
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueTotal: number;
-  vendidosTotal: number;
-  criadoEm: string;
-  tamanhosDisponiveis: {
-    tamanhoAnel: string;
-    quantidadeAtual: number;
-  }[];
-};
+export type LojaProdutoItem = ProdutoPublico;
 
 export type LojaBannerItem = {
   id: string;
@@ -137,10 +118,10 @@ function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
 
 function MicroFaixaDiferenciais() {
   const diferenciais = [
-    "Frete Grátis*",
-    "Garantia Vitalícia",
-    "10% de Cashback*",
-    "Frete Grátis*",
+    "Explore o catálogo",
+    "Acompanhe seus pedidos",
+    "Consulte frete e prazos",
+    "Veja trocas e devoluções",
   ];
 
   return (
@@ -343,9 +324,11 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
               <div className="pointer-events-none absolute inset-0 bg-black/5" />
             </div>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-medium text-slate-500">
-              Sem imagem
-            </div>
+            <div
+              className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+              role="img"
+              aria-label="Imagem da categoria ainda não disponível"
+            />
           )}
         </div>
 
@@ -400,7 +383,7 @@ export default function LojaClient({
   configuracaoMenuRodape,
   mostrarTodosProdutos = true,
   tituloVazio = "Nenhum produto disponível no momento.",
-  textoVazio = "Cadastre produtos ativos para que eles apareçam na loja.",
+  textoVazio = "Explore novamente em breve para conhecer novas peças.",
 }: LojaClientProps) {
   const bannerPrincipal = banners[0] ?? null;
 
@@ -444,7 +427,6 @@ export default function LojaClient({
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
-        produtos={produtos}
         configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil

@@ -640,7 +640,7 @@ function ConfigFaixaDiferenciais({
 }) {
   const itens = getStringArray(config, "itens");
   const lista =
-    itens.length > 0 ? itens : ["Frete Grátis*", "Garantia Vitalícia"];
+    itens.length > 0 ? itens : ["Explore o catálogo", "Acompanhe seus pedidos"];
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">

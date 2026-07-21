@@ -142,16 +142,49 @@ export async function buscarCategoriasMenuPublico(): Promise<
       slug: true,
       categoriaMaeId: true,
       descricao: true,
-      descricaoSeo: true,
-      termosBusca: true,
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,
+      produtos: {
+        where: {
+          produto: {
+            ativo: true,
+            status: {
+              not: "NA_LIXEIRA",
+            },
+          },
+        },
+        select: {
+          produtoId: true,
+        },
+      },
     },
     orderBy: [{ ordemMenu: "asc" }, { nome: "asc" }],
   });
 
-  return categorias.map((categoria) => ({
+  const categoriasPorId = new Map(
+    categorias.map((categoria) => [categoria.id, categoria])
+  );
+  const categoriasComConteudo = new Set<string>();
+
+  categorias.forEach((categoria) => {
+    if (categoria.produtos.length === 0) return;
+
+    let atual: typeof categoria | undefined = categoria;
+    const visitadas = new Set<string>();
+
+    while (atual && !visitadas.has(atual.id)) {
+      visitadas.add(atual.id);
+      categoriasComConteudo.add(atual.id);
+      atual = atual.categoriaMaeId
+        ? categoriasPorId.get(atual.categoriaMaeId)
+        : undefined;
+    }
+  });
+
+  return categorias
+    .filter((categoria) => categoriasComConteudo.has(categoria.id))
+    .map((categoria) => ({
     id: categoria.id,
     nome: categoria.nome,
     slug: categoria.slug,
@@ -212,7 +245,6 @@ export async function buscarCategoriaPublicaPorSlug(slug: string) {
       categoriaMaeId: true,
       descricao: true,
       descricaoSeo: true,
-      termosBusca: true,
       imagemUrl: true,
       exibirNoMenu: true,
       ordemMenu: true,
@@ -248,6 +280,5 @@ export async function buscarCategoriaPublicaPorSlug(slug: string) {
     },
     subcategorias,
     idsCategoria,
-    todasCategorias: categorias,
   };
 }

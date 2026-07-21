@@ -19,6 +19,7 @@ import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
+import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,17 @@ export async function generateMetadata(): Promise<Metadata> {
       ativo: true,
       statusPublicacao: "PUBLICADA",
     },
-    include: {
+    select: {
+      seoTitle: true,
+      seoDescription: true,
       blocos: {
         where: {
           ativo: true,
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        select: {
+          configJson: true,
+        },
       },
     },
   });
@@ -84,12 +90,23 @@ export default async function LojaPage() {
           ativo: true,
           statusPublicacao: "PUBLICADA",
         },
-        include: {
+        select: {
+          id: true,
+          titulo: true,
+          slug: true,
+          tipo: true,
           blocos: {
             where: {
               ativo: true,
             },
             orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+            select: {
+              id: true,
+              tipo: true,
+              titulo: true,
+              ordem: true,
+              configJson: true,
+            },
           },
         },
       }),
@@ -107,32 +124,10 @@ export default async function LojaPage() {
       homeVisualRaw.blocos
     );
 
-    const blocos: LojaBuilderBloco[] = blocosResolvidos.map((bloco) => ({
-      id: bloco.id,
-      tipo: bloco.tipo,
-      titulo: bloco.titulo,
-      ordem: bloco.ordem,
-      configJson: bloco.configJson,
-    }));
+    const blocos: LojaBuilderBloco[] =
+      serializarBlocosBuilderPublicos(blocosResolvidos);
 
-    const produtosBuilder: LojaBuilderProduto[] = produtos.map((produto) => ({
-      id: produto.id,
-      codigoInterno: produto.codigoInterno,
-      nome: produto.nome,
-      imagemUrl: produto.imagemUrl,
-      imagemHoverUrl: produto.imagemHoverUrl,
-      categoria: produto.categoria,
-      categoriaIds: produto.categoriaIds,
-      categoriaSlugs: produto.categoriaSlugs,
-      categoriaNomes: produto.categoriaNomes,
-      precoVenda: produto.precoVenda,
-      descontoAtivo: produto.descontoAtivo,
-      precoPromocional: produto.precoPromocional,
-      estoqueTotal: produto.estoqueTotal,
-      vendidosTotal: produto.vendidosTotal,
-      criadoEm: produto.criadoEm,
-      tamanhosDisponiveis: produto.tamanhosDisponiveis,
-    }));
+    const produtosBuilder: LojaBuilderProduto[] = produtos;
 
     const menusBuilder: LojaBuilderMenu[] = menusPublicos.map((menu) => ({
       id: menu.id,
@@ -161,6 +156,16 @@ export default async function LojaPage() {
           ativo: true,
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }],
+        select: {
+          id: true,
+          titulo: true,
+          subtitulo: true,
+          imagemUrl: true,
+          imagemMobileUrl: true,
+          linkUrl: true,
+          ordem: true,
+          ativo: true,
+        },
       }),
 
       prisma.lojaCategoriaHome.findMany({
@@ -169,6 +174,12 @@ export default async function LojaPage() {
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
         take: 6,
+        select: {
+          id: true,
+          titulo: true,
+          categoria: true,
+          imagemUrl: true,
+        },
       }),
 
       prisma.lojaSecaoHome.findMany({
@@ -177,6 +188,11 @@ export default async function LojaPage() {
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
         take: 3,
+        select: {
+          id: true,
+          titulo: true,
+          categorias: true,
+        },
       }),
 
       prisma.lojaBlocoHome.findFirst({
@@ -186,20 +202,24 @@ export default async function LojaPage() {
         orderBy: {
           criadoEm: "asc",
         },
+        select: {
+          id: true,
+          titulo: true,
+          texto: true,
+          imagemUrl: true,
+          textoBotao: true,
+          linkBotao: true,
+        },
       }),
     ]);
 
   const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => {
-    const bannerComMobile = banner as typeof banner & {
-      imagemMobileUrl?: string | null;
-    };
-
     return {
       id: banner.id,
       titulo: banner.titulo,
       subtitulo: banner.subtitulo,
       imagemUrl: banner.imagemUrl,
-      imagemMobileUrl: bannerComMobile.imagemMobileUrl ?? null,
+      imagemMobileUrl: banner.imagemMobileUrl,
       linkUrl: banner.linkUrl,
       ordem: banner.ordem ?? index,
       ativo: banner.ativo ?? true,

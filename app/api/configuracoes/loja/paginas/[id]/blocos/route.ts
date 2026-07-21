@@ -207,7 +207,7 @@ function getConfigPadrao(tipo: string) {
 
   if (tipo === "FAIXA_DIFERENCIAIS") {
     return {
-      itens: ["Frete Grátis*", "Garantia Vitalícia"],
+      itens: ["Explore o catálogo", "Acompanhe seus pedidos"],
       corFundo: "#2e7b99",
       corTexto: "#ffffff",
     };

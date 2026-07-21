@@ -23,7 +23,9 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import { buscarProdutosPublicosPorCategoriaIds } from "@/lib/loja/produtos";
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
+import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
 
 type LojaCategoriaPageProps = {
   params: Promise<{
@@ -81,12 +83,25 @@ function getPaginaBuilderPublicaSelect(categoriaId: string) {
       ativo: true,
       statusPublicacao: "PUBLICADA",
     },
-    include: {
+    select: {
+      id: true,
+      titulo: true,
+      slug: true,
+      tipo: true,
+      ativo: true,
+      statusPublicacao: true,
       blocos: {
         where: {
           ativo: true,
         },
         orderBy: [{ ordem: "asc" as const }, { criadoEm: "asc" as const }],
+        select: {
+          id: true,
+          tipo: true,
+          titulo: true,
+          ordem: true,
+          configJson: true,
+        },
       },
     },
   };
@@ -117,58 +132,16 @@ function serializarBlocosBuilder(
     configJson: unknown;
   }[]
 ) {
-  const blocos: LojaBuilderBloco[] = blocosRaw.map((bloco) => ({
-    id: bloco.id,
-    tipo: bloco.tipo,
-    titulo: bloco.titulo,
-    ordem: bloco.ordem,
-    configJson: bloco.configJson,
-  }));
+  const blocos: LojaBuilderBloco[] =
+    serializarBlocosBuilderPublicos(blocosRaw);
 
   return blocos;
 }
 
 function serializarProdutosBuilder(
-  produtosPublicos: {
-    id: string;
-    codigoInterno: string;
-    nome: string;
-    imagemUrl: string | null;
-    imagemHoverUrl: string | null;
-    categoria: string;
-    categoriaIds?: string[];
-    categoriaSlugs?: string[];
-    categoriaNomes?: string[];
-    precoVenda: number;
-    descontoAtivo: boolean;
-    precoPromocional: number | null;
-    estoqueTotal: number;
-    vendidosTotal: number;
-    criadoEm: string;
-    tamanhosDisponiveis: {
-      tamanhoAnel: string;
-      quantidadeAtual: number;
-    }[];
-  }[]
+  produtosPublicos: ProdutoPublico[]
 ) {
-  const produtos: LojaBuilderProduto[] = produtosPublicos.map((produto) => ({
-    id: produto.id,
-    codigoInterno: produto.codigoInterno,
-    nome: produto.nome,
-    imagemUrl: produto.imagemUrl,
-    imagemHoverUrl: produto.imagemHoverUrl,
-    categoria: produto.categoria,
-    categoriaIds: produto.categoriaIds,
-    categoriaSlugs: produto.categoriaSlugs,
-    categoriaNomes: produto.categoriaNomes,
-    precoVenda: produto.precoVenda,
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional: produto.precoPromocional,
-    estoqueTotal: produto.estoqueTotal,
-    vendidosTotal: produto.vendidosTotal,
-    criadoEm: produto.criadoEm,
-    tamanhosDisponiveis: produto.tamanhosDisponiveis,
-  }));
+  const produtos: LojaBuilderProduto[] = produtosPublicos;
 
   return produtos;
 }
@@ -312,12 +285,25 @@ export default async function LojaCategoriaPage({
         ativo: true,
         statusPublicacao: "PUBLICADA",
       },
-      include: {
+      select: {
+        id: true,
+        titulo: true,
+        slug: true,
+        tipo: true,
+        ativo: true,
+        statusPublicacao: true,
         blocos: {
           where: {
             ativo: true,
           },
           orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+          select: {
+            id: true,
+            tipo: true,
+            titulo: true,
+            ordem: true,
+            configJson: true,
+          },
         },
       },
     }),

@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import {
+  AdminPermissaoError,
+  exigirAdminComPermissao,
+} from "@/lib/auth/admin";
 import LojaPaginaBuilderClient, {
   type LojaBuilderBloco,
   type LojaBuilderCategoriaAtual,
@@ -19,6 +23,8 @@ import {
   buscarProdutosPublicos,
   buscarProdutosPublicosPorCategoriaIds,
 } from "@/lib/loja/produtos";
+import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +33,7 @@ export const metadata: Metadata = {
   robots: {
     index: false,
     follow: false,
+    noarchive: true,
   },
 };
 
@@ -39,6 +46,18 @@ type PageProps = {
     studio?: string;
   }>;
 };
+
+async function exigirAcessoPreviewLoja() {
+  try {
+    await exigirAdminComPermissao("lojaOnline", "ver");
+  } catch (error) {
+    if (error instanceof AdminPermissaoError) {
+      notFound();
+    }
+
+    throw error;
+  }
+}
 
 function serializarPaginaBuilder(paginaRaw: {
   id: string;
@@ -65,58 +84,16 @@ function serializarBlocosBuilder(
     configJson: unknown;
   }[]
 ) {
-  const blocos: LojaBuilderBloco[] = blocosRaw.map((bloco) => ({
-    id: bloco.id,
-    tipo: bloco.tipo,
-    titulo: bloco.titulo,
-    ordem: bloco.ordem,
-    configJson: bloco.configJson,
-  }));
+  const blocos: LojaBuilderBloco[] =
+    serializarBlocosBuilderPublicos(blocosRaw);
 
   return blocos;
 }
 
 function serializarProdutosBuilder(
-  produtosPublicos: {
-    id: string;
-    codigoInterno: string;
-    nome: string;
-    imagemUrl: string | null;
-    imagemHoverUrl: string | null;
-    categoria: string;
-    categoriaIds?: string[];
-    categoriaSlugs?: string[];
-    categoriaNomes?: string[];
-    precoVenda: number;
-    descontoAtivo: boolean;
-    precoPromocional: number | null;
-    estoqueTotal: number;
-    vendidosTotal: number;
-    criadoEm: string;
-    tamanhosDisponiveis: {
-      tamanhoAnel: string;
-      quantidadeAtual: number;
-    }[];
-  }[]
+  produtosPublicos: ProdutoPublico[]
 ) {
-  const produtos: LojaBuilderProduto[] = produtosPublicos.map((produto) => ({
-    id: produto.id,
-    codigoInterno: produto.codigoInterno,
-    nome: produto.nome,
-    imagemUrl: produto.imagemUrl,
-    imagemHoverUrl: produto.imagemHoverUrl,
-    categoria: produto.categoria,
-    categoriaIds: produto.categoriaIds,
-    categoriaSlugs: produto.categoriaSlugs,
-    categoriaNomes: produto.categoriaNomes,
-    precoVenda: produto.precoVenda,
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional: produto.precoPromocional,
-    estoqueTotal: produto.estoqueTotal,
-    vendidosTotal: produto.vendidosTotal,
-    criadoEm: produto.criadoEm,
-    tamanhosDisponiveis: produto.tamanhosDisponiveis,
-  }));
+  const produtos: LojaBuilderProduto[] = produtosPublicos;
 
   return produtos;
 }
@@ -287,6 +264,8 @@ export default async function LojaPreviewPaginaPage({
   params,
   searchParams,
 }: PageProps) {
+  await exigirAcessoPreviewLoja();
+
   const { id } = await params;
   const search = searchParams ? await searchParams : {};
   const categoriaSlugBusca =
@@ -298,7 +277,14 @@ export default async function LojaPreviewPaginaPage({
     where: {
       id,
     },
-    include: {
+    select: {
+      id: true,
+      titulo: true,
+      slug: true,
+      tipo: true,
+      categoriaId: true,
+      ativo: true,
+      statusPublicacao: true,
       categoria: {
         select: {
           id: true,
@@ -313,6 +299,13 @@ export default async function LojaPreviewPaginaPage({
           ativo: true,
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+        select: {
+          id: true,
+          tipo: true,
+          titulo: true,
+          ordem: true,
+          configJson: true,
+        },
       },
     },
   });

@@ -96,6 +96,10 @@ export default async function ProdutoLojaPage({
       where: {
         chave: "garantia-produto",
       },
+      select: {
+        titulo: true,
+        conteudo: true,
+      },
     }),
 
     buscarRelacionadosProduto({

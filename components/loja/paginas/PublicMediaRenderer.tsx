@@ -140,7 +140,7 @@ export default function PublicMediaRenderer({
 
   return (
     <div
-      className={`flex h-full w-full items-center justify-center bg-slate-100 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 ${className}`}
+      className={`flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)] text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 ${className}`}
     >
       {placeholder || null}
     </div>

@@ -32,13 +32,11 @@ export type LojaProdutoFiltravel = {
   precoVenda: number;
   descontoAtivo: boolean;
   precoPromocional: number | null;
-  estoqueTotal: number;
-  vendidosTotal?: number;
+  disponivel: boolean;
   criadoEm?: string;
-  relevancia?: number;
   tamanhosDisponiveis?: {
     tamanhoAnel: string;
-    quantidadeAtual: number;
+    disponivel: boolean;
   }[];
 };
 
@@ -132,7 +130,7 @@ export function derivarFiltrosDisponiveis(
     });
 
     produto.tamanhosDisponiveis?.forEach((tamanho) => {
-      if (Number(tamanho.quantidadeAtual || 0) <= 0) return;
+      if (!tamanho.disponivel) return;
       if (!tamanho.tamanhoAnel) return;
 
       tamanhos.add(tamanho.tamanhoAnel);
@@ -148,7 +146,7 @@ export function derivarFiltrosDisponiveis(
     precoMaximo: precos.length > 0 ? Math.max(...precos) : null,
     temProdutosComDesconto: produtos.some(produtoTemDescontoFiltro),
     temProdutosSemDesconto: produtos.some((produto) => !produtoTemDescontoFiltro(produto)),
-    temMaisVendidos: produtos.some((produto) => Number(produto.vendidosTotal || 0) > 0),
+    temMaisVendidos: false,
   };
 }
 
@@ -192,7 +190,7 @@ function produtoCorrespondeTamanho(produto: LojaProdutoFiltravel, tamanho: strin
   return Boolean(
     produto.tamanhosDisponiveis?.some(
       (item) =>
-        item.tamanhoAnel === tamanho && Number(item.quantidadeAtual || 0) > 0,
+        item.tamanhoAnel === tamanho && item.disponivel,
     ),
   );
 }
@@ -249,11 +247,11 @@ export function aplicarFiltrosProdutos<TProduto extends LojaProdutoFiltravel>(
   }
 
   if (filtros.estoque === "disponivel") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal > 0);
+    resultado = resultado.filter((produto) => produto.disponivel);
   }
 
   if (filtros.estoque === "sem-estoque") {
-    resultado = resultado.filter((produto) => produto.estoqueTotal <= 0);
+    resultado = resultado.filter((produto) => !produto.disponivel);
   }
 
   if (filtros.tamanho) {
@@ -287,11 +285,7 @@ export function aplicarFiltrosProdutos<TProduto extends LojaProdutoFiltravel>(
     }
 
     if (filtros.ordem === "mais-vendidos") {
-      return (
-        Number(b.vendidosTotal || 0) -
-          Number(a.vendidosTotal || 0) ||
-        ordenarPorOriginal(a, b)
-      );
+      return ordenarPorOriginal(a, b);
     }
 
     if (filtros.ordem === "az") {
@@ -303,11 +297,7 @@ export function aplicarFiltrosProdutos<TProduto extends LojaProdutoFiltravel>(
     }
 
     if (filtros.ordem === "relevancia") {
-      return (
-        Number(b.relevancia || 0) -
-          Number(a.relevancia || 0) ||
-        ordenarPorOriginal(a, b)
-      );
+      return ordenarPorOriginal(a, b);
     }
 
     return ordenarPorOriginal(a, b);

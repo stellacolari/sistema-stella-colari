@@ -13,6 +13,7 @@ import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
+import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export async function generateMetadata({
     },
   });
 
-  if (!pagina) {
+  if (!pagina || pagina.blocos.length === 0) {
     return criarMetadataLoja({
       title: "Stella Colari | Loja Online",
       path: `/loja/p/${slug}`,
@@ -93,12 +94,23 @@ export default async function LojaPaginaPublicaPage({
             in: TIPOS_PERMITIDOS_EM_PAGINA_PUBLICA,
           },
         },
-        include: {
+        select: {
+          id: true,
+          titulo: true,
+          slug: true,
+          tipo: true,
           blocos: {
             where: {
               ativo: true,
             },
             orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+            select: {
+              id: true,
+              tipo: true,
+              titulo: true,
+              ordem: true,
+              configJson: true,
+            },
           },
         },
       }),
@@ -112,7 +124,7 @@ export default async function LojaPaginaPublicaPage({
       buscarConfiguracaoMenuRodape(),
     ]);
 
-  if (!paginaRaw) {
+  if (!paginaRaw || paginaRaw.blocos.length === 0) {
     notFound();
   }
 
@@ -127,32 +139,10 @@ export default async function LojaPaginaPublicaPage({
     paginaRaw.blocos
   );
 
-  const blocos: LojaBuilderBloco[] = blocosResolvidos.map((bloco) => ({
-    id: bloco.id,
-    tipo: bloco.tipo,
-    titulo: bloco.titulo,
-    ordem: bloco.ordem,
-    configJson: bloco.configJson,
-  }));
+  const blocos: LojaBuilderBloco[] =
+    serializarBlocosBuilderPublicos(blocosResolvidos);
 
-  const produtos: LojaBuilderProduto[] = produtosPublicos.map((produto) => ({
-    id: produto.id,
-    codigoInterno: produto.codigoInterno,
-    nome: produto.nome,
-    imagemUrl: produto.imagemUrl,
-    imagemHoverUrl: produto.imagemHoverUrl,
-    categoria: produto.categoria,
-    categoriaIds: produto.categoriaIds,
-    categoriaSlugs: produto.categoriaSlugs,
-    categoriaNomes: produto.categoriaNomes,
-    precoVenda: produto.precoVenda,
-    descontoAtivo: produto.descontoAtivo,
-    precoPromocional: produto.precoPromocional,
-    estoqueTotal: produto.estoqueTotal,
-    vendidosTotal: produto.vendidosTotal,
-    criadoEm: produto.criadoEm,
-    tamanhosDisponiveis: produto.tamanhosDisponiveis,
-  }));
+  const produtos: LojaBuilderProduto[] = produtosPublicos;
 
   const menus: LojaBuilderMenu[] = menusPublicos.map((menu) => ({
     id: menu.id,

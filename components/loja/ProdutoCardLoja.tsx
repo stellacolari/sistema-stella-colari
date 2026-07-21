@@ -28,7 +28,7 @@ export type ProdutoCardLojaItem = {
   precoVenda: number;
   descontoAtivo: boolean;
   precoPromocional: number | null;
-  estoqueTotal: number;
+  disponivel: boolean;
 };
 
 type ProdutoCardLojaProps = {
@@ -40,6 +40,8 @@ type ProdutoCardLojaProps = {
   href?: string;
   modoPreview?: boolean;
   revealDelayMs?: number;
+  imageLoading?: "eager" | "lazy";
+  exibirImagemHover?: boolean;
   trackingOrigem?: string;
   trackingMetadata?: Record<string, unknown>;
   trackingResultadoBusca?: {
@@ -245,6 +247,8 @@ export default function ProdutoCardLoja({
   href,
   modoPreview = false,
   revealDelayMs = 0,
+  imageLoading,
+  exibirImagemHover = true,
   trackingOrigem,
   trackingMetadata,
   trackingResultadoBusca,
@@ -466,7 +470,7 @@ export default function ProdutoCardLoja({
     }
   }
 
-  const semEstoque = produto.estoqueTotal <= 0;
+  const semEstoque = !produto.disponivel;
   const desconto = percentualDesconto(produto);
   const produtoHref = href || `/loja/produto/${produto.id}`;
   const imagemOverlayUrl = produto.imagemHoverUrl || produto.imagemUrl;
@@ -486,14 +490,18 @@ export default function ProdutoCardLoja({
           <img
             src={produto.imagemUrl}
             alt={produto.nome}
+            loading={imageLoading}
+            decoding={imageLoading ? "async" : undefined}
             draggable={false}
             onDragStart={bloquearDragImagem}
             className="h-full w-full object-cover object-center"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
-            Sem imagem
-          </div>
+          <div
+            className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+            role="img"
+            aria-label="Imagem do produto ainda não disponível"
+          />
         )}
 
         {exibirSeloDesconto && desconto !== null ? (
@@ -535,26 +543,29 @@ export default function ProdutoCardLoja({
     </div>
   );
 
-  const overlayHover = (
+  const overlayHover = exibirImagemHover ? (
     <div className="stella-product-hover-overlay pointer-events-none absolute -inset-2 z-20 overflow-hidden bg-slate-100">
       {imagemOverlayUrl ? (
         <img
           src={imagemOverlayUrl}
           alt=""
           aria-hidden="true"
+          loading={imageLoading}
+          decoding={imageLoading ? "async" : undefined}
           draggable={false}
           onDragStart={bloquearDragImagem}
           className="stella-product-hover-image h-full w-full object-cover object-center"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-400">
-          Sem imagem
-        </div>
+        <div
+          className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+          aria-hidden="true"
+        />
       )}
 
       <div className="pointer-events-none absolute inset-0 bg-black/10" />
     </div>
-  );
+  ) : null;
 
   const favoritoButton = (
     <button
@@ -584,6 +595,7 @@ export default function ProdutoCardLoja({
         className={cardClass}
         data-stella-product-card-id={produto.id}
         data-touch-preview={previewTouchAtivo ? "true" : "false"}
+        data-image-hover={exibirImagemHover ? "true" : "false"}
         style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
       >
         <div className="relative block h-full">
@@ -601,6 +613,7 @@ export default function ProdutoCardLoja({
       className={cardClass}
       data-stella-product-card-id={produto.id}
       data-touch-preview={previewTouchAtivo ? "true" : "false"}
+      data-image-hover={exibirImagemHover ? "true" : "false"}
       style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
     >
       <Link

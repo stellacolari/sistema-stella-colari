@@ -48,6 +48,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: {
         id: true,
         atualizadoEm: true,
+        descontoAtivo: true,
+        precoVenda: true,
+        precoPromocional: true,
       },
       orderBy: {
         atualizadoEm: "desc",
@@ -75,6 +78,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
                 ativo: true,
                 statusPublicacao: "PUBLICADA",
                 tipo: "CATEGORIA",
+                blocos: {
+                  some: {
+                    ativo: true,
+                  },
+                },
               },
             },
           },
@@ -115,6 +123,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: {
         ativo: true,
         statusPublicacao: "PUBLICADA",
+        blocos: {
+          some: {
+            ativo: true,
+          },
+        },
       },
       select: {
         slug: true,
@@ -139,18 +152,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "daily",
     priority: 1,
   });
-  adicionarUrl(urls, {
-    url: getLojaUrl("/loja/descontos"),
-    lastModified: new Date(),
-    changeFrequency: "daily",
-    priority: 0.8,
-  });
-  adicionarUrl(urls, {
-    url: getLojaUrl("/loja/quem-somos"),
-    lastModified: new Date(),
-    changeFrequency: "monthly",
-    priority: 0.5,
-  });
+  const temDescontoReal = produtos.some(
+    (produto) =>
+      produto.descontoAtivo &&
+      produto.precoPromocional !== null &&
+      produto.precoPromocional > 0 &&
+      produto.precoPromocional < produto.precoVenda
+  );
+
+  if (temDescontoReal) {
+    adicionarUrl(urls, {
+      url: getLojaUrl("/loja/descontos"),
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.8,
+    });
+  }
   for (const rota of ROTAS_LEGAIS) {
     adicionarUrl(urls, {
       url: getLojaUrl(rota),

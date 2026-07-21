@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import LojaClient, {
   type LojaBannerItem,
@@ -9,12 +10,6 @@ import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja } from "@/lib/loja/seo";
-
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Descontos | Stella Colari",
-  description: "Produtos Stella Colari com descontos ativos para comprar online.",
-  path: "/loja/descontos",
-});
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +24,23 @@ function produtoTemDesconto(produto: {
     produto.precoPromocional > 0 &&
     produto.precoPromocional < produto.precoVenda
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const produtos = await buscarProdutosPublicos();
+  const temDescontoReal = produtos.some(produtoTemDesconto);
+
+  return criarMetadataLoja({
+    title: "Descontos | Stella Colari",
+    description: "Produtos Stella Colari com descontos ativos para comprar online.",
+    path: "/loja/descontos",
+    robots: temDescontoReal
+      ? undefined
+      : {
+          index: false,
+          follow: false,
+        },
+  });
 }
 
 export default async function LojaDescontosPage() {
@@ -50,22 +62,32 @@ export default async function LojaDescontosPage() {
         },
         orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }],
         take: 1,
+        select: {
+          id: true,
+          titulo: true,
+          subtitulo: true,
+          imagemUrl: true,
+          imagemMobileUrl: true,
+          linkUrl: true,
+          ordem: true,
+          ativo: true,
+        },
       }),
     ]);
 
   const produtos = produtosPublicos.filter(produtoTemDesconto);
 
-  const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => {
-    const bannerComMobile = banner as typeof banner & {
-      imagemMobileUrl?: string | null;
-    };
+  if (produtos.length === 0) {
+    notFound();
+  }
 
+  const banners: LojaBannerItem[] = bannersRaw.map((banner, index) => {
     return {
       id: banner.id,
       titulo: banner.titulo,
       subtitulo: banner.subtitulo,
       imagemUrl: banner.imagemUrl,
-      imagemMobileUrl: bannerComMobile.imagemMobileUrl ?? null,
+      imagemMobileUrl: banner.imagemMobileUrl,
       linkUrl: banner.linkUrl,
       ordem: banner.ordem ?? index,
       ativo: banner.ativo ?? true,

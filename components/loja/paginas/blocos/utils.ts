@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { ProdutoPublico as ProdutoPublicoDTO } from "@/lib/loja/produto-publico";
 
 export type BlocoPublico = {
   id: string;
@@ -8,27 +9,7 @@ export type BlocoPublico = {
   configJson: unknown;
 };
 
-export type ProdutoPublico = {
-  id: string;
-  codigoInterno: string;
-  nome: string;
-  imagemUrl?: string | null;
-  imagemHoverUrl?: string | null;
-  categoria: string;
-  categoriaIds?: string[];
-  categoriaSlugs?: string[];
-  categoriaNomes?: string[];
-  precoVenda: number;
-  descontoAtivo: boolean;
-  precoPromocional: number | null;
-  estoqueTotal: number;
-  vendidosTotal: number;
-  criadoEm: string;
-  tamanhosDisponiveis?: {
-    tamanhoAnel: string;
-    quantidadeAtual: number;
-  }[];
-};
+export type ProdutoPublico = ProdutoPublicoDTO;
 
 export type BlocoPublicoProps = {
   bloco: BlocoPublico;

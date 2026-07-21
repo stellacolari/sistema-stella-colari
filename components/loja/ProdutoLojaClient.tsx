@@ -55,13 +55,12 @@ export type ProdutoLojaVariacao = {
     nome: string;
     imagemUrl?: string | null;
     precoAdicional?: number;
-    quantidadeAtual: number;
+    disponivel: boolean;
   }[];
 };
 
 export type ProdutoLojaFamiliaProduto = {
   id: string;
-  codigoInterno: string;
   nome: string;
   nomeOpcao: string;
   imagemUrl?: string | null;
@@ -69,7 +68,7 @@ export type ProdutoLojaFamiliaProduto = {
   corJoia?: string | null;
   href: string;
   selecionado: boolean;
-  estoqueTotal: number;
+  disponivel: boolean;
 };
 
 export type ProdutoLojaEmbalagemPresente = {
@@ -86,7 +85,6 @@ export type ProdutoLojaEmbalagemPresente = {
 
 export type ProdutoLojaDetalhe = {
   id: string;
-  codigoInterno: string;
   nome: string;
   imagemUrl?: string | null;
   imagemHoverUrl?: string | null;
@@ -96,11 +94,10 @@ export type ProdutoLojaDetalhe = {
   descontoAtivo: boolean;
   precoPromocional: number | null;
   descricaoLoja: string | null;
-  observacoes: string | null;
-  estoqueTotal: number;
+  disponivel: boolean;
   tamanhosDisponiveis: {
     tamanhoAnel: string;
-    quantidadeAtual: number;
+    disponivel: boolean;
   }[];
   variacoes?: ProdutoLojaVariacao[];
   familia?: {
@@ -122,7 +119,6 @@ export type ProdutoLojaDetalhe = {
 
 export type LojaProdutoRelacionado = {
   id: string;
-  codigoInterno: string;
   nome: string;
   imagemUrl?: string | null;
   imagemHoverUrl?: string | null;
@@ -130,7 +126,7 @@ export type LojaProdutoRelacionado = {
   precoVenda: number;
   descontoAtivo: boolean;
   precoPromocional: number | null;
-  estoqueTotal: number;
+  disponivel: boolean;
 };
 
 type CarrinhoItemOpcaoAdicional = {
@@ -142,7 +138,6 @@ type CarrinhoItemOpcaoAdicional = {
 
 type CarrinhoItem = {
   produtoId: string;
-  codigoInterno: string;
   nome: string;
   imagemUrl?: string | null;
   categoria: string;
@@ -152,7 +147,9 @@ type CarrinhoItem = {
   descontoPercentual?: number | null;
   tamanhoAnel: string | null;
   quantidade: number;
-  estoqueDisponivel: number;
+  disponivel: boolean;
+  /** Compatibilidade com o checkout legado: sentinela pública 1|0, nunca saldo. */
+  estoqueDisponivel: 0 | 1;
   opcaoAdicional?: CarrinhoItemOpcaoAdicional | null;
   embalagemPresenteModeloId?: string | null;
   embalagemPresenteNome?: string | null;
@@ -273,9 +270,13 @@ function salvarCarrinho(itens: CarrinhoItem[]) {
 }
 
 function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
+  const disponivel =
+    typeof item.disponivel === "boolean"
+      ? item.disponivel
+      : Number(item.estoqueDisponivel || 0) > 0;
+
   return {
     produtoId: String(item.produtoId || ""),
-    codigoInterno: String(item.codigoInterno || ""),
     nome: String(item.nome || ""),
     imagemUrl: item.imagemUrl ?? null,
     categoria: String(item.categoria || ""),
@@ -295,7 +296,8 @@ function normalizarCarrinhoItem(item: Partial<CarrinhoItem>): CarrinhoItem {
         : null,
     tamanhoAnel: item.tamanhoAnel ?? null,
     quantidade: Math.max(1, Number(item.quantidade || 1)),
-    estoqueDisponivel: Number(item.estoqueDisponivel || 0),
+    disponivel,
+    estoqueDisponivel: disponivel ? 1 : 0,
     opcaoAdicional: item.opcaoAdicional
       ? {
           id: String(item.opcaoAdicional.id || ""),
@@ -521,7 +523,7 @@ function ProdutoFamiliaSection({
 
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
         {opcoes.map((item) => {
-          const semEstoque = item.estoqueTotal <= 0;
+          const semEstoque = !item.disponivel;
 
           const conteudo = (
             <div
@@ -625,10 +627,9 @@ export default function ProdutoLojaClient({
   useEffect(() => {
     registrarProdutoVisualizado(produto.id, {
       nome: produto.nome,
-      codigoInterno: produto.codigoInterno,
       categoria: produto.categoria,
     });
-  }, [produto.categoria, produto.codigoInterno, produto.id, produto.nome]);
+  }, [produto.categoria, produto.id, produto.nome]);
 
   const opcoesAdicionais = useMemo(
     () => produto.opcoesAdicionais || [],
@@ -665,10 +666,10 @@ export default function ProdutoLojaClient({
   const [tamanhoSelecionado, setTamanhoSelecionado] = useState(
     temVariacao && variacaoPrincipal?.obrigatoria !== false
       ? ""
-      : (variacaoPrincipal?.opcoes.find((opcao) => opcao.quantidadeAtual > 0)
+      : (variacaoPrincipal?.opcoes.find((opcao) => opcao.disponivel)
           ?.nome ??
           produto.tamanhosDisponiveis.find(
-            (tamanho) => tamanho.quantidadeAtual > 0,
+            (tamanho) => tamanho.disponivel,
           )?.tamanhoAnel ??
           ""),
   );
@@ -690,7 +691,7 @@ export default function ProdutoLojaClient({
 
   const produtoTemTamanho =
     temVariacao || produto.tamanhosDisponiveis.length > 0;
-  const semEstoque = produto.estoqueTotal <= 0;
+  const semEstoque = !produto.disponivel;
   const temDesconto = produtoTemDesconto(produto);
   const desconto = percentualDesconto(produto);
   const precoFinal = precoFinalProduto(produto);
@@ -719,7 +720,7 @@ export default function ProdutoLojaClient({
     }
 
     return variacaoPrincipal.opcoes.filter(
-      (opcao) => opcao.quantidadeAtual > 0,
+      (opcao) => opcao.disponivel,
     );
   }, [temVariacao, variacaoPrincipal]);
 
@@ -809,26 +810,30 @@ export default function ProdutoLojaClient({
     totalEmbalagemPresenteSelecionada;
   const cashbackValor = totalComAdicional * CASHBACK_PERCENTUAL;
 
-  const estoqueDisponivel = useMemo(() => {
+  const selecaoDisponivel = useMemo(() => {
+    if (!produto.disponivel) {
+      return false;
+    }
+
     if (temVariacao) {
-      return (
+      return Boolean(
         variacaoPrincipal?.opcoes.find(
           (opcao) => opcao.nome === tamanhoSelecionado,
-        )?.quantidadeAtual ?? 0
+        )?.disponivel
       );
     }
 
     if (!produtoTemTamanho) {
-      return produto.estoqueTotal;
+      return produto.disponivel;
     }
 
-    return (
+    return Boolean(
       produto.tamanhosDisponiveis.find(
         (tamanho) => tamanho.tamanhoAnel === tamanhoSelecionado,
-      )?.quantidadeAtual ?? 0
+      )?.disponivel
     );
   }, [
-    produto.estoqueTotal,
+    produto.disponivel,
     produto.tamanhosDisponiveis,
     produtoTemTamanho,
     tamanhoSelecionado,
@@ -845,50 +850,6 @@ export default function ProdutoLojaClient({
       })),
     [menus],
   );
-
-  const produtosBuscaMenu = useMemo(() => {
-    const mapa = new Map<
-      string,
-      {
-        id: string;
-        codigoInterno: string;
-        nome: string;
-        categoria: string;
-        tamanhosDisponiveis?: {
-          tamanhoAnel: string;
-          quantidadeAtual: number;
-        }[];
-      }
-    >();
-
-    mapa.set(produto.id, {
-      id: produto.id,
-      codigoInterno: produto.codigoInterno,
-      nome: produto.nome,
-      categoria: produto.categoria,
-      tamanhosDisponiveis: produto.tamanhosDisponiveis,
-    });
-
-    relacionados.forEach((item) => {
-      mapa.set(item.id, {
-        id: item.id,
-        codigoInterno: item.codigoInterno,
-        nome: item.nome,
-        categoria: item.categoria,
-      });
-    });
-
-    descontos.forEach((item) => {
-      mapa.set(item.id, {
-        id: item.id,
-        codigoInterno: item.codigoInterno,
-        nome: item.nome,
-        categoria: item.categoria,
-      });
-    });
-
-    return Array.from(mapa.values());
-  }, [produto, relacionados, descontos]);
 
   function irParaImagem(index: number) {
     if (index < 0 || index >= galeriaExibicao.length) {
@@ -916,20 +877,12 @@ export default function ProdutoLojaClient({
     setErro("");
     setMensagem("");
 
-    if (Number.isNaN(value) || value <= 0) {
+    if (!Number.isFinite(value) || value <= 0) {
       setQuantidade(1);
       return;
     }
 
-    if (estoqueDisponivel > 0 && value > estoqueDisponivel) {
-      setQuantidade(estoqueDisponivel);
-      setErro(
-        `Quantidade limitada ao estoque disponível (${estoqueDisponivel}).`,
-      );
-      return;
-    }
-
-    setQuantidade(value);
+    setQuantidade(Math.floor(value));
   }
 
   function calcularFrete() {
@@ -949,7 +902,7 @@ export default function ProdutoLojaClient({
     setErro("");
     setMensagem("");
 
-    if (semEstoque || estoqueDisponivel <= 0) {
+    if (semEstoque || !selecaoDisponivel) {
       setErro("Produto indisponível no momento.");
       return;
     }
@@ -965,13 +918,6 @@ export default function ProdutoLojaClient({
 
     if (quantidade <= 0) {
       setErro("Informe uma quantidade válida.");
-      return;
-    }
-
-    if (quantidade > estoqueDisponivel) {
-      setErro(
-        `Quantidade maior que o estoque disponível (${estoqueDisponivel}).`,
-      );
       return;
     }
 
@@ -1003,7 +949,6 @@ export default function ProdutoLojaClient({
 
     const novoItem: CarrinhoItem = {
       produtoId: produto.id,
-      codigoInterno: produto.codigoInterno,
       nome: produto.nome,
       imagemUrl: imagemSelecionada || produto.imagemUrl || null,
       categoria: produto.categoria,
@@ -1016,7 +961,8 @@ export default function ProdutoLojaClient({
       descontoPercentual: desconto,
       tamanhoAnel,
       quantidade,
-      estoqueDisponivel,
+      disponivel: selecaoDisponivel,
+      estoqueDisponivel: selecaoDisponivel ? 1 : 0,
       opcaoAdicional: opcaoAdicionalSelecionada
         ? {
             id: opcaoAdicionalSelecionada.id,
@@ -1058,13 +1004,6 @@ export default function ProdutoLojaClient({
     if (itemExistente) {
       const novaQuantidade = itemExistente.quantidade + quantidade;
 
-      if (novaQuantidade > estoqueDisponivel) {
-        setErro(
-          `Você já tem ${itemExistente.quantidade} un. no carrinho. O estoque disponível é ${estoqueDisponivel}.`,
-        );
-        return;
-      }
-
       novoCarrinho = carrinhoAtual.map((item) =>
         getItemKey(item) === itemKey
           ? {
@@ -1074,7 +1013,8 @@ export default function ProdutoLojaClient({
               precoOriginal: novoItem.precoOriginal,
               precoPromocional: novoItem.precoPromocional,
               descontoPercentual: novoItem.descontoPercentual,
-              estoqueDisponivel,
+              disponivel: novoItem.disponivel,
+              estoqueDisponivel: novoItem.estoqueDisponivel,
               opcaoAdicional: novoItem.opcaoAdicional,
               embalagemPresenteModeloId: novoItem.embalagemPresenteModeloId,
               embalagemPresenteNome: novoItem.embalagemPresenteNome,
@@ -1096,7 +1036,6 @@ export default function ProdutoLojaClient({
       origem: comprarAgora ? "comprar_agora" : "pagina_produto",
       metadata: {
         nome: produto.nome,
-        codigoInterno: produto.codigoInterno,
         categoria: produto.categoria,
         quantidade,
         tamanho: tamanhoAnel,
@@ -1135,7 +1074,6 @@ export default function ProdutoLojaClient({
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
-        produtos={produtosBuscaMenu}
         configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
@@ -1262,17 +1200,14 @@ export default function ProdutoLojaClient({
 
           <aside className="h-fit bg-white p-6 lg:sticky lg:top-24">
             <div>
-              <p className="text-sm font-semibold tracking-wide text-slate-950">
+              <h1 className="text-2xl font-medium leading-tight tracking-wide text-slate-950 sm:text-3xl">
                 {produto.nome}
-              </p>
+              </h1>
 
               <p className="mt-1 text-sm font-light text-slate-700">
                 {produto.categoria}
               </p>
 
-              <p className="mt-1 text-[11px] font-light uppercase tracking-[0.18em] text-slate-400">
-                {produto.codigoInterno}
-              </p>
             </div>
 
             <div className="mt-4">
@@ -1365,7 +1300,7 @@ export default function ProdutoLojaClient({
                           {variacaoPrincipal.opcoes.map((opcao) => {
                             const selecionado =
                               tamanhoSelecionado === opcao.nome;
-                            const semSaldo = opcao.quantidadeAtual <= 0;
+                            const semSaldo = !opcao.disponivel;
                             const possuiImagem = Boolean(opcao.imagemUrl);
                             const precoExtra = Number(
                               opcao.precoAdicional || 0,
@@ -1490,7 +1425,7 @@ export default function ProdutoLojaClient({
 
                       <div className="grid grid-cols-4 gap-2">
                         {produto.tamanhosDisponiveis.map((tamanho) => {
-                          const habilitado = tamanho.quantidadeAtual > 0;
+                          const habilitado = tamanho.disponivel;
                           const selecionado =
                             tamanhoSelecionado === tamanho.tamanhoAnel;
 
@@ -1819,7 +1754,6 @@ export default function ProdutoLojaClient({
                 <input
                   type="number"
                   min={1}
-                  max={estoqueDisponivel || 1}
                   value={quantidade}
                   disabled={semEstoque}
                   onChange={(event) =>
@@ -1833,7 +1767,7 @@ export default function ProdutoLojaClient({
                 <button
                   type="button"
                   onClick={() => adicionarAoCarrinho(true)}
-                  disabled={semEstoque || estoqueDisponivel <= 0}
+                  disabled={semEstoque || !selecaoDisponivel}
                   className="inline-flex h-12 w-full items-center justify-center bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   Comprar agora
@@ -1844,7 +1778,7 @@ export default function ProdutoLojaClient({
             <button
               type="button"
               onClick={() => adicionarAoCarrinho(false)}
-              disabled={semEstoque || estoqueDisponivel <= 0}
+              disabled={semEstoque || !selecaoDisponivel}
               className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 border border-slate-300 bg-white px-5 text-sm font-medium text-slate-900 transition hover:border-slate-950 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
             >
               <ShoppingCart className="h-4 w-4" />
@@ -1953,16 +1887,22 @@ export default function ProdutoLojaClient({
             <div className="mt-5 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-700">
               <div className="flex items-center gap-3">
                 <Truck className="h-3.5 w-3.5 text-slate-500" />
-                <span className="font-light">
-                  Entrega para todo o Brasil. Trocas em até 30 dias.
-                </span>
+                <Link
+                  href="/loja/frete-e-prazos"
+                  className="font-light underline-offset-4 hover:underline"
+                >
+                  Consulte frete e prazos
+                </Link>
               </div>
 
               <div className="flex items-center gap-3">
                 <Package className="h-3.5 w-3.5 text-slate-500" />
-                <span className="font-light">
-                  Frete grátis em compras acima de R$ 349,90
-                </span>
+                <Link
+                  href="/loja/trocas-e-devolucoes"
+                  className="font-light underline-offset-4 hover:underline"
+                >
+                  Consulte trocas e devoluções
+                </Link>
               </div>
             </div>
           </aside>
@@ -2000,9 +1940,7 @@ export default function ProdutoLojaClient({
           <div className="max-w-3xl py-8">
             {abaAtiva === "descricao" ? (
               <p className="whitespace-pre-line text-sm font-light leading-7 text-slate-600 md:text-base">
-                {produto.descricaoLoja ||
-                  produto.observacoes ||
-                  "Descrição do produto em breve."}
+                {produto.descricaoLoja || "Informações detalhadas desta peça serão adicionadas em breve."}
               </p>
             ) : (
               <p className="whitespace-pre-line text-sm font-light leading-7 text-slate-600 md:text-base">
@@ -2013,7 +1951,7 @@ export default function ProdutoLojaClient({
         </section>
 
         <ProdutosRelacionadosSection
-          titulo="Clientes também compram"
+          titulo="Você também pode gostar"
           produtos={relacionados}
         />
 
