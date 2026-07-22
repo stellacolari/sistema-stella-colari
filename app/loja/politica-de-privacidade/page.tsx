@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/app/loja/legal-page-shell";
-import { criarMetadataLoja } from "@/lib/loja/seo";
+import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Politica de Privacidade | Stella Colari",
-  description:
-    "Resumo sobre tratamento de dados na loja online Stella Colari.",
-  path: "/loja/politica-de-privacidade",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return gerarMetadataLegalGerenciada({
+    slug: "politica-de-privacidade",
+    title: "Política de Privacidade | Stella Colari",
+    description: "Resumo sobre tratamento de dados na loja online Stella Colari.",
+  });
+}
 
 export default function PoliticaDePrivacidadePage() {
   return (
     <LegalPageShell
+      slug="politica-de-privacidade"
       title="Politica de Privacidade"
       description="Esta pagina resume como os dados informados na loja online podem ser utilizados para atendimento, compra e relacionamento."
       sections={[

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  exigirAcessoConteudo,
+  validarOrigemMutacao,
+} from "@/lib/loja/conteudo/api-auth.server";
 
 const TIPOS_VALIDOS = new Set([
   "GERAL",
@@ -60,8 +64,25 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const usuario = await exigirAcessoConteudo("editar");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+
   try {
     const { id } = await context.params;
+
+    const conteudoNovo = await prisma.lojaConteudoDocumento.findFirst({
+      where: { paginaId: id, modoEntrega: "NOVO" },
+      select: { id: true },
+    });
+    if (conteudoNovo) {
+      return NextResponse.json(
+        { error: "Esta página é gerenciada por Conteúdo da Loja." },
+        { status: 409 },
+      );
+    }
 
     const paginaAtual = await prisma.lojaPagina.findUnique({
       where: { id },
@@ -294,8 +315,25 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const usuario = await exigirAcessoConteudo("excluir");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+
   try {
     const { id } = await context.params;
+
+    const documento = await prisma.lojaConteudoDocumento.findUnique({
+      where: { paginaId: id },
+      select: { id: true },
+    });
+    if (documento) {
+      return NextResponse.json(
+        { error: "Páginas com histórico de conteúdo não podem ser excluídas pelo endpoint legado." },
+        { status: 409 },
+      );
+    }
 
     const pagina = await prisma.lojaPagina.findUnique({
       where: { id },

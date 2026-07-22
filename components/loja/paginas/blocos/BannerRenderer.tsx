@@ -281,7 +281,7 @@ function getContentTextClass(corTexto: string) {
       title: "text-slate-950",
       body: "text-slate-700",
       eyebrow: "text-slate-600",
-      buttonPrimary: "bg-slate-950 text-white hover:bg-slate-800",
+      buttonPrimary: "bg-[#4772AA] text-white hover:bg-[#355f95]",
       buttonSecondary:
         "border-slate-950/35 text-slate-950 hover:border-slate-950 hover:bg-white/50",
       buttonLink: "text-slate-950 underline-offset-4 hover:underline",
@@ -1068,7 +1068,7 @@ export default function BannerRenderer({
   const altura = getString(config, "alturaBanner", "PADRAO");
   const overlay = getString(config, "overlayBanner", "LEVE");
   const corTexto = getString(config, "corTextoBanner", "CLARO");
-  const textClass = getContentTextClass(corTexto);
+  const configuredTextClass = getContentTextClass(corTexto);
   const alinhamentoHorizontal = getString(config, "alinhamentoConteudo", "ESQUERDA");
   const alinhamentoVertical = getString(config, "alinhamentoVertical", "CENTRO");
   const alinhamentoTextoDesktop = getString(
@@ -1136,6 +1136,9 @@ export default function BannerRenderer({
     getString(config, "estiloBordaBotao", "PILULA")
   );
   const hasMedia = Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
+  const textClass = hasMedia
+    ? configuredTextClass
+    : getContentTextClass("ESCURO");
 
   if (!hasMedia && !hasConteudo && !renderFrontImage) {
     return null;
@@ -1144,7 +1147,7 @@ export default function BannerRenderer({
   const isAutoHeight = altura === "AUTO_CONTEUDO";
   const wrapperClass =
     largura === "CONTIDA" ? "mx-auto max-w-7xl px-4 py-6 md:px-8" : "";
-  const innerClass = `relative overflow-hidden bg-slate-950 ${getHeightClass(
+  const innerClass = `relative overflow-hidden ${hasMedia ? "bg-slate-950" : "bg-[#5D8CC8]"} ${getHeightClass(
     altura,
     modelo,
     device

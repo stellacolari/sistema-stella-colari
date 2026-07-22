@@ -1,8 +1,9 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Check, ImageIcon, Loader2, Search, Upload, X } from "lucide-react";
 import type { MidiaAssetBiblioteca } from "@/components/configuracoes/loja/MidiaBibliotecaClient";
+import { useAccessibleDialog } from "@/components/configuracoes/loja/conteudo/useAccessibleDialog";
 
 type MediaLibraryPickerProps = {
   open: boolean;
@@ -10,6 +11,7 @@ type MediaLibraryPickerProps = {
   title?: string;
   onClose: () => void;
   onSelect: (assets: MidiaAssetBiblioteca[]) => void;
+  allowUpload?: boolean;
 };
 
 type MidiasResponse = {
@@ -21,9 +23,10 @@ type MidiasResponse = {
 export default function MediaLibraryPicker({
   open,
   mode = "single",
-  title = "Selecionar midia",
+  title = "Selecionar mídia",
   onClose,
   onSelect,
+  allowUpload = false,
 }: MediaLibraryPickerProps) {
   const [items, setItems] = useState<MidiaAssetBiblioteca[]>([]);
   const [selected, setSelected] = useState<MidiaAssetBiblioteca[]>([]);
@@ -33,12 +36,16 @@ export default function MediaLibraryPicker({
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const loadSequenceRef = useRef(0);
 
   const load = useCallback(
     async (nextPage: number) => {
       if (!open) return;
 
+      const sequence = ++loadSequenceRef.current;
       setLoading(true);
+      setError("");
       const params = new URLSearchParams({
         page: String(nextPage),
         pageSize: "18",
@@ -51,6 +58,7 @@ export default function MediaLibraryPicker({
       try {
         const response = await fetch(`/api/configuracoes/loja/midias?${params}`);
         const data = (await response.json()) as MidiasResponse;
+        if (sequence !== loadSequenceRef.current) return;
 
         if (!response.ok) {
           setError("Erro ao carregar imagens.");
@@ -60,8 +68,11 @@ export default function MediaLibraryPicker({
         setItems(data.items || []);
         setPage(data.page || nextPage);
         setTotalPages(data.totalPages || 1);
+      } catch {
+        if (sequence !== loadSequenceRef.current) return;
+        setError("Não foi possível carregar as imagens.");
       } finally {
-        setLoading(false);
+        if (sequence === loadSequenceRef.current) setLoading(false);
       }
     },
     [open, q]
@@ -73,7 +84,10 @@ export default function MediaLibraryPicker({
     void load(1);
   }, [load, open]);
 
+  useAccessibleDialog(open, onClose, dialogRef);
+
   async function uploadFiles(files: FileList | File[]) {
+    if (!allowUpload) return;
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
 
     if (list.length === 0) return;
@@ -83,7 +97,7 @@ export default function MediaLibraryPicker({
 
     const formData = new FormData();
     list.forEach((file) => formData.append("arquivos", file));
-    formData.set("origem", "BUILDER");
+    formData.set("origem", "CONTEUDO_LOJA");
 
     try {
       const response = await fetch("/api/configuracoes/loja/midias/upload", {
@@ -106,6 +120,8 @@ export default function MediaLibraryPicker({
       }
 
       await load(1);
+    } catch {
+      setError("Não foi possível enviar as imagens.");
     } finally {
       setUploading(false);
     }
@@ -140,18 +156,25 @@ export default function MediaLibraryPicker({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-library-title"
+      >
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">{title}</h2>
+            <h2 id="media-library-title" className="text-lg font-bold text-slate-950">{title}</h2>
             <p className="text-sm text-slate-500">
-              {mode === "multiple" ? "Selecao multipla em ordem." : "Selecione uma imagem."}
+              {mode === "multiple" ? "Seleção múltipla em ordem." : "Selecione uma imagem."}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-600"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600"
             aria-label="Fechar"
           >
             <X className="h-4 w-4" />
@@ -162,12 +185,14 @@ export default function MediaLibraryPicker({
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              aria-label="Buscar imagens na biblioteca"
               value={q}
               onChange={(event) => setQ(event.target.value)}
               placeholder="Buscar imagens"
               className="h-11 w-full rounded-2xl border border-slate-200 pl-11 pr-4 text-sm outline-none focus:border-slate-500"
             />
           </div>
+          {allowUpload ? (
           <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Upload
@@ -176,19 +201,28 @@ export default function MediaLibraryPicker({
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={onFileChange}
-              className="hidden"
+              className="sr-only"
+              disabled={uploading}
             />
           </label>
+          ) : null}
         </div>
 
         <div
+          aria-busy={loading}
           onDragOver={(event) => event.preventDefault()}
-          onDrop={onDrop}
+          onDrop={allowUpload ? onDrop : undefined}
           className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-5"
         >
           {error ? (
-            <p className="mb-4 rounded-2xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
+            <p role="alert" className="mb-4 rounded-2xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
               {error}
+            </p>
+          ) : null}
+
+          {loading ? (
+            <p role="status" className="mb-4 text-sm font-medium text-slate-500">
+              Carregando imagens…
             </p>
           ) : null}
 
@@ -209,6 +243,7 @@ export default function MediaLibraryPicker({
                     key={asset.id}
                     type="button"
                     onClick={() => toggle(asset)}
+                    aria-pressed={selectedIndex >= 0}
                     className={`overflow-hidden rounded-2xl border bg-white text-left shadow-sm ${
                       selectedIndex >= 0
                         ? "border-slate-950 ring-2 ring-slate-950"
@@ -249,7 +284,7 @@ export default function MediaLibraryPicker({
               type="button"
               onClick={() => void load(Math.max(1, page - 1))}
               disabled={page <= 1}
-              className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              className="min-h-11 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
             >
               Anterior
             </button>
@@ -260,9 +295,9 @@ export default function MediaLibraryPicker({
               type="button"
               onClick={() => void load(Math.min(totalPages, page + 1))}
               disabled={page >= totalPages}
-              className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              className="min-h-11 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
             >
-              Proxima
+              Próxima
             </button>
           </div>
 
@@ -273,9 +308,11 @@ export default function MediaLibraryPicker({
               onClose();
             }}
             disabled={selected.length === 0}
-            className="rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="min-h-11 rounded-2xl bg-[#4772AA] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3f6699] disabled:opacity-50"
           >
-            Usar {selected.length || ""} imagem(ns)
+            {mode === "single"
+              ? "Usar imagem"
+              : `Usar ${selected.length} ${selected.length === 1 ? "imagem" : "imagens"}`}
           </button>
         </div>
       </div>

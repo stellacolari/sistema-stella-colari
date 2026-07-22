@@ -560,7 +560,7 @@ function CampanhaCard({
           </Link>
         )}
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
-          Rascunho gerencial: nao publica loja, cupom ou builder.
+          Rascunho gerencial: não publica loja, cupom ou Conteúdo da Loja.
         </span>
       </div>
     </article>

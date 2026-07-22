@@ -14,6 +14,8 @@ import { aplicarColecoesEmBlocosBuilder } from "@/lib/loja/colecoes-inteligentes
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
+import { buscarConteudoPublicadoPagina } from "@/lib/loja/conteudo/repository.server";
+import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,7 @@ export async function generateMetadata({
       },
     },
     select: {
+      id: true,
       titulo: true,
       seoTitle: true,
       seoDescription: true,
@@ -50,8 +53,16 @@ export async function generateMetadata({
       },
     },
   });
+  const conteudoGerenciado = pagina
+    ? await buscarConteudoPublicadoPagina(pagina.id)
+    : null;
+  const conteudoAtivo =
+    conteudoGerenciado && !conteudoGerenciado.indisponivel
+      ? conteudoGerenciado
+      : null;
+  const seo = conteudoAtivo ? extrairSeoConteudo(conteudoAtivo.conteudo) : null;
 
-  if (!pagina || pagina.blocos.length === 0) {
+  if (!pagina || conteudoGerenciado?.indisponivel || (!conteudoAtivo && pagina.blocos.length === 0)) {
     return criarMetadataLoja({
       title: "Stella Colari | Loja Online",
       path: `/loja/p/${slug}`,
@@ -63,10 +74,12 @@ export async function generateMetadata({
   }
 
   return criarMetadataLoja({
-    title: `${pagina.seoTitle || pagina.titulo} | Stella Colari`,
-    description: pagina.seoDescription,
+    title: seo?.title || `${pagina.seoTitle || pagina.titulo} | Stella Colari`,
+    description: seo?.description || pagina.seoDescription,
     path: `/loja/p/${slug}`,
-    image: getImagemSeoBlocos(pagina.blocos),
+    canonical: seo?.canonical,
+    image: seo?.image || getImagemSeoBlocos(pagina.blocos),
+    robots: seo?.noindex ? { index: false, follow: false } : undefined,
   });
 }
 
@@ -124,7 +137,15 @@ export default async function LojaPaginaPublicaPage({
       buscarConfiguracaoMenuRodape(),
     ]);
 
-  if (!paginaRaw || paginaRaw.blocos.length === 0) {
+  const conteudoGerenciado = paginaRaw
+    ? await buscarConteudoPublicadoPagina(paginaRaw.id)
+    : null;
+  if (conteudoGerenciado?.indisponivel) {
+    notFound();
+  }
+  const conteudoAtivo = conteudoGerenciado || null;
+
+  if (!paginaRaw || (!conteudoAtivo && paginaRaw.blocos.length === 0)) {
     notFound();
   }
 
@@ -135,9 +156,9 @@ export default async function LojaPaginaPublicaPage({
     tipo: paginaRaw.tipo,
   };
 
-  const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(
-    paginaRaw.blocos
-  );
+  const blocosResolvidos = conteudoAtivo
+    ? []
+    : await aplicarColecoesEmBlocosBuilder(paginaRaw.blocos);
 
   const blocos: LojaBuilderBloco[] =
     serializarBlocosBuilderPublicos(blocosResolvidos);
@@ -160,6 +181,7 @@ export default async function LojaPaginaPublicaPage({
       menus={menus}
       categoriasMenu={categoriasMenu}
       configuracaoMenuRodape={configuracaoMenuRodape}
+      conteudoGerenciado={conteudoAtivo?.publico}
     />
   );
 }

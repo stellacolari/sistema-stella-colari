@@ -36,8 +36,8 @@ const tabs = [
     icon: Menu,
   },
   {
-    href: "/configuracoes/loja/paginas",
-    label: "Páginas",
+    href: "/configuracoes/loja/conteudo",
+    label: "Conteúdo",
     icon: LayoutTemplate,
   },
   {
@@ -128,7 +128,7 @@ export default function LojaConfigHeader({
                 target={tab.external ? "_blank" : undefined}
                 className={`inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-sm font-semibold transition ${
                   active
-                    ? "border-slate-950 bg-slate-950 text-white"
+                    ? "border-[#4772AA] bg-[#4772AA] text-white"
                     : tab.external
                     ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"

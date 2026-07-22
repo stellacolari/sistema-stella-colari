@@ -26,6 +26,8 @@ import { buscarProdutosPublicosPorCategoriaIds } from "@/lib/loja/produtos";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import { criarMetadataLoja, getImagemSeoBlocos } from "@/lib/loja/seo";
 import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
+import { buscarConteudoPublicadoPagina } from "@/lib/loja/conteudo/repository.server";
+import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
 type LojaCategoriaPageProps = {
   params: Promise<{
@@ -185,31 +187,27 @@ export async function generateMetadata({
     });
   }
 
-  const paginaBuilder = await prisma.lojaPagina.findFirst({
-    where: {
-      tipo: "CATEGORIA",
-      categoriaId: resultado.categoria.id,
-      ativo: true,
-      statusPublicacao: "PUBLICADA",
-    },
-    select: {
-      titulo: true,
-      seoTitle: true,
-      seoDescription: true,
-      blocos: {
-        where: {
-          ativo: true,
-        },
-        orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
-        select: {
-          configJson: true,
+  const [paginaBuilder, templateBuilder] = await Promise.all([
+    prisma.lojaPagina.findFirst({
+      where: {
+        tipo: "CATEGORIA",
+        categoriaId: resultado.categoria.id,
+        ativo: true,
+        statusPublicacao: "PUBLICADA",
+      },
+      select: {
+        id: true,
+        titulo: true,
+        seoTitle: true,
+        seoDescription: true,
+        blocos: {
+          where: { ativo: true },
+          orderBy: [{ ordem: "asc" }, { criadoEm: "asc" }],
+          select: { configJson: true },
         },
       },
-    },
-  });
-  const templateBuilder = paginaBuilder
-    ? null
-    : await prisma.lojaPagina.findFirst({
+    }),
+    prisma.lojaPagina.findFirst({
         where: {
           tipo: "TEMPLATE_CATEGORIA",
           usarComoTemplatePadrao: true,
@@ -217,6 +215,7 @@ export async function generateMetadata({
           statusPublicacao: "PUBLICADA",
         },
         select: {
+          id: true,
           seoDescription: true,
           blocos: {
             where: {
@@ -228,24 +227,48 @@ export async function generateMetadata({
             },
           },
         },
-      });
+      }),
+  ]);
+  const [conteudoEspecifico, conteudoTemplate] = await Promise.all([
+    paginaBuilder ? buscarConteudoPublicadoPagina(paginaBuilder.id) : null,
+    templateBuilder ? buscarConteudoPublicadoPagina(templateBuilder.id) : null,
+  ]);
+  const conteudoGerenciado =
+    conteudoEspecifico && !conteudoEspecifico.indisponivel
+      ? conteudoEspecifico
+      : conteudoTemplate && !conteudoTemplate.indisponivel
+        ? conteudoTemplate
+        : null;
+  const seo =
+    conteudoGerenciado
+      ? extrairSeoConteudo(conteudoGerenciado.conteudo)
+      : null;
 
   return criarMetadataLoja({
-    title: montarTituloSeoCategoria(
-      paginaBuilder?.seoTitle || paginaBuilder?.titulo,
-      resultado.categoria.nome
-    ),
+    title:
+      seo?.title ||
+      montarTituloSeoCategoria(
+        paginaBuilder?.seoTitle || paginaBuilder?.titulo,
+        resultado.categoria.nome,
+      ),
     description:
+      seo?.description ||
       paginaBuilder?.seoDescription ||
       resultado.categoria.descricaoSeo ||
       resultado.categoria.descricao ||
       templateBuilder?.seoDescription ||
       `Conheca os produtos de ${resultado.categoria.nome} da Stella Colari.`,
     path: `/loja/categoria/${resultado.categoria.slug}`,
+    canonical:
+      conteudoEspecifico && !conteudoEspecifico.indisponivel
+        ? seo?.canonical
+        : undefined,
     image:
+      seo?.image ||
       resultado.categoria.imagemUrl ||
       getImagemSeoBlocos(paginaBuilder?.blocos ?? []) ||
       getImagemSeoBlocos(templateBuilder?.blocos ?? []),
+    robots: seo?.noindex ? { index: false, follow: false } : undefined,
   });
 }
 
@@ -309,13 +332,6 @@ export default async function LojaCategoriaPage({
     }),
   ]);
 
-  const paginaParaRenderizar =
-    paginaCategoriaRaw && paginaEstaPublica(paginaCategoriaRaw)
-      ? paginaCategoriaRaw
-      : templateCategoriaRaw && paginaEstaPublica(templateCategoriaRaw)
-      ? templateCategoriaRaw
-      : null;
-
   const categoriaAtual: LojaBuilderCategoriaAtual = {
     id: categoria.id,
     nome: categoria.nome,
@@ -333,6 +349,33 @@ export default async function LojaCategoriaPage({
     })),
   };
 
+  const [conteudoCategoria, conteudoTemplate] = await Promise.all([
+    paginaCategoriaRaw
+      ? buscarConteudoPublicadoPagina(paginaCategoriaRaw.id)
+      : null,
+    templateCategoriaRaw
+      ? buscarConteudoPublicadoPagina(templateCategoriaRaw.id)
+      : null,
+  ]);
+  const conteudoCategoriaAtivo =
+    conteudoCategoria && !conteudoCategoria.indisponivel
+      ? conteudoCategoria
+      : null;
+  const conteudoTemplateAtivo =
+    conteudoTemplate && !conteudoTemplate.indisponivel
+      ? conteudoTemplate
+      : null;
+  const paginaParaRenderizar = conteudoCategoriaAtivo
+    ? paginaCategoriaRaw
+    : conteudoTemplateAtivo
+      ? templateCategoriaRaw
+      : paginaCategoriaRaw && paginaEstaPublica(paginaCategoriaRaw)
+        ? paginaCategoriaRaw
+        : templateCategoriaRaw && paginaEstaPublica(templateCategoriaRaw)
+          ? templateCategoriaRaw
+          : null;
+  const conteudoAtivo = conteudoCategoriaAtivo || conteudoTemplateAtivo;
+
   if (paginaParaRenderizar) {
     const pagina: LojaBuilderPagina = serializarPaginaBuilder({
       id: paginaParaRenderizar.id,
@@ -344,10 +387,10 @@ export default async function LojaCategoriaPage({
       tipo: paginaParaRenderizar.tipo,
     });
 
-const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(
-  paginaParaRenderizar.blocos
-);
-const blocos = serializarBlocosBuilder(blocosResolvidos);
+    const blocosResolvidos = conteudoAtivo
+      ? []
+      : await aplicarColecoesEmBlocosBuilder(paginaParaRenderizar.blocos);
+    const blocos = serializarBlocosBuilder(blocosResolvidos);
 
 const produtosCategoriaSerializados = produtosCategoria.map((produto) => ({
   ...produto,
@@ -374,6 +417,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
         categoriasMenu={categoriasMenu}
         categoriaAtual={categoriaAtual}
         configuracaoMenuRodape={configuracaoMenuRodape}
+        conteudoGerenciado={conteudoAtivo?.publico}
       />
     );
   }

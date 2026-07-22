@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/app/loja/legal-page-shell";
-import { criarMetadataLoja } from "@/lib/loja/seo";
+import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Trocas e Devolucoes | Stella Colari",
-  description:
-    "Orientacoes gerais sobre troca e devolucao na loja Stella Colari.",
-  path: "/loja/trocas-e-devolucoes",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return gerarMetadataLegalGerenciada({
+    slug: "trocas-e-devolucoes",
+    title: "Trocas e Devoluções | Stella Colari",
+    description: "Orientações gerais sobre troca e devolução na loja Stella Colari.",
+  });
+}
 
 export default function TrocasEDevolucoesPage() {
   return (
     <LegalPageShell
+      slug="trocas-e-devolucoes"
       title="Trocas e Devolucoes"
       description="As orientacoes abaixo ajudam a entender como solicitar analise de troca ou devolucao de uma compra feita na loja online."
       sections={[

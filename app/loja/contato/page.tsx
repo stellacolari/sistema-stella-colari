@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/app/loja/legal-page-shell";
-import { criarMetadataLoja } from "@/lib/loja/seo";
+import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Contato | Stella Colari",
-  description:
-    "Orientacoes para atendimento da loja online Stella Colari.",
-  path: "/loja/contato",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return gerarMetadataLegalGerenciada({
+    slug: "contato",
+    title: "Contato | Stella Colari",
+    description: "Orientações para atendimento da loja online Stella Colari.",
+  });
+}
 
 export default function ContatoPage() {
   return (
     <LegalPageShell
+      slug="contato"
       title="Contato"
       description="Para suporte sobre produtos, pedidos, pagamentos ou entrega, utilize os canais oficiais publicados pela Stella Colari."
       sections={[

@@ -334,6 +334,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
   const eyebrow = slide.conteudo.eyebrow.conteudo;
   const texto = slide.conteudo.texto.conteudo;
   const hasVideo = slide.tipoMidia === "VIDEO" && Boolean(slide.video.url);
+  const hasHeroMedia = hasVideo || Boolean(desktopUrl || mobileUrl);
   const desktopPosition = slide.conteudo.posicaoDesktop || slide.conteudo.posicao;
   const mobilePosition = slide.conteudo.posicaoMobile || slide.conteudo.posicao;
   const hasVisibleTitle = Boolean(
@@ -356,7 +357,7 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
 
   return (
     <section
-      className={`${styles.hero} relative isolate overflow-hidden bg-[#171916] text-white ${getHeroHeightClass(config.altura)}`}
+      className={`${styles.hero} relative isolate overflow-hidden ${hasHeroMedia ? "bg-[#171916] text-white" : "bg-[#5D8CC8] text-[#0f172a]"} ${getHeroHeightClass(config.altura)}`}
       aria-labelledby={`stella-hero-${bloco.id}`}
     >
       <div className="absolute inset-0 -z-20">
@@ -390,10 +391,10 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
         )}
       </div>
 
-      {slide.overlay.ativo ? (
+      {hasHeroMedia && slide.overlay.ativo ? (
         <div className="absolute inset-0 -z-10" style={overlayStyle} />
       ) : null}
-      <div className={`${styles.heroShade} absolute inset-0 -z-10`} />
+      {hasHeroMedia ? <div className={`${styles.heroShade} absolute inset-0 -z-10`} /> : null}
 
       {!hasVisibleTitle ? (
         <h1 id={`stella-hero-${bloco.id}`} className="sr-only">
@@ -409,8 +410,11 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
             {slide.conteudo.mostrarEyebrow && eyebrow ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:eyebrow`}
-                className={`${styles.heroEyebrow} text-xs font-medium uppercase text-white/80`}
-                style={getHeroElementStyle(slide, "eyebrow")}
+                className={`${styles.heroEyebrow} text-xs font-medium uppercase ${hasHeroMedia ? "text-white/80" : "text-[#0f172a]/75"}`}
+                style={{
+                  ...getHeroElementStyle(slide, "eyebrow"),
+                  ...(!hasHeroMedia ? { color: "#0f172a" } : {}),
+                }}
               >
                 {eyebrow}
               </p>
@@ -420,8 +424,11 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
               <h1
                 id={`stella-hero-${bloco.id}`}
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:titulo`}
-                className={`${styles.heroTitle} mt-5 text-white`}
-                style={getHeroElementStyle(slide, "titulo")}
+                className={`${styles.heroTitle} mt-5 ${hasHeroMedia ? "text-white" : "text-[#0f172a]"}`}
+                style={{
+                  ...getHeroElementStyle(slide, "titulo"),
+                  ...(!hasHeroMedia ? { color: "#0f172a" } : {}),
+                }}
               >
                 <EditorialTitleText text={titulo} emphasisWords={2} />
               </h1>
@@ -430,8 +437,11 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
             {slide.conteudo.mostrarTexto && texto ? (
               <p
                 data-stella-inline-field={`bannerHeroV2:${slide.id}:texto`}
-                className={`${styles.heroBody} mt-7 text-base text-white/86 md:text-lg`}
-                style={getHeroElementStyle(slide, "texto")}
+                className={`${styles.heroBody} mt-7 text-base md:text-lg ${hasHeroMedia ? "text-white/86" : "text-[#0f172a]/78"}`}
+                style={{
+                  ...getHeroElementStyle(slide, "texto"),
+                  ...(!hasHeroMedia ? { color: "#0f172a" } : {}),
+                }}
               >
                 {texto}
               </p>
@@ -450,11 +460,23 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
                       newTab={botao.abrirNovaAba}
                       ariaLabel={botao.abrirNovaAba ? `${botao.texto} (abre em nova aba)` : undefined}
                       className={
-                        index === 0
+                        hasHeroMedia && index === 0
                           ? `${styles.heroPrimaryButton} inline-flex min-h-12 items-center justify-center bg-white px-7 text-xs font-semibold uppercase text-[#171916] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`
-                          : `${styles.heroSecondaryButton} inline-flex min-h-12 items-center justify-center border border-white/70 px-7 text-xs font-semibold uppercase text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`
+                          : hasHeroMedia
+                            ? `${styles.heroSecondaryButton} inline-flex min-h-12 items-center justify-center border border-white/70 px-7 text-xs font-semibold uppercase text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`
+                            : index === 0
+                              ? "inline-flex min-h-12 items-center justify-center bg-white px-7 text-xs font-semibold uppercase text-[#0f172a] transition hover:bg-white/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                              : "inline-flex min-h-12 items-center justify-center border border-[#0f172a]/70 px-7 text-xs font-semibold uppercase text-[#0f172a] transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                       }
-                      style={getHeroButtonStyle(botao)}
+                      style={
+                        hasHeroMedia
+                          ? getHeroButtonStyle(botao)
+                          : {
+                              color: "#0f172a",
+                              borderColor: "#0f172a",
+                              backgroundColor: index === 0 ? "#ffffff" : "transparent",
+                            }
+                      }
                     >
                       <span
                         data-stella-inline-field={`bannerHeroV2:${slide.id}:botao:${botao.id}`}
@@ -470,7 +492,10 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
         </div>
       ) : null}
 
-      <div className={styles.heroFooter} aria-hidden="true">
+      <div
+        className={`${styles.heroFooter} ${hasHeroMedia ? "" : "!border-[#0f172a]/25 !text-[#0f172a]/70"}`}
+        aria-hidden="true"
+      >
         <span>Stella Colari</span>
         <span>↓</span>
       </div>
@@ -841,7 +866,7 @@ function StellaEditorialFeature({
   const gift = variant === "gift";
   const story = variant === "story";
   const sectionClass = gift
-    ? "bg-[#171916] text-white"
+    ? "bg-[#5D8CC8] text-[#0f172a]"
     : story
       ? "bg-[#f2f2f0] text-[#171916]"
       : "bg-[#f6f6f4] text-[#171916]";
@@ -869,7 +894,7 @@ function StellaEditorialFeature({
         >
           <div className="max-w-xl">
             <p
-              className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${gift ? "text-white/70" : "text-[#555750]"}`}
+              className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${gift ? "text-[#0f172a]/70" : "text-[#555750]"}`}
             >
               {gift ? "Presentes" : story ? "História" : "Editorial Stella"}
             </p>
@@ -884,7 +909,7 @@ function StellaEditorialFeature({
             {hasTexto ? (
               <p
                 data-stella-inline-field="texto"
-                className={`${styles.editorialBody} mt-8 max-w-lg text-base ${gift ? "text-white/72" : "text-[#595b56]"}`}
+                className={`${styles.editorialBody} mt-8 max-w-lg text-base ${gift ? "text-[#0f172a]/75" : "text-[#595b56]"}`}
               >
                 {content.texto}
               </p>
@@ -892,7 +917,7 @@ function StellaEditorialFeature({
             {hasBotao ? (
               <SmartLink
                 href={content.href}
-                className={`mt-10 inline-flex min-h-11 items-center gap-4 border-b pb-1 text-xs font-semibold uppercase tracking-[0.14em] transition ${gift ? "border-white/55 text-white hover:border-white" : "border-[#171916]/50 text-[#171916] hover:border-[#171916]"}`}
+                className={`mt-10 inline-flex min-h-11 items-center gap-4 border-b pb-1 text-xs font-semibold uppercase tracking-[0.14em] transition ${gift ? "border-[#0f172a]/55 text-[#0f172a] hover:border-[#0f172a]" : "border-[#171916]/50 text-[#171916] hover:border-[#171916]"}`}
               >
                 <span data-stella-inline-field="textoBotao">{content.textoBotao}</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -1310,9 +1335,9 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
   if (!hasTitulo && !hasTexto && !hasPrimario && !hasSecundario) return null;
 
   return (
-    <RevealSection className={`${styles.finalCta} relative overflow-hidden border-y border-white/15 bg-[#171916] px-5 py-24 text-white sm:px-7 md:py-36 lg:px-12`}>
+    <RevealSection className={`${styles.finalCta} relative overflow-hidden border-y border-[#0f172a]/15 bg-[#5D8CC8] px-5 py-24 text-[#0f172a] sm:px-7 md:py-36 lg:px-12`}>
       <div className="relative mx-auto max-w-[100rem] text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/65">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#0f172a]/65">
           Stella Colari
         </p>
         {hasTitulo ? (
@@ -1326,7 +1351,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
         {hasTexto ? (
           <p
             data-stella-inline-field="texto"
-            className="mx-auto mt-8 max-w-xl text-base leading-8 text-white/70"
+            className="mx-auto mt-8 max-w-xl text-base leading-8 text-[#0f172a]/75"
           >
             {texto}
           </p>
@@ -1335,7 +1360,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
           {hasPrimario ? (
             <SmartLink
               href={primarioHref}
-              className="inline-flex min-h-12 items-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#171916] hover:bg-transparent hover:text-white"
+              className="inline-flex min-h-12 items-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#0f172a] hover:bg-white/85"
             >
               <span data-stella-inline-field="textoBotao">{primarioTexto}</span>
             </SmartLink>
@@ -1343,7 +1368,7 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
           {hasSecundario ? (
             <SmartLink
               href={secundarioHref}
-              className="inline-flex min-h-12 items-center border border-white/55 px-7 text-xs font-semibold uppercase tracking-[0.14em] text-white hover:border-white hover:bg-white hover:text-[#171916]"
+              className="inline-flex min-h-12 items-center border border-[#0f172a]/55 px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[#0f172a] hover:border-[#0f172a] hover:bg-white"
             >
               <span data-stella-inline-field="textoBotaoSecundario">{secundarioTexto}</span>
             </SmartLink>

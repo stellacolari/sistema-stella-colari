@@ -25,6 +25,8 @@ import {
 } from "@/lib/loja/produtos";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
+import { buscarConteudoPreviewPagina } from "@/lib/loja/conteudo/repository.server";
+import { rotaPublicaConteudoPagina } from "@/lib/loja/conteudo/public-route";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +46,7 @@ type PageProps = {
   searchParams?: Promise<{
     categoria?: string;
     studio?: string;
+    conteudo?: string;
   }>;
 };
 
@@ -238,28 +241,6 @@ async function montarCategoriaAtual(
   };
 }
 
-function getUrlPublicaPagina(pagina: {
-  tipo: string;
-  slug: string;
-  categoria?: {
-    slug: string;
-  } | null;
-}) {
-  if (pagina.tipo === "HOME" || pagina.slug === "home") {
-    return "/loja";
-  }
-
-  if (pagina.tipo === "CATEGORIA" && pagina.categoria?.slug) {
-    return `/loja/categoria/${pagina.categoria.slug}`;
-  }
-
-  if (pagina.tipo === "TEMPLATE_CATEGORIA") {
-    return "";
-  }
-
-  return `/loja/p/${pagina.slug}`;
-}
-
 export default async function LojaPreviewPaginaPage({
   params,
   searchParams,
@@ -272,6 +253,7 @@ export default async function LojaPreviewPaginaPage({
     typeof search?.categoria === "string" ? search.categoria : null;
   const studioMode = search?.studio === "1";
   const studioEmbed = studioMode || search?.studio === "visualizar";
+  const conteudoMode = search?.conteudo === "1";
 
   const paginaRaw = await prisma.lojaPagina.findUnique({
     where: {
@@ -285,6 +267,10 @@ export default async function LojaPreviewPaginaPage({
       categoriaId: true,
       ativo: true,
       statusPublicacao: true,
+      publicadoEm: true,
+      atualizadoEm: true,
+      seoTitle: true,
+      seoDescription: true,
       categoria: {
         select: {
           id: true,
@@ -302,8 +288,9 @@ export default async function LojaPreviewPaginaPage({
         select: {
           id: true,
           tipo: true,
-          titulo: true,
-          ordem: true,
+            titulo: true,
+            ativo: true,
+            ordem: true,
           configJson: true,
         },
       },
@@ -367,8 +354,11 @@ const menusPublicosSerializados = menusPublicos.map((menu) => ({
 
 const produtos = serializarProdutosBuilder(produtosPublicosSerializados);
 const menus = serializarMenusBuilder(menusPublicosSerializados);
+const conteudoGerenciado = conteudoMode
+  ? await buscarConteudoPreviewPagina(paginaRaw)
+  : null;
 
-  const urlPublica = getUrlPublicaPagina(paginaRaw);
+  const urlPublica = rotaPublicaConteudoPagina(paginaRaw) || "";
   const paginaPublica =
     paginaRaw.ativo && paginaRaw.statusPublicacao === "PUBLICADA";
 
@@ -378,7 +368,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
         <div className="sticky top-0 z-[100] border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <strong>Prévia de rascunho:</strong>{" "}
+              <strong>{conteudoMode ? "Prévia do conteúdo:" : "Prévia de rascunho:"}</strong>{" "}
               <span>{paginaRaw.titulo}</span>
               <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
                 {paginaRaw.statusPublicacao}
@@ -396,7 +386,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
               ) : null}
 
               <Link
-                href="/configuracoes/loja/paginas"
+                href={conteudoMode ? "/configuracoes/loja/conteudo/paginas" : "/configuracoes/loja/paginas"}
                 className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
               >
                 Voltar para páginas
@@ -426,6 +416,7 @@ const menus = serializarMenusBuilder(menusPublicosSerializados);
           categoriasMenu={categoriasMenu}
           categoriaAtual={categoriaAtual}
           configuracaoMenuRodape={configuracaoMenuRodape}
+          conteudoGerenciado={conteudoGerenciado}
         />
       )}
     </>

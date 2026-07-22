@@ -300,7 +300,7 @@ function renderTextContent(element: Extract<SectionColumnElement, { texto: TextE
 
   if (element.tipo === "BOTAO") {
     const className =
-      "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800";
+      "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95]";
     const buttonContent = (
       <PublicRichTextRenderer
         value={element.texto.richText}

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  exigirAcessoConteudo,
+  validarOrigemMutacao,
+} from "@/lib/loja/conteudo/api-auth.server";
 
 const TIPOS_VALIDOS = new Set([
   "GERAL",
@@ -55,6 +59,12 @@ function parseStringOrNull(value: unknown) {
 }
 
 export async function POST(req: Request) {
+  const usuario = await exigirAcessoConteudo("criar");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
 

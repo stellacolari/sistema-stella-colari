@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { criarSecaoColunasPadrao } from "@/components/loja/paginas/textElements";
 import { criarBannerEditorialConfigPadrao } from "@/components/loja/paginas/blocos/bannerEditorialConfig";
 import { criarBannerHeroV2ConfigPadrao } from "@/components/loja/paginas/blocos/bannerHeroV2Config";
+import {
+  exigirAcessoConteudo,
+  validarOrigemMutacao,
+} from "@/lib/loja/conteudo/api-auth.server";
 
 const TIPOS_BLOCO_VALIDOS = new Set([
   "BANNER",
@@ -823,8 +827,24 @@ export async function POST(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const usuario = await exigirAcessoConteudo("editar");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+
   try {
     const { id } = await context.params;
+    const conteudoNovo = await prisma.lojaConteudoDocumento.findFirst({
+      where: { paginaId: id, modoEntrega: "NOVO" },
+      select: { id: true },
+    });
+    if (conteudoNovo) {
+      return NextResponse.json(
+        { error: "Esta página é gerenciada por Conteúdo da Loja." },
+        { status: 409 },
+      );
+    }
     const body = await req.json().catch(() => ({}));
 
     const tipo = String(body.tipo || "").trim();

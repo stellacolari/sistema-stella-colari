@@ -1,7 +1,8 @@
 "use client";
 
-import type { PointerEvent as ReactPointerEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import Cropper, { type Area, type Point } from "react-easy-crop";
+import { Minus, Plus, RotateCcw } from "lucide-react";
 
 export type MediaCropConfig = {
   assetId?: string;
@@ -12,6 +13,7 @@ export type MediaCropConfig = {
   positionX: number;
   positionY: number;
   rotation?: number;
+  areaPercent?: Area;
 };
 
 export type ResponsiveMediaConfig = {
@@ -332,11 +334,8 @@ export default function VisualCropEditor({
   minZoom?: number;
   maxZoom?: number;
 }) {
-  const previewRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ x: number; y: number; positionX: number; positionY: number } | null>(
-    null
-  );
   const [internalDevice, setInternalDevice] = useState<MediaCropDevice>("DESKTOP");
+  const [cropOffset, setCropOffset] = useState<Point>({ x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(
     null
   );
@@ -369,6 +368,11 @@ export default function VisualCropEditor({
     maxWidth: cropAspectRatioValue < 0.75 ? "360px" : "640px",
     maxHeight: "min(420px, 55vh)",
   };
+
+  useEffect(() => {
+    setCropOffset({ x: 0, y: 0 });
+    setNaturalSize(null);
+  }, [activeDevice, mediaUrl]);
 
   function setDevice(nextDevice: MediaCropDevice) {
     if (onDeviceChange) {
@@ -414,6 +418,8 @@ export default function VisualCropEditor({
       onChange({
         ...value,
         mobileUrl: url,
+        mobileAssetId: "",
+        mobile: { ...value.mobile, assetId: "", url },
       });
       return;
     }
@@ -422,6 +428,7 @@ export default function VisualCropEditor({
       ...value,
       desktop: {
         ...value.desktop,
+        assetId: "",
         url,
       },
       mobile: {
@@ -431,38 +438,12 @@ export default function VisualCropEditor({
     });
   }
 
-  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    dragRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      positionX: crop.positionX,
-      positionY: crop.positionY,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current;
-    const rect = previewRef.current?.getBoundingClientRect();
-
-    if (!drag || !rect) return;
-
-    const deltaX = ((event.clientX - drag.x) / rect.width) * 100;
-    const deltaY = ((event.clientY - drag.y) / rect.height) * 100;
-
+  function onCropComplete(area: Area) {
     updateDeviceCrop({
-      positionX: clampCropPosition(drag.positionX - deltaX),
-      positionY: clampCropPosition(drag.positionY - deltaY),
+      areaPercent: area,
+      positionX: clampCropPosition(area.x + area.width / 2),
+      positionY: clampCropPosition(area.y + area.height / 2),
     });
-  }
-
-  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
-    dragRef.current = null;
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   }
 
   function reset() {
@@ -470,7 +451,10 @@ export default function VisualCropEditor({
       positionX: 50,
       positionY: 50,
       zoom: 100,
+      rotation: 0,
+      areaPercent: { x: 0, y: 0, width: 100, height: 100 },
     });
+    setCropOffset({ x: 0, y: 0 });
   }
 
   return (
@@ -479,7 +463,8 @@ export default function VisualCropEditor({
         <div>
           <p className="text-sm font-semibold text-slate-950">{label}</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Arraste a imagem para reposicionar. O arquivo original não é alterado.
+            Arraste ou use as setas para reposicionar. Use a roda do mouse,
+            pinça ou os botões de zoom.
           </p>
           {recommendedText ? (
             <p className="mt-1 text-xs font-medium text-slate-600">
@@ -488,15 +473,20 @@ export default function VisualCropEditor({
           ) : null}
         </div>
 
-        <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1">
+        <div
+          className="inline-flex rounded-2xl border border-slate-200 bg-white p-1"
+          role="group"
+          aria-label="Dispositivo do enquadramento"
+        >
           {(["DESKTOP", "MOBILE"] as const).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => setDevice(option)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+              aria-pressed={activeDevice === option}
+              className={`min-h-11 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                 activeDevice === option
-                  ? "bg-slate-950 text-white"
+                  ? "bg-[#4772AA] text-white"
                   : "text-slate-600 hover:bg-slate-50"
               }`}
             >
@@ -530,6 +520,10 @@ export default function VisualCropEditor({
                     ...value,
                     usarImagemMobileAlternativa: event.target.checked,
                     mobileUrl: event.target.checked ? value.mobileUrl : "",
+                    mobileAssetId: event.target.checked ? value.mobileAssetId : "",
+                    mobile: event.target.checked
+                      ? value.mobile
+                      : { ...value.mobile, assetId: "", url: value.desktop.url || "" },
                   })
                 }
                 className="mt-1 h-4 w-4 rounded border-slate-300"
@@ -556,6 +550,10 @@ export default function VisualCropEditor({
                 ...value,
                 usarImagemMobileAlternativa: event.target.checked,
                 mobileUrl: event.target.checked ? value.mobileUrl : "",
+                mobileAssetId: event.target.checked ? value.mobileAssetId : "",
+                mobile: event.target.checked
+                  ? value.mobile
+                  : { ...value.mobile, assetId: "", url: value.desktop.url || "" },
               })
             }
             className="mt-1 h-4 w-4 rounded border-slate-300"
@@ -574,32 +572,41 @@ export default function VisualCropEditor({
 
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <div
-          ref={previewRef}
-          role="button"
-          tabIndex={0}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          className="relative mx-auto w-full touch-none overflow-hidden rounded-xl bg-slate-200 ring-1 ring-slate-200"
+          className="relative mx-auto w-full overflow-hidden rounded-xl bg-slate-200 ring-1 ring-slate-200"
           style={compactFrameStyle}
+          aria-label={`Enquadramento ${activeDevice === "DESKTOP" ? "desktop" : "mobile"}`}
         >
           {mediaUrl ? (
-            <img
-              src={mediaUrl}
-              alt={crop.alt || ""}
-              draggable={false}
-              onLoad={(event) =>
-                setNaturalSize({
-                  width: event.currentTarget.naturalWidth,
-                  height: event.currentTarget.naturalHeight,
-                })
+            <Cropper
+              key={`${activeDevice}:${mediaUrl}`}
+              image={mediaUrl}
+              crop={cropOffset}
+              zoom={crop.zoom / 100}
+              rotation={crop.rotation || 0}
+              aspect={cropAspectRatioValue}
+              minZoom={minZoom / 100}
+              maxZoom={maxZoom / 100}
+              objectFit="cover"
+              showGrid
+              zoomWithScroll
+              restrictPosition
+              keyboardStep={4}
+              initialCroppedAreaPercentages={crop.areaPercent}
+              onCropChange={setCropOffset}
+              onZoomChange={(zoom) =>
+                updateDeviceCrop({ zoom: clampCropZoom(zoom * 100, minZoom, maxZoom) })
               }
-              className="h-full w-full select-none object-cover"
-              style={{
-                objectPosition: getMediaCropObjectPosition(crop),
-                transform: `scale(${crop.zoom / 100})`,
-                transformOrigin: getMediaCropObjectPosition(crop),
+              onCropComplete={onCropComplete}
+              onMediaLoaded={(media) =>
+                setNaturalSize({ width: media.naturalWidth, height: media.naturalHeight })
+              }
+              mediaProps={{ alt: crop.alt || "" }}
+              cropperProps={{
+                "aria-label": `Mover imagem no enquadramento ${activeDevice === "DESKTOP" ? "desktop" : "mobile"}`,
+              }}
+              classes={{
+                cropAreaClassName:
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5D8CC8]",
               }}
             />
           ) : (
@@ -608,14 +615,9 @@ export default function VisualCropEditor({
             </div>
           )}
 
-          {showSafeArea ? (
-            <div className="pointer-events-none absolute inset-[8%] rounded-lg border border-white/70" />
+          {mediaUrl && showSafeArea ? (
+            <div className="pointer-events-none absolute inset-[8%] z-10 rounded-lg border border-white/70" />
           ) : null}
-
-          <span
-            className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-lg ring-2 ring-slate-950/20"
-            style={{ left: `${crop.positionX}%`, top: `${crop.positionY}%` }}
-          />
         </div>
       </div>
 
@@ -625,89 +627,47 @@ export default function VisualCropEditor({
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => updateDeviceCrop({ positionX: 50, positionY: 50 })}
-          className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-        >
-          Centralizar
-        </button>
-        <button
-          type="button"
-          onClick={() => updateDeviceCrop({ zoom: 100, positionX: 50, positionY: 50 })}
-          className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-        >
-          Ajustar largura
-        </button>
-        <button
-          type="button"
-          onClick={() => updateDeviceCrop({ zoom: 120, positionX: 50, positionY: 50 })}
-          className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
-        >
-          Ajustar altura
-        </button>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div>
+          <span className="mb-2 block text-sm font-medium text-slate-700">Zoom</span>
+          <div className="inline-flex items-center rounded-2xl border border-slate-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() =>
+                updateDeviceCrop({ zoom: clampCropZoom(crop.zoom - 10, minZoom, maxZoom) })
+              }
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+              aria-label="Reduzir zoom"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="min-w-16 text-center text-xs font-semibold text-slate-600">
+              {Math.round(crop.zoom)}%
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                updateDeviceCrop({ zoom: clampCropZoom(crop.zoom + 10, minZoom, maxZoom) })
+              }
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+              aria-label="Ampliar zoom"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           onClick={reset}
-          className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
         >
+          <RotateCcw className="h-4 w-4" />
           Resetar
         </button>
       </div>
 
-      <label>
-        <span className="mb-2 block text-sm font-medium text-slate-700">
-          Zoom
-        </span>
-        <input
-          type="range"
-          min={minZoom}
-          max={maxZoom}
-          value={crop.zoom}
-          onChange={(event) => updateDeviceCrop({ zoom: Number(event.target.value) })}
-          className="w-full"
-        />
-        <span className="mt-1 block text-xs font-semibold text-slate-500">
-          {crop.zoom}%
-        </span>
-      </label>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <label>
-          <span className="mb-2 block text-sm font-medium text-slate-700">
-            Posição X
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={crop.positionX}
-            onChange={(event) =>
-              updateDeviceCrop({ positionX: Number(event.target.value) })
-            }
-            className="w-full"
-          />
-        </label>
-        <label>
-          <span className="mb-2 block text-sm font-medium text-slate-700">
-            Posição Y
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={crop.positionY}
-            onChange={(event) =>
-              updateDeviceCrop({ positionY: Number(event.target.value) })
-            }
-            className="w-full"
-          />
-        </label>
-      </div>
-
       <p className="text-xs leading-5 text-slate-500">
-        O arquivo original nao sera cortado. Este ajuste vale apenas para este bloco.
+        O original permanece intacto. O enquadramento é salvo separadamente para desktop e mobile.
       </p>
     </div>
   );

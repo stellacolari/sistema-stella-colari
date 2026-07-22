@@ -141,7 +141,7 @@ export default function ColecoesInteligentesClient({ colecoes: colecoesIniciais 
             <p className="text-sm font-bold uppercase tracking-wide text-slate-500">Loja Online</p>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">Colecoes Inteligentes</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Gere, aprove e use grupos inteligentes de produtos como fonte no builder da loja.
+              Gere, aprove e use grupos inteligentes de produtos como fonte para seleções editoriais da loja.
             </p>
           </div>
           <button

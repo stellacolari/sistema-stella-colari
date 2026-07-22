@@ -76,10 +76,10 @@ function getFundoClasses(fundo: string) {
   }
   if (fundo === "ESCURO") {
     return {
-      section: "bg-slate-950",
-      card: "bg-white/10 border-white/10",
-      title: "text-white",
-      text: "text-white/70",
+      section: "bg-[#5D8CC8]",
+      card: "bg-white/35 border-[#0f172a]/10",
+      title: "text-[#0f172a]",
+      text: "text-[#0f172a]/75",
     };
   }
 

@@ -445,7 +445,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
                 <Link
                   href={linkBotao}
                   data-stella-inline-field="textoBotao"
-                  className={`mt-8 inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
+                  className={`mt-8 inline-flex min-h-11 items-center justify-center bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95] ${buttonRadiusClass}`}
                   style={botaoStyle}
                 >
                   {textoBotao}

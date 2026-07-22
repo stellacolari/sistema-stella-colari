@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { protegerMutacaoConteudoLegado } from "@/lib/loja/conteudo/api-auth.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const bloqueio = await protegerMutacaoConteudoLegado(
+    request,
+    "criar",
+    { tipos: ["HOME"], slugs: ["home"] },
+  );
+  if (bloqueio) return bloqueio;
+
   try {
     const formData = await request.formData();
 

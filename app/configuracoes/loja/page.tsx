@@ -381,33 +381,33 @@ export default async function LojaOnlineCentralPage() {
       <section className="grid gap-4 lg:grid-cols-3">
         <InfoCard
           title="Home dentro de Páginas"
-          description="A página inicial é uma página especial do editor visual e fica junto das outras páginas públicas."
+          description="A página inicial usa uma experiência codificada e seus textos, imagens e seleções ficam no Conteúdo da Loja."
         />
         <InfoCard
-          title="Banners são blocos"
-          description="Banners, imagens e CTAs visuais são configurados nos blocos das páginas, não em uma área solta."
+          title="Banners são seções de conteúdo"
+          description="Banners, imagens e CTAs são mantidos em campos próprios, sem liberdade para alterar o layout da página."
         />
         <InfoCard
-          title="Categorias com builder"
-          description="Categorias continuam como taxonomia; quando precisarem de layout próprio, ganham uma página vinculada."
+          title="Categorias com conteúdo editorial"
+          description="Categorias continuam como taxonomia; capa, texto e SEO podem ser mantidos sem alterar a grade dinâmica."
         />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SectionHeader
-          title="Builder e conteudo"
-          description="Paginas e blocos que estruturam a experiencia visual da loja."
+          title="Conteúdo e experiências"
+          description="Páginas codificadas com conteúdo editorial administrável."
         />
         <CentralCard
-          title="Páginas"
-          description="Edite Home, páginas comuns, landing pages e páginas de categoria pelo editor visual."
+          title="Conteúdo da Loja"
+          description="Edite Home, páginas institucionais, categorias e campanhas por formulários seguros."
           icon={LayoutTemplate}
           metric={`${paginasPublicadas}`}
           metricLabel={`${paginasCategoria} páginas de categoria`}
           tone="site"
           actions={[
             {
-              href: "/configuracoes/loja/paginas",
+              href: "/configuracoes/loja/conteudo",
               label: "Gerenciar páginas",
               primary: true,
             },
@@ -416,7 +416,7 @@ export default async function LojaOnlineCentralPage() {
 
         <CentralCard
           title="Biblioteca de Midia"
-          description="Organize imagens reutilizaveis do builder com busca, upload em lote e metadados."
+          description="Organize imagens originais reutilizáveis, alt, dimensões, crop e metadados."
           icon={GalleryVerticalEnd}
           metric={`${midiasAtivas}`}
           metricLabel="imagens ativas"
@@ -438,7 +438,7 @@ export default async function LojaOnlineCentralPage() {
         {podeVerVitrinesInteligentes ? (
           <CentralCard
             title="Vitrines Inteligentes"
-            description="Sugestões de vitrines para o builder com base em intenção, campanhas, estoque e margem."
+            description="Sugestões internas de vitrines para revisão antes do uso no conteúdo da loja."
             icon={GalleryVerticalEnd}
             metric={`${vitrinesSugeridas}`}
             metricLabel="sugestões abertas"
@@ -456,7 +456,7 @@ export default async function LojaOnlineCentralPage() {
         {podeVerVitrinesInteligentes ? (
           <CentralCard
             title="Colecoes Inteligentes"
-            description="Crie e aprove grupos inteligentes de produtos para usar no builder da loja."
+            description="Crie e aprove grupos inteligentes de produtos para usar nas experiências da loja."
             icon={Sparkles}
             metric={`${colecoesInteligentes}`}
             metricLabel="colecoes abertas"
@@ -493,7 +493,7 @@ export default async function LojaOnlineCentralPage() {
 
         <CentralCard
           title="Categorias"
-          description="Gerencie taxonomia, hierarquia e vínculo com páginas personalizadas do builder."
+          description="Gerencie taxonomia, hierarquia e conteúdo editorial vinculado às categorias."
           icon={FolderKanban}
           metric={`${categoriasTotal}`}
           metricLabel="categorias ativas"

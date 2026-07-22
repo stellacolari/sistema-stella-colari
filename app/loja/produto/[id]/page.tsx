@@ -20,8 +20,24 @@ import {
   criarMetadataLoja,
   getImagemPrincipalProduto,
 } from "@/lib/loja/seo";
+import {
+  buscarConteudoPublicadoSistema,
+} from "@/lib/loja/conteudo/repository.server";
+import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
 export const dynamic = "force-dynamic";
+
+function aplicarModeloSeoProduto(
+  value: string,
+  produto: { id: string; nome: string; categoria: string },
+) {
+  return value
+    .replaceAll("{produto}", produto.nome)
+    .replaceAll("{categoria}", produto.categoria)
+    .replaceAll("{id}", produto.id)
+    .replaceAll("{marca}", "Stella Colari")
+    .trim();
+}
 
 export async function generateMetadata({
   params,
@@ -29,7 +45,10 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const produtoDetalhe = await buscarProdutoDetalhePublico(id);
+  const [produtoDetalhe, conteudoGlobal] = await Promise.all([
+    buscarProdutoDetalhePublico(id),
+    buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
+  ]);
 
   if (!produtoDetalhe) {
     return criarMetadataLoja({
@@ -43,12 +62,22 @@ export async function generateMetadata({
   }
 
   const produto = produtoDetalhe.produto;
+  const seo = conteudoGlobal
+    ? extrairSeoConteudo(conteudoGlobal.conteudo)
+    : null;
 
   return criarMetadataLoja({
-    title: `${produto.nome} | Stella Colari`,
-    description: criarDescricaoProduto(produto),
+    title: seo?.title
+      ? aplicarModeloSeoProduto(seo.title, produto)
+      : `${produto.nome} | Stella Colari`,
+    description: seo?.description
+      ? aplicarModeloSeoProduto(seo.description, produto)
+      : criarDescricaoProduto(produto),
     path: `/loja/produto/${produto.id}`,
-    image: getImagemPrincipalProduto(produto),
+    image: seo?.image || getImagemPrincipalProduto(produto),
+    robots: seo?.noindex
+      ? { index: false, follow: true }
+      : undefined,
   });
 }
 
@@ -85,6 +114,7 @@ export default async function ProdutoLojaPage({
     descontos,
     opcoesAdicionaisRaw,
     embalagensPresente,
+    conteudoGlobal,
   ] = await Promise.all([
     buscarMenusPublicos(),
 
@@ -141,6 +171,8 @@ export default async function ProdutoLojaPage({
       },
       categoriaId: categoriaProduto?.id || null,
     }),
+
+    buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
   ]);
 
   const menus: ProdutoLojaMenuItem[] = menusPublicos.map((menu) => ({
@@ -183,6 +215,20 @@ export default async function ProdutoLojaPage({
         configuracaoMenuRodape={configuracaoMenuRodape}
         relacionados={relacionados}
         descontos={descontos}
+        conteudoGlobal={
+          conteudoGlobal
+            ? {
+                pagina: {
+                  titulo: conteudoGlobal.pagina.titulo,
+                  slug: conteudoGlobal.pagina.slug,
+                  tipo: conteudoGlobal.pagina.tipo,
+                },
+                contrato: conteudoGlobal.publico.contrato,
+                conteudo: conteudoGlobal.publico.conteudo,
+                produtos: relacionados,
+              }
+            : undefined
+        }
       />
     </>
   );

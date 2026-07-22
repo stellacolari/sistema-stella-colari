@@ -183,6 +183,7 @@ model MidiaAsset {
   criadoPorId  String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+  usosConteudo LojaConteudoMidiaUso[]
 
   @@index([tipo])
   @@index([status])
@@ -1343,6 +1344,7 @@ model LojaPagina {
   blocos                 LojaPaginaBloco[]
   eventosComerciais      EventoComercial[]
   vitrinesSugestoes      VitrineInteligenteSugestao[] @relation("VitrinePaginaDestino")
+  conteudoDocumento      LojaConteudoDocumento?
 
   @@index([slug])
   @@index([tipo])
@@ -1370,6 +1372,80 @@ model LojaPaginaBloco {
   @@index([ordem])
   @@index([tipo])
   @@index([ativo])
+}
+
+model LojaConteudoDocumento {
+  id                String                 @id @default(cuid())
+  chave             String                 @unique
+  tipo              String                 @default("PAGINA")
+  paginaId          String?                @unique
+  slugPublico       String?                @unique
+  contratoChave     String
+  contratoVersao    Int                    @default(1)
+  rascunhoJson      Json
+  revisaoRascunho   Int                    @default(1)
+  versaoPublicadaId String?                @unique
+  status            String                 @default("RASCUNHO")
+  modoEntrega       String                 @default("LEGADO")
+  inicioPublicacao  DateTime?
+  fimPublicacao     DateTime?
+  prioridade        Int                    @default(0)
+  origemJson        Json?
+  criadoPorId       String?
+  criadoPorNome     String?
+  atualizadoPorId   String?
+  atualizadoPorNome String?
+  publicadoPorId    String?
+  publicadoPorNome  String?
+  criadoEm          DateTime               @default(now())
+  atualizadoEm      DateTime               @updatedAt
+  publicadoEm       DateTime?
+  pagina            LojaPagina?            @relation(fields: [paginaId], references: [id], onDelete: SetNull)
+  versaoPublicada   LojaConteudoVersao?    @relation("LojaConteudoVersaoPublicada", fields: [versaoPublicadaId], references: [id], onDelete: SetNull)
+  versoes           LojaConteudoVersao[]   @relation("LojaConteudoDocumentoVersoes")
+  usosMidia         LojaConteudoMidiaUso[]
+
+  @@index([tipo])
+  @@index([contratoChave])
+  @@index([status])
+  @@index([modoEntrega])
+  @@index([inicioPublicacao, fimPublicacao])
+}
+
+model LojaConteudoVersao {
+  id                     String                 @id @default(cuid())
+  documentoId            String
+  numero                 Int
+  contratoChave          String
+  contratoVersao         Int
+  conteudoJson           Json
+  operacao               String                 @default("PUBLICACAO")
+  resumo                 String?
+  autorId                String?
+  autorNome              String?
+  criadoEm               DateTime               @default(now())
+  documento              LojaConteudoDocumento  @relation("LojaConteudoDocumentoVersoes", fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoComoPublicada LojaConteudoDocumento? @relation("LojaConteudoVersaoPublicada")
+
+  @@unique([documentoId, numero])
+  @@index([documentoId, criadoEm])
+  @@index([operacao])
+}
+
+model LojaConteudoMidiaUso {
+  id          String                @id @default(cuid())
+  documentoId String
+  assetId     String
+  slot        String
+  dispositivo String                @default("DESKTOP")
+  escopo      String                @default("RASCUNHO")
+  criadoEm    DateTime              @default(now())
+  documento   LojaConteudoDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  asset       MidiaAsset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([documentoId, assetId, slot, dispositivo, escopo])
+  @@index([assetId])
+  @@index([documentoId, escopo])
 }
 
 model CategoriaProduto {

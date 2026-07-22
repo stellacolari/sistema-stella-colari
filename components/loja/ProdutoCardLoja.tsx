@@ -30,6 +30,8 @@ export type ProdutoCardLojaItem = {
   descontoAtivo: boolean;
   precoPromocional: number | null;
   disponivel: boolean;
+  categoriaIds?: string[];
+  criadoEm?: string;
 };
 
 type ProdutoCardLojaProps = {

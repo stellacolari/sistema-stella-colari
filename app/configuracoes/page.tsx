@@ -179,13 +179,13 @@ export default async function ConfiguracoesPage() {
         <section>
           <SectionHeader
             title="Loja"
-            description="Configuracoes do site publico, builder e navegacao."
+            description="Configuracoes do site publico, conteudo e navegacao."
           />
           <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <HubCard
               href="/configuracoes/loja"
               title="Loja Online"
-              description="Paginas, editor visual, categorias, menu, frete, cupons e formularios."
+              description="Conteudo, categorias, menu, frete, cupons e formularios."
               icon={Store}
               tone="site"
               badge="hub"
@@ -193,14 +193,14 @@ export default async function ConfiguracoesPage() {
             <HubCard
               href="/configuracoes/loja/colecoes-inteligentes"
               title="Colecoes Inteligentes"
-              description="Grupos aprovados de produtos para alimentar blocos do builder."
+              description="Grupos aprovados de produtos para alimentar experiencias da loja."
               icon={Store}
               tone="site"
             />
             <HubCard
-              href="/configuracoes/loja/paginas"
-              title="Paginas e Builder"
-              description="Home, paginas publicas e blocos do editor visual da loja."
+              href="/configuracoes/loja/conteudo"
+              title="Conteudo da Loja"
+              description="Home, paginas publicas e campanhas com experiencias definidas em codigo."
               icon={Store}
               tone="site"
             />

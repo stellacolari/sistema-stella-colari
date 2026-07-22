@@ -219,13 +219,23 @@ export function getSpacingClass(value: string | Record<string, unknown>) {
 export function getBackgroundClass(value: string) {
   if (value === "CINZA" || value === "AZUL_CLARO") return "bg-slate-50";
   if (value === "MARCA" || value === "AZUL_ESCURO") return "bg-[#2e7b99]";
-  if (value === "ESCURO") return "bg-slate-950";
+  if (value === "ESCURO") return "bg-[#5D8CC8]";
 
   return "bg-white";
 }
 
 export function getTextColorForBackground(value: string) {
-  if (value === "MARCA" || value === "AZUL_ESCURO" || value === "ESCURO") {
+  if (value === "ESCURO") {
+    return {
+      title: "text-[#0f172a]",
+      body: "text-[#0f172a]/78",
+      muted: "text-[#0f172a]/62",
+      border: "border-[#0f172a]/30",
+      card: "bg-white/35",
+    };
+  }
+
+  if (value === "MARCA" || value === "AZUL_ESCURO") {
     return {
       title: "text-white",
       body: "text-white/78",

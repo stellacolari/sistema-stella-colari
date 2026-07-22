@@ -22,8 +22,14 @@ import MenuPublicoLoja, {
 } from "@/components/loja/MenuPublicoLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
+import type { ProdutoCardLojaItem } from "@/components/loja/ProdutoCardLoja";
+import ConteudoPaginaExperience from "@/components/loja/conteudo/ConteudoPaginaExperience";
 import ImageBox from "@/components/ui/ImageBox";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
+import type {
+  ConteudoContratoPublico,
+  ConteudoPaginaPublica,
+} from "@/lib/loja/conteudo/contracts";
 import {
   registrarCheckoutIniciado,
   registrarEventoCarrinho,
@@ -613,6 +619,7 @@ export default function ProdutoLojaClient({
   configuracaoMenuRodape,
   relacionados,
   descontos,
+  conteudoGlobal,
 }: {
   produto: ProdutoLojaDetalhe;
   menus: ProdutoLojaMenuItem[];
@@ -620,6 +627,12 @@ export default function ProdutoLojaClient({
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
   relacionados: LojaProdutoRelacionado[];
   descontos: LojaProdutoRelacionado[];
+  conteudoGlobal?: {
+    pagina: { titulo: string; slug: string; tipo: string };
+    contrato: ConteudoContratoPublico;
+    conteudo: ConteudoPaginaPublica;
+    produtos: ProdutoCardLojaItem[];
+  };
 }) {
   const router = useRouter();
   const thumbsRef = useRef<HTMLDivElement | null>(null);
@@ -2034,10 +2047,20 @@ export default function ProdutoLojaClient({
           </div>
         </section>
 
-        <ProdutosRelacionadosSection
-          titulo="Você também pode gostar"
-          produtos={relacionados}
-        />
+        {conteudoGlobal ? (
+          <ConteudoPaginaExperience
+            pagina={conteudoGlobal.pagina}
+            contrato={conteudoGlobal.contrato}
+            conteudo={conteudoGlobal.conteudo}
+            produtos={conteudoGlobal.produtos}
+            categorias={categoriasMenu}
+          />
+        ) : (
+          <ProdutosRelacionadosSection
+            titulo="Você também pode gostar"
+            produtos={relacionados}
+          />
+        )}
 
         <ProdutosRelacionadosSection
           titulo="Produtos em desconto"

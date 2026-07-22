@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/app/loja/legal-page-shell";
-import { criarMetadataLoja } from "@/lib/loja/seo";
+import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Termos de Uso | Stella Colari",
-  description:
-    "Condicoes gerais para uso da loja online Stella Colari.",
-  path: "/loja/termos-de-uso",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return gerarMetadataLegalGerenciada({
+    slug: "termos-de-uso",
+    title: "Termos de Uso | Stella Colari",
+    description: "Condições gerais para uso da loja online Stella Colari.",
+  });
+}
 
 export default function TermosDeUsoPage() {
   return (
     <LegalPageShell
+      slug="termos-de-uso"
       title="Termos de Uso"
       description="Estas condicoes orientam a navegacao, a escolha de produtos e o relacionamento com a loja online Stella Colari."
       sections={[

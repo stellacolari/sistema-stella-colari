@@ -24,9 +24,14 @@ import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import StellaHomeBlockRenderer, {
   canRenderStellaHomeBlock,
 } from "@/components/loja/home/StellaHomeBlockRenderer";
+import ConteudoPaginaExperience from "@/components/loja/conteudo/ConteudoPaginaExperience";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import type { StellaHomeBlockKey } from "@/lib/loja/stella-home-contract";
+import type {
+  ConteudoContratoPublico,
+  ConteudoPaginaPublica,
+} from "@/lib/loja/conteudo/contracts";
 
 export type LojaBuilderPagina = {
   id: string;
@@ -360,9 +365,9 @@ function getTextoFundoClasses(fundo: string) {
 
   if (fundo === "ESCURO") {
     return {
-      section: "bg-slate-950",
-      titulo: "text-white",
-      texto: "text-white/75",
+      section: "bg-[#5D8CC8]",
+      titulo: "text-[#0f172a]",
+      texto: "text-[#0f172a]/75",
     };
   }
 
@@ -634,11 +639,11 @@ function BlocoCategoriaHero({
   const classes =
     fundo === "ESCURO"
       ? {
-          section: "bg-slate-950 text-white",
-          etiqueta: "text-white/60",
-          titulo: "text-white",
-          texto: "text-white/75",
-          card: "bg-white/10 ring-white/10",
+          section: "bg-[#5D8CC8] text-[#0f172a]",
+          etiqueta: "text-[#0f172a]/65",
+          titulo: "text-[#0f172a]",
+          texto: "text-[#0f172a]/75",
+          card: "bg-white/35 ring-[#0f172a]/10",
         }
       : fundo === "AZUL_CLARO"
         ? {
@@ -1508,6 +1513,47 @@ function BlocoProdutos({
   );
 }
 
+function GradeCategoriaGerenciada({
+  produtos,
+  categoriaAtual,
+}: {
+  produtos: LojaBuilderProduto[];
+  categoriaAtual: LojaBuilderCategoriaAtual;
+}) {
+  if (produtos.length === 0) {
+    return (
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-6 lg:px-8">
+        <div className="border-y border-slate-200 bg-white px-6 py-14 text-center">
+          <h2 className="text-2xl font-light tracking-[-0.025em] text-slate-950">
+            Produtos em {categoriaAtual.nome}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Esta categoria ainda não possui produtos públicos disponíveis.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <ProdutosGrade
+      tituloPrincipal=""
+      descricaoPrincipal=""
+      titulo={`Produtos em ${categoriaAtual.nome}`}
+      descricao=""
+      alinhamentoPrincipal="ESQUERDA"
+      alinhamentoSecao="ESQUERDA"
+      produtos={produtos}
+      produtosPorLinha={4}
+      linhasPorPagina={4}
+      paginacao="NUMEROS"
+      mostrarFiltros
+      filtrosAtivos={{}}
+      listaCompleta
+    />
+  );
+}
+
 function RodapeLoja({
   menus,
   configuracaoMenuRodape,
@@ -1531,6 +1577,7 @@ export default function LojaPaginaBuilderClient({
   categoriasMenu = [],
   categoriaAtual = null,
   configuracaoMenuRodape,
+  conteudoGerenciado,
 }: {
   pagina: LojaBuilderPagina;
   blocos: LojaBuilderBloco[];
@@ -1539,6 +1586,10 @@ export default function LojaPaginaBuilderClient({
   categoriasMenu?: CategoriaMenuPublicoItem[];
   categoriaAtual?: LojaBuilderCategoriaAtual | null;
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
+  conteudoGerenciado?: {
+    contrato: ConteudoContratoPublico;
+    conteudo: ConteudoPaginaPublica;
+  } | null;
 }) {
   const blocosNormalizados = useMemo(
     () => normalizarBlocosBuilder(blocos),
@@ -1582,7 +1633,23 @@ export default function LojaPaginaBuilderClient({
       />
 
       <main id="conteudo-principal" tabIndex={-1}>
-        {blocosNormalizados.length === 0 ? (
+        {conteudoGerenciado ? (
+          <ConteudoPaginaExperience
+            pagina={pagina}
+            contrato={conteudoGerenciado.contrato}
+            conteudo={conteudoGerenciado.conteudo}
+            produtos={produtos}
+            categorias={categoriasMenu}
+            categoryGrid={
+              categoriaAtual && conteudoGerenciado.contrato.key === "categoria" ? (
+                <GradeCategoriaGerenciada
+                  produtos={produtos}
+                  categoriaAtual={categoriaAtual}
+                />
+              ) : undefined
+            }
+          />
+        ) : blocosNormalizados.length === 0 ? (
           <section className="mx-auto max-w-4xl px-5 py-20 text-center sm:px-6 lg:px-8">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
               {pagina.titulo}

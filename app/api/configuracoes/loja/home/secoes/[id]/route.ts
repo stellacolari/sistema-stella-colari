@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { protegerMutacaoConteudoLegado } from "@/lib/loja/conteudo/api-auth.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,13 @@ function booleano(value: unknown) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const bloqueio = await protegerMutacaoConteudoLegado(
+    request,
+    "editar",
+    { tipos: ["HOME"], slugs: ["home"] },
+  );
+  if (bloqueio) return bloqueio;
+
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -53,7 +61,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const bloqueio = await protegerMutacaoConteudoLegado(
+    request,
+    "excluir",
+    { tipos: ["HOME"], slugs: ["home"] },
+  );
+  if (bloqueio) return bloqueio;
+
   try {
     const { id } = await context.params;
 

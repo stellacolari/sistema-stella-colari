@@ -349,13 +349,13 @@ export default function VitrinesInteligentesClient({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Builder da loja
+              Conteúdo da Loja
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
               Vitrines Inteligentes
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Sugestoes de vitrines para o builder com base em intencao,
+              Sugestões de vitrines para o conteúdo da loja com base em intenção,
               campanhas, estoque e margem. Nada e publicado automaticamente.
             </p>
           </div>

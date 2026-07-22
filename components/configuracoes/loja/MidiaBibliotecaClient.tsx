@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   Check,
@@ -10,6 +10,13 @@ import {
   Search,
   Upload,
 } from "lucide-react";
+import { useAccessibleDialog } from "@/components/configuracoes/loja/conteudo/useAccessibleDialog";
+
+type MidiaUsoConteudo = {
+  slot: string;
+  escopo: string;
+  documento: { chave: string };
+};
 
 export type MidiaAssetBiblioteca = {
   id: string;
@@ -30,6 +37,10 @@ export type MidiaAssetBiblioteca = {
   pasta?: string | null;
   status: string;
   criadoEm: string;
+  _count?: {
+    usosConteudo: number;
+  };
+  usosConteudo?: MidiaUsoConteudo[];
 };
 
 type MidiasResponse = {
@@ -51,7 +62,11 @@ function tagsToString(value: unknown) {
   return Array.isArray(value) ? value.join(", ") : "";
 }
 
-export default function MidiaBibliotecaClient() {
+export default function MidiaBibliotecaClient({
+  capacidades,
+}: {
+  capacidades: { criar: boolean; editar: boolean; arquivar: boolean };
+}) {
   const [items, setItems] = useState<MidiaAssetBiblioteca[]>([]);
   const [pastas, setPastas] = useState<string[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -64,16 +79,23 @@ export default function MidiaBibliotecaClient() {
   const [uploading, setUploading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<MidiaAssetBiblioteca | null>(null);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const editDialogRef = useRef<HTMLDivElement>(null);
+  const loadSequenceRef = useRef(0);
 
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.includes(item.id)),
     [items, selectedIds]
   );
 
+  useAccessibleDialog(Boolean(editing), () => setEditing(null), editDialogRef);
+
   const load = useCallback(
     async (nextPage: number) => {
+      const sequence = ++loadSequenceRef.current;
       setLoading(true);
+      setMessage("");
       const params = new URLSearchParams({
         page: String(nextPage),
         pageSize: "24",
@@ -87,6 +109,7 @@ export default function MidiaBibliotecaClient() {
       try {
         const response = await fetch(`/api/configuracoes/loja/midias?${params}`);
         const data = (await response.json()) as MidiasResponse;
+        if (sequence !== loadSequenceRef.current) return;
 
         if (!response.ok) {
           setMessage("Erro ao carregar biblioteca.");
@@ -94,12 +117,17 @@ export default function MidiaBibliotecaClient() {
         }
 
         setItems(data.items);
+        const visibleIds = new Set(data.items.map((item) => item.id));
+        setSelectedIds((current) => current.filter((id) => visibleIds.has(id)));
         setPastas(data.pastas || []);
         setTotal(data.total);
         setTotalPages(data.totalPages || 1);
         setPage(data.page || nextPage);
+      } catch {
+        if (sequence !== loadSequenceRef.current) return;
+        setMessage("Não foi possível carregar a biblioteca.");
       } finally {
-        setLoading(false);
+        if (sequence === loadSequenceRef.current) setLoading(false);
       }
     },
     [pasta, q, status]
@@ -110,6 +138,7 @@ export default function MidiaBibliotecaClient() {
   }, [load]);
 
   async function uploadFiles(files: FileList | File[]) {
+    if (!capacidades.criar) return;
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
 
     if (list.length === 0) return;
@@ -134,9 +163,15 @@ export default function MidiaBibliotecaClient() {
         return;
       }
 
-      setMessage(`${data.total || list.length} imagem(ns) enviada(s).`);
+      setMessage(
+        data.falhas
+          ? `${data.total} ${data.total === 1 ? "imagem enviada" : "imagens enviadas"}; ${data.falhas} ${data.falhas === 1 ? "arquivo recusado" : "arquivos recusados"}.`
+          : `${data.total || list.length} ${(data.total || list.length) === 1 ? "imagem enviada" : "imagens enviadas"}.`,
+      );
       setSelectedIds([]);
       await load(1);
+    } catch {
+      setMessage("Não foi possível enviar as imagens.");
     } finally {
       setUploading(false);
     }
@@ -155,52 +190,79 @@ export default function MidiaBibliotecaClient() {
   }
 
   async function updateAsset(asset: MidiaAssetBiblioteca, patch: Record<string, unknown>) {
-    const response = await fetch(`/api/configuracoes/loja/midias/${asset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    const data = await response.json();
+    try {
+      const response = await fetch(`/api/configuracoes/loja/midias/${asset.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.error || "Erro ao atualizar imagem.");
+      if (!response.ok) {
+        setMessage(data.error || "Erro ao atualizar imagem.");
+        return null;
+      }
+
+      setItems((current) =>
+        current.map((item) => (item.id === asset.id ? data.asset : item)),
+      );
+      return data.asset as MidiaAssetBiblioteca;
+    } catch {
+      setMessage("Não foi possível atualizar a imagem.");
       return null;
     }
-
-    setItems((current) =>
-      current.map((item) => (item.id === asset.id ? data.asset : item))
-    );
-    return data.asset as MidiaAssetBiblioteca;
   }
 
   async function archiveSelected() {
-    for (const item of selectedItems) {
-      await updateAsset(item, { status: "ARQUIVADO" });
+    if (!capacidades.arquivar) return;
+    const blocked = selectedItems.filter((item) => (item._count?.usosConteudo || 0) > 0);
+    const eligible = selectedItems.filter((item) => (item._count?.usosConteudo || 0) === 0);
+    const blockedDetails = blocked
+      .flatMap((item) =>
+        (item.usosConteudo || []).map(
+          (usage) => `${item.nome}: ${usage.documento.chave} · ${usage.slot}`,
+        ),
+      )
+      .slice(0, 3);
+
+    if (eligible.length === 0) {
+      setMessage(
+        `Nenhuma imagem foi arquivada: ${blocked.length} ${blocked.length === 1 ? "está em uso" : "estão em uso"}.${blockedDetails.length ? ` ${blockedDetails.join("; ")}.` : ""}`,
+      );
+      return;
     }
 
-    setSelectedIds([]);
-    setMessage(`${selectedItems.length} imagem(ns) arquivada(s).`);
+    const confirmed = window.confirm(
+      `Arquivar ${eligible.length} ${eligible.length === 1 ? "imagem sem uso" : "imagens sem uso"}?${blocked.length ? ` ${blocked.length} em uso serão mantidas.` : ""}`,
+    );
+    if (!confirmed) return;
+
+    let archived = 0;
+    const failedIds: string[] = blocked.map((item) => item.id);
+
+    for (const item of eligible) {
+      const updated = await updateAsset(item, { status: "ARQUIVADO" });
+      if (updated) archived += 1;
+      else failedIds.push(item.id);
+    }
+
+    setSelectedIds(failedIds);
+    const archivedText = `${archived} ${archived === 1 ? "imagem arquivada" : "imagens arquivadas"}`;
+    const failedCount = selectedItems.length - archived;
+    setMessage(
+      `${archivedText}.${failedCount ? ` ${failedCount} ${failedCount === 1 ? "foi mantida" : "foram mantidas"}.${blockedDetails.length ? ` ${blockedDetails.join("; ")}.` : ""}` : ""}`,
+    );
     await load(page);
   }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Loja Online
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
-              Biblioteca de Midia
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Reutilize imagens no builder sem cortar o arquivo original. Cada uso
-              salva seu proprio enquadramento desktop e mobile.
-            </p>
-          </div>
-
-          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+      {capacidades.criar ? (
+        <section className="flex flex-col gap-3 border-b border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            JPG, PNG ou WebP, até 4 MB por arquivo. Dimensões e miniatura são verificadas no servidor.
+          </p>
+          <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 bg-[#4772AA] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#355f95] focus-within:outline-none focus-within:ring-2 focus-within:ring-[#5D8CC8] focus-within:ring-offset-2">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {uploading ? "Enviando..." : "Upload em lote"}
             <input
@@ -208,24 +270,27 @@ export default function MidiaBibliotecaClient() {
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={onFileChange}
-              className="hidden"
+              className="sr-only"
+              disabled={uploading}
             />
           </label>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-4">
         <div className="relative md:col-span-2">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
+            aria-label="Buscar imagens"
             value={q}
             onChange={(event) => setQ(event.target.value)}
-            placeholder="Buscar por nome, alt ou descricao"
+            placeholder="Buscar por nome, alt ou descrição"
             className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm outline-none focus:border-slate-500"
           />
         </div>
 
         <select
+          aria-label="Filtrar por pasta"
           value={pasta}
           onChange={(event) => setPasta(event.target.value)}
           className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-slate-500"
@@ -239,6 +304,7 @@ export default function MidiaBibliotecaClient() {
         </select>
 
         <select
+          aria-label="Filtrar por status"
           value={status}
           onChange={(event) => setStatus(event.target.value)}
           className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-slate-500"
@@ -251,44 +317,50 @@ export default function MidiaBibliotecaClient() {
 
       <section
         onDragOver={(event) => event.preventDefault()}
-        onDrop={onDrop}
-        className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-5"
+        onDrop={capacidades.criar ? onDrop : undefined}
+        className="border border-slate-200 bg-white p-5"
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="text-sm text-slate-600">
-            {loading ? "Carregando imagens..." : `${total} imagem(ns) encontradas`}
-            {selectedIds.length > 0 ? ` - ${selectedIds.length} selecionada(s)` : ""}
+            {loading
+              ? "Carregando imagens…"
+              : `${total} ${total === 1 ? "imagem encontrada" : "imagens encontradas"}`}
+            {selectedIds.length > 0
+              ? ` · ${selectedIds.length} ${selectedIds.length === 1 ? "selecionada" : "selecionadas"}`
+              : ""}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setSelectedIds(items.map((item) => item.id))}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
             >
-              Selecionar pagina
+              Selecionar página
             </button>
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
             >
-              Limpar selecao
+              Limpar seleção
             </button>
-            <button
-              type="button"
-              onClick={() => void archiveSelected()}
-              disabled={selectedIds.length === 0}
-              className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50"
-            >
-              <Archive className="h-4 w-4" />
-              Arquivar
-            </button>
+            {capacidades.arquivar ? (
+              <button
+                type="button"
+                onClick={() => void archiveSelected()}
+                disabled={selectedIds.length === 0}
+                className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50"
+              >
+                <Archive className="h-4 w-4" />
+                Arquivar
+              </button>
+            ) : null}
           </div>
         </div>
 
         {message ? (
-          <p className="mt-3 rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200">
+          <p role="status" aria-live="polite" className="mt-3 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200">
             {message}
           </p>
         ) : null}
@@ -307,16 +379,19 @@ export default function MidiaBibliotecaClient() {
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((item) => {
               const selected = selectedIds.includes(item.id);
+              const usageCount = item._count?.usosConteudo ?? 0;
 
               return (
                 <article
                   key={item.id}
-                  className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${
+                  className={`overflow-hidden border bg-white ${
                     selected ? "border-slate-950 ring-2 ring-slate-950" : "border-slate-200"
                   }`}
                 >
                   <button
                     type="button"
+                    aria-pressed={selected}
+                    aria-label={`${selected ? "Remover" : "Adicionar"} ${item.nome} da seleção`}
                     onClick={() =>
                       setSelectedIds((current) =>
                         selected
@@ -345,23 +420,41 @@ export default function MidiaBibliotecaClient() {
                         {item.nome}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {formatBytes(item.tamanhoBytes)} - {item.mimeType}
+                        {formatBytes(item.tamanhoBytes)} · {item.largura && item.altura ? `${item.largura} × ${item.altura} · ` : ""}{item.mimeType}
                       </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {usageCount} {usageCount === 1 ? "uso" : "usos"} no conteúdo
+                      </p>
+                      {item.usosConteudo?.[0] ? (
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {item.usosConteudo[0].documento.chave} · {item.usosConteudo[0].slot}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="flex gap-2">
+                      {capacidades.editar ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditing(item)}
+                          className="min-h-11 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
+                        >
+                          Editar
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        onClick={() => setEditing(item)}
-                        className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void navigator.clipboard.writeText(item.url)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(item.url);
+                            setMessage(`URL de ${item.nome} copiada.`);
+                          } catch {
+                            setMessage("Não foi possível copiar a URL.");
+                          }
+                        }}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600"
                         title="Copiar URL"
+                        aria-label={`Copiar URL de ${item.nome}`}
                       >
                         <Copy className="h-4 w-4" />
                       </button>
@@ -378,85 +471,97 @@ export default function MidiaBibliotecaClient() {
             type="button"
             onClick={() => void load(Math.max(1, page - 1))}
             disabled={page <= 1}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
           >
             Anterior
           </button>
           <span className="text-sm font-medium text-slate-500">
-            Pagina {page} de {totalPages}
+            Página {page} de {totalPages}
           </span>
           <button
             type="button"
             onClick={() => void load(Math.min(totalPages, page + 1))}
             disabled={page >= totalPages}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
           >
-            Proxima
+            Próxima
           </button>
         </div>
       </section>
 
-      {editing ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-slate-950">Editar imagem</h2>
+      {editing && capacidades.editar ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditing(null);
+          }}
+        >
+          <div
+            ref={editDialogRef}
+            tabIndex={-1}
+            className="w-full max-w-xl bg-white p-5 shadow-2xl focus:outline-none"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="editar-midia-titulo"
+          >
+            <h2 id="editar-midia-titulo" className="text-lg font-bold text-slate-950">Editar imagem</h2>
             <div className="mt-4 grid gap-4">
-              <input
-                value={editing.nome}
-                onChange={(event) => setEditing({ ...editing, nome: event.target.value })}
-                className="h-11 rounded-2xl border border-slate-200 px-4 text-sm"
-                placeholder="Nome"
-              />
-              <input
-                value={editing.alt || ""}
-                onChange={(event) => setEditing({ ...editing, alt: event.target.value })}
-                className="h-11 rounded-2xl border border-slate-200 px-4 text-sm"
-                placeholder="Alt text"
-              />
-              <input
-                value={editing.pasta || ""}
-                onChange={(event) => setEditing({ ...editing, pasta: event.target.value })}
-                className="h-11 rounded-2xl border border-slate-200 px-4 text-sm"
-                placeholder="Pasta"
-              />
-              <input
-                value={tagsToString(editing.tagsJson)}
-                onChange={(event) =>
-                  setEditing({
-                    ...editing,
-                    tagsJson: event.target.value
-                      .split(",")
-                      .map((tag) => tag.trim())
-                      .filter(Boolean),
-                  })
-                }
-                className="h-11 rounded-2xl border border-slate-200 px-4 text-sm"
-                placeholder="Tags separadas por virgula"
-              />
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Nome
+                <input value={editing.nome} onChange={(event) => setEditing({ ...editing, nome: event.target.value })} className="h-11 rounded-2xl border border-slate-200 px-4 text-sm" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Texto alternativo
+                <input value={editing.alt || ""} onChange={(event) => setEditing({ ...editing, alt: event.target.value })} className="h-11 rounded-2xl border border-slate-200 px-4 text-sm" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Descrição
+                <textarea value={editing.descricao || ""} onChange={(event) => setEditing({ ...editing, descricao: event.target.value })} className="min-h-24 rounded-2xl border border-slate-200 px-4 py-3 text-sm" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Pasta
+                <input value={editing.pasta || ""} onChange={(event) => setEditing({ ...editing, pasta: event.target.value })} className="h-11 rounded-2xl border border-slate-200 px-4 text-sm" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Tags separadas por vírgula
+                <input
+                  value={tagsToString(editing.tagsJson)}
+                  onChange={(event) => setEditing({ ...editing, tagsJson: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean) })}
+                  className="h-11 rounded-2xl border border-slate-200 px-4 text-sm"
+                />
+              </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                disabled={saving}
+                className="min-h-11 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={async () => {
-                  const updated = await updateAsset(editing, {
-                    nome: editing.nome,
-                    alt: editing.alt,
-                    pasta: editing.pasta,
-                    tags: editing.tagsJson,
-                  });
-
-                  if (updated) setEditing(null);
+                  setSaving(true);
+                  try {
+                    const updated = await updateAsset(editing, {
+                      nome: editing.nome,
+                      alt: editing.alt,
+                      descricao: editing.descricao,
+                      pasta: editing.pasta,
+                      tags: editing.tagsJson,
+                    });
+                    if (updated) setEditing(null);
+                  } finally {
+                    setSaving(false);
+                  }
                 }}
-                className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+                disabled={saving}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#4772AA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#355f95] disabled:opacity-50"
               >
-                Salvar
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>

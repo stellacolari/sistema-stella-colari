@@ -21,6 +21,12 @@ type BuscaLojaClientProps = {
   produtos: BuscaLojaProduto[];
   sugestoes: string[];
   filtrosDetectados: BuscaLojaFiltrosDetectados;
+  conteudo?: {
+    title: string;
+    text: string;
+    emptyTitle: string;
+    emptyText: string;
+  };
 };
 
 function moeda(valor: number) {
@@ -64,6 +70,7 @@ export default function BuscaLojaClient({
   produtos,
   sugestoes,
   filtrosDetectados,
+  conteudo,
 }: BuscaLojaClientProps) {
   const [termo, setTermo] = useState(termoInicial);
   const [buscasRecentes, setBuscasRecentes] = useState<string[]>([]);
@@ -136,12 +143,12 @@ export default function BuscaLojaClient({
                 Loja Stella Colari
               </p>
               <h1 className="store-editorial-title mt-4 text-4xl font-normal leading-none tracking-[-0.04em] text-[#27251f] sm:text-6xl">
-                Busca
+                {conteudo?.title || "Busca"}
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-[#645e54] sm:text-base">
                 {termoInicial
                   ? `Resultados para "${termoInicial}"`
-                  : "Encontre joias, acessorios e presentes."}
+                  : conteudo?.text || "Encontre joias, acessorios e presentes."}
               </p>
             </div>
 
@@ -228,12 +235,12 @@ export default function BuscaLojaClient({
               emptyTitle={
                 temResultados
                   ? "Nenhum produto encontrado com esses filtros."
-                  : "Nenhum produto encontrado."
+                  : conteudo?.emptyTitle || "Nenhum produto encontrado."
               }
               emptyDescription={
                 temResultados
                   ? "Tente remover algum filtro ou buscar por outro termo."
-                  : "Confira a escrita ou tente termos como anel, brinco ou colar."
+                  : conteudo?.emptyText || "Confira a escrita ou tente termos como anel, brinco ou colar."
               }
               renderProduto={(produto, index) => (
                 <ProdutoCardLoja

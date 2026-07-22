@@ -365,10 +365,12 @@ function SlideText({
   slide,
   field,
   className,
+  forceDark = false,
 }: {
   slide: BannerHeroV2Slide;
   field: "eyebrow" | "titulo" | "texto";
   className: string;
+  forceDark?: boolean;
 }) {
   const element = slide.conteudo[field];
   const Tag = field === "titulo" ? "h1" : "div";
@@ -377,7 +379,10 @@ function SlideText({
     <Tag
       data-stella-inline-field={`bannerHeroV2:${slide.id}:${field}`}
       className={className}
-      style={getTextStyle(slide, field)}
+      style={{
+        ...getTextStyle(slide, field),
+        ...(forceDark ? { color: "#0f172a" } : {}),
+      }}
     >
       {renderInlineRichText(element.richText, element.conteudo)}
     </Tag>
@@ -476,7 +481,7 @@ function SlideMedia({
 
   return (
     <div
-      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#e7f2f6_42%,#bfd9e4_100%)]"
+      className="h-full w-full bg-[#5D8CC8]"
       aria-hidden="true"
     />
   );
@@ -552,11 +557,19 @@ export default function BannerHeroV2Publico({
     activeSlide.conteudo.ativo &&
     (activeSlide.conteudo.posicaoDesktop !== "NENHUM" ||
       activeSlide.conteudo.posicaoMobile !== "NENHUM");
+  const hasMedia =
+    activeSlide.tipoMidia === "VIDEO"
+      ? Boolean(activeSlide.video.url || activeSlide.video.mobileUrl)
+      : Boolean(
+          activeSlide.midia.desktop.url ||
+            activeSlide.midia.mobile.url ||
+            activeSlide.midia.mobileAlternativa?.url,
+        );
 
   return (
     <section
       data-banner-hero-v2-id={bloco.id}
-      className="relative isolate w-full overflow-hidden bg-slate-950 text-white"
+      className={`relative isolate w-full overflow-hidden ${hasMedia ? "bg-slate-950 text-white" : "bg-[#5D8CC8] text-[#0f172a]"}`}
       style={getHeightStyle(config.altura)}
       onMouseEnter={() => {
         if (config.carrossel.pausarAoHover) setPaused(true);
@@ -581,7 +594,7 @@ export default function BannerHeroV2Publico({
         />
       ) : null}
 
-      {activeSlide.overlay.ativo ? (
+      {hasMedia && activeSlide.overlay.ativo ? (
         <div
           className="absolute inset-0 z-[2]"
           style={{
@@ -613,7 +626,8 @@ export default function BannerHeroV2Publico({
               <SlideText
                 slide={activeSlide}
                 field="eyebrow"
-                className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80"
+                className={`text-xs font-semibold uppercase tracking-[0.22em] ${hasMedia ? "text-white/80" : "text-[#0f172a]/75"}`}
+                forceDark={!hasMedia}
               />
             ) : null}
 
@@ -622,6 +636,7 @@ export default function BannerHeroV2Publico({
                 slide={activeSlide}
                 field="titulo"
                 className="text-4xl font-light leading-none md:text-6xl lg:text-7xl"
+                forceDark={!hasMedia}
               />
             ) : null}
 
@@ -629,7 +644,8 @@ export default function BannerHeroV2Publico({
               <SlideText
                 slide={activeSlide}
                 field="texto"
-                className="max-w-2xl text-base leading-7 text-white/85 md:text-lg"
+                className={`max-w-2xl text-base leading-7 md:text-lg ${hasMedia ? "text-white/85" : "text-[#0f172a]/78"}`}
+                forceDark={!hasMedia}
               />
             ) : null}
 
@@ -649,7 +665,15 @@ export default function BannerHeroV2Publico({
                       target={botao.abrirNovaAba ? "_blank" : undefined}
                       rel={botao.abrirNovaAba ? "noreferrer" : undefined}
                       className={getButtonClass(botao)}
-                      style={getButtonStyle(botao)}
+                      style={
+                        hasMedia
+                          ? getButtonStyle(botao)
+                          : {
+                              color: "#0f172a",
+                              borderColor: "#0f172a",
+                              backgroundColor: index === 0 ? "#ffffff" : "transparent",
+                            }
+                      }
                       data-stella-inline-field={`bannerHeroV2:${activeSlide.id}:botao:${botao.id}`}
                       data-stella-editorial-gallery-item-id={botao.id}
                       onClick={(event) => {

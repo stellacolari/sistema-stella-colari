@@ -89,11 +89,20 @@ function getPageInfo(pathname: string) {
     };
   }
 
+  if (pathname.startsWith("/configuracoes/loja/conteudo")) {
+    return {
+      eyebrow: "Loja online",
+      title: "Conteúdo da Loja",
+      description: "Páginas codificadas, mídia, campanhas e publicação editorial.",
+      showLojaButton: true,
+    };
+  }
+
   if (pathname.startsWith("/configuracoes/loja/paginas")) {
     return {
       eyebrow: "Loja online",
-      title: "Paginas da loja",
-      description: "Páginas públicas e editor visual da loja online.",
+      title: "Conteúdo da Loja",
+      description: "Redirecionamento de compatibilidade para o gerenciador de conteúdo.",
       showLojaButton: true,
     };
   }
@@ -127,9 +136,9 @@ function getPageInfo(pathname: string) {
 
   if (pathname.startsWith("/configuracoes/loja/colecoes-inteligentes")) {
     return {
-      eyebrow: "Loja online / Builder",
+      eyebrow: "Loja online / Conteúdo",
       title: "Colecoes Inteligentes",
-      description: "Grupos aprovados de produtos para usar no editor visual.",
+      description: "Grupos aprovados de produtos para usar nas experiências da loja.",
       showLojaButton: true,
     };
   }

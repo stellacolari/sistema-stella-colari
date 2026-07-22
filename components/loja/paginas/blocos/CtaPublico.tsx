@@ -270,7 +270,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
               <Link
                 href={linkBotaoPrimario}
                 data-stella-inline-field="textoBotao"
-                className={`inline-flex min-h-11 items-center justify-center bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 ${buttonRadiusClass}`}
+                className={`inline-flex min-h-11 items-center justify-center bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95] ${buttonRadiusClass}`}
                 style={botaoPrimarioStyle}
               >
                 {textoBotaoPrimario}

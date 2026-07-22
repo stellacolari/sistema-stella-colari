@@ -75,10 +75,10 @@ function getFundoClasses(fundo: string) {
 
   if (fundo === "ESCURO") {
     return {
-      section: "bg-slate-950",
+      section: "bg-[#5D8CC8]",
       card: "bg-white border-slate-200",
-      title: "text-white",
-      text: "text-white/75",
+      title: "text-[#0f172a]",
+      text: "text-[#0f172a]/75",
     };
   }
 
@@ -401,7 +401,7 @@ export default function LojaFormularioBlock({
               <button
                 type="submit"
                 disabled={enviando}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4772AA] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#355f95] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
                 {enviando ? "Enviando..." : textoBotao}

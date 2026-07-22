@@ -11,6 +11,7 @@ type MetadataOptions = {
   title: string;
   description?: string | null;
   path: string;
+  canonical?: string | null;
   image?: string | null;
   robots?: Metadata["robots"];
   type?: "website" | "article";
@@ -56,12 +57,13 @@ export function criarMetadataLoja({
   title,
   description,
   path,
+  canonical,
   image,
   robots,
   type = "website",
 }: MetadataOptions): Metadata {
   const metadataBase = new URL(getLojaBaseUrl());
-  const canonical = getLojaUrl(path);
+  const canonicalUrl = getLojaUrl(canonical || path);
   const resolvedDescription =
     limparTexto(description) || LOJA_DESCRICAO_PADRAO;
   const imageUrl = normalizarImagemAbsoluta(image);
@@ -72,12 +74,12 @@ export function criarMetadataLoja({
     description: resolvedDescription,
     metadataBase,
     alternates: {
-      canonical,
+      canonical: canonicalUrl,
     },
     openGraph: {
       title,
       description: resolvedDescription,
-      url: canonical,
+      url: canonicalUrl,
       siteName: LOJA_NOME,
       locale: "pt_BR",
       type,

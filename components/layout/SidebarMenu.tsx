@@ -325,7 +325,7 @@ const menuSections: MenuSection[] = [
         modulo: "lojaOnline",
         label: "Loja Online",
         icon: Store,
-        description: "Builder, paginas e navegacao",
+        description: "Conteúdo, mídia e navegação",
         tone: "site",
         activePrefixes: [
           "/configuracoes/loja/banners-menu",
@@ -338,11 +338,13 @@ const menuSections: MenuSection[] = [
           "/configuracoes/loja/home",
           "/configuracoes/loja/menu-rodape",
           "/configuracoes/loja/paginas",
+          "/configuracoes/loja/conteudo",
+          "/configuracoes/loja/midias",
         ],
         links: [
           {
-            href: "/configuracoes/loja/paginas",
-            label: "Páginas",
+            href: "/configuracoes/loja/conteudo",
+            label: "Conteúdo da Loja",
             icon: LayoutDashboard,
             modulo: "lojaOnline",
           },

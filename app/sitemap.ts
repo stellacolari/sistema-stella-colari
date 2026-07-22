@@ -7,13 +7,6 @@ export const dynamic = "force-dynamic";
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
 const TIPOS_PAGINA_INDEXAVEIS = ["GERAL", "LANDING", "CAMPANHA"];
-const ROTAS_LEGAIS = [
-  "/loja/termos-de-uso",
-  "/loja/politica-de-privacidade",
-  "/loja/trocas-e-devolucoes",
-  "/loja/frete-e-prazos",
-  "/loja/contato",
-];
 
 function adicionarUrl(
   mapa: Map<string, SitemapEntry>,
@@ -123,16 +116,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: {
         ativo: true,
         statusPublicacao: "PUBLICADA",
-        blocos: {
-          some: {
-            ativo: true,
-          },
-        },
       },
       select: {
+        id: true,
         slug: true,
         tipo: true,
         atualizadoEm: true,
+        blocos: {
+          where: { ativo: true },
+          take: 1,
+          select: { id: true },
+        },
+        conteudoDocumento: {
+          select: {
+            modoEntrega: true,
+            status: true,
+            versaoPublicadaId: true,
+            inicioPublicacao: true,
+            fimPublicacao: true,
+            versaoPublicada: {
+              select: { conteudoJson: true },
+            },
+          },
+        },
         categoria: {
           select: {
             slug: true,
@@ -168,15 +174,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     });
   }
-  for (const rota of ROTAS_LEGAIS) {
-    adicionarUrl(urls, {
-      url: getLojaUrl(rota),
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.35,
-    });
-  }
-
   for (const categoria of categorias) {
     adicionarUrl(urls, {
       url: getLojaUrl(`/loja/categoria/${categoria.slug}`),
@@ -205,6 +202,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const pagina of paginas) {
+    const now = new Date();
+    const managed = pagina.conteudoDocumento;
+    const managedActive = Boolean(
+      managed?.modoEntrega === "NOVO" &&
+        managed.versaoPublicadaId &&
+        ["PUBLICADA", "AGENDADA"].includes(managed.status) &&
+        (!managed.inicioPublicacao || managed.inicioPublicacao <= now) &&
+        (!managed.fimPublicacao || managed.fimPublicacao > now),
+    );
+    const legacyActive = managed?.modoEntrega !== "NOVO" && pagina.blocos.length > 0;
+    if (!managedActive && !legacyActive) continue;
+    const publishedJson = managed?.versaoPublicada?.conteudoJson;
+    const publishedValues =
+      publishedJson && typeof publishedJson === "object" && !Array.isArray(publishedJson)
+        ? (publishedJson as { values?: Record<string, unknown> }).values
+        : undefined;
+    if (managedActive && publishedValues?.["seo.noindex"] === true) continue;
+
     if (pagina.tipo === "HOME" || pagina.slug === "home") {
       adicionarUrl(urls, {
         url: getLojaUrl("/loja"),
@@ -221,6 +236,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: pagina.atualizadoEm,
         changeFrequency: "weekly",
         priority: 0.75,
+      });
+      continue;
+    }
+
+    if (pagina.tipo === "LEGAL") {
+      adicionarUrl(urls, {
+        url: getLojaUrl(`/loja/${pagina.slug}`),
+        lastModified: pagina.atualizadoEm,
+        changeFrequency: "monthly",
+        priority: 0.35,
       });
       continue;
     }

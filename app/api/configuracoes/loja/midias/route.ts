@@ -39,6 +39,22 @@ export async function GET(request: NextRequest) {
       orderBy: { criadoEm: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: {
+        _count: {
+          select: {
+            usosConteudo: true,
+          },
+        },
+        usosConteudo: {
+          take: 3,
+          orderBy: { criadoEm: "desc" },
+          select: {
+            slot: true,
+            escopo: true,
+            documento: { select: { chave: true } },
+          },
+        },
+      },
     }),
     prisma.midiaAsset.count({ where }),
     prisma.midiaAsset.findMany({
@@ -58,12 +74,15 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
-  return NextResponse.json({
-    items,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    pastas: pastas.map((item) => item.pasta).filter(Boolean),
-  });
+  return NextResponse.json(
+    {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      pastas: pastas.map((item) => item.pasta).filter(Boolean),
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }

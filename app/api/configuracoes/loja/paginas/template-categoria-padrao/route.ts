@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { protegerMutacaoConteudoLegado } from "@/lib/loja/conteudo/api-auth.server";
 
 const BLOCOS_TEMPLATE_CATEGORIA = [
   {
@@ -99,7 +100,14 @@ async function gerarSlugUnico(slugBase: string) {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const bloqueio = await protegerMutacaoConteudoLegado(
+    request,
+    "executar",
+    { tipos: ["TEMPLATE_CATEGORIA"] },
+  );
+  if (bloqueio) return bloqueio;
+
   try {
     const resultado = await prisma.$transaction(async (tx) => {
       let pagina = await tx.lojaPagina.findFirst({

@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import LegalPageShell from "@/app/loja/legal-page-shell";
-import { criarMetadataLoja } from "@/lib/loja/seo";
+import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Frete e Prazos | Stella Colari",
-  description:
-    "Informacoes gerais sobre envio, retirada e prazos da loja Stella Colari.",
-  path: "/loja/frete-e-prazos",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return gerarMetadataLegalGerenciada({
+    slug: "frete-e-prazos",
+    title: "Frete e Prazos | Stella Colari",
+    description: "Informações gerais sobre envio, retirada e prazos da loja Stella Colari.",
+  });
+}
 
 export default function FreteEPrazosPage() {
   return (
     <LegalPageShell
+      slug="frete-e-prazos"
       title="Frete e Prazos"
       description="Os prazos e valores de entrega podem variar conforme endereco, modalidade escolhida, preparo do pedido e disponibilidade operacional."
       sections={[

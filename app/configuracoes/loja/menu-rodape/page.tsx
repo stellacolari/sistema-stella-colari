@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import {
+  exigirAdminComPermissao,
+  usuarioTemPermissaoAdmin,
+} from "@/lib/auth/admin";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import MenuRodapeLojaClient from "@/components/configuracoes/loja/MenuRodapeLojaClient";
-import LojaConfigHeader from "@/components/configuracoes/loja/LojaConfigHeader";
+import ConteudoLojaNav from "@/components/configuracoes/loja/conteudo/ConteudoLojaNav";
 
 export const metadata: Metadata = {
   title: "Menu e Rodapé | Plataforma Stella Colari",
@@ -61,6 +64,13 @@ function getUrlPublicaPagina(pagina: {
 }
 
 export default async function MenuRodapeLojaPage() {
+  const usuario = await exigirAdminComPermissao("lojaOnline", "ver");
+  const capacidades = {
+    criar: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "criar"),
+    editar: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "editar"),
+    excluir: usuarioTemPermissaoAdmin(usuario, "lojaOnline", "excluir"),
+  };
+
   const [configuracao, categoriasRaw, menusRaw, paginasRaw] =
     await Promise.all([
       buscarConfiguracaoMenuRodape(),
@@ -146,26 +156,21 @@ export default async function MenuRodapeLojaPage() {
     .filter((pagina) => pagina.urlPublica);
 
   return (
-    <main className="space-y-6">
-      <LojaConfigHeader
+    <main className="min-h-screen bg-slate-50">
+      <ConteudoLojaNav
         title="Menu e Rodapé"
         description="Configure navegação global, links, categorias automáticas, redes sociais, colunas e selos do rodapé da loja."
-        actions={
-          <Link
-            href="/configuracoes/loja"
-            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Voltar para Loja Online
-          </Link>
-        }
       />
 
-      <MenuRodapeLojaClient
-        configuracaoInicial={configuracao}
-        menus={menus}
-        categorias={categorias}
-        paginasBuilder={paginasBuilder}
-      />
+      <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6">
+        <MenuRodapeLojaClient
+          configuracaoInicial={configuracao}
+          menus={menus}
+          categorias={categorias}
+          paginasBuilder={paginasBuilder}
+          capacidades={capacidades}
+        />
+      </div>
     </main>
   );
 }

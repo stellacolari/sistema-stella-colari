@@ -7,16 +7,26 @@ import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { buscarLojaInteligente } from "@/lib/loja/busca";
 import { criarMetadataLoja } from "@/lib/loja/seo";
+import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
+import { buscarConteudoPublicadoSistema } from "@/lib/loja/conteudo/repository.server";
 
-export const metadata: Metadata = criarMetadataLoja({
-  title: "Busca | Stella Colari",
-  description: "Encontre joias, acessorios e presentes na Stella Colari.",
-  path: "/loja/busca",
-  robots: {
-    index: false,
-    follow: true,
-  },
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const gerenciado = await buscarConteudoPublicadoSistema({ tipo: "BUSCA_GLOBAL" });
+  const seo = gerenciado ? extrairSeoConteudo(gerenciado.conteudo) : null;
+
+  return criarMetadataLoja({
+    title: seo?.title || "Busca | Stella Colari",
+    description:
+      seo?.description || "Encontre joias, acessorios e presentes na Stella Colari.",
+    path: "/loja/busca",
+    canonical: seo?.canonical,
+    image: seo?.image,
+    robots: {
+      index: false,
+      follow: true,
+    },
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +38,7 @@ export default async function BuscaLojaPage({
   const { q } = await searchParams;
   const termo = String(q || "").trim();
 
-  const [resultado, menus, categoriasMenu, configuracaoMenuRodape] =
+  const [resultado, menus, categoriasMenu, configuracaoMenuRodape, gerenciado] =
     await Promise.all([
       buscarLojaInteligente({
         q: termo,
@@ -38,7 +48,12 @@ export default async function BuscaLojaPage({
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
       buscarConfiguracaoMenuRodape(),
+      buscarConteudoPublicadoSistema({ tipo: "BUSCA_GLOBAL" }),
     ]);
+
+  const values = gerenciado?.conteudo.values;
+  const texto = (key: string) =>
+    typeof values?.[key] === "string" ? String(values[key]).trim() : "";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -57,6 +72,12 @@ export default async function BuscaLojaPage({
         produtos={resultado.produtos}
         sugestoes={resultado.sugestoes}
         filtrosDetectados={resultado.filtrosDetectados}
+        conteudo={{
+          title: texto("header.title"),
+          text: texto("header.text"),
+          emptyTitle: texto("header.emptyTitle"),
+          emptyText: texto("header.emptyText"),
+        }}
       />
 
       <RodapePublicoLoja

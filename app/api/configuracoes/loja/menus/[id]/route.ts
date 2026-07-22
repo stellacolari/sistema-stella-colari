@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  exigirAcessoConteudo,
+  payloadDentroDoLimite,
+  payloadJsonDentroDoLimite,
+  validarOrigemMutacao,
+} from "@/lib/loja/conteudo/api-auth.server";
+import { urlConteudoPermitida } from "@/lib/loja/conteudo/contracts";
 
 const TIPOS_VALIDOS = ["CATEGORIA", "CAMPANHA", "LINK", "PAGINA"];
 const PAGINAS_ESPECIAIS_VALIDAS = ["", "DESCONTOS", "TODAS_CATEGORIAS"];
@@ -51,9 +58,21 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const usuario = await exigirAcessoConteudo("editar");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+  if (!payloadDentroDoLimite(req)) {
+    return NextResponse.json({ error: "Conteúdo excede o limite permitido." }, { status: 413 });
+  }
+
   try {
     const { id } = await context.params;
     const body = await req.json();
+    if (!payloadJsonDentroDoLimite(body)) {
+      return NextResponse.json({ error: "Conteúdo excede o limite permitido." }, { status: 413 });
+    }
 
     const data: {
       nome?: string;
@@ -97,7 +116,14 @@ export async function PATCH(
     }
 
     if ("linkUrl" in body) {
-      data.linkUrl = String(body.linkUrl || "").trim() || null;
+      const linkUrl = String(body.linkUrl || "").trim();
+      if (linkUrl && !urlConteudoPermitida(linkUrl)) {
+        return NextResponse.json(
+          { error: "Destino do menu inválido." },
+          { status: 400 },
+        );
+      }
+      data.linkUrl = linkUrl || null;
     }
 
     if ("categoria" in body) {
@@ -164,9 +190,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const usuario = await exigirAcessoConteudo("excluir");
+  if (!usuario) return NextResponse.json({ error: "Acesso não permitido." }, { status: 403 });
+  if (!validarOrigemMutacao(req)) {
+    return NextResponse.json({ error: "Origem da requisição inválida." }, { status: 403 });
+  }
+
   try {
     const { id } = await context.params;
 

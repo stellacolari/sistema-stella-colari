@@ -66,6 +66,11 @@ type MenuRodapeLojaClientProps = {
   menus: MenuRodapeMenuItem[];
   categorias: MenuRodapeCategoriaItem[];
   paginasBuilder: MenuRodapePaginaItem[];
+  capacidades: {
+    criar: boolean;
+    editar: boolean;
+    excluir: boolean;
+  };
 };
 
 type ApiResult = {
@@ -135,14 +140,20 @@ function ToggleLinha({
   descricao,
   checked,
   onChange,
+  disabled = false,
 }: {
   titulo: string;
   descricao: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+    <label
+      className={`flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 ${
+        disabled ? "cursor-not-allowed opacity-65" : "cursor-pointer"
+      }`}
+    >
       <span>
         <span className="block text-sm font-semibold text-slate-900">
           {titulo}
@@ -156,7 +167,8 @@ function ToggleLinha({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300"
+        disabled={disabled}
+        className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 disabled:cursor-not-allowed"
       />
     </label>
   );
@@ -167,6 +179,7 @@ export default function MenuRodapeLojaClient({
   menus,
   categorias,
   paginasBuilder,
+  capacidades,
 }: MenuRodapeLojaClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -231,6 +244,8 @@ export default function MenuRodapeLojaClient({
     key: Key,
     value: LojaMenuRodapeConfig["menu"][Key]
   ) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       menu: {
@@ -243,6 +258,8 @@ export default function MenuRodapeLojaClient({
   function atualizarRodapeConfig<
     Key extends keyof LojaMenuRodapeConfig["rodape"]
   >(key: Key, value: LojaMenuRodapeConfig["rodape"][Key]) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       rodape: {
@@ -253,6 +270,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function alternarCategoriaOculta(categoriaId: string) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => {
       const ocultas = new Set(atual.menu.categoriasOcultasIds);
 
@@ -273,6 +292,8 @@ export default function MenuRodapeLojaClient({
   }
 
   async function salvarConfiguracao() {
+    if (!capacidades.editar) return;
+
     setErro(null);
     setSucesso(null);
     setSalvandoConfig(true);
@@ -339,7 +360,7 @@ export default function MenuRodapeLojaClient({
   }
 
   async function criarMenu() {
-    if (salvandoMenu) return;
+    if (!capacidades.criar || salvandoMenu) return;
 
     const destino = getDestinoSelecionado();
 
@@ -422,6 +443,8 @@ export default function MenuRodapeLojaClient({
     menu: MenuRodapeMenuItem,
     data: Partial<MenuRodapeMenuItem>
   ) {
+    if (!capacidades.editar) return false;
+
     setErro(null);
     setSucesso(null);
 
@@ -448,6 +471,8 @@ export default function MenuRodapeLojaClient({
   }
 
   async function moverMenu(menuId: string, direcao: -1 | 1) {
+    if (!capacidades.editar) return;
+
     const indexAtual = menusOrdenados.findIndex((item) => item.id === menuId);
     const indexDestino = indexAtual + direcao;
 
@@ -491,6 +516,8 @@ export default function MenuRodapeLojaClient({
   }
 
   async function excluirMenu(menu: MenuRodapeMenuItem) {
+    if (!capacidades.excluir) return;
+
     const confirmado = window.confirm(`Excluir o link "${menu.nome}"?`);
 
     if (!confirmado) return;
@@ -517,6 +544,8 @@ export default function MenuRodapeLojaClient({
     colunaId: string,
     data: Partial<LojaRodapeColuna>
   ) {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig(
       "colunas",
       configuracao.rodape.colunas.map((coluna) =>
@@ -526,6 +555,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function adicionarColuna() {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig("colunas", [
       ...configuracao.rodape.colunas,
       {
@@ -537,6 +568,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function removerColuna(colunaId: string) {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig(
       "colunas",
       configuracao.rodape.colunas.filter((coluna) => coluna.id !== colunaId)
@@ -548,6 +581,8 @@ export default function MenuRodapeLojaClient({
     linkId: string,
     data: Partial<LojaRodapeLink>
   ) {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig(
       "colunas",
       configuracao.rodape.colunas.map((coluna) => {
@@ -564,6 +599,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function adicionarLinkRodape(colunaId: string) {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig(
       "colunas",
       configuracao.rodape.colunas.map((coluna) => {
@@ -587,6 +624,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function removerLinkRodape(colunaId: string, linkId: string) {
+    if (!capacidades.editar) return;
+
     atualizarRodapeConfig(
       "colunas",
       configuracao.rodape.colunas.map((coluna) => {
@@ -601,6 +640,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function atualizarRedeSocial(redeId: string, data: Partial<LojaRedeSocial>) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       redesSociais: atual.redesSociais.map((rede) =>
@@ -610,6 +651,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function adicionarRedeSocial() {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       redesSociais: [
@@ -625,6 +668,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function removerRedeSocial(redeId: string) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       redesSociais: atual.redesSociais.filter((rede) => rede.id !== redeId),
@@ -632,6 +677,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function atualizarSelo(seloId: string, data: Partial<LojaSeloRodape>) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       selos: atual.selos.map((selo) =>
@@ -641,6 +688,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function adicionarSelo() {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       selos: [
@@ -658,6 +707,8 @@ export default function MenuRodapeLojaClient({
   }
 
   function removerSelo(seloId: string) {
+    if (!capacidades.editar) return;
+
     setConfiguracao((atual) => ({
       ...atual,
       selos: atual.selos.filter((selo) => selo.id !== seloId),
@@ -666,8 +717,28 @@ export default function MenuRodapeLojaClient({
 
   return (
     <div className="space-y-6">
+      {!capacidades.editar ? (
+        <div
+          role="status"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900"
+        >
+          <span className="font-semibold">
+            {!capacidades.criar && !capacidades.excluir
+              ? "Modo somente leitura."
+              : "Edição de configurações restrita."}
+          </span>{" "}
+          Seu perfil pode consultar o menu e o rodapé
+          {capacidades.criar || capacidades.excluir
+            ? " e usar somente as ações específicas liberadas."
+            : ", mas não pode realizar alterações."}
+        </div>
+      ) : null}
+
       {(erro || sucesso) && (
         <div
+          role={erro ? "alert" : "status"}
+          aria-live={erro ? "assertive" : "polite"}
+          aria-atomic="true"
           className={`rounded-3xl border px-5 py-4 text-sm ${
             erro
               ? "border-red-200 bg-red-50 text-red-700"
@@ -708,13 +779,14 @@ export default function MenuRodapeLojaClient({
       </section>
 
       <section className="rounded-3xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Área de configuração">
           {ABAS_MENU_RODAPE.map((aba) => (
             <button
               key={aba.id}
               type="button"
               onClick={() => setAbaAtiva(aba.id)}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+              aria-pressed={abaAtiva === aba.id}
+              className={`min-h-11 rounded-2xl px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8] ${
                 abaAtiva === aba.id
                   ? "bg-slate-950 text-white"
                   : "text-slate-600 hover:bg-slate-50"
@@ -755,8 +827,8 @@ export default function MenuRodapeLojaClient({
               <button
                 type="button"
                 onClick={salvarConfiguracao}
-                disabled={salvandoConfig || isPending}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!capacidades.editar || salvandoConfig || isPending}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {salvandoConfig ? "Salvando..." : "Salvar"}
@@ -769,6 +841,7 @@ export default function MenuRodapeLojaClient({
                 descricao="Exibe a navegação global no menu lateral da loja."
                 checked={configuracao.menu.ativo}
                 onChange={(checked) => atualizarMenuConfig("ativo", checked)}
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Links personalizados"
@@ -777,6 +850,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarMenuConfig("linksManuaisAtivos", checked)
                 }
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Categorias automáticas"
@@ -785,6 +859,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarMenuConfig("categoriasAutomaticasAtivas", checked)
                 }
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Categorias mãe"
@@ -793,6 +868,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarMenuConfig("mostrarCategoriasMae", checked)
                 }
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Categorias filhas"
@@ -801,6 +877,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarMenuConfig("mostrarCategoriasFilhas", checked)
                 }
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Respeitar visibilidade da categoria"
@@ -809,6 +886,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarMenuConfig("mostrarApenasCategoriasVisiveis", checked)
                 }
+                disabled={!capacidades.editar}
               />
             </div>
 
@@ -837,6 +915,7 @@ export default function MenuRodapeLojaClient({
                       Ordenação
                     </span>
                     <select
+                      aria-label="Ordenação das categorias"
                       value={configuracao.menu.ordenacaoCategorias}
                       onChange={(event) => {
                         const value = event.target
@@ -846,7 +925,8 @@ export default function MenuRodapeLojaClient({
                           value
                         );
                       }}
-                      className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     >
                       <option value="ORDEM">Ordem do cadastro</option>
                       <option value="AZ">A-Z</option>
@@ -858,6 +938,7 @@ export default function MenuRodapeLojaClient({
                       Exibição
                     </span>
                     <select
+                      aria-label="Exibição das categorias"
                       value={configuracao.menu.exibicaoCategorias}
                       onChange={(event) => {
                         const value = event.target
@@ -867,7 +948,8 @@ export default function MenuRodapeLojaClient({
                           value
                         );
                       }}
-                      className="h-10 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     >
                       <option value="DROPDOWN">Menu com subcategorias</option>
                       <option value="SIMPLES">Lista simples</option>
@@ -901,7 +983,8 @@ export default function MenuRodapeLojaClient({
                       type="checkbox"
                       checked={!categoriasOcultas.has(categoria.id)}
                       onChange={() => alternarCategoriaOculta(categoria.id)}
-                      className="h-4 w-4 shrink-0 rounded border-slate-300"
+                      disabled={!capacidades.editar}
+                      className="h-5 w-5 shrink-0 rounded border-slate-300 disabled:cursor-not-allowed"
                     />
                   </label>
                 ))}
@@ -924,13 +1007,16 @@ export default function MenuRodapeLojaClient({
 
               <div className="mt-5 space-y-3">
                 <input
+                  aria-label="Nome do link"
                   value={menuNome}
                   onChange={(event) => setMenuNome(event.target.value)}
                   placeholder="Nome do link"
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  disabled={!capacidades.criar}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
 
                 <select
+                  aria-label="Tipo de destino do link"
                   value={menuDestino}
                   onChange={(event) => {
                     setMenuDestino(event.target.value as DestinoMenu);
@@ -938,24 +1024,28 @@ export default function MenuRodapeLojaClient({
                     setMenuPaginaUrl("");
                     setMenuCategoriaId("");
                   }}
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  disabled={!capacidades.criar}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
                   <option value="URL">URL externa ou interna</option>
-                  <option value="PAGINA">Página do builder</option>
+                  <option value="PAGINA">Página de conteúdo</option>
                   <option value="CATEGORIA">Categoria</option>
                 </select>
 
                 {menuDestino === "URL" && (
                   <input
+                    aria-label="URL do link"
                     value={menuUrl}
                     onChange={(event) => setMenuUrl(event.target.value)}
                     placeholder="/loja/descontos ou https://..."
-                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    disabled={!capacidades.criar}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                   />
                 )}
 
                 {menuDestino === "PAGINA" && (
                   <select
+                    aria-label="Página de destino"
                     value={menuPaginaUrl}
                     onChange={(event) => {
                       const url = event.target.value;
@@ -966,7 +1056,8 @@ export default function MenuRodapeLojaClient({
                       setMenuPaginaUrl(url);
                       setMenuNome((atual) => atual || pagina?.titulo || "");
                     }}
-                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    disabled={!capacidades.criar}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="">Selecione uma página</option>
                     {paginasBuilder.map((pagina) => (
@@ -979,6 +1070,7 @@ export default function MenuRodapeLojaClient({
 
                 {menuDestino === "CATEGORIA" && (
                   <select
+                    aria-label="Categoria de destino"
                     value={menuCategoriaId}
                     onChange={(event) => {
                       const categoria = categorias.find(
@@ -988,7 +1080,8 @@ export default function MenuRodapeLojaClient({
                       setMenuCategoriaId(event.target.value);
                       setMenuNome((atual) => atual || categoria?.nome || "");
                     }}
-                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                    disabled={!capacidades.criar}
+                    className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     <option value="">Selecione uma categoria</option>
                     {categorias.map((categoria) => (
@@ -1004,7 +1097,8 @@ export default function MenuRodapeLojaClient({
                     type="checkbox"
                     checked={menuDestaque}
                     onChange={(event) => setMenuDestaque(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
+                    disabled={!capacidades.criar}
+                    className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                   />
                   Destacar link
                 </label>
@@ -1014,7 +1108,8 @@ export default function MenuRodapeLojaClient({
                     type="checkbox"
                     checked={menuAtivo}
                     onChange={(event) => setMenuAtivo(event.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
+                    disabled={!capacidades.criar}
+                    className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                   />
                   Link ativo
                 </label>
@@ -1022,7 +1117,7 @@ export default function MenuRodapeLojaClient({
                 <button
                   type="button"
                   onClick={criarMenu}
-                  disabled={salvandoMenu}
+                  disabled={!capacidades.criar || salvandoMenu}
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Plus className="h-4 w-4" />
@@ -1084,9 +1179,10 @@ export default function MenuRodapeLojaClient({
                         <button
                           type="button"
                           onClick={() => moverMenu(menu.id, -1)}
-                          disabled={index === 0}
-                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          disabled={!capacidades.editar || index === 0}
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                           title="Mover para cima"
+                          aria-label={`Mover ${menu.nome} para cima`}
                         >
                           <ArrowUp className="h-4 w-4" />
                         </button>
@@ -1094,9 +1190,10 @@ export default function MenuRodapeLojaClient({
                         <button
                           type="button"
                           onClick={() => moverMenu(menu.id, 1)}
-                          disabled={index === menusOrdenados.length - 1}
-                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          disabled={!capacidades.editar || index === menusOrdenados.length - 1}
+                          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                           title="Mover para baixo"
+                          aria-label={`Mover ${menu.nome} para baixo`}
                         >
                           <ArrowDown className="h-4 w-4" />
                         </button>
@@ -1106,19 +1203,23 @@ export default function MenuRodapeLojaClient({
                           onClick={() =>
                             atualizarMenu(menu, { ativo: !menu.ativo })
                           }
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                          disabled={!capacidades.editar}
+                          className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {menu.ativo ? "Ocultar" : "Ativar"}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => excluirMenu(menu)}
-                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
-                          title="Excluir"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {capacidades.excluir ? (
+                          <button
+                            type="button"
+                            onClick={() => excluirMenu(menu)}
+                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+                            title="Excluir"
+                            aria-label={`Excluir ${menu.nome}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -1145,14 +1246,16 @@ export default function MenuRodapeLojaClient({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={adicionarColuna}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar coluna
-              </button>
+              {capacidades.editar ? (
+                <button
+                  type="button"
+                  onClick={adicionarColuna}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar coluna
+                </button>
+              ) : null}
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -1161,6 +1264,7 @@ export default function MenuRodapeLojaClient({
                 descricao="Exibe o rodapé configurável no site público."
                 checked={configuracao.rodape.ativo}
                 onChange={(checked) => atualizarRodapeConfig("ativo", checked)}
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Links do menu"
@@ -1169,6 +1273,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarRodapeConfig("mostrarLinksMenu", checked)
                 }
+                disabled={!capacidades.editar}
               />
               <ToggleLinha
                 titulo="Link do carrinho"
@@ -1177,6 +1282,7 @@ export default function MenuRodapeLojaClient({
                 onChange={(checked) =>
                   atualizarRodapeConfig("mostrarCarrinho", checked)
                 }
+                disabled={!capacidades.editar}
               />
             </div>
 
@@ -1194,7 +1300,8 @@ export default function MenuRodapeLojaClient({
                     )
                   }
                   rows={3}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                  disabled={!capacidades.editar}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
               </label>
 
@@ -1207,45 +1314,54 @@ export default function MenuRodapeLojaClient({
                   onChange={(event) =>
                     atualizarRodapeConfig("copyright", event.target.value)
                   }
-                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500"
+                  disabled={!capacidades.editar}
+                  className="h-11 w-full rounded-2xl border border-slate-300 px-4 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
               </label>
             </div>
 
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
-              {configuracao.rodape.colunas.map((coluna) => (
+              {configuracao.rodape.colunas.map((coluna, colunaIndex) => (
                 <div
                   key={coluna.id}
                   className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
                 >
                   <div className="flex items-center gap-2">
                     <input
+                      aria-label={`Título da coluna ${colunaIndex + 1}`}
                       value={coluna.titulo}
                       onChange={(event) =>
                         atualizarColuna(coluna.id, {
                           titulo: event.target.value,
                         })
                       }
-                      className="h-10 min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
 
-                    <button
-                      type="button"
-                      onClick={() => adicionarLinkRodape(coluna.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100"
-                      title="Adicionar link"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                    {capacidades.editar ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => adicionarLinkRodape(coluna.id)}
+                          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100"
+                          title="Adicionar link"
+                          aria-label={`Adicionar link à coluna ${coluna.titulo}`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => removerColuna(coluna.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
-                      title="Excluir coluna"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => removerColuna(coluna.id)}
+                          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100"
+                          title="Excluir coluna"
+                          aria-label={`Excluir coluna ${coluna.titulo}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 space-y-2">
@@ -1256,6 +1372,7 @@ export default function MenuRodapeLojaClient({
                       >
                         <div className="grid gap-2 md:grid-cols-2">
                           <input
+                            aria-label={`Texto do link na coluna ${coluna.titulo}`}
                             value={link.label}
                             onChange={(event) =>
                               atualizarLinkRodape(coluna.id, link.id, {
@@ -1263,9 +1380,11 @@ export default function MenuRodapeLojaClient({
                               })
                             }
                             placeholder="Texto"
-                            className="h-10 rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+                            disabled={!capacidades.editar}
+                            className="h-11 rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                           />
                           <input
+                            aria-label={`Destino de ${link.label || "link"} na coluna ${coluna.titulo}`}
                             value={link.href}
                             onChange={(event) =>
                               atualizarLinkRodape(coluna.id, link.id, {
@@ -1273,7 +1392,8 @@ export default function MenuRodapeLojaClient({
                               })
                             }
                             placeholder="/loja ou https://..."
-                            className="h-10 rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500"
+                            disabled={!capacidades.editar}
+                            className="h-11 rounded-2xl border border-slate-300 px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                           />
                         </div>
 
@@ -1288,7 +1408,8 @@ export default function MenuRodapeLojaClient({
                                     ativo: event.target.checked,
                                   })
                                 }
-                                className="h-4 w-4 rounded border-slate-300"
+                                disabled={!capacidades.editar}
+                                className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                               />
                               Ativo
                             </label>
@@ -1302,19 +1423,22 @@ export default function MenuRodapeLojaClient({
                                     novaAba: event.target.checked,
                                   })
                                 }
-                                className="h-4 w-4 rounded border-slate-300"
+                                disabled={!capacidades.editar}
+                                className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                               />
                               Nova aba
                             </label>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => removerLinkRodape(coluna.id, link.id)}
-                            className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 transition hover:bg-red-100"
-                          >
-                            Remover
-                          </button>
+                          {capacidades.editar ? (
+                            <button
+                              type="button"
+                              onClick={() => removerLinkRodape(coluna.id, link.id)}
+                              className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 ring-1 ring-red-200 transition hover:bg-red-100"
+                            >
+                              Remover
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     ))}
@@ -1341,14 +1465,17 @@ export default function MenuRodapeLojaClient({
                     Redes sociais
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={adicionarRedeSocial}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
-                  title="Adicionar rede"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                {capacidades.editar ? (
+                  <button
+                    type="button"
+                    onClick={adicionarRedeSocial}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
+                    title="Adicionar rede"
+                    aria-label="Adicionar rede social"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
 
               <div className="mt-4 space-y-3">
@@ -1359,15 +1486,18 @@ export default function MenuRodapeLojaClient({
                   >
                     <div className="grid gap-2 md:grid-cols-[160px_1fr]">
                       <input
+                        aria-label={`Nome da rede social ${rede.nome}`}
                         value={rede.nome}
                         onChange={(event) =>
                           atualizarRedeSocial(rede.id, {
                             nome: event.target.value,
                           })
                         }
-                        className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                        disabled={!capacidades.editar}
+                        className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                       />
                       <input
+                        aria-label={`URL da rede social ${rede.nome}`}
                         value={rede.url}
                         onChange={(event) =>
                           atualizarRedeSocial(rede.id, {
@@ -1375,7 +1505,8 @@ export default function MenuRodapeLojaClient({
                           })
                         }
                         placeholder="https://..."
-                        className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                        disabled={!capacidades.editar}
+                        className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                       />
                     </div>
                     <div className="flex items-center justify-between gap-2">
@@ -1388,17 +1519,20 @@ export default function MenuRodapeLojaClient({
                               ativo: event.target.checked,
                             })
                           }
-                          className="h-4 w-4 rounded border-slate-300"
+                          disabled={!capacidades.editar}
+                          className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                         />
                         Ativo
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => removerRedeSocial(rede.id)}
-                        className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200"
-                      >
-                        Remover
-                      </button>
+                      {capacidades.editar ? (
+                        <button
+                          type="button"
+                          onClick={() => removerRedeSocial(rede.id)}
+                          className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 ring-1 ring-red-200"
+                        >
+                          Remover
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -1417,14 +1551,17 @@ export default function MenuRodapeLojaClient({
                     Selos e imagens
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={adicionarSelo}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
-                  title="Adicionar selo"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+                {capacidades.editar ? (
+                  <button
+                    type="button"
+                    onClick={adicionarSelo}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
+                    title="Adicionar selo"
+                    aria-label="Adicionar selo"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
 
               <div className="mt-4 space-y-3">
@@ -1440,14 +1577,17 @@ export default function MenuRodapeLojaClient({
                     className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3"
                   >
                     <input
+                      aria-label="Nome do selo"
                       value={selo.nome}
                       onChange={(event) =>
                         atualizarSelo(selo.id, { nome: event.target.value })
                       }
                       placeholder="Nome do selo"
-                      className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
                     <input
+                      aria-label={`URL da imagem do selo ${selo.nome}`}
                       value={selo.imagemUrl}
                       onChange={(event) =>
                         atualizarSelo(selo.id, {
@@ -1455,23 +1595,28 @@ export default function MenuRodapeLojaClient({
                         })
                       }
                       placeholder="URL da imagem"
-                      className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
                     <input
+                      aria-label={`Texto alternativo do selo ${selo.nome}`}
                       value={selo.altText || ""}
                       onChange={(event) =>
                         atualizarSelo(selo.id, { altText: event.target.value })
                       }
                       placeholder="Texto alternativo"
-                      className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
                     <input
+                      aria-label={`Link opcional do selo ${selo.nome}`}
                       value={selo.linkUrl || ""}
                       onChange={(event) =>
                         atualizarSelo(selo.id, { linkUrl: event.target.value })
                       }
                       placeholder="Link opcional"
-                      className="h-10 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500"
+                      disabled={!capacidades.editar}
+                      className="h-11 rounded-2xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                     />
                     <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
@@ -1483,17 +1628,20 @@ export default function MenuRodapeLojaClient({
                               ativo: event.target.checked,
                             })
                           }
-                          className="h-4 w-4 rounded border-slate-300"
+                          disabled={!capacidades.editar}
+                          className="h-5 w-5 rounded border-slate-300 disabled:cursor-not-allowed"
                         />
                         Ativo
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => removerSelo(selo.id)}
-                        className="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200"
-                      >
-                        Remover
-                      </button>
+                      {capacidades.editar ? (
+                        <button
+                          type="button"
+                          onClick={() => removerSelo(selo.id)}
+                          className="min-h-11 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 ring-1 ring-red-200"
+                        >
+                          Remover
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -1570,7 +1718,7 @@ export default function MenuRodapeLojaClient({
             <button
               type="button"
               onClick={salvarConfiguracao}
-              disabled={salvandoConfig || isPending}
+              disabled={!capacidades.editar || salvandoConfig || isPending}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
