@@ -585,7 +585,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   if (isPublicShell) {
     if (isLoja) {
       return (
-        <div className="loja-publica stella-storefront-render min-h-screen bg-white text-[#171916]">
+        <div className="loja-publica storefront-public-shell stella-storefront-render min-h-screen bg-white text-[#171916]">
           {children}
         </div>
       );

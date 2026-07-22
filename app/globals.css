@@ -30,6 +30,21 @@ body {
   --store-ink: #171916;
   --store-muted: #62645e;
   --store-hairline: #c9c7bf;
+  --store-bg: var(--store-paper);
+  --store-surface: #ffffff;
+  --store-surface-muted: #f5f6f4;
+  --store-text: var(--store-ink);
+  --store-text-muted: var(--store-muted);
+  --store-accent: #173642;
+  --store-border: rgb(23 25 22 / 18%);
+  --store-danger: #a43f3f;
+  --store-success: #276148;
+  --store-radius-sm: 0;
+  --store-radius-md: 0;
+  --store-radius-lg: 0;
+  --store-shadow-soft: 0 18px 50px rgb(23 25 22 / 7%);
+  --store-page-max: 100rem;
+  --store-section-gap: clamp(4rem, 8vw, 8rem);
   --font-storefront: "Helvetica Neue", "Neue Haas Grotesk Text Pro", Arial,
     sans-serif;
   --font-storefront-display: "Bodoni 72", Didot, "Bodoni MT", Georgia,
@@ -128,6 +143,10 @@ select:focus {
   border-color: var(--brand-blue) !important;
 }
 /* Sistema visual exclusivo da loja pública. */
+.storefront-public-shell {
+  overflow-x: clip;
+}
+
 .loja-publica :where(h1, h2, h3) {
   font-family: var(--font-storefront);
   font-weight: 500;
@@ -140,6 +159,230 @@ select:focus {
 
 .loja-publica .line-through {
   font-weight: 400;
+}
+
+/* Base reutilizavel das jornadas publicas fora do Builder. */
+.store-flow {
+  --brand-blue: var(--store-accent);
+  --brand-blue-dark: #0d2730;
+  --brand-blue-soft: #edf2f3;
+  --brand-blue-border: #b9c9cd;
+  min-width: 0;
+  overflow-x: clip;
+  background: var(--store-bg);
+  color: var(--store-text);
+}
+
+.store-flow :where(
+  .store-editorial-title,
+  .store-page-title,
+  .store-section-title,
+  .store-empty-state__title
+) {
+  font-family: var(--font-storefront-display);
+  font-synthesis-weight: none;
+  font-weight: 400;
+  hyphens: none;
+  letter-spacing: -0.045em;
+  overflow-wrap: normal;
+  text-transform: none;
+  text-wrap: balance;
+  word-break: normal;
+}
+
+.store-flow :where(p, li, dd) {
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: normal;
+}
+
+.store-flow :where(input, select, textarea) {
+  border-color: var(--store-border);
+  background-color: var(--store-surface);
+  color: var(--store-text);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.store-flow :where(input, select, textarea):focus-visible {
+  border-color: var(--store-accent) !important;
+  box-shadow: 0 0 0 3px rgb(23 54 66 / 12%);
+  outline: none;
+}
+
+.store-flow :where(input, textarea):-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--store-surface) inset;
+  -webkit-text-fill-color: var(--store-text);
+}
+
+.store-flow :where(.brand-button, button[class*="bg-slate-950"], a[class*="bg-slate-950"]) {
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.store-flow :where(.brand-button, .brand-button-outline) {
+  min-height: 3rem;
+}
+
+.store-flow :where(.brand-button):focus-visible,
+.store-flow :where(.brand-button-outline):focus-visible {
+  outline: 2px solid var(--store-accent);
+  outline-offset: 3px;
+}
+
+.store-page-header {
+  border-bottom: 1px solid var(--store-border);
+}
+
+.store-page-header__inner,
+.store-page-content {
+  width: min(100%, var(--store-page-max));
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 3vw, 3rem);
+}
+
+.store-page-header__inner {
+  padding-block: clamp(4rem, 8vw, 8rem);
+}
+
+.store-page-header__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 8rem);
+  align-items: end;
+}
+
+.store-page-header__grid--aside {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.46fr);
+}
+
+.store-page-header__copy {
+  max-width: 64rem;
+}
+
+.store-page-header__aside {
+  min-width: 0;
+}
+
+.store-eyebrow {
+  margin: 0;
+  color: var(--store-text-muted);
+  font-family: var(--font-storefront);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.23em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.store-page-title {
+  max-width: 16ch;
+  margin: 1rem 0 0;
+  font-size: clamp(3rem, 6vw, 6.5rem);
+  line-height: 0.92;
+}
+
+.store-page-lead,
+.store-section-lead {
+  max-width: 46rem;
+  margin: 1.5rem 0 0;
+  color: var(--store-text-muted);
+  font-size: clamp(0.9rem, 1.2vw, 1.05rem);
+  line-height: 1.8;
+}
+
+.store-section-header {
+  margin-bottom: clamp(2rem, 4vw, 4rem);
+  border-top: 1px solid var(--store-border);
+  padding-top: 1rem;
+}
+
+.store-section-title {
+  max-width: 18ch;
+  margin: 0.75rem 0 0;
+  font-size: clamp(2rem, 3vw, 3.5rem);
+  line-height: 1;
+}
+
+.store-empty-state {
+  border-block: 1px solid var(--store-border);
+  padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 4vw, 4rem);
+  text-align: center;
+}
+
+.store-empty-state__icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1.5rem;
+  place-items: center;
+  background: var(--store-surface-muted);
+  color: var(--store-accent);
+}
+
+.store-empty-state__title {
+  max-width: 22ch;
+  margin: 0 auto;
+  font-size: clamp(2rem, 4vw, 4rem);
+}
+
+.store-empty-state__description {
+  max-width: 38rem;
+  margin: 1rem auto 0;
+  color: var(--store-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+.store-empty-state__action {
+  margin-top: 2rem;
+}
+
+.store-product-page h1 {
+  font-size: clamp(2.5rem, 4.5vw, 5rem);
+  line-height: 0.96;
+}
+
+.store-product-page [class*="max-w-[1380px]"] {
+  max-width: var(--store-page-max);
+}
+
+.store-account-page :where(section, article, aside)[class*="bg-white"] {
+  border-color: var(--store-border);
+}
+
+.store-account-page main :where(div, section, article, aside, details)[class*="rounded-"],
+.store-order-page main :where(div, section, article, aside, details)[class*="rounded-"] {
+  border-radius: 0 !important;
+}
+
+.store-account-page main :where(div, section, article, aside)[class*="shadow"],
+.store-order-page main :where(div, section, article, aside)[class*="shadow"] {
+  box-shadow: none !important;
+}
+
+@media (max-width: 1023px) {
+  .store-page-header__inner {
+    padding-block: 3.5rem;
+  }
+
+  .store-page-header__grid--aside {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+
+  .store-page-header__aside {
+    max-width: 42rem;
+  }
+}
+
+@media (max-width: 767px) {
+
+  .store-page-title {
+    max-width: 13ch;
+  }
 }
 
 .stella-product-card {
@@ -303,6 +546,15 @@ select:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .store-flow *,
+  .store-flow *::before,
+  .store-flow *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .stella-product-card,
   .stella-product-normal-content,
   .stella-product-hover-overlay,

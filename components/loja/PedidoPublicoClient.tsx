@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import PagarPedidoStripeButton from "@/components/loja/PagarPedidoStripeButton";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import type { ComponentProps } from "react";
 
 type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
@@ -87,6 +88,7 @@ export type PedidoPublicoData = {
 type PedidoPublicoClientProps = {
   menus: MenuPublicoLojaProps["menus"];
   categoriasMenu: MenuPublicoLojaProps["categorias"];
+  configuracaoMenuRodape: MenuPublicoLojaProps["configuracaoMenuRodape"];
   pedido: PedidoPublicoData;
 };
 
@@ -207,6 +209,7 @@ function montarEndereco(pedido: PedidoPublicoData) {
 export default function PedidoPublicoClient({
   menus,
   categoriasMenu,
+  configuracaoMenuRodape,
   pedido,
 }: PedidoPublicoClientProps) {
 const possuiCupom = pedido.cupomDescontoValor > 0;
@@ -231,13 +234,15 @@ const pagamentoNaoConcluido =
   }, 0);
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow store-order-page min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -256,7 +261,7 @@ const pagamentoNaoConcluido =
                     : "Pedido recebido"}
                 </p>
 
-              <h1 className="mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
+              <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
                 {pedido.codigo}
               </h1>
                 <p className="mt-3 max-w-2xl text-sm font-light leading-6 text-slate-500">
@@ -608,6 +613,11 @@ const pagamentoNaoConcluido =
           </aside>
         </section>
       </main>
+
+      <RodapePublicoLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }

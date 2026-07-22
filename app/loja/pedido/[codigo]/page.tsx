@@ -7,6 +7,7 @@ import PedidoPublicoClient, {
 import AtualizarPedidoPagamentoClient from "@/components/loja/AtualizarPedidoPagamentoClient";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { criarMetadataLoja } from "@/lib/loja/seo";
 
 export const metadata: Metadata = criarMetadataLoja({
@@ -55,9 +56,10 @@ export default async function PedidoPublicoPage({
     notFound();
   }
 
-  const [menus, categoriasMenu] = await Promise.all([
+  const [menus, categoriasMenu, configuracaoMenuRodape] = await Promise.all([
     buscarMenusPublicos(),
     buscarCategoriasMenuPublico(),
+    buscarConfiguracaoMenuRodape(),
   ]);
 
   const pedido: PedidoPublicoData = {
@@ -144,6 +146,7 @@ return (
     <PedidoPublicoClient
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       pedido={pedido}
     />
   </div>

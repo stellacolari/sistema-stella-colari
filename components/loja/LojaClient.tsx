@@ -10,6 +10,7 @@ import MenuPublicoLoja, {
 import LojaFiltrosProdutos from "@/components/loja/LojaFiltrosProdutos";
 import ProdutoCardLoja from "@/components/loja/ProdutoCardLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
+import { StorePageHeader } from "@/components/loja/StorefrontPrimitives";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import styles from "./LojaClient.module.css";
@@ -72,6 +73,8 @@ type LojaClientProps = {
   categoriasMenu?: CategoriaMenuPublicoItem[];
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
   mostrarTodosProdutos?: boolean;
+  tituloPagina?: string;
+  descricaoPagina?: string | null;
   tituloVazio?: string;
   textoVazio?: string;
 };
@@ -110,7 +113,9 @@ function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
               <p className={styles.heroEyebrow}>{banner.subtitulo}</p>
             ) : null}
             {banner.titulo ? (
-              <h1 className={styles.heroTitle}>{banner.titulo}</h1>
+              <h1 className={`store-editorial-title ${styles.heroTitle}`}>
+                {banner.titulo}
+              </h1>
             ) : null}
             {banner.linkUrl ? (
               <span className={styles.heroAction}>Descobrir coleção</span>
@@ -400,10 +405,14 @@ export default function LojaClient({
   categoriasMenu = [],
   configuracaoMenuRodape,
   mostrarTodosProdutos = true,
+  tituloPagina,
+  descricaoPagina,
   tituloVazio = "Nenhum produto disponível no momento.",
   textoVazio = "Explore novamente em breve para conhecer novas peças.",
 }: LojaClientProps) {
   const bannerPrincipal = banners[0] ?? null;
+  const tituloEditorial =
+    tituloPagina || (!bannerPrincipal && mostrarTodosProdutos ? "Stella Colari" : null);
 
   const secoesComProdutos = useMemo(() => {
     return secoesHome.map((secao) => ({
@@ -441,7 +450,7 @@ export default function LojaClient({
   }));
 
   return (
-    <div className={styles.storefront}>
+    <div className={`store-flow ${styles.storefront}`}>
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -449,9 +458,18 @@ export default function LojaClient({
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       {bannerPrincipal && <BannerPrincipal banner={bannerPrincipal} />}
+
+      {!bannerPrincipal && tituloEditorial ? (
+        <StorePageHeader
+          eyebrow="Coleção Stella"
+          title={tituloEditorial}
+          description={descricaoPagina || "Explore as peças disponíveis nesta seleção."}
+        />
+      ) : null}
 
       <MicroFaixaDiferenciais />
 

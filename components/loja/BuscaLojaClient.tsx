@@ -127,15 +127,15 @@ export default function BuscaLojaClient({
   }
 
   return (
-    <main className="min-h-screen bg-white text-[#27251f]">
-      <section className="border-b border-[#27251f]/20 px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+    <main className="store-flow min-h-screen bg-white text-[#27251f]">
+      <section className="store-page-header px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <div className="mx-auto max-w-[var(--store-page-max)]">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#70695e]">
                 Loja Stella Colari
               </p>
-              <h1 className="mt-4 text-4xl font-normal uppercase leading-none tracking-[-0.04em] text-[#27251f] sm:text-6xl">
+              <h1 className="store-editorial-title mt-4 text-4xl font-normal leading-none tracking-[-0.04em] text-[#27251f] sm:text-6xl">
                 Busca
               </h1>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-[#645e54] sm:text-base">
@@ -149,6 +149,9 @@ export default function BuscaLojaClient({
               <label className="flex h-14 items-center gap-3 border-b border-[#27251f] bg-transparent px-0 transition focus-within:border-[#7b7161]">
                 <Search className="h-5 w-5 text-[#70695e]" />
                 <input
+                  type="search"
+                  name="q"
+                  aria-label="Buscar produtos"
                   value={termo}
                   onChange={(event) => setTermo(event.target.value)}
                   placeholder="Buscar por anel dourado, presente ate 100..."
@@ -194,7 +197,7 @@ export default function BuscaLojaClient({
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
+      <section className="store-page-content py-12 sm:py-16">
         {termoInicial && filtrosDetectados.precoMaximo ? (
           <div className="mb-4 border-y border-[#27251f]/20 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#5f594f]">
             Preco maximo detectado: {moeda(filtrosDetectados.precoMaximo)}
@@ -221,7 +224,7 @@ export default function BuscaLojaClient({
             <LojaFiltrosProdutos
               produtos={produtos}
               defaultOrder="destaque"
-              gridClassName="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3"
+              gridClassName="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-5 lg:grid-cols-3 xl:grid-cols-4"
               emptyTitle={
                 temResultados
                   ? "Nenhum produto encontrado com esses filtros."

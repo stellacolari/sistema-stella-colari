@@ -446,6 +446,8 @@ const banners: LojaBannerItem[] = categoria.imagemUrl
       categoriasMenu={categoriasMenu}
       configuracaoMenuRodape={configuracaoMenuRodape}
       mostrarTodosProdutos={false}
+      tituloPagina={categoria.nome}
+      descricaoPagina={categoria.descricao}
       tituloVazio={`Nenhum produto em ${categoria.nome}.`}
       textoVazio="Produtos vinculados a esta categoria aparecerão aqui automaticamente."
     />

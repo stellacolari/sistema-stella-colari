@@ -995,7 +995,7 @@ function preencherDadosClienteLogado() {
 
   if (pedidoFinalizado) {
     return (
-      <div className="min-h-screen bg-white text-slate-950">
+      <div className="store-flow store-checkout-page min-h-screen bg-white text-slate-950">
         <MenuPublicoLoja
           menus={menusPublicos}
           categorias={categoriasMenu}
@@ -1003,6 +1003,7 @@ function preencherDadosClienteLogado() {
           mostrarBusca
           mostrarPerfil
           mostrarCarrinho
+          mostrarFavoritos
         />
 
         <main className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-6 lg:px-8">
@@ -1010,7 +1011,7 @@ function preencherDadosClienteLogado() {
             <CheckCircle2 className="h-8 w-8" />
           </div>
 
-          <h1 className="mt-6 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
+          <h1 className="store-editorial-title mt-6 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
             Pedido realizado
           </h1>
 
@@ -1032,8 +1033,7 @@ function preencherDadosClienteLogado() {
           )}
 
           <p className="mt-6 text-sm font-light leading-6 text-slate-500">
-            O estoque dos produtos foi baixado automaticamente. A próxima etapa é
-            o acompanhamento interno do pedido online.
+            Acompanhe as próximas atualizações do pedido na área Minha Conta.
           </p>
 
           <Link
@@ -1053,7 +1053,7 @@ function preencherDadosClienteLogado() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow store-checkout-page min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -1061,6 +1061,7 @@ function preencherDadosClienteLogado() {
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -1069,7 +1070,7 @@ function preencherDadosClienteLogado() {
             Loja Stella
           </p>
 
-          <h1 className="mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
+          <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
             Checkout
           </h1>
 
@@ -1479,12 +1480,21 @@ function preencherDadosClienteLogado() {
 
                 <div className="mt-5 grid gap-4 md:grid-cols-3">
               <div className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
+                <label
+                  htmlFor="checkout-cep"
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                >
                   CEP
-                </span>
+                </label>
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <input
+                    id="checkout-cep"
+                    name="cep"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    aria-invalid={Boolean(erroCep)}
+                    aria-describedby={erroCep ? "checkout-cep-erro" : undefined}
                     value={form.cep}
                     onChange={(event) => atualizarCampo("cep", event.target.value)}
                     placeholder="00000-000"
@@ -1502,7 +1512,11 @@ function preencherDadosClienteLogado() {
                 </div>
 
                 {erroCep && (
-                  <p className="mt-2 text-xs text-red-700">
+                  <p
+                    id="checkout-cep-erro"
+                    className="mt-2 text-xs text-red-700"
+                    role="alert"
+                  >
                     {erroCep}
                   </p>
                 )}
@@ -1954,7 +1968,11 @@ function preencherDadosClienteLogado() {
               )}
 
               {erro && (
-                <div className="mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div
+                  className="mt-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  role="alert"
+                  aria-live="assertive"
+                >
                   {erro}
                 </div>
               )}

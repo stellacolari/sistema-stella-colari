@@ -71,7 +71,7 @@ export default function LoginClienteClient({
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
@@ -79,16 +79,17 @@ export default function LoginClienteClient({
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8">
-        <section className="flex min-h-[520px] items-center bg-[var(--brand-blue-soft)] p-8 md:p-12">
+        <section className="flex items-center bg-[var(--brand-blue-soft)] p-8 md:p-12 lg:min-h-[520px]">
           <div className="max-w-xl">
             <p className="text-xs font-semibold uppercase tracking-[0.26em] brand-text">
               Stella
             </p>
 
-            <h1 className="mt-4 text-4xl font-light tracking-tight text-slate-950 md:text-6xl">
+            <h1 className="store-editorial-title mt-4 text-4xl font-light tracking-tight text-slate-950 md:text-6xl">
               Acesse sua conta
             </h1>
 
@@ -116,7 +117,11 @@ export default function LoginClienteClient({
           </div>
 
           {erro && (
-            <div className="mt-5 flex gap-3 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              className="mt-5 flex gap-3 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              role="alert"
+              aria-live="assertive"
+            >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>{erro}</p>
             </div>
@@ -129,6 +134,9 @@ export default function LoginClienteClient({
               </span>
 
               <input
+                name="identificador"
+                autoComplete="username"
+                aria-invalid={Boolean(erro)}
                 value={identificador}
                 onChange={(event) => setIdentificador(event.target.value)}
                 className="h-12 w-full border border-slate-300 px-4 text-sm outline-none transition focus:border-[var(--brand-blue)]"
@@ -142,6 +150,9 @@ export default function LoginClienteClient({
 
               <input
                 type="password"
+                name="senha"
+                autoComplete="current-password"
+                aria-invalid={Boolean(erro)}
                 value={senha}
                 onChange={(event) => setSenha(event.target.value)}
                 onKeyDown={(event) => {

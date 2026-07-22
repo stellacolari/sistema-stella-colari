@@ -688,6 +688,9 @@ export default function ProdutoLojaClient({
   const [mensagemPresente, setMensagemPresente] = useState("");
   const [embalagemPresenteModalId, setEmbalagemPresenteModalId] =
     useState<string>("");
+  const modalEmbalagemRef = useRef<HTMLDivElement | null>(null);
+  const fecharModalEmbalagemRef = useRef<HTMLButtonElement | null>(null);
+  const focoAnteriorModalRef = useRef<HTMLElement | null>(null);
 
   const produtoTemTamanho =
     temVariacao || produto.tamanhosDisponiveis.length > 0;
@@ -792,6 +795,59 @@ export default function ProdutoLojaClient({
       ) || null
     );
   }, [embalagemPresenteModalId, embalagensPresente]);
+
+  useEffect(() => {
+    if (!embalagemPresenteModal) {
+      return;
+    }
+
+    focoAnteriorModalRef.current = document.activeElement as HTMLElement | null;
+    const overflowAnterior = document.body.style.overflow;
+    const focoInicial = window.requestAnimationFrame(() => {
+      fecharModalEmbalagemRef.current?.focus();
+    });
+
+    function controlarModal(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setEmbalagemPresenteModalId("");
+        return;
+      }
+
+      if (event.key !== "Tab" || !modalEmbalagemRef.current) {
+        return;
+      }
+
+      const focaveis = Array.from(
+        modalEmbalagemRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+
+      if (!primeiro || !ultimo) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === primeiro) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && document.activeElement === ultimo) {
+        event.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", controlarModal);
+
+    return () => {
+      window.cancelAnimationFrame(focoInicial);
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", controlarModal);
+      focoAnteriorModalRef.current?.focus();
+    };
+  }, [embalagemPresenteModal]);
 
   const valorAdicionalSelecionado = Number(
     opcaoAdicionalSelecionada?.valorVenda || 0,
@@ -1070,7 +1126,7 @@ export default function ProdutoLojaClient({
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow store-product-page min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -1078,9 +1134,27 @@ export default function ProdutoLojaClient({
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main>
+        <nav
+          aria-label="Navegação estrutural"
+          className="mx-auto max-w-[var(--store-page-max)] px-5 pt-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:px-6 lg:px-8"
+        >
+          <ol className="flex min-w-0 items-center gap-2">
+            <li>
+              <Link href="/loja" className="transition hover:text-slate-950">
+                Loja
+              </Link>
+            </li>
+            <li aria-hidden="true">/</li>
+            <li className="truncate text-slate-800" aria-current="page">
+              {produto.nome}
+            </li>
+          </ol>
+        </nav>
+
         <section className="mx-auto grid max-w-[1380px] items-start gap-6 px-5 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:px-8 lg:py-8">
           <div
             className={`grid gap-6 self-start ${
@@ -1112,6 +1186,11 @@ export default function ProdutoLojaClient({
                         key={`${imagem}-${index}`}
                         type="button"
                         onClick={() => irParaImagem(index)}
+                        aria-label={`Ver imagem ${index + 1} de ${produto.nome}`}
+                        aria-pressed={
+                          !imagemVariacaoSelecionada &&
+                          indiceImagemSelecionada === index
+                        }
                         className={`h-[84px] w-[84px] overflow-hidden bg-white transition ${
                           !imagemVariacaoSelecionada &&
                           indiceImagemSelecionada === index
@@ -1150,25 +1229,30 @@ export default function ProdutoLojaClient({
               {imagemSelecionada ? (
                 <>
                   <div className="relative aspect-square overflow-hidden">
-                    <div
-                      className="absolute inset-0 h-full w-full bg-cover bg-center bg-no-repeat"
-                      style={{
-                        backgroundImage: `url(${imagemSelecionada})`,
-                      }}
-                      aria-label={produto.nome}
+                    {/* A galeria aceita URLs de mídia cadastradas sem domínio fixo. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imagemSelecionada}
+                      alt={produto.nome}
+                      className="absolute inset-0 h-full w-full object-cover object-center"
                     />
 
                     <div className="pointer-events-none absolute inset-0 bg-black/5" />
                   </div>
 
                   {possuiMaisDeUmaImagem && (
-                    <div className="grid grid-cols-4 gap-3 p-4 lg:hidden">
-                      {galeriaExibicao.slice(0, 4).map((imagem, index) => (
+                    <div className="scrollbar-hidden flex gap-3 overflow-x-auto p-4 lg:hidden">
+                      {galeriaExibicao.map((imagem, index) => (
                         <button
                           key={`${imagem}-${index}`}
                           type="button"
                           onClick={() => irParaImagem(index)}
-                          className={`aspect-square overflow-hidden bg-white transition ${
+                          aria-label={`Ver imagem ${index + 1} de ${produto.nome}`}
+                          aria-pressed={
+                            !imagemVariacaoSelecionada &&
+                            indiceImagemSelecionada === index
+                          }
+                          className={`h-20 w-20 shrink-0 overflow-hidden bg-white transition ${
                             !imagemVariacaoSelecionada &&
                             indiceImagemSelecionada === index
                               ? "opacity-100"
@@ -1176,11 +1260,11 @@ export default function ProdutoLojaClient({
                           }`}
                         >
                           <div className="relative h-full w-full">
-                            <div
-                              className="h-full w-full bg-cover bg-center bg-no-repeat"
-                              style={{
-                                backgroundImage: `url(${imagem})`,
-                              }}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imagem}
+                              alt=""
+                              className="h-full w-full object-cover object-center"
                             />
 
                             <div className="pointer-events-none absolute inset-0 bg-black/5" />
@@ -1200,7 +1284,7 @@ export default function ProdutoLojaClient({
 
           <aside className="h-fit bg-white p-6 lg:sticky lg:top-24">
             <div>
-              <h1 className="text-2xl font-medium leading-tight tracking-wide text-slate-950 sm:text-3xl">
+              <h1 className="store-editorial-title max-w-[16ch] text-slate-950">
                 {produto.nome}
               </h1>
 
@@ -1968,19 +2052,29 @@ export default function ProdutoLojaClient({
 
       {embalagemPresenteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-5 py-8">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white shadow-2xl">
+          <div
+            ref={modalEmbalagemRef}
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-modal-embalagem"
+          >
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
                   Embalagem para presente
                 </p>
 
-                <h2 className="mt-1 text-lg font-medium text-slate-950">
+                <h2
+                  id="titulo-modal-embalagem"
+                  className="mt-1 text-lg font-medium text-slate-950"
+                >
                   {embalagemPresenteModal.nome}
                 </h2>
               </div>
 
               <button
+                ref={fecharModalEmbalagemRef}
                 type="button"
                 onClick={() => setEmbalagemPresenteModalId("")}
                 className="flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-500 transition hover:border-slate-950 hover:text-slate-950"

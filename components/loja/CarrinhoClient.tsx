@@ -444,7 +444,7 @@ export default function CarrinhoClient({
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menusPublicos}
         categorias={categoriasMenu}
@@ -452,6 +452,7 @@ export default function CarrinhoClient({
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -460,7 +461,7 @@ export default function CarrinhoClient({
             Stella Colari
           </p>
 
-          <h1 className="mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
+          <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
             Carrinho
           </h1>
 
@@ -685,6 +686,7 @@ export default function CarrinhoClient({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
+                            aria-label={`Diminuir quantidade de ${item.nome}`}
                             onClick={() =>
                               alterarQuantidade(itemKey, item.quantidade - 1)
                             }
@@ -709,6 +711,7 @@ export default function CarrinhoClient({
 
                           <button
                             type="button"
+                            aria-label={`Aumentar quantidade de ${item.nome}`}
                             onClick={() =>
                               alterarQuantidade(itemKey, item.quantidade + 1)
                             }
@@ -815,7 +818,14 @@ export default function CarrinhoClient({
 
               <Link
                 href="/loja/checkout"
-                onClick={() =>
+                aria-disabled={possuiItemSemEstoque}
+                tabIndex={possuiItemSemEstoque ? -1 : undefined}
+                onClick={(event) => {
+                  if (possuiItemSemEstoque) {
+                    event.preventDefault();
+                    return;
+                  }
+
                   registrarCheckoutIniciado({
                     origem: "carrinho",
                     metadata: {
@@ -824,7 +834,7 @@ export default function CarrinhoClient({
                       subtotal,
                     },
                   })
-                }
+                }}
                 className={`mt-5 flex w-full items-center justify-center px-4 py-3 text-sm font-medium text-white transition ${
                   possuiItemSemEstoque
                     ? "pointer-events-none bg-slate-300"

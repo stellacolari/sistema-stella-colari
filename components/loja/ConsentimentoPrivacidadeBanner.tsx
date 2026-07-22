@@ -104,7 +104,12 @@ export default function ConsentimentoPrivacidadeBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[80] border-t border-[#27251f]/20 bg-white/95 backdrop-blur-md">
+    <div
+      className="fixed inset-x-0 bottom-0 z-[80] max-h-[min(90vh,46rem)] overflow-y-auto border-t border-[#27251f]/20 bg-white/95 backdrop-blur-md"
+      role="region"
+      aria-label="Preferências de privacidade"
+      aria-live="polite"
+    >
       <section className="mx-auto max-w-7xl px-5 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center border border-[#27251f]/20 text-[#27251f] sm:flex">

@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -230,6 +232,10 @@ export default function LojaFiltrosProdutos<
   const searchParams = useSearchParams();
   const searchParamsString = searchParams.toString();
   const [painelAberto, setPainelAberto] = useState(false);
+  const filtrosMobileId = useId();
+  const tituloFiltrosMobileId = useId();
+  const gatilhoFiltrosRef = useRef<HTMLButtonElement | null>(null);
+  const painelFiltrosRef = useRef<HTMLDivElement | null>(null);
 
   const filtrosDisponiveis = useMemo(
     () => derivarFiltrosDisponiveis(produtos),
@@ -298,6 +304,61 @@ export default function LojaFiltrosProdutos<
   useEffect(() => {
     setDraft(filtrosUrl);
   }, [filtrosUrl]);
+
+  useEffect(() => {
+    if (!painelAberto) return;
+
+    const overflowAnterior = document.body.style.overflow;
+
+    const focoInicial = window.requestAnimationFrame(() => {
+      painelFiltrosRef.current
+        ?.querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        )
+        ?.focus();
+    });
+
+    function controlarTeclado(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPainelAberto(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !painelFiltrosRef.current) {
+        return;
+      }
+
+      const focaveis = Array.from(
+        painelFiltrosRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      const primeiro = focaveis[0];
+      const ultimo = focaveis.at(-1);
+
+      if (!primeiro || !ultimo) {
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === primeiro) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && document.activeElement === ultimo) {
+        event.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", controlarTeclado);
+
+    return () => {
+      window.cancelAnimationFrame(focoInicial);
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", controlarTeclado);
+      gatilhoFiltrosRef.current?.focus();
+    };
+  }, [painelAberto]);
 
   const filtrosAplicaveis = useMemo(
     () => montarFiltrosAplicaveis(filtrosUrl),
@@ -665,9 +726,12 @@ export default function LojaFiltrosProdutos<
         </div>
 
         <button
+          ref={gatilhoFiltrosRef}
           type="button"
           onClick={() => setPainelAberto(true)}
           className={styles.mobileTrigger}
+          aria-expanded={painelAberto}
+          aria-controls={filtrosMobileId}
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filtrar
@@ -705,10 +769,20 @@ export default function LojaFiltrosProdutos<
             onClick={() => setPainelAberto(false)}
             className={styles.mobileBackdrop}
           />
-          <div className={styles.mobileDrawer}>
+          <div
+            ref={painelFiltrosRef}
+            id={filtrosMobileId}
+            className={styles.mobileDrawer}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={tituloFiltrosMobileId}
+          >
             <div className={styles.mobileDrawerHeader}>
               <div>
-                <p className={styles.drawerEyebrow}>
+                <p
+                  id={tituloFiltrosMobileId}
+                  className={styles.drawerEyebrow}
+                >
                   Filtros
                 </p>
                 <p className={styles.drawerCount}>

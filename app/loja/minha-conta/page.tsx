@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
+import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { obterResumoWhatsappPublicoCliente } from "@/lib/clientes/consentimentos-cliente";
 import MinhaContaClient, {
   type MinhaContaClienteData,
@@ -31,10 +32,12 @@ export default async function MinhaContaPage() {
     redirect("/loja/entrar");
   }
 
-  const [menus, categoriasMenu, clienteRaw] = await Promise.all([
-    buscarMenusPublicos(),
-    buscarCategoriasMenuPublico(),
-    prisma.cliente.findUnique({
+  const [menus, categoriasMenu, configuracaoMenuRodape, clienteRaw] =
+    await Promise.all([
+      buscarMenusPublicos(),
+      buscarCategoriasMenuPublico(),
+      buscarConfiguracaoMenuRodape(),
+      prisma.cliente.findUnique({
       where: {
         id: clienteId,
       },
@@ -109,8 +112,8 @@ export default async function MinhaContaPage() {
           },
         },
       },
-    }),
-  ]);
+      }),
+    ]);
 
   if (!clienteRaw || clienteRaw.status === "NA_LIXEIRA") {
     redirect("/loja/entrar");
@@ -189,6 +192,7 @@ export default async function MinhaContaPage() {
     <MinhaContaClient
       menus={menus}
       categoriasMenu={categoriasMenu}
+      configuracaoMenuRodape={configuracaoMenuRodape}
       cliente={cliente}
     />
   );

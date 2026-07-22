@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
+import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import SairClienteButton from "@/components/loja/SairClienteButton";
 import { abrirPreferenciasPrivacidade } from "@/lib/loja/consentimento-privacidade";
 
@@ -104,6 +105,7 @@ export type MinhaContaClienteData = {
 type MinhaContaClientProps = {
   menus: MenuPublicoLojaProps["menus"];
   categoriasMenu: MenuPublicoLojaProps["categorias"];
+  configuracaoMenuRodape: MenuPublicoLojaProps["configuracaoMenuRodape"];
   cliente: MinhaContaClienteData;
 };
 
@@ -318,6 +320,7 @@ function CampoTexto({
 export default function MinhaContaClient({
   menus,
   categoriasMenu,
+  configuracaoMenuRodape,
   cliente,
 }: MinhaContaClientProps) {
   const [abaAtiva, setAbaAtiva] = useState<AbaConta>("PEDIDOS");
@@ -514,13 +517,15 @@ export default function MinhaContaClient({
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="store-flow store-account-page min-h-screen bg-white text-slate-950">
       <MenuPublicoLoja
         menus={menus}
         categorias={categoriasMenu}
+        configuracaoMenuRodape={configuracaoMenuRodape}
         mostrarBusca
         mostrarPerfil
         mostrarCarrinho
+        mostrarFavoritos
       />
 
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
@@ -531,7 +536,7 @@ export default function MinhaContaClient({
                 Minha conta
               </p>
 
-              <h1 className="mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
+              <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
                 Olá, {getPrimeiroNomeCliente(cliente)}
               </h1>
 
@@ -1302,6 +1307,11 @@ export default function MinhaContaClient({
           </div>
         </section>
       </main>
+
+      <RodapePublicoLoja
+        menus={menus}
+        configuracaoMenuRodape={configuracaoMenuRodape}
+      />
     </div>
   );
 }
