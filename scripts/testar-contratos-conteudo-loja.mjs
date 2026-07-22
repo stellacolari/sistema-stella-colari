@@ -70,6 +70,50 @@ for (const contract of CONTEUDO_CONTRATOS) {
 }
 
 const home = getConteudoContratoVersionado("home", 1);
+const overlayField = home.sections
+  .flatMap((section) => section.campos)
+  .find((field) => field.key === "hero.overlayOpacity");
+assert.deepEqual(
+  {
+    tipo: overlayField?.tipo,
+    controle: overlayField?.controle,
+    minimo: overlayField?.minimo,
+    maximo: overlayField?.maximo,
+    valorPadrao: overlayField?.valorPadrao,
+    sufixo: overlayField?.sufixo,
+  },
+  {
+    tipo: "NUMERO",
+    controle: "SLIDER",
+    minimo: 0,
+    maximo: 100,
+    valorPadrao: 58,
+    sufixo: "%",
+  },
+);
+for (const opacity of [0, 25, 50, 75, 100]) {
+  const normalizedOpacity = normalizarConteudoPagina(home, {
+    ...criarConteudoPadrao(home),
+    values: {
+      ...criarConteudoPadrao(home).values,
+      "hero.overlayOpacity": opacity,
+    },
+  });
+  assert.equal(normalizedOpacity.values["hero.overlayOpacity"], opacity);
+  assert.equal(
+    projetarConteudoPublico(home, normalizedOpacity).conteudo.values[
+      "hero.overlayOpacity"
+    ],
+    opacity,
+  );
+}
+assert.equal(
+  normalizarConteudoPagina(home, {
+    ...criarConteudoPadrao(home),
+    values: { ...criarConteudoPadrao(home).values, "hero.overlayOpacity": 140 },
+  }).values["hero.overlayOpacity"],
+  100,
+);
 const invalidHome = criarConteudoPadrao(home);
 invalidHome.values["hero.title"] = "Viva Stella Colari.";
 invalidHome.values["hero.primaryHref"] = "javascript:alert(1)";

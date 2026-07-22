@@ -398,7 +398,7 @@ export function normalizarBannerHeroV2Config(value: unknown): BannerHeroV2Config
       overlay: {
         ativo: getBoolean(overlay.ativo, true),
         cor: getString(overlay.cor, "#000000"),
-        opacidade: clamp(getNumber(overlay.opacidade, 28), 0, 90),
+        opacidade: clamp(getNumber(overlay.opacidade, 28), 0, 100),
       },
       conteudo: {
         ativo: getBoolean(conteudo.ativo, true),

@@ -125,6 +125,15 @@ function applyHero(
   setContent("titulo", "hero.title");
   setContent("texto", "hero.text");
 
+  const overlayOpacity = values["hero.overlayOpacity"];
+  if (typeof overlayOpacity === "number" && Number.isFinite(overlayOpacity)) {
+    slide.overlay = {
+      ...asRecord(slide.overlay),
+      ativo: true,
+      opacidade: Math.max(0, Math.min(100, overlayOpacity)),
+    };
+  }
+
   const buttons = cloneRecordArray(content.botoes);
   const buttonFields = [
     ["hero.primaryLabel", "hero.primaryHref"],

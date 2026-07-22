@@ -272,6 +272,46 @@ function Field({
     );
   }
 
+  if (field.tipo === "NUMERO" && field.controle === "SLIDER") {
+    const minimo = field.minimo ?? 0;
+    const maximo = field.maximo ?? 100;
+    const numeroAtual = Math.min(
+      maximo,
+      Math.max(minimo, typeof value === "number" ? value : Number(field.valorPadrao)),
+    );
+
+    return (
+      <label className="block border-t border-slate-200 py-5 first:border-t-0 first:pt-0">
+        <span className="flex items-center justify-between gap-4">
+          <span className="text-sm font-semibold text-slate-900">{field.label}</span>
+          <output className="min-w-14 rounded-lg bg-[var(--brand-blue-soft)] px-2.5 py-1 text-center text-sm font-semibold tabular-nums text-[var(--brand-blue-dark)]">
+            {numeroAtual}{field.sufixo}
+          </output>
+        </span>
+        {field.descricao ? (
+          <span className="mb-3 mt-1 block text-sm leading-6 text-slate-500">
+            {field.descricao}
+          </span>
+        ) : null}
+        <input
+          type="range"
+          value={numeroAtual}
+          min={minimo}
+          max={maximo}
+          step={field.passo ?? 1}
+          onChange={(event) => onChange(Number(event.target.value))}
+          disabled={disabled}
+          aria-label={`${field.label}: ${numeroAtual}${field.sufixo}`}
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-[var(--brand-blue)] disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <span className="mt-2 flex justify-between text-xs font-medium tabular-nums text-slate-400">
+          <span>{minimo}{field.sufixo}</span>
+          <span>{maximo}{field.sufixo}</span>
+        </span>
+      </label>
+    );
+  }
+
   const id = `content-field-${field.key.replace(/[^a-zA-Z0-9]/g, "-")}`;
   const textValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
 

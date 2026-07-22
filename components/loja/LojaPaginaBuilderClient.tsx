@@ -1653,7 +1653,7 @@ export default function LojaPaginaBuilderClient({
       className="stella-storefront-render min-h-screen bg-white text-[#171916]"
       data-stella-home-experience={
         usarStellaHomeExperience
-          ? "shared-v2"
+          ? "shared-v3"
           : homeGerenciada
             ? "indisponivel"
             : undefined

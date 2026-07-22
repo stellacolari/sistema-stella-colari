@@ -354,6 +354,12 @@ export function adaptarBuilderLegado(
     // precisa refletir a saída visual real, não o texto obsoleto ainda guardado
     // no bloco, para que restaurar/publicar não crie uma divergência invisível.
     values["hero.title"] = STELLA_HOME_HERO_TITLE;
+    const heroSlide = asRecord(asArray(asRecord(hero.configJson).slides)[0]);
+    const heroOverlay = asRecord(heroSlide.overlay);
+    values["hero.overlayOpacity"] = Math.max(
+      0,
+      Math.min(100, numberValue(heroOverlay.opacidade, 58)),
+    );
   }
   usados.push(hero);
 

@@ -404,10 +404,13 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
         )}
       </div>
 
-      {hasHeroMedia && slide.overlay.ativo ? (
-        <div className="absolute inset-0 -z-10" style={overlayStyle} />
+      {hasHeroMedia && slide.overlay.ativo && slide.overlay.opacidade > 0 ? (
+        <div
+          className="absolute inset-0 -z-10"
+          style={overlayStyle}
+          data-stella-hero-overlay={`${slide.overlay.opacidade}%`}
+        />
       ) : null}
-      {hasHeroMedia ? <div className={`${styles.heroShade} absolute inset-0 -z-10`} /> : null}
 
       {!hasVisibleTitle ? (
         <h1 id={`stella-hero-${bloco.id}`} className="sr-only">

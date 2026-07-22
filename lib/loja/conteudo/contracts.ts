@@ -61,6 +61,8 @@ export type ConteudoCampoDefinicao = {
   minimo?: number;
   maximo?: number;
   passo?: number;
+  controle?: "SLIDER";
+  sufixo?: string;
   proporcaoDesktop?: number;
   proporcaoMobile?: number;
   tamanhoRecomendadoDesktop?: string;
@@ -354,6 +356,10 @@ const numero = (
   valorPadrao: number,
   minimo: number,
   maximo: number,
+  opcoes: Pick<
+    ConteudoCampoDefinicao,
+    "controle" | "descricao" | "passo" | "sufixo"
+  > = {},
 ): ConteudoCampoDefinicao => ({
   key,
   label,
@@ -362,6 +368,7 @@ const numero = (
   minimo,
   maximo,
   passo: 1,
+  ...opcoes,
 });
 
 const seoSection = (): ConteudoSecaoDefinicao => ({
@@ -516,7 +523,13 @@ const homeContract: ConteudoContrato = {
       campos: heroFields("hero", {
         eyebrow: "",
         title: "Viva Stella Colari.",
-      }),
+      }).concat(
+        numero("hero.overlayOpacity", "Opacidade do overlay", 58, 0, 100, {
+          controle: "SLIDER",
+          descricao: "Controla somente a camada de cor sobre a imagem do Hero.",
+          sufixo: "%",
+        }),
+      ),
     },
     {
       key: "categories",

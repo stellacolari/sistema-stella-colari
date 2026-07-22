@@ -95,7 +95,7 @@ assert.match(files.editor, /Preview publicado/);
 assert.match(files.editor, /Restaurar publicado/);
 assert.match(files.editor, /embed=1/);
 assert.match(files.builder, /data-stella-home-experience/);
-assert.match(files.builder, /shared-v2/);
+assert.match(files.builder, /shared-v3/);
 assert.match(files.builder, /homeGerenciada/);
 assert.match(files.builder, /indisponivel/);
 assert.match(files.homeExperience, /StellaHomeBlockRenderer/);
