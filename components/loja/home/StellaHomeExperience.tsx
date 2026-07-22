@@ -12,7 +12,10 @@ import type {
   ConteudoPaginaPublica,
 } from "@/lib/loja/conteudo/contracts";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
-import type { StellaHomeBlockKey } from "@/lib/loja/stella-home-contract";
+import {
+  STELLA_HOME_BLOCK_ORDER,
+  type StellaHomeBlockKey,
+} from "@/lib/loja/stella-home-contract";
 
 export type StellaHomeExperiencePage = {
   id: string;
@@ -293,13 +296,11 @@ function applyProducts(
     }
   }
 
-  if (prefix === "featured") {
-    if (changed("featured.ctaLabel")) {
-      result.textoLinkSecao = stringValue(values["featured.ctaLabel"]);
-    }
-    if (changed("featured.ctaHref")) {
-      result.linkSecao = stringValue(values["featured.ctaHref"]);
-    }
+  if (changed(`${prefix}.ctaLabel`)) {
+    result.textoLinkSecao = stringValue(values[`${prefix}.ctaLabel`]);
+  }
+  if (changed(`${prefix}.ctaHref`)) {
+    result.linkSecao = stringValue(values[`${prefix}.ctaHref`]);
   }
 
   return result;
@@ -449,9 +450,27 @@ function materializeManagedBlocks({
   // carregam apenas a base visual congelada na primeira publicação.
   const changed = () => true;
 
-  return blocos.flatMap((bloco) => {
+  const orderIndex = new Map(
+    STELLA_HOME_BLOCK_ORDER.map((blockKey, index) => [blockKey, index]),
+  );
+  const blocosOrdenados = blocos
+    .map((bloco, index) => ({ bloco, index }))
+    .sort((a, b) => {
+      const orderA = a.bloco.stellaHomeKey
+        ? orderIndex.get(a.bloco.stellaHomeKey)
+        : undefined;
+      const orderB = b.bloco.stellaHomeKey
+        ? orderIndex.get(b.bloco.stellaHomeKey)
+        : undefined;
+      return (orderA ?? Number.MAX_SAFE_INTEGER) -
+        (orderB ?? Number.MAX_SAFE_INTEGER) || a.index - b.index;
+    })
+    .map(({ bloco }) => bloco);
+
+  return blocosOrdenados.flatMap((bloco) => {
     const blockKey = bloco.stellaHomeKey;
     if (!blockKey) return [bloco];
+    if (blockKey === "home.novidades-cta") return [];
     const section = SECTION_BY_BLOCK[blockKey];
     if (section && values[`${section}.enabled`] === false) return [];
 
@@ -465,8 +484,6 @@ function materializeManagedBlocks({
       nextConfig = applyCategories(config, "categories", values, categorias, changed);
     } else if (blockKey === "home.novidades") {
       nextConfig = applyProducts(config, "newArrivals", values, produtos, changed);
-    } else if (blockKey === "home.novidades-cta") {
-      nextConfig = applyCta(config, "newArrivals", values, changed);
     } else if (blockKey === "home.editorial") {
       nextConfig = applyEditorial(config, "editorial", values, changed);
     } else if (blockKey === "home.destaques") {

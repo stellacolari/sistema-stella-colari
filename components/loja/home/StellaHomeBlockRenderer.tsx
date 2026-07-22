@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type {
   ComponentPropsWithoutRef,
   CSSProperties,
@@ -504,7 +505,6 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
         className={`${styles.heroFooter} ${hasHeroMedia ? "" : styles.heroFooterBrand}`}
         aria-hidden="true"
       >
-        <span>Stella Colari</span>
         <span>↓</span>
       </div>
     </section>
@@ -744,17 +744,25 @@ function SectionHeading({
   eyebrow,
   titulo,
   descricao,
+  action,
+  showDivider = true,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   titulo: string;
   descricao?: string;
+  action?: ReactNode;
+  showDivider?: boolean;
 }) {
   return (
-    <div className={`${styles.sectionHeading} border-t border-current/20 pt-5`}>
+    <div
+      className={`${styles.sectionHeading} ${action ? styles.sectionHeadingWithAction : ""} ${showDivider ? "border-t border-current/20 pt-5" : ""}`}
+    >
       <div className={styles.sectionHeadingCopy}>
-        <p className={`${styles.sectionEyebrow} text-[10px] font-semibold uppercase text-current/70`}>
-          {eyebrow}
-        </p>
+        {eyebrow ? (
+          <p className={`${styles.sectionEyebrow} text-[10px] font-semibold uppercase text-current/70`}>
+            {eyebrow}
+          </p>
+        ) : null}
         <h2
           data-stella-inline-field="titulo"
           className={`${styles.sectionTitle} uppercase text-current`}
@@ -770,6 +778,7 @@ function SectionHeading({
           </p>
         ) : null}
       </div>
+      {action ? <div className={styles.sectionHeadingAction}>{action}</div> : null}
     </div>
   );
 }
@@ -788,11 +797,29 @@ function StellaNewArrivals({
 
   const titulo = getStringWithDefault(config, "titulo", "Novidades");
   const descricao = getStringWithDefault(config, ["descricao", "subtitulo", "texto"]);
+  const ctaLabel = getStringWithDefault(config, "textoLinkSecao");
+  const ctaHref = normalizeHref(getStringWithDefault(config, "linkSecao"));
 
   return (
     <RevealSection className={`${styles.productsSection} bg-white px-5 py-20 text-[#171916] sm:px-7 md:py-28 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
-        <SectionHeading eyebrow="Seleção atual" titulo={titulo} descricao={descricao} />
+        <SectionHeading
+          eyebrow="Seleção atual"
+          titulo={titulo}
+          descricao={descricao}
+          showDivider={false}
+          action={
+            ctaLabel && ctaHref ? (
+              <SmartLink
+                href={ctaHref}
+                className="inline-flex min-h-12 items-center gap-4 border border-[#171916] px-6 text-xs font-semibold uppercase tracking-[0.16em] text-[#171916] transition hover:bg-[#171916] hover:text-white"
+              >
+                {ctaLabel}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </SmartLink>
+            ) : null
+          }
+        />
         <CarouselScrollArea
           enabled
           showArrows
@@ -932,15 +959,17 @@ function StellaEditorialFeature({
           className={`${styles.editorialCopyColumn} flex items-center border-black/15 px-5 py-18 sm:px-10 md:px-14 lg:border-l lg:py-24 xl:px-20 ${content.imagemPrimeiro ? "lg:order-2" : "lg:order-1 lg:border-l-0 lg:border-r"}`}
         >
           <div className="max-w-xl">
-            <p
-              className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${gift ? "text-white" : "text-[#555750]"}`}
-            >
-              {gift ? "Presentes" : story ? "História" : "Editorial Stella"}
-            </p>
+            {gift || story ? (
+              <p
+                className={`text-[10px] font-semibold uppercase tracking-[0.28em] ${gift ? "text-white" : "text-[#555750]"}`}
+              >
+                {gift ? "Presentes" : "História"}
+              </p>
+            ) : null}
             {hasTitulo ? (
               <h2
                 data-stella-inline-field="titulo"
-                className={`${styles.editorialTitle} mt-6 uppercase`}
+                className={`${styles.editorialTitle} ${gift || story ? "mt-6" : ""} uppercase`}
               >
                 <EditorialTitleText text={content.titulo} />
               </h2>
@@ -1103,7 +1132,19 @@ function StellaFeaturedSelection({
   produtos: StellaHomeProduct[];
 }) {
   const config = asConfig(bloco.configJson);
-  const itens = filtrarProdutos(produtos, config).slice(0, 5);
+  const produtosValidos = filtrarProdutos(produtos, config).filter(
+    (produto) =>
+      produto.disponivel &&
+      Boolean(produto.nome.trim()) &&
+      Number.isFinite(produto.precoVenda) &&
+      produto.precoVenda >= 0,
+  );
+  const quantidade = produtosValidos.length >= 5
+    ? 5
+    : produtosValidos.length >= 3
+      ? 3
+      : produtosValidos.length;
+  const itens = produtosValidos.slice(0, quantidade);
   const ctaLabel = getStringWithDefault(config, "textoLinkSecao");
   const ctaHref = normalizeHref(getStringWithDefault(config, "linkSecao"));
 
@@ -1117,15 +1158,19 @@ function StellaFeaturedSelection({
           titulo={getStringWithDefault(config, "titulo", "Destaques")}
           descricao={getStringWithDefault(config, ["descricao", "subtitulo"])}
         />
-        <div className="mt-12 grid gap-px bg-black/20 lg:grid-cols-[1.08fr_.92fr]">
-          <StellaProductCard produto={itens[0]} config={config} />
-          <div className="grid grid-cols-2 gap-px bg-black/20">
-            {itens.slice(1).map((produto) => (
-              <div key={produto.id} className="bg-[#f2f2f0]">
-                <StellaProductCard produto={produto} config={config} />
-              </div>
-            ))}
+        <div className={`mt-12 grid gap-px bg-black/20 ${itens.length > 1 ? "xl:grid-cols-[1.08fr_.92fr]" : ""}`}>
+          <div className="bg-[#f2f2f0]">
+            <StellaProductCard produto={itens[0]} config={config} />
           </div>
+          {itens.length > 1 ? (
+            <div className={`grid gap-px bg-black/20 ${itens.length > 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+              {itens.slice(1).map((produto) => (
+                <div key={produto.id} className="bg-[#f2f2f0]">
+                  <StellaProductCard produto={produto} config={config} />
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         {ctaLabel && ctaHref ? (
           <div className="mt-10 text-center">
@@ -1237,8 +1282,7 @@ function StellaEditorialGallery({
     <RevealSection className={`${styles.gallerySection} bg-[#f2f2f0] px-5 py-20 text-[#171916] sm:px-7 md:py-32 lg:px-12`}>
       <div className="mx-auto max-w-[100rem]">
         <SectionHeading
-          eyebrow="Atmosfera"
-          titulo={getStringWithDefault(config, "titulo", "Galeria editorial")}
+          titulo={getStringWithDefault(config, "titulo", "Feito para você")}
           descricao={getStringWithDefault(config, "descricao")}
         />
         <div
@@ -1359,73 +1403,34 @@ function StellaInlineCta({ bloco }: { bloco: StellaHomeBlock }) {
 
 function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
   const config = asConfig(bloco.configJson);
-  const exibirTexto = getBoolean(config, "exibirTexto", true);
-  const titulo = getStringWithDefault(config, "titulo", "Continue explorando");
-  const texto = getStringWithDefault(config, ["texto", "descricao"]);
-  const primarioTexto = getStringWithDefault(config, [
-    "textoBotaoPrimario",
-    "textoBotao",
-  ]);
-  const primarioHref = normalizeHref(
-    getStringWithDefault(config, ["linkBotaoPrimario", "linkBotao"])
+  const titulo = getStringWithDefault(
+    config,
+    "titulo",
+    "Stella Colari, para o seu dia a dia.",
   );
-  const secundarioTexto = getStringWithDefault(config, "textoBotaoSecundario");
-  const secundarioHref = normalizeHref(
-    getStringWithDefault(config, "linkBotaoSecundario")
-  );
-  const hasTitulo = exibirTexto && Boolean(titulo);
-  const hasTexto = exibirTexto && Boolean(texto);
-  const hasPrimario =
-    exibirTexto &&
-    getBoolean(config, "exibirBotaoPrimario", true) &&
-    Boolean(primarioTexto && primarioHref);
-  const hasSecundario =
-    exibirTexto &&
-    getBoolean(config, "exibirBotaoSecundario", false) &&
-    Boolean(secundarioTexto && secundarioHref);
-
-  if (!hasTitulo && !hasTexto && !hasPrimario && !hasSecundario) return null;
 
   return (
     <RevealSection className={`${styles.finalCta} relative overflow-hidden border-y border-white/30 bg-[var(--brand-blue)] px-5 py-24 text-white sm:px-7 md:py-36 lg:px-12`}>
       <div className="relative mx-auto max-w-[100rem] text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white">
-          Stella Colari
-        </p>
-        {hasTitulo ? (
-          <h2
-            data-stella-inline-field="titulo"
-            className={`${styles.finalCtaTitle} mx-auto mt-7 max-w-[16ch] uppercase`}
-          >
-            <EditorialTitleText text={titulo} />
-          </h2>
-        ) : null}
-        {hasTexto ? (
-          <p
-            data-stella-inline-field="texto"
-            className="mx-auto mt-8 max-w-xl text-base leading-8 text-white"
-          >
-            {texto}
-          </p>
-        ) : null}
-        <div className="mt-11 flex flex-wrap justify-center gap-3">
-          {hasPrimario ? (
-            <SmartLink
-              href={primarioHref}
-              className="inline-flex min-h-12 items-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
-            >
-              <span data-stella-inline-field="textoBotao">{primarioTexto}</span>
-            </SmartLink>
-          ) : null}
-          {hasSecundario ? (
-            <SmartLink
-              href={secundarioHref}
-              className="inline-flex min-h-12 items-center border border-white px-7 text-xs font-semibold uppercase tracking-[0.14em] text-white hover:bg-white hover:text-[var(--brand-blue)]"
-            >
-              <span data-stella-inline-field="textoBotaoSecundario">{secundarioTexto}</span>
-            </SmartLink>
-          ) : null}
-        </div>
+        <h2
+          data-stella-inline-field="titulo"
+          className={`${styles.finalCtaPhrase} mx-auto max-w-[28ch]`}
+        >
+          {titulo}
+        </h2>
+        <Link
+          href="/loja"
+          aria-label="Ir para a página inicial da Stella Colari"
+          className={`${styles.finalCtaLogoLink} mx-auto mt-12 block w-fit`}
+        >
+          <Image
+            src="/logo-stella.png"
+            alt="Stella Colari"
+            width={900}
+            height={240}
+            className={`${styles.finalCtaLogo} h-auto w-full object-contain brightness-0 invert`}
+          />
+        </Link>
       </div>
     </RevealSection>
   );

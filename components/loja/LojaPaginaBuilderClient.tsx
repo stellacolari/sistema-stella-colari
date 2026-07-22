@@ -1585,14 +1585,17 @@ function GradeCategoriaGerenciada({
 function RodapeLoja({
   menus,
   configuracaoMenuRodape,
+  brandingSimplificado,
 }: {
   menus: LojaBuilderMenu[];
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
+  brandingSimplificado?: boolean;
 }) {
   return (
     <RodapePublicoLoja
       menus={menus}
       configuracaoMenuRodape={configuracaoMenuRodape}
+      brandingSimplificado={brandingSimplificado}
     />
   );
 }
@@ -1650,7 +1653,7 @@ export default function LojaPaginaBuilderClient({
       className="stella-storefront-render min-h-screen bg-white text-[#171916]"
       data-stella-home-experience={
         usarStellaHomeExperience
-          ? "shared-v1"
+          ? "shared-v2"
           : homeGerenciada
             ? "indisponivel"
             : undefined
@@ -1898,6 +1901,7 @@ export default function LojaPaginaBuilderClient({
       <RodapeLoja
         menus={menus}
         configuracaoMenuRodape={configuracaoMenuRodape}
+        brandingSimplificado={pagina.tipo === "HOME" && pagina.slug === "home"}
       />
     </div>
   );

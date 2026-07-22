@@ -16,6 +16,7 @@ type RodapeMenuItem = {
 type RodapePublicoLojaProps = {
   menus: RodapeMenuItem[];
   configuracaoMenuRodape?: LojaMenuRodapeConfig;
+  brandingSimplificado?: boolean;
 };
 
 const LOGO_URL = "/logo-stella.png";
@@ -79,6 +80,7 @@ function BotaoRodape({
 export default function RodapePublicoLoja({
   menus,
   configuracaoMenuRodape,
+  brandingSimplificado = false,
 }: RodapePublicoLojaProps) {
   const config = normalizarLojaMenuRodapeConfig(configuracaoMenuRodape);
 
@@ -108,7 +110,8 @@ export default function RodapePublicoLoja({
   return (
     <footer className="mt-16 bg-[#171815] text-[#f4f0e8] sm:mt-24">
       <div className="border-b border-[#f4f0e8]/15">
-        <div className="mx-auto grid max-w-[1600px] gap-14 px-5 py-14 sm:px-7 sm:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)] lg:gap-20 lg:px-10 lg:py-20">
+        <div className={`mx-auto grid max-w-[1600px] gap-14 px-5 py-14 sm:px-7 sm:py-16 lg:gap-20 lg:px-10 lg:py-20 ${brandingSimplificado ? "" : "lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)]"}`}>
+          {!brandingSimplificado ? (
           <div className="lg:pr-8">
             <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#f4f0e8]/50">
               Stella Colari
@@ -171,8 +174,9 @@ export default function RodapePublicoLoja({
               </div>
             )}
           </div>
+          ) : null}
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 border-t border-[#f4f0e8]/15 pt-10 sm:grid-cols-3 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
+          <div className={`grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 ${brandingSimplificado ? "" : "border-t border-[#f4f0e8]/15 pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0"}`}>
             {config.rodape.colunas.map((coluna, index) => (
               <nav
                 key={coluna.id}
@@ -244,30 +248,34 @@ export default function RodapePublicoLoja({
       </div>
 
       <div className="mx-auto max-w-[1600px] overflow-hidden px-5 pb-7 pt-9 sm:px-7 sm:pb-9 lg:px-10">
-        <Link
-          href="/loja"
-          aria-label="Ir para a página inicial da loja"
-          className="block"
-        >
-          <span className="block whitespace-nowrap text-center text-[clamp(2.5rem,11vw,10.5rem)] font-light uppercase leading-[0.82] tracking-[-0.065em] text-[#f4f0e8] transition hover:text-white">
-            Stella Colari
-          </span>
-        </Link>
+        {!brandingSimplificado ? (
+          <Link
+            href="/loja"
+            aria-label="Ir para a página inicial da loja"
+            className="block"
+          >
+            <span className="block whitespace-nowrap text-center text-[clamp(2.5rem,11vw,10.5rem)] font-light uppercase leading-[0.82] tracking-[-0.065em] text-[#f4f0e8] transition hover:text-white">
+              Stella Colari
+            </span>
+          </Link>
+        ) : null}
 
-        <div className="mt-9 flex flex-col gap-5 border-t border-[#f4f0e8]/15 pt-6 text-[9px] font-medium uppercase tracking-[0.18em] text-[#f4f0e8]/45 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`${brandingSimplificado ? "" : "mt-9"} flex flex-col gap-5 border-t border-[#f4f0e8]/15 pt-6 text-[9px] font-medium uppercase tracking-[0.18em] text-[#f4f0e8]/45 sm:flex-row sm:items-center sm:justify-between`}>
           <p>
             © {new Date().getFullYear()} {config.rodape.copyright}
           </p>
 
-          <Link href="/loja" className="inline-flex w-fit items-center gap-3">
-            <Image
-              src={LOGO_URL}
-              alt="Stella"
-              width={150}
-              height={40}
-              className="h-7 w-auto max-w-[132px] object-contain brightness-0 invert opacity-65 transition hover:opacity-100"
-            />
-          </Link>
+          {!brandingSimplificado ? (
+            <Link href="/loja" className="inline-flex w-fit items-center gap-3">
+              <Image
+                src={LOGO_URL}
+                alt="Stella"
+                width={150}
+                height={40}
+                className="h-7 w-auto max-w-[132px] object-contain brightness-0 invert opacity-65 transition hover:opacity-100"
+              />
+            </Link>
+          ) : null}
         </div>
       </div>
     </footer>

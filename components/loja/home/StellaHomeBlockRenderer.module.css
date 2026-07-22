@@ -108,7 +108,7 @@
   left: max(1.25rem, calc((100vw - 100rem) / 2 + 3rem));
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   border-top: 1px solid rgba(255, 255, 255, 0.28);
   padding-top: 0.85rem;
   color: rgba(255, 255, 255, 0.72);
@@ -142,6 +142,17 @@
 
 .sectionHeadingCopy {
   width: min(100%, 64rem);
+}
+
+.sectionHeadingWithAction {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.sectionHeadingAction {
+  flex: none;
 }
 
 .sectionEyebrow {
@@ -179,6 +190,23 @@
 
 .finalCtaTitle {
   font-size: clamp(3.1rem, 7.2vw, 8rem);
+}
+
+.finalCtaPhrase {
+  font-family: var(--font-storefront-display);
+  font-size: clamp(1.55rem, 3vw, 3.25rem);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.014em;
+  text-wrap: balance;
+}
+
+.finalCtaLogoLink {
+  max-width: min(82vw, 58rem);
+}
+
+.finalCtaLogo {
+  max-height: 13rem;
 }
 
 .titleLight {
@@ -376,8 +404,16 @@
 }
 
 .productCardShell :global(.stella-product-card) {
+  height: 100%;
   opacity: 1;
   transform: none;
+}
+
+.productCardShell :global(h3) {
+  display: block;
+  overflow: visible;
+  overflow-wrap: break-word;
+  -webkit-line-clamp: unset;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -425,6 +461,16 @@
 
   .sectionHeadingCopy {
     width: 100%;
+  }
+
+  .sectionHeadingWithAction {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .sectionHeadingAction {
+    width: fit-content;
   }
 
   .heroFooter {

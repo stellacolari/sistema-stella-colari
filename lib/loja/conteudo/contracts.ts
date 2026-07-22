@@ -514,16 +514,9 @@ const homeContract: ConteudoContrato = {
       descricao: "Abertura principal da loja.",
       tipoVisual: "HERO",
       campos: heroFields("hero", {
-        eyebrow: "Stella Colari",
+        eyebrow: "",
         title: "Viva Stella Colari.",
       }),
-    },
-    {
-      key: "values",
-      label: "Valores",
-      descricao: "Mensagem curta de confiança e identidade.",
-      tipoVisual: "DESTAQUES",
-      campos: linkCardsFields("values", 4),
     },
     {
       key: "categories",
@@ -543,6 +536,13 @@ const homeContract: ConteudoContrato = {
       descricao: "Seleção de produtos recentes ou escolhidos manualmente.",
       tipoVisual: "PRODUTOS",
       campos: productFields("newArrivals", { title: "Novidades" }),
+    },
+    {
+      key: "values",
+      label: "Valores",
+      descricao: "Mensagem curta de confiança e identidade.",
+      tipoVisual: "DESTAQUES",
+      campos: linkCardsFields("values", 4),
     },
     {
       key: "editorial",
@@ -593,8 +593,15 @@ const homeContract: ConteudoContrato = {
       tipoVisual: "GALERIA",
       campos: [
         booleano("gallery.enabled", "Exibir seção", true),
-        texto("gallery.title", "Título", { limite: 90 }),
-        textoLongo("gallery.text", "Texto de apoio", { limite: 320 }),
+        texto("gallery.title", "Título", {
+          valorPadrao: "Feito para você",
+          limite: 90,
+        }),
+        textoLongo("gallery.text", "Texto de apoio", {
+          valorPadrao:
+            "Pequenos detalhes tornam o dia mais leve, bonito e cheio de significado.",
+          limite: 320,
+        }),
         ...galleryItemsFields("gallery", 4),
       ],
     },
@@ -603,7 +610,9 @@ const homeContract: ConteudoContrato = {
       label: "Chamada final",
       descricao: "Encerramento da página.",
       tipoVisual: "CTA",
-      campos: ctaFields("finalCta"),
+      campos: ctaFields("finalCta", {
+        title: "Stella Colari, para o seu dia a dia.",
+      }),
     },
     seoSection(),
   ],

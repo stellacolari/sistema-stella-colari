@@ -21,6 +21,22 @@ export const STELLA_HOME_BLOCK_TYPES = {
 
 export type StellaHomeBlockKey = keyof typeof STELLA_HOME_BLOCK_TYPES;
 
+export const STELLA_HOME_BLOCK_ORDER: readonly StellaHomeBlockKey[] = [
+  "home.hero",
+  "home.categorias",
+  "home.novidades",
+  "home.novidades-cta",
+  "home.valores",
+  "home.editorial",
+  "home.destaques",
+  "home.presentes",
+  "home.categorias-destaque",
+  "home.informacoes",
+  "home.story",
+  "home.galeria",
+  "home.cta-final",
+];
+
 type StellaHomeBlockLike = {
   tipo: string;
   configJson: unknown;
