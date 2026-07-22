@@ -16,6 +16,7 @@ export default function PagarPedidoStripeButton({
     setCarregando(true);
 
     try {
+      const access = new URLSearchParams(window.location.search).get("access");
       const response = await fetch("/api/loja/stripe/criar-checkout", {
         method: "POST",
         headers: {
@@ -23,6 +24,7 @@ export default function PagarPedidoStripeButton({
         },
         body: JSON.stringify({
           codigo,
+          access: access || undefined,
         }),
       });
 

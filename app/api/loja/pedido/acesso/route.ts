@@ -1,0 +1,37 @@
+import { NextResponse } from "next/server";
+import { buscarPedidoPublicoAutorizado } from "@/lib/loja/pedido-acesso.server";
+
+function respostaGate(status: 204 | 404) {
+  return new NextResponse(null, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const codigo = String(body.codigo || "").trim();
+    const clienteCookieId = String(body.clienteCookieId || "").trim();
+    const access = String(body.access || "").trim();
+    const tokenCookie = String(body.tokenCookie || "").trim();
+
+    if (!codigo) {
+      return respostaGate(404);
+    }
+
+    const pedido = await buscarPedidoPublicoAutorizado({
+      codigo,
+      clienteCookieId,
+      access,
+      tokenCookie,
+    });
+
+    return respostaGate(pedido ? 204 : 404);
+  } catch {
+    return respostaGate(404);
+  }
+}

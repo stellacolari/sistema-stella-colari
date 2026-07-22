@@ -19,6 +19,11 @@ import {
 import { validarEmbalagemPresenteCarrinho } from "@/lib/embalagens/presente-loja";
 import { registrarConsentimentoWhatsappPublico } from "@/lib/clientes/consentimentos-cliente";
 import {
+  criarPedidoAcessoToken,
+  PEDIDO_ACESSO_COOKIE,
+  PEDIDO_ACESSO_COOKIE_MAX_AGE,
+} from "@/lib/loja/pedido-acesso";
+import {
   buscarQuantidadeDisponivelPorTamanho,
   calcularEstoqueProdutoVenda,
 } from "@/lib/loja/estoque";
@@ -750,6 +755,7 @@ export async function POST(request: Request) {
 
     const freteConfig = await buscarConfiguracaoFrete();
 
+    const pedidoAcesso = criarPedidoAcessoToken();
     const pedidoCriado = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const codigoPedido = await gerarProximoCodigoPedido(tx);
@@ -1235,6 +1241,8 @@ export async function POST(request: Request) {
         const pedido = await tx.pedidoOnline.create({
           data: {
             codigo: codigoPedido,
+            pedidoAcessoTokenHash: pedidoAcesso.hash,
+            pedidoAcessoCriadoEm: pedidoAcesso.criadoEm,
             origemCanal: "LOJA_STELLA",
             clienteId,
             clienteCriadoCheckout,
@@ -1517,12 +1525,22 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
-      pedidoId: pedidoCriado.id,
       codigo: pedidoCriado.codigo,
+      accessToken: pedidoAcesso.token,
       cashbackPrevistoValor: pedidoCriado.cashbackPrevistoValor,
     });
+
+    response.cookies.set(PEDIDO_ACESSO_COOKIE, pedidoAcesso.token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: PEDIDO_ACESSO_COOKIE_MAX_AGE,
+    });
+
+    return response;
   } catch (error) {
     if (isCheckoutDisponibilidadeError(error)) {
       return NextResponse.json(

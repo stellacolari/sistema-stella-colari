@@ -47,6 +47,67 @@ const VENDEDOR_API_PREFIXES = [
 ];
 
 const LOJA_PREVIEW_PREFIX = "/loja/preview/pagina";
+const LOJA_PEDIDO_PREFIX = "/loja/pedido";
+const LOJA_STRIPE_CHECKOUT_PATH = "/api/loja/stripe/criar-checkout";
+const COOKIE_CLIENTE_ID = "stella_cliente_id";
+const COOKIE_PEDIDO_ACESSO = "stella_pedido_access";
+
+function aplicarHeadersPedidoPrivado(response: NextResponse) {
+  response.headers.set(
+    "Cache-Control",
+    "private, no-store, max-age=0, must-revalidate",
+  );
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  response.headers.set("Referrer-Policy", "no-referrer");
+
+  return response;
+}
+
+function respostaPedidoNaoEncontrado() {
+  return aplicarHeadersPedidoPrivado(
+    new NextResponse("Pedido não encontrado.", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    }),
+  );
+}
+
+async function pedidoPublicoAutorizado(request: NextRequest) {
+  try {
+    const codigo = decodeURIComponent(
+      request.nextUrl.pathname.slice(`${LOJA_PEDIDO_PREFIX}/`.length),
+    ).trim();
+
+    if (!codigo) return false;
+
+    const vercelHost = String(process.env.VERCEL_URL || "").trim();
+    const gateOrigin = vercelHost
+      ? `https://${vercelHost.replace(/^https?:\/\//, "")}`
+      : request.nextUrl.origin;
+    const gateUrl = new URL("/api/loja/pedido/acesso", gateOrigin);
+    const response = await fetch(gateUrl, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        codigo,
+        clienteCookieId:
+          request.cookies.get(COOKIE_CLIENTE_ID)?.value || "",
+        access: request.nextUrl.searchParams.get("access") || "",
+        tokenCookie:
+          request.cookies.get(COOKIE_PEDIDO_ACESSO)?.value || "",
+      }),
+    });
+
+    return response.status === 204;
+  } catch {
+    return false;
+  }
+}
 
 function aplicarHeadersPreviewPrivado(response: NextResponse) {
   response.headers.set(
@@ -143,6 +204,18 @@ function redirectVendedor(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (matchesPrefix(pathname, LOJA_PEDIDO_PREFIX)) {
+    if (!(await pedidoPublicoAutorizado(request))) {
+      return respostaPedidoNaoEncontrado();
+    }
+
+    return aplicarHeadersPedidoPrivado(NextResponse.next());
+  }
+
+  if (pathname === LOJA_STRIPE_CHECKOUT_PATH) {
+    return aplicarHeadersPedidoPrivado(NextResponse.next());
+  }
 
   if (isLojaPreviewPath(pathname)) {
     const tokenPreview = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;

@@ -1115,6 +1115,8 @@ model LojaTextoInstitucional {
 model PedidoOnline {
   id                         String                              @id @default(cuid())
   codigo                     String                              @unique
+  pedidoAcessoTokenHash      String?                             @unique
+  pedidoAcessoCriadoEm       DateTime?
   clienteId                  String?
   clienteCriadoCheckout      Boolean                             @default(false)
   nomeCliente                String

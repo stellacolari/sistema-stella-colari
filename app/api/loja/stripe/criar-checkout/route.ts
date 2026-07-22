@@ -1,5 +1,13 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  clientePodeAcessarPedido,
+  criarUrlPedidoComAcesso,
+  PEDIDO_ACESSO_COOKIE,
+  PEDIDO_ACESSO_COOKIE_MAX_AGE,
+  validarPedidoAcessoToken,
+} from "@/lib/loja/pedido-acesso";
 import { stripe } from "@/lib/stripe";
 
 const STATUS_PAGAMENTO_FINALIZADOS = new Set([
@@ -8,6 +16,26 @@ const STATUS_PAGAMENTO_FINALIZADOS = new Set([
   "EXPIRADO",
   "RECUSADO",
 ]);
+const COOKIE_CLIENTE_ID = "stella_cliente_id";
+
+function respostaCheckoutAutorizado(
+  body: Record<string, unknown>,
+  accessToken: string | null,
+) {
+  const response = NextResponse.json(body);
+
+  if (accessToken) {
+    response.cookies.set(PEDIDO_ACESSO_COOKIE, accessToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: PEDIDO_ACESSO_COOKIE_MAX_AGE,
+    });
+  }
+
+  return response;
+}
 
 function getBaseUrl(req: Request) {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -34,13 +62,20 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const codigo = String(body.codigo || "").trim();
+    const accessToken = String(body.access || "").trim();
 
     if (!codigo) {
       return NextResponse.json(
-        { error: "Código do pedido não informado." },
-        { status: 400 }
+        { error: "Pedido não encontrado." },
+        { status: 404 }
       );
     }
+
+    const cookieStore = await cookies();
+    const clienteCookieId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+    const accessTokenCookie =
+      cookieStore.get(PEDIDO_ACESSO_COOKIE)?.value || "";
+    const provaToken = accessToken || accessTokenCookie;
 
     const pedido = await prisma.pedidoOnline.findUnique({
       where: {
@@ -49,21 +84,43 @@ export async function POST(req: Request) {
       select: {
         id: true,
         codigo: true,
+        clienteId: true,
+        pedidoAcessoTokenHash: true,
         total: true,
         status: true,
         statusPagamento: true,
         nomeCliente: true,
         emailCliente: true,
         gatewayPedidoId: true,
+        cliente: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
       },
     });
 
-    if (!pedido) {
+    const clienteProprietario = clientePodeAcessarPedido({
+      clienteCookieId,
+      pedidoClienteId: pedido?.clienteId,
+      clienteAtivo: Boolean(
+        pedido?.cliente && pedido.cliente.status !== "NA_LIXEIRA",
+      ),
+    });
+    const tokenValido = validarPedidoAcessoToken(
+      provaToken,
+      pedido?.pedidoAcessoTokenHash,
+    );
+
+    if (!pedido || (!clienteProprietario && !tokenValido)) {
       return NextResponse.json(
         { error: "Pedido não encontrado." },
         { status: 404 }
       );
     }
+
+    const accessTokenAutorizado = tokenValido ? provaToken : null;
 
     if (pedido.statusPagamento === "PAGO") {
       return NextResponse.json(
@@ -117,12 +174,15 @@ export async function POST(req: Request) {
       }
 
       if (sessaoExistente.status === "open" && sessaoExistente.url) {
-        return NextResponse.json({
-          ok: true,
-          url: sessaoExistente.url,
-          sessionId: sessaoExistente.id,
-          reutilizada: true,
-        });
+        return respostaCheckoutAutorizado(
+          {
+            ok: true,
+            url: sessaoExistente.url,
+            sessionId: sessaoExistente.id,
+            reutilizada: true,
+          },
+          accessTokenAutorizado,
+        );
       }
 
       return NextResponse.json(
@@ -135,6 +195,22 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = getBaseUrl(req);
+    const successUrl = accessTokenAutorizado
+      ? criarUrlPedidoComAcesso({
+          baseUrl,
+          codigo: pedido.codigo,
+          token: accessTokenAutorizado,
+          pagamento: "sucesso",
+        })
+      : `${baseUrl}/loja/pedido/${encodeURIComponent(pedido.codigo)}?pagamento=sucesso`;
+    const cancelUrl = accessTokenAutorizado
+      ? criarUrlPedidoComAcesso({
+          baseUrl,
+          codigo: pedido.codigo,
+          token: accessTokenAutorizado,
+          pagamento: "cancelado",
+        })
+      : `${baseUrl}/loja/pedido/${encodeURIComponent(pedido.codigo)}?pagamento=cancelado`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -158,8 +234,8 @@ export async function POST(req: Request) {
           },
         },
       ],
-      success_url: `${baseUrl}/loja/pedido/${pedido.codigo}?pagamento=sucesso`,
-      cancel_url: `${baseUrl}/loja/pedido/${pedido.codigo}?pagamento=cancelado`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
     await prisma.pedidoOnline.update({
@@ -174,11 +250,14 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({
-      ok: true,
-      url: session.url,
-      sessionId: session.id,
-    });
+    return respostaCheckoutAutorizado(
+      {
+        ok: true,
+        url: session.url,
+        sessionId: session.id,
+      },
+      accessTokenAutorizado,
+    );
   } catch (error) {
     console.error("Erro ao criar checkout Stripe:", error);
 

@@ -986,7 +986,18 @@ function preencherDadosClienteLogado() {
 
       limparCarrinho();
 
-    window.location.href = `/loja/pedido/${data.codigo}`;
+      if (typeof data.accessToken !== "string" || !data.accessToken) {
+        setErro("NÃ£o foi possÃ­vel abrir o acompanhamento seguro do pedido.");
+        setSalvando(false);
+        return;
+      }
+
+      const pedidoUrl = new URL(
+        `/loja/pedido/${encodeURIComponent(String(data.codigo || ""))}`,
+        window.location.origin,
+      );
+      pedidoUrl.searchParams.set("access", data.accessToken);
+      window.location.href = pedidoUrl.toString();
     } catch {
       setErro("Erro ao finalizar pedido.");
       setSalvando(false);

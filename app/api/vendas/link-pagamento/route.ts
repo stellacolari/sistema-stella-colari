@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import {
+  criarPedidoAcessoToken,
+  criarUrlPedidoComAcesso,
+} from "@/lib/loja/pedido-acesso";
 import { criarPedidoManualOnline } from "@/lib/vendas/pedido-manual-online";
 
 function getBaseUrl(req: Request) {
@@ -81,6 +85,7 @@ export async function POST(req: Request) {
     }
 
     const baseUrl = getBaseUrl(req);
+    const pedidoAcesso = criarPedidoAcessoToken();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -106,13 +111,25 @@ export async function POST(req: Request) {
           },
         },
       ],
-      success_url: `${baseUrl}/loja/pedido/${pedido.codigo}?pagamento=sucesso`,
-      cancel_url: `${baseUrl}/loja/pedido/${pedido.codigo}?pagamento=cancelado`,
+      success_url: criarUrlPedidoComAcesso({
+        baseUrl,
+        codigo: pedido.codigo,
+        token: pedidoAcesso.token,
+        pagamento: "sucesso",
+      }),
+      cancel_url: criarUrlPedidoComAcesso({
+        baseUrl,
+        codigo: pedido.codigo,
+        token: pedidoAcesso.token,
+        pagamento: "cancelado",
+      }),
     });
 
     await prisma.pedidoOnline.update({
       where: { id: pedido.id },
       data: {
+        pedidoAcessoTokenHash: pedidoAcesso.hash,
+        pedidoAcessoCriadoEm: pedidoAcesso.criadoEm,
         gatewayPagamento: "STRIPE",
         gatewayPedidoId: session.id,
         metodoPagamento: "STRIPE_CHECKOUT",

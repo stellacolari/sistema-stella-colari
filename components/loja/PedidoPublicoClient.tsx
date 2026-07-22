@@ -5,7 +5,6 @@ import {
   MapPin,
   Package,
   ShoppingBag,
-  Sparkles,
   Truck,
 } from "lucide-react";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
@@ -16,17 +15,13 @@ import type { ComponentProps } from "react";
 type MenuPublicoLojaProps = ComponentProps<typeof MenuPublicoLoja>;
 
 export type PedidoPublicoItem = {
-  id: string;
-  codigoInterno: string;
   nomeProduto: string;
   imagemUrl: string | null;
-  categoria: string;
   tamanhoAnel: string | null;
   quantidade: number;
   precoUnitario: number;
   total: number;
   adicionais: {
-    id: string;
     nome: string;
     quantidade: number;
     valorVendaUnitario: number;
@@ -35,33 +30,14 @@ export type PedidoPublicoItem = {
 };
 
 export type PedidoPublicoData = {
-  id: string;
   codigo: string;
-
-  nomeCliente: string;
-  telefoneCliente: string;
-  emailCliente: string | null;
-
-  cep: string | null;
-  rua: string | null;
-  numero: string | null;
-  complemento: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  estado: string | null;
+  destinoEntrega: string | null;
 
   subtotal: number;
   frete: number;
   total: number;
 
-  cupomCodigo: string | null;
-  cupomDescontoValor: number;
-
-  cashbackBaseValor: number;
-  cashbackPrevistoValor: number;
-  cashbackCreditadoValor: number;
-  cashbackUsadoValor: number;
-  cashbackStatus: string;
+  descontoValor: number;
 
   status: string;
   statusPagamento: string;
@@ -76,7 +52,6 @@ export type PedidoPublicoData = {
     transportadora: string | null;
     servico: string | null;
     codigoRastreio: string | null;
-    valorFrete: number;
     prazoDias: number | null;
     postadoEm: string | null;
     entregueEm: string | null;
@@ -121,7 +96,7 @@ function labelStatusPedido(status: string) {
   if (status === "CANCELADO") return "Cancelado";
   if (status === "PROBLEMA") return "Em análise";
 
-  return status.replaceAll("_", " ");
+  return "Em atualização";
 }
 
 function labelPagamento(status: string) {
@@ -131,7 +106,7 @@ function labelPagamento(status: string) {
   if (status === "ESTORNADO") return "Pagamento estornado";
   if (status === "CANCELADO") return "Pagamento cancelado";
 
-  return status.replaceAll("_", " ");
+  return "Em processamento";
 }
 
 function labelEnvio(status: string | null | undefined) {
@@ -142,7 +117,17 @@ function labelEnvio(status: string | null | undefined) {
   if (status === "ENTREGUE") return "Entregue";
   if (status === "PROBLEMA") return "Problema no envio";
 
-  return status.replaceAll("_", " ");
+  return "Envio em atualização";
+}
+
+function labelMetodoPagamento(metodo: string) {
+  if (metodo === "STRIPE_CHECKOUT" || metodo === "CARTAO") {
+    return "Cartão";
+  }
+  if (metodo === "PIX") return "Pix";
+  if (metodo === "DINHEIRO") return "Dinheiro";
+
+  return "Pagamento online";
 }
 
 function pagamentoClass(status: string) {
@@ -192,18 +177,7 @@ function getTextoOpcaoProduto(item: PedidoPublicoItem) {
   return item.tamanhoAnel;
 }
 function montarEndereco(pedido: PedidoPublicoData) {
-  const partes = [
-    pedido.rua,
-    pedido.numero,
-    pedido.complemento,
-    pedido.bairro,
-    pedido.cidade && pedido.estado
-      ? `${pedido.cidade}/${pedido.estado}`
-      : pedido.cidade || pedido.estado,
-    pedido.cep,
-  ].filter(Boolean);
-
-  return partes.length > 0 ? partes.join(", ") : "Endereço não informado";
+  return pedido.destinoEntrega || "Destino informado no checkout";
 }
 
 export default function PedidoPublicoClient({
@@ -212,10 +186,7 @@ export default function PedidoPublicoClient({
   configuracaoMenuRodape,
   pedido,
 }: PedidoPublicoClientProps) {
-const possuiCupom = pedido.cupomDescontoValor > 0;
-const possuiCashbackUsado = pedido.cashbackUsadoValor > 0;
-const possuiCashbackPrevisto = pedido.cashbackPrevistoValor > 0;
-const possuiCashbackCreditado = pedido.cashbackCreditadoValor > 0;
+const possuiDesconto = pedido.descontoValor > 0;
 
 const pagamentoConfirmado = pedido.statusPagamento === "PAGO";
 const pagamentoPendente = pedido.statusPagamento === "AGUARDANDO_PAGAMENTO";
@@ -359,7 +330,7 @@ const pagamentoNaoConcluido =
               </div>
 
               <div className="mt-5 divide-y divide-slate-100">
-                {pedido.itens.map((item) => {
+                {pedido.itens.map((item, itemIndex) => {
                   const totalAdicionais = item.adicionais.reduce(
                     (total, adicional) => total + adicional.valorVendaTotal,
                     0
@@ -367,7 +338,7 @@ const pagamentoNaoConcluido =
 
                   return (
                     <article
-                      key={item.id}
+                      key={`${item.nomeProduto}-${itemIndex}`}
                       className="grid gap-4 py-4 first:pt-0 last:pb-0 sm:grid-cols-[80px_1fr_auto]"
                     >
                     <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden bg-slate-100">
@@ -385,11 +356,7 @@ const pagamentoNaoConcluido =
                     </div>
 
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                          {item.codigoInterno}
-                        </p>
-
-                        <h3 className="mt-1 text-sm font-semibold text-slate-950">
+                        <h3 className="text-sm font-semibold text-slate-950">
                           {item.nomeProduto}
                         </h3>
                         <p className="mt-1 text-xs text-slate-500">
@@ -407,9 +374,9 @@ const pagamentoNaoConcluido =
 
                         {item.adicionais.length > 0 && (
                           <div className="mt-3 space-y-1">
-                            {item.adicionais.map((adicional) => (
+                            {item.adicionais.map((adicional, adicionalIndex) => (
                               <p
-                                key={adicional.id}
+                                key={`${adicional.nome}-${adicionalIndex}`}
                                 className="text-xs text-blue-700"
                               >
                                 {adicional.nome}:{" "}
@@ -509,7 +476,7 @@ const pagamentoNaoConcluido =
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-slate-500">Método</span>
                     <span className="font-semibold text-slate-950">
-                      {pedido.metodoPagamento}
+                      {labelMetodoPagamento(pedido.metodoPagamento)}
                     </span>
                   </div>
                 )}
@@ -547,22 +514,11 @@ const pagamentoNaoConcluido =
                   </span>
                 </div>
 
-                {possuiCupom && (
+                {possuiDesconto && (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-500">
-                      Cupom {pedido.cupomCodigo}
-                    </span>
+                    <span className="text-slate-500">Desconto</span>
                     <span className="font-semibold text-emerald-700">
-                      -{moeda(pedido.cupomDescontoValor)}
-                    </span>
-                  </div>
-                )}
-
-                {possuiCashbackUsado && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-500">Cashback usado</span>
-                    <span className="font-semibold text-blue-700">
-                      -{moeda(pedido.cashbackUsadoValor)}
+                      -{moeda(pedido.descontoValor)}
                     </span>
                   </div>
                 )}
@@ -585,31 +541,6 @@ const pagamentoNaoConcluido =
               </div>
             </section>
 
-            {(possuiCashbackPrevisto || possuiCashbackCreditado) && (
-              <section className="rounded-[2rem] border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] p-5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[var(--brand-blue)]" />
-
-                  <h2 className="text-lg font-medium text-slate-950">
-                    Cashback
-                  </h2>
-                </div>
-
-                {possuiCashbackCreditado ? (
-                  <p className="mt-3 text-sm leading-6 text-slate-700">
-                    Você recebeu{" "}
-                    <strong>{moeda(pedido.cashbackCreditadoValor)}</strong> de
-                    cashback neste pedido.
-                  </p>
-                ) : (
-                  <p className="mt-3 text-sm leading-6 text-slate-700">
-                    Você receberá{" "}
-                    <strong>{moeda(pedido.cashbackPrevistoValor)}</strong> de
-                    cashback após a confirmação do pagamento.
-                  </p>
-                )}
-              </section>
-            )}
           </aside>
         </section>
       </main>
