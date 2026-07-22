@@ -419,6 +419,7 @@ function ItemMedia({
 export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
   const corFundo = getString(config, "corFundo", "BRANCO");
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo);
   const colors = getTextColorForBackground(corFundo);
   const layoutVisual = getString(config, "layoutVisual", "MOSAICO_EDITORIAL");
   const estiloEtiqueta = getString(config, "estiloEtiqueta", "SOBREPOSTA");
@@ -523,6 +524,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           fallback={titulo}
           data-stella-inline-field="titulo"
           className={`text-4xl font-light leading-tight md:text-6xl ${colors.title}`}
+          forceColor={
+            isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+          }
         />
       ) : null}
       {hasSubtitulo ? (
@@ -531,6 +535,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
           fallback={subtitulo}
           data-stella-inline-field="subtitulo"
           className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+          forceColor={
+            isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+          }
         />
       ) : null}
     </>
@@ -574,6 +581,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               fallback={subtitulo}
               data-stella-inline-field="subtitulo"
               className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
         </>
@@ -586,6 +596,9 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
               fallback={subtitulo}
               data-stella-inline-field="subtitulo"
               className={`mt-4 max-w-2xl text-base leading-7 ${colors.body}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
         </>
@@ -647,6 +660,11 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
                 : "text-xs text-slate-950"
               : `text-xl ${colors.title}`
           }`}
+          forceColor={
+            !overlay && isBrandSurface
+              ? "var(--brand-blue-foreground)"
+              : undefined
+          }
         />
         {exibirLinhaEtiqueta && overlay ? (
           <span className="my-2 block h-px w-8 bg-slate-950/30" />
@@ -658,6 +676,11 @@ export default function ColecoesCategoriasPublico({ bloco }: BlocoPublicoProps) 
             overlay
               ? "mt-1 text-xs leading-5 text-slate-600"
               : `mt-2 text-sm leading-6 ${colors.body}`
+          }
+          forceColor={
+            !overlay && isBrandSurface
+              ? "var(--brand-blue-foreground)"
+              : undefined
           }
         />
         {exibirBotaoEtiqueta && textoLink && href ? (

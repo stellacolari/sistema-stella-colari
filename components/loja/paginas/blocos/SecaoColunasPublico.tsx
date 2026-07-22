@@ -277,12 +277,36 @@ function getTextStyle(text: TextElementConfig): CSSProperties {
   };
 }
 
-function renderTextContent(element: Extract<SectionColumnElement, { texto: TextElementConfig }>) {
+function isBrandColor(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase().replace(/\s+/g, "");
+
+  return [
+    "#2e7b99",
+    "rgb(46,123,153)",
+    "rgba(46,123,153,1)",
+    "var(--brand-blue)",
+  ].includes(normalized || "");
+}
+
+function renderTextContent(
+  element: Extract<SectionColumnElement, { texto: TextElementConfig }>,
+  forceBrandForeground = false
+) {
   const content = element.texto.conteudo;
+  const buttonOnBrand = element.tipo === "BOTAO" && forceBrandForeground;
+  const forcedTextColor = buttonOnBrand
+    ? "var(--stella-inverted-cta-text)"
+    : element.tipo === "BOTAO" || forceBrandForeground
+      ? "var(--brand-blue-foreground)"
+      : undefined;
   const commonProps = {
     "data-stella-inline-field": "secaoTexto",
     "data-stella-editorial-gallery-item-id": element.id,
-    style: getTextStyle(element.texto),
+    style: {
+      ...getTextStyle(element.texto),
+      color: forcedTextColor || getTextStyle(element.texto).color,
+    },
+    forceColor: forcedTextColor,
   };
 
   if (!content.trim()) return null;
@@ -299,8 +323,9 @@ function renderTextContent(element: Extract<SectionColumnElement, { texto: TextE
   }
 
   if (element.tipo === "BOTAO") {
-    const className =
-      "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95]";
+    const className = buttonOnBrand
+      ? "inline-flex min-h-11 w-fit items-center justify-center rounded-full border border-white bg-white px-6 text-sm font-semibold text-[var(--stella-inverted-cta-text)] [--stella-inverted-cta-text:var(--brand-blue)] transition hover:[--stella-inverted-cta-text:var(--brand-blue-dark)]"
+      : "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[var(--brand-blue)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)]";
     const buttonContent = (
       <PublicRichTextRenderer
         value={element.texto.richText}
@@ -337,7 +362,10 @@ function renderTextContent(element: Extract<SectionColumnElement, { texto: TextE
   );
 }
 
-function renderElement(element: SectionColumnElement) {
+function renderElement(
+  element: SectionColumnElement,
+  forceBrandForeground = false
+) {
   if (element.tipo === "ESPACADOR") {
     return <div key={element.id} style={{ height: `${element.altura}px` }} />;
   }
@@ -366,7 +394,11 @@ function renderElement(element: SectionColumnElement) {
     );
   }
 
-  return <div key={element.id}>{renderTextContent(element)}</div>;
+  return (
+    <div key={element.id}>
+      {renderTextContent(element, forceBrandForeground)}
+    </div>
+  );
 }
 
 export default function SecaoColunasPublico({
@@ -379,13 +411,16 @@ export default function SecaoColunasPublico({
   const stackedMobile = config.responsivo.mobile === "EMPILHAR";
   const bleedLeft = config.layout.sangria === "ESQUERDA" || config.layout.sangria === "AMBAS";
   const bleedRight = config.layout.sangria === "DIREITA" || config.layout.sangria === "AMBAS";
+  const isBrandSection = isBrandColor(config.design.fundoSecao);
 
   return (
     <section
       className={`overflow-hidden ${getHeightClass(config.layout.altura)}`}
       style={{
         backgroundColor: config.design.fundoSecao,
-        color: config.design.corTextoPadrao,
+        color: isBrandSection
+          ? "var(--brand-blue-foreground)"
+          : config.design.corTextoPadrao,
       }}
     >
       <div
@@ -414,6 +449,15 @@ export default function SecaoColunasPublico({
           {columns.map((column, index) => {
             const media = getMediaFromColumn(column);
             const hasImageBackground = column.fundo.tipo === "IMAGEM";
+            const configuredColumnColor =
+              column.fundo.tipo === "COR" ? column.fundo.cor?.trim() : "";
+            const columnColor =
+              configuredColumnColor &&
+              configuredColumnColor.toLowerCase() !== "transparent"
+                ? configuredColumnColor
+                : config.design.fundoSecao;
+            const forceBrandForeground =
+              !hasImageBackground && isBrandColor(columnColor);
             const bleedColumn =
               (index === 0 && bleedLeft) || (index === columns.length - 1 && bleedRight);
 
@@ -467,7 +511,9 @@ export default function SecaoColunasPublico({
                   }
                 >
                   {column.elementos.length > 0 ? (
-                    column.elementos.map(renderElement)
+                    column.elementos.map((element) =>
+                      renderElement(element, forceBrandForeground)
+                    )
                   ) : isEditor ? (
                     <div className="rounded-md border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center text-sm font-semibold text-slate-500">
                       Adicionar elemento

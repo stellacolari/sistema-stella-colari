@@ -548,7 +548,7 @@ export default function VitrineEditorialPublico({
                     )
                   ) : (
                     <div
-                      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,#e7f2f6_100%)]"
+                      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,var(--brand-blue-soft)_100%)]"
                       aria-hidden="true"
                     />
                   )}

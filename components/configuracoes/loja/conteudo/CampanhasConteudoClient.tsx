@@ -42,7 +42,7 @@ export default function CampanhasConteudoClient({ canCreate }: { canCreate: bool
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-4 text-sm font-semibold text-white transition hover:bg-[#3f6699]"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)]"
       >
         <Plus className="h-4 w-4" />
         Nova campanha
@@ -62,17 +62,17 @@ export default function CampanhasConteudoClient({ canCreate }: { canCreate: bool
             <div className="mt-6 space-y-4">
               <label className="block text-sm font-semibold text-slate-800">
                 Nome interno
-                <input autoFocus value={title} maxLength={140} onChange={(event) => setTitle(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20" />
+                <input autoFocus value={title} maxLength={140} onChange={(event) => setTitle(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]" />
               </label>
               <label className="block text-sm font-semibold text-slate-800">
                 Slug opcional
-                <input value={slug} maxLength={120} onChange={(event) => setSlug(event.target.value)} placeholder="gerado pelo nome" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20" />
+                <input value={slug} maxLength={120} onChange={(event) => setSlug(event.target.value)} placeholder="gerado pelo nome" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]" />
               </label>
               {error ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={() => setOpen(false)} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700">Cancelar</button>
-              <button type="button" onClick={() => void create()} disabled={!title.trim() || loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-5 text-sm font-semibold text-white disabled:opacity-45">
+              <button type="button" onClick={() => void create()} disabled={!title.trim() || loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white disabled:opacity-45">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Criar rascunho
               </button>

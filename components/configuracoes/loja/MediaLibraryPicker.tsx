@@ -308,7 +308,7 @@ export default function MediaLibraryPicker({
               onClose();
             }}
             disabled={selected.length === 0}
-            className="min-h-11 rounded-2xl bg-[#4772AA] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3f6699] disabled:opacity-50"
+            className="min-h-11 rounded-2xl bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] disabled:opacity-50"
           >
             {mode === "single"
               ? "Usar imagem"

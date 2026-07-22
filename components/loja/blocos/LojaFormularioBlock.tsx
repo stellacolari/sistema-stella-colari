@@ -66,19 +66,19 @@ function getFundoClasses(fundo: string) {
 
   if (fundo === "AZUL_ESCURO") {
     return {
-      section: "bg-[#2e7b99]",
+      section: "bg-[var(--brand-blue)]",
       card: "bg-white/95 border-white/30",
       title: "text-white",
-      text: "text-white/85",
+      text: "text-white",
     };
   }
 
   if (fundo === "ESCURO") {
     return {
-      section: "bg-[#5D8CC8]",
+      section: "bg-[var(--brand-blue)]",
       card: "bg-white border-slate-200",
-      title: "text-[#0f172a]",
-      text: "text-[#0f172a]/75",
+      title: "text-white",
+      text: "text-white",
     };
   }
 
@@ -401,7 +401,7 @@ export default function LojaFormularioBlock({
               <button
                 type="submit"
                 disabled={enviando}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#4772AA] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#355f95] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--brand-blue)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
                 {enviando ? "Enviando..." : textoBotao}

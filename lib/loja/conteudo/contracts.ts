@@ -1,6 +1,6 @@
 export const CONTEUDO_LOJA_SCHEMA_VERSION = 1;
-export const CONTEUDO_LOJA_MARCA_AZUL = "#5D8CC8";
-export const CONTEUDO_LOJA_MARCA_AZUL_ACESSIVEL = "#4772AA";
+export const CONTEUDO_LOJA_MARCA_AZUL = "#2e7b99";
+export const CONTEUDO_LOJA_MARCA_AZUL_ACESSIVEL = CONTEUDO_LOJA_MARCA_AZUL;
 
 export type ConteudoCampoTipo =
   | "TEXTO"

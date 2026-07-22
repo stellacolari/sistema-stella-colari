@@ -223,6 +223,7 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
   const textoSobreImagemDesktop = layoutDesktop === "TEXTO_SOBRE_IMAGEM";
   const textoSobreImagemMobile = layoutMobile === "TEXTO_SOBRE_IMAGEM";
   const corFundo = getString(config, "corFundo", "BRANCO");
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo);
   const colors = getTextColorForBackground(corFundo);
   const alinhamentoTextoDesktop = getString(
     config,
@@ -428,7 +429,17 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
                   fallback={titulo}
                   data-stella-inline-field="titulo"
                   className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
-                  style={tituloStyle}
+                  forceColor={
+                    isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+                  }
+                  style={
+                    isBrandSurface
+                      ? {
+                          ...tituloStyle,
+                          color: "var(--brand-blue-foreground)",
+                        }
+                      : tituloStyle
+                  }
                 />
               ) : null}
               {hasTexto ? (
@@ -437,7 +448,17 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
                   fallback={texto}
                   data-stella-inline-field="texto"
                   className={`mt-5 text-base leading-7 ${colors.body}`}
-                  style={textoStyle}
+                  forceColor={
+                    isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+                  }
+                  style={
+                    isBrandSurface
+                      ? {
+                          ...textoStyle,
+                          color: "var(--brand-blue-foreground)",
+                        }
+                      : textoStyle
+                  }
                 />
               ) : null}
 
@@ -445,8 +466,14 @@ export default function TextoImagemPublico({ bloco }: BlocoPublicoProps) {
                 <Link
                   href={linkBotao}
                   data-stella-inline-field="textoBotao"
-                  className={`mt-8 inline-flex min-h-11 items-center justify-center bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95] ${buttonRadiusClass}`}
-                  style={botaoStyle}
+                  className={`mt-8 inline-flex min-h-11 items-center justify-center px-6 text-sm font-semibold transition ${buttonRadiusClass} ${
+                    isBrandSurface
+                      ? "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+                      : "bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-dark)]"
+                  }`}
+                  style={
+                    isBrandSurface ? { ...botaoStyle, color: undefined } : botaoStyle
+                  }
                 >
                   {textoBotao}
                 </Link>

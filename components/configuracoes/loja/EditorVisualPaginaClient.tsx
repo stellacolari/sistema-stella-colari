@@ -1295,12 +1295,12 @@ const TIPOS_BLOCO_ADICIONAR: {
       <span className="mt-3 block overflow-hidden rounded-xl bg-slate-100 p-2">
         <span className="grid min-h-20 grid-cols-[1.1fr_.9fr] gap-2 rounded-xl bg-[#f7f2ea] p-2">
           <span className="flex flex-col justify-between">
-            <span className="h-2 w-12 rounded-full bg-[#2e7b99]" />
+            <span className="h-2 w-12 rounded-full bg-[var(--brand-blue)]" />
             <span className="space-y-1">
               <span className="block h-3 w-16 rounded bg-slate-950" />
               <span className="block h-3 w-12 rounded bg-slate-950" />
             </span>
-            <span className="h-4 w-14 rounded-full bg-[#2e7b99]" />
+            <span className="h-4 w-14 rounded-full bg-[var(--brand-blue)]" />
           </span>
           <span className="rounded-lg bg-white/80 ring-1 ring-black/5" />
         </span>
@@ -4967,9 +4967,12 @@ function getDeviceDescription(device: DevicePreview) {
 }
 
 function getBgClass(corFundo: string) {
-  if (corFundo === "CINZA") return "bg-slate-50";
-  if (corFundo === "MARCA") return "bg-[var(--brand-blue-soft)]";
-  if (corFundo === "ESCURO") return "bg-slate-950 text-white";
+  if (corFundo === "CINZA" || corFundo === "AZUL_CLARO") {
+    return "bg-slate-50";
+  }
+  if (["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo)) {
+    return "bg-[var(--brand-blue)] text-white";
+  }
 
   return "bg-white";
 }
@@ -6366,6 +6369,7 @@ function RichTextInlineEditor({
   const [isFocused, setIsFocused] = useState(false);
   const [isEmpty, setIsEmpty] = useState(() => isRichTextEmpty(initialContent));
   const isFocusedRef = useRef(false);
+  const forceInheritedColor = style?.color === "var(--brand-blue-foreground)";
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -6439,7 +6443,11 @@ function RichTextInlineEditor({
 
   if (!editor) {
     return (
-      <span className={`${className} ${fallbackText ? "" : "opacity-60"}`} style={style}>
+      <span
+        className={`${className} ${fallbackText ? "" : "opacity-60"}`}
+        style={style}
+        data-stella-force-inherited-color={forceInheritedColor ? "true" : undefined}
+      >
         {fallbackText || placeholder}
       </span>
     );
@@ -6457,6 +6465,7 @@ function RichTextInlineEditor({
         isEmpty ? "ring-1 ring-dashed ring-slate-300/80" : ""
       } ${className}`}
       style={style}
+      data-stella-force-inherited-color={forceInheritedColor ? "true" : undefined}
       data-placeholder={placeholder}
     >
       <RichTextBubbleToolbar editor={editor} />
@@ -6708,8 +6717,27 @@ function RenderBlocoPreview({
   );
 
   const isMobile = device === "MOBILE";
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(
+    corFundo
+  );
   const bgClass = getBgClass(corFundo);
   const paddingClass = getPaddingClass(espacamento);
+  const resolveSurfaceTextStyle = (style: TextStyleConfig) => {
+    const resolvedStyle = resolveTextStyle(style);
+
+    return isBrandSurface
+      ? { ...resolvedStyle, color: "var(--brand-blue-foreground)" }
+      : resolvedStyle;
+  };
+  const resolveSurfaceButtonTextStyle = (style: TextStyleConfig) => {
+    const resolvedStyle = resolveTextStyle(style);
+
+    if (!isBrandSurface) return resolvedStyle;
+
+    const nextStyle = { ...resolvedStyle };
+    delete nextStyle.color;
+    return nextStyle;
+  };
   const alinhamentoBanner =
     getStringConfig(config, "alinhamentoConteudo") || "ESQUERDA";
   const alinhamentoTextoDesktop =
@@ -6840,8 +6868,13 @@ function RenderBlocoPreview({
   const ctaAlignmentClass = getCtaAlignmentClass(alinhamentoCta);
   const ctaWidthClass = getCtaContentWidthClass(larguraConteudoCta);
   const ctaTextColors =
-    corFundo === "ESCURO" || corFundo === "MARCA"
-      ? { title: "text-white", body: "text-white/75", button: "bg-white text-slate-950" }
+    isBrandSurface
+      ? {
+          title: "text-white",
+          body: "text-white",
+          button:
+            "border border-white bg-white text-[var(--brand-blue)]",
+        }
       : { title: "text-slate-950", body: "text-slate-600", button: "bg-slate-950 text-white" };
   const textoImagemSobreImagem = isMobile
     ? layoutMobileTextoImagem === "TEXTO_SOBRE_IMAGEM"
@@ -6866,7 +6899,7 @@ function RenderBlocoPreview({
         fallbackText={titulo}
         placeholder="Clique para adicionar um título"
         className="tracking-tight"
-        style={resolveTextStyle(tituloStyle)}
+        style={resolveSurfaceTextStyle(tituloStyle)}
         onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
             tituloRichText: richText,
@@ -6881,9 +6914,9 @@ function RenderBlocoPreview({
         placeholder="Clique para adicionar um texto"
         multiline
         className={`mt-4 leading-7 ${
-          corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
+          isBrandSurface ? "text-white" : "text-slate-600"
         }`}
-        style={resolveTextStyle(textoStyle)}
+        style={resolveSurfaceTextStyle(textoStyle)}
         onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
             textoRichText: richText,
@@ -6898,17 +6931,17 @@ function RenderBlocoPreview({
       {exibirBotaoTextoImagem && (
         <div
           className={`mt-5 inline-flex px-5 py-3 ${
-            corFundo === "ESCURO"
-              ? "bg-white text-slate-950"
+            isBrandSurface
+              ? "border border-white bg-white text-[var(--brand-blue)]"
               : "bg-slate-950 text-white"
           } ${buttonRadiusPreviewClass}`}
-          style={resolveTextStyle(botaoStyle)}
+          style={resolveSurfaceButtonTextStyle(botaoStyle)}
         >
           <InlineTextEditor
             value={textoBotao}
             placeholder="Texto do botão"
             className="text-center"
-            style={resolveTextStyle(botaoStyle)}
+            style={resolveSurfaceButtonTextStyle(botaoStyle)}
             onChange={(value) =>
               onInlineTextChange(bloco.id, {
                 textoBotao: value,
@@ -7128,7 +7161,7 @@ function RenderBlocoPreview({
         fallbackText={titulo}
         placeholder="Clique para adicionar um título"
         className="tracking-tight"
-        style={resolveTextStyle(tituloSecaoStyle)}
+        style={resolveSurfaceTextStyle(tituloSecaoStyle)}
         onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
             tituloRichText: richText,
@@ -7142,9 +7175,9 @@ function RenderBlocoPreview({
         placeholder="Clique para adicionar um subtítulo"
         multiline
         className={`mt-3 leading-7 ${
-          corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+          isBrandSurface ? "text-white" : "text-slate-500"
         }`}
-        style={resolveTextStyle(subtituloSecaoStyle)}
+        style={resolveSurfaceTextStyle(subtituloSecaoStyle)}
         onChange={(richText, plainText) =>
           onInlineTextChange(bloco.id, {
             subtituloRichText: richText,
@@ -7201,9 +7234,9 @@ function RenderBlocoPreview({
               placeholder="Clique para adicionar um subtítulo"
               multiline
               className={`mt-3 leading-7 ${
-                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                isBrandSurface ? "text-white" : "text-slate-500"
               }`}
-              style={resolveTextStyle(subtituloSecaoStyle)}
+              style={resolveSurfaceTextStyle(subtituloSecaoStyle)}
               onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
                   subtituloRichText: richText,
@@ -7226,9 +7259,9 @@ function RenderBlocoPreview({
               placeholder="Clique para adicionar um subtítulo"
               multiline
               className={`mt-3 leading-7 ${
-                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                isBrandSurface ? "text-white" : "text-slate-500"
               }`}
-              style={resolveTextStyle(subtituloSecaoStyle)}
+              style={resolveSurfaceTextStyle(subtituloSecaoStyle)}
               onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
                   subtituloRichText: richText,
@@ -7276,12 +7309,16 @@ function RenderBlocoPreview({
       ? tamanhoEtiquetaColecoes === "GRANDE"
         ? "text-sm text-slate-950"
         : "text-xs text-slate-950"
-      : "text-slate-950";
+      : isBrandSurface
+        ? "text-white"
+        : "text-slate-950";
     const bodyClass = overlay
       ? tamanhoEtiquetaColecoes === "PEQUENA"
         ? "mt-1 text-[11px] leading-4 text-slate-500"
         : "mt-1.5 text-xs leading-5 text-slate-500"
-      : "mt-2 leading-6 text-slate-500";
+      : isBrandSurface
+        ? "mt-2 leading-6 text-white"
+        : "mt-2 leading-6 text-slate-500";
 
     return (
       <div className={etiquetaBaseClass}>
@@ -7290,7 +7327,11 @@ function RenderBlocoPreview({
           fallbackText={tituloItem}
           placeholder="Título da coleção"
           className={titleClass}
-          style={resolveTextStyle(cardTituloStyle)}
+          style={
+            overlay
+              ? resolveTextStyle(cardTituloStyle)
+              : resolveSurfaceTextStyle(cardTituloStyle)
+          }
           onChange={(richText, plainText) =>
             onInlineColecaoItemChange(bloco.id, item.id, {
               tituloRichText: richText,
@@ -7307,7 +7348,11 @@ function RenderBlocoPreview({
           placeholder="Chamada da coleção"
           multiline
           className={bodyClass}
-          style={resolveTextStyle(cardTextoStyle)}
+          style={
+            overlay
+              ? resolveTextStyle(cardTextoStyle)
+              : resolveSurfaceTextStyle(cardTextoStyle)
+          }
           onChange={(richText, plainText) =>
             onInlineColecaoItemChange(bloco.id, item.id, {
               subtituloRichText: richText,
@@ -7317,7 +7362,11 @@ function RenderBlocoPreview({
         />
         {exibirBotaoEtiquetaColecoes && item.textoLink && (
           <span
-            className={`mt-2 inline-flex border border-slate-950 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-950 ${buttonRadiusPreviewClass}`}
+            className={`mt-2 inline-flex border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+              !overlay && isBrandSurface
+                ? "border-white text-white"
+                : "border-slate-950 text-slate-950"
+            } ${buttonRadiusPreviewClass}`}
           >
             {item.textoLink}
           </span>
@@ -7821,7 +7870,7 @@ function RenderBlocoPreview({
                 fallbackText={titulo}
                 placeholder="Clique para adicionar um título da seção"
                 className="tracking-tight"
-                style={resolveTextStyle(tituloStyle)}
+                style={resolveSurfaceTextStyle(tituloStyle)}
                 onChange={(richText, plainText) =>
                   onInlineTextChange(bloco.id, {
                     tituloRichText: richText,
@@ -7836,9 +7885,9 @@ function RenderBlocoPreview({
                 placeholder="Clique para adicionar um subtítulo"
                 multiline
                 className={`mt-2 max-w-2xl leading-6 ${
-                  corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                  isBrandSurface ? "text-white" : "text-slate-500"
                 }`}
-                style={resolveTextStyle(subtituloStyle)}
+                style={resolveSurfaceTextStyle(subtituloStyle)}
                 onChange={(richText, plainText) =>
                   onInlineTextChange(bloco.id, {
                     subtituloRichText: richText,
@@ -7926,7 +7975,9 @@ function RenderBlocoPreview({
               <span
                 className={`inline-flex h-9 w-9 items-center justify-center border text-sm ${
                   estiloSetasCarrossel === "MINIMALISTA"
-                    ? "border-transparent bg-transparent text-slate-600"
+                    ? `border-transparent bg-transparent ${
+                        isBrandSurface ? "text-white" : "text-slate-600"
+                      }`
                     : "rounded-full border-slate-200 bg-white text-slate-700 shadow-sm"
                 }`}
               >
@@ -7935,7 +7986,9 @@ function RenderBlocoPreview({
               <span
                 className={`inline-flex h-9 w-9 items-center justify-center border text-sm ${
                   estiloSetasCarrossel === "MINIMALISTA"
-                    ? "border-transparent bg-transparent text-slate-600"
+                    ? `border-transparent bg-transparent ${
+                        isBrandSurface ? "text-white" : "text-slate-600"
+                      }`
                     : "rounded-full border-slate-200 bg-white text-slate-700 shadow-sm"
                 }`}
               >
@@ -7945,7 +7998,7 @@ function RenderBlocoPreview({
           ) : null}
 
           {(categorias.length > 0 || produtos.length > 0) && (
-            <p className="mt-5 text-xs text-slate-400">
+            <p className={`mt-5 text-xs ${isBrandSurface ? "text-white" : "text-slate-400"}`}>
               Fonte configurada:{" "}
               {[...categorias, ...produtos].slice(0, 4).join(", ")}
             </p>
@@ -7965,7 +8018,7 @@ function RenderBlocoPreview({
               fallbackText={titulo}
               placeholder="Clique para adicionar um título da seção"
               className="tracking-tight"
-              style={resolveTextStyle(tituloSecaoStyle)}
+              style={resolveSurfaceTextStyle(tituloSecaoStyle)}
               onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
                   tituloSecaoRichText: richText,
@@ -7981,9 +8034,9 @@ function RenderBlocoPreview({
               placeholder="Clique para adicionar um subtítulo"
               multiline
               className={`mt-2 leading-6 ${
-                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                isBrandSurface ? "text-white" : "text-slate-500"
               }`}
-              style={resolveTextStyle(subtituloSecaoStyle)}
+              style={resolveSurfaceTextStyle(subtituloSecaoStyle)}
               onChange={(richText, plainText) =>
                 onInlineTextChange(bloco.id, {
                   subtituloSecaoRichText: richText,
@@ -8017,9 +8070,13 @@ function RenderBlocoPreview({
             ).map((card) => (
               <article
                 key={card.id}
-                className={`min-w-0 border border-slate-200 bg-white ${
+                className={`min-w-0 border ${
+                  isBrandSurface
+                    ? "border-white/15 bg-black/10 text-white"
+                    : "border-slate-200 bg-white"
+                } ${
                   layoutAtualCards === "CARROSSEL" ? "w-64 shrink-0" : ""
-                } ${corFundo === "ESCURO" ? "text-slate-950" : ""}`}
+                }`}
               >
                 {card.exibirMidia && card.tipoMidia !== "NENHUMA" && (
                   <div className="aspect-[4/3] overflow-hidden bg-slate-100">
@@ -8038,8 +8095,8 @@ function RenderBlocoPreview({
                     value={card.tituloRichText}
                     fallbackText={card.titulo || ""}
                     placeholder="Título do card"
-                    className="text-slate-950"
-                    style={resolveTextStyle(cardTituloStyle)}
+                    className={isBrandSurface ? "text-white" : "text-slate-950"}
+                    style={resolveSurfaceTextStyle(cardTituloStyle)}
                     onChange={(richText, plainText) =>
                       onInlineCardChange(bloco.id, card.id, {
                         tituloRichText: richText,
@@ -8053,8 +8110,10 @@ function RenderBlocoPreview({
                     fallbackText={card.texto || ""}
                     placeholder="Texto do card"
                     multiline
-                    className="mt-2 leading-6 text-slate-500"
-                    style={resolveTextStyle(cardTextoStyle)}
+                    className={`mt-2 leading-6 ${
+                      isBrandSurface ? "text-white" : "text-slate-500"
+                    }`}
+                    style={resolveSurfaceTextStyle(cardTextoStyle)}
                     onChange={(richText, plainText) =>
                       onInlineCardChange(bloco.id, card.id, {
                         textoRichText: richText,
@@ -8066,14 +8125,18 @@ function RenderBlocoPreview({
                   {card.exibirBotao && (
                     <>
                       <div
-                        className={`mt-4 inline-flex bg-slate-950 px-4 py-2 text-white ${buttonRadiusPreviewClass}`}
-                        style={resolveTextStyle(cardBotaoStyle)}
+                        className={`mt-4 inline-flex px-4 py-2 ${
+                          isBrandSurface
+                            ? "border border-white bg-white text-[var(--brand-blue)]"
+                            : "bg-slate-950 text-white"
+                        } ${buttonRadiusPreviewClass}`}
+                        style={resolveSurfaceButtonTextStyle(cardBotaoStyle)}
                       >
                         <InlineTextEditor
                           value={card.textoBotao}
                           placeholder="Texto do botão"
                           className="text-center"
-                          style={resolveTextStyle(cardBotaoStyle)}
+                          style={resolveSurfaceButtonTextStyle(cardBotaoStyle)}
                           onChange={(value) =>
                             onInlineCardChange(bloco.id, card.id, {
                               textoBotao: value,
@@ -8085,7 +8148,9 @@ function RenderBlocoPreview({
                       <InlineTextEditor
                         value={card.linkBotao}
                         placeholder="Link do card"
-                        className="mt-2 block w-full text-xs text-slate-400"
+                        className={`mt-2 block w-full text-xs ${
+                          isBrandSurface ? "text-white" : "text-slate-400"
+                        }`}
                         onChange={(value) =>
                           onInlineCardChange(bloco.id, card.id, {
                             linkBotao: value,
@@ -8361,7 +8426,7 @@ function RenderBlocoPreview({
                         fallbackText={titulo}
                         placeholder="Clique para adicionar um título"
                         className={`tracking-tight ${ctaTextColors.title}`}
-                        style={resolveTextStyle(tituloStyle)}
+                        style={resolveSurfaceTextStyle(tituloStyle)}
                         onChange={(richText, plainText) =>
                           onInlineTextChange(bloco.id, {
                             tituloRichText: richText,
@@ -8375,7 +8440,7 @@ function RenderBlocoPreview({
                         placeholder="Clique para adicionar um texto"
                         multiline
                         className={`mt-4 leading-7 ${ctaTextColors.body}`}
-                        style={resolveTextStyle(textoStyle)}
+                        style={resolveSurfaceTextStyle(textoStyle)}
                         onChange={(richText, plainText) =>
                           onInlineTextChange(bloco.id, {
                             textoRichText: richText,
@@ -8396,7 +8461,9 @@ function RenderBlocoPreview({
                                 value={textoBotao}
                                 placeholder="Botão primário"
                                 className="text-center"
-                                style={resolveTextStyle(botaoPrimarioStyle)}
+                                style={resolveSurfaceButtonTextStyle(
+                                  botaoPrimarioStyle
+                                )}
                                 onChange={(value) =>
                                   onInlineTextChange(bloco.id, {
                                     textoBotao: value,
@@ -8408,12 +8475,20 @@ function RenderBlocoPreview({
                             </div>
                           )}
                           {exibirBotaoSecundario && (
-                            <div className={`inline-flex border border-current px-5 py-3 ${buttonRadiusPreviewClass}`}>
+                            <div
+                              className={`inline-flex border px-5 py-3 ${
+                                isBrandSurface
+                                  ? "border-white bg-transparent text-white"
+                                  : "border-current"
+                              } ${buttonRadiusPreviewClass}`}
+                            >
                               <InlineTextEditor
                                 value={textoBotaoSecundario}
                                 placeholder="Botão secundário"
                                 className="text-center"
-                                style={resolveTextStyle(botaoSecundarioStyle)}
+                                style={resolveSurfaceButtonTextStyle(
+                                  botaoSecundarioStyle
+                                )}
                                 onChange={(value) =>
                                   onInlineTextChange(bloco.id, {
                                     textoBotaoSecundario: value,
@@ -8455,7 +8530,7 @@ function RenderBlocoPreview({
           {texto && (
             <p
               className={`mt-2 max-w-2xl text-sm leading-6 ${
-                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                isBrandSurface ? "text-white" : "text-slate-500"
               }`}
             >
               {texto}
@@ -8477,7 +8552,7 @@ function RenderBlocoPreview({
           </div>
 
           {(categorias.length > 0 || produtos.length > 0) && (
-            <p className="mt-5 text-xs text-slate-400">
+            <p className={`mt-5 text-xs ${isBrandSurface ? "text-white" : "text-slate-400"}`}>
               Fonte configurada:{" "}
               {[...categorias, ...produtos].slice(0, 4).join(", ")}
             </p>
@@ -8490,7 +8565,7 @@ function RenderBlocoPreview({
           {texto && (
             <p
               className={`mt-2 max-w-2xl text-sm leading-6 ${
-                corFundo === "ESCURO" ? "text-slate-300" : "text-slate-500"
+                isBrandSurface ? "text-white" : "text-slate-500"
               }`}
             >
               {texto}
@@ -8528,7 +8603,7 @@ function RenderBlocoPreview({
 
           <p
             className={`mt-4 max-w-2xl text-sm leading-7 ${
-              corFundo === "ESCURO" ? "text-slate-300" : "text-slate-600"
+              isBrandSurface ? "text-white" : "text-slate-600"
             }`}
           >
             {texto || "Conteúdo do bloco será exibido aqui."}

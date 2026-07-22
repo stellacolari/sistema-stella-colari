@@ -47,7 +47,7 @@ export default async function ConteudoSeoPage() {
                     <p className="mt-1 text-xs text-slate-500">{complete ? "SEO principal preenchido" : "Título ou descrição pendente"}</p>
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[#274b78]">{title || "Título não definido"}</p>
+                    <p className="truncate text-sm font-medium text-[var(--brand-blue-dark)]">{title || "Título não definido"}</p>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{description || "Descrição não definida"}</p>
                   </div>
                   <Link href={`/configuracoes/loja/conteudo/paginas/${page.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">

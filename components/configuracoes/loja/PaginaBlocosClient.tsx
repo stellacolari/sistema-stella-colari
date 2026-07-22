@@ -298,6 +298,17 @@ function getStringArray(config: Record<string, unknown>, key: string) {
   return [];
 }
 
+function isBrandColor(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "");
+
+  return [
+    "#2e7b99",
+    "rgb(46,123,153)",
+    "rgba(46,123,153,1)",
+    "var(--brand-blue)",
+  ].includes(normalized);
+}
+
 function getObject(config: Record<string, unknown>, key: string) {
   const value = config[key];
 
@@ -353,9 +364,9 @@ function toggleStringItem(items: string[], value: string) {
 function getTextoFundoClasses(fundo: string) {
   if (fundo === "AZUL_ESCURO") {
     return {
-      container: "bg-[#2e7b99] text-white",
+      container: "bg-[var(--brand-blue)] text-white",
       titulo: "text-white",
-      texto: "text-white/85",
+      texto: "text-white",
     };
   }
 
@@ -369,9 +380,9 @@ function getTextoFundoClasses(fundo: string) {
 
   if (fundo === "ESCURO") {
     return {
-      container: "bg-slate-950 text-white",
+      container: "bg-[var(--brand-blue)] text-white",
       titulo: "text-white",
-      texto: "text-white/75",
+      texto: "text-white",
     };
   }
 
@@ -641,6 +652,8 @@ function ConfigFaixaDiferenciais({
   const itens = getStringArray(config, "itens");
   const lista =
     itens.length > 0 ? itens : ["Explore o catálogo", "Acompanhe seus pedidos"];
+  const corFundoPreview = getString(config, "corFundo", "#2e7b99");
+  const corTextoPreview = getString(config, "corTexto", "#ffffff");
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -730,8 +743,10 @@ function ConfigFaixaDiferenciais({
         <div
           className="rounded-2xl px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.18em]"
           style={{
-            backgroundColor: getString(config, "corFundo", "#2e7b99"),
-            color: getString(config, "corTexto", "#ffffff"),
+            backgroundColor: corFundoPreview,
+            color: isBrandColor(corFundoPreview)
+              ? "var(--brand-blue-foreground)"
+              : corTextoPreview,
           }}
         >
           {lista.join(" • ")}

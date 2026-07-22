@@ -185,7 +185,7 @@ export default function ConteudoImagemField({
               onChange={(event) => onChange({ ...value, alt: event.target.value })}
               disabled={disabled}
               placeholder="Descreva o conteúdo relevante da imagem"
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20"
+              className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)]"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -193,7 +193,7 @@ export default function ConteudoImagemField({
               type="button"
               onClick={() => openPicker("DESKTOP")}
               disabled={disabled}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-4 text-sm font-semibold text-white transition hover:bg-[#3f6699] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8] focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2"
             >
               <ImageIcon className="h-4 w-4" />
               {hasImage ? "Trocar imagem" : "Selecionar imagem"}
@@ -206,7 +206,7 @@ export default function ConteudoImagemField({
                     setWorking(value);
                     setCropOpen(true);
                   }}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
                 >
                   <Crop className="h-4 w-4" />
                   Ajustar enquadramento
@@ -214,7 +214,7 @@ export default function ConteudoImagemField({
                 <button
                   type="button"
                   onClick={() => openPicker("MOBILE")}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
                 >
                   <Smartphone className="h-4 w-4" />
                   Imagem mobile opcional
@@ -259,7 +259,7 @@ export default function ConteudoImagemField({
               <button
                 type="button"
                 onClick={() => setCropOpen(false)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
                 aria-label="Fechar editor de enquadramento"
               >
                 <X className="h-4 w-4" />
@@ -294,7 +294,7 @@ export default function ConteudoImagemField({
                   onChange(working);
                   setCropOpen(false);
                 }}
-                className="min-h-11 rounded-xl bg-[#4772AA] px-5 text-sm font-semibold text-white transition hover:bg-[#3f6699]"
+                className="min-h-11 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)]"
               >
                 Aplicar enquadramento
               </button>

@@ -118,6 +118,11 @@
   text-transform: uppercase;
 }
 
+.heroFooterBrand {
+  border-top-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
 .brandValues {
   color: #171916;
 }
@@ -291,6 +296,15 @@
   aspect-ratio: 1;
   left: 8%;
   bottom: -32%;
+}
+
+.heroFallback {
+  background: var(--brand-blue);
+}
+
+.heroFallback::before,
+.heroFallback::after {
+  content: none;
 }
 
 .mediaFallback::before {

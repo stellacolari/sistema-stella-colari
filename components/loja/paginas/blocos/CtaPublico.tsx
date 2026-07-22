@@ -127,6 +127,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
   const tituloRichText = getRichText(config, "tituloRichText");
   const textoRichText = getRichText(config, ["textoRichText", "subtituloRichText"]);
   const corFundo = getString(config, "corFundo", "BRANCO");
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo);
   const colors = getTextColorForBackground(corFundo);
   const alinhamento = getString(config, "alinhamento", "CENTRO");
   const alinhamentoTextoDesktop = getString(
@@ -226,6 +227,7 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
   function renderContent(layout: string) {
     if (!hasContent) return null;
 
+    const onBrandSurface = layout !== "SOBRE_MIDIA" && isBrandSurface;
     const displayColors =
       layout === "SOBRE_MIDIA"
         ? {
@@ -251,7 +253,14 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             data-stella-inline-field="titulo"
             className={`text-3xl font-light leading-tight md:text-5xl ${displayColors.title}`}
             paragraphClassName="mb-0"
-            style={tituloStyle}
+            forceColor={
+              onBrandSurface ? "var(--brand-blue-foreground)" : undefined
+            }
+            style={
+              onBrandSurface
+                ? { ...tituloStyle, color: "var(--brand-blue-foreground)" }
+                : tituloStyle
+            }
           />
         ) : null}
         {hasTexto ? (
@@ -261,7 +270,14 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
             data-stella-inline-field="texto"
             className={`mt-4 text-base leading-7 md:text-lg ${displayColors.body}`}
             paragraphClassName="mb-0"
-            style={textoStyle}
+            forceColor={
+              onBrandSurface ? "var(--brand-blue-foreground)" : undefined
+            }
+            style={
+              onBrandSurface
+                ? { ...textoStyle, color: "var(--brand-blue-foreground)" }
+                : textoStyle
+            }
           />
         ) : null}
         {hasBotaoPrimario || hasBotaoSecundario ? (
@@ -270,8 +286,16 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
               <Link
                 href={linkBotaoPrimario}
                 data-stella-inline-field="textoBotao"
-                className={`inline-flex min-h-11 items-center justify-center bg-[#4772AA] px-6 text-sm font-semibold text-white transition hover:bg-[#355f95] ${buttonRadiusClass}`}
-                style={botaoPrimarioStyle}
+                className={`inline-flex min-h-11 items-center justify-center px-6 text-sm font-semibold transition ${buttonRadiusClass} ${
+                  onBrandSurface
+                    ? "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+                    : "bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-dark)]"
+                }`}
+                style={
+                  onBrandSurface
+                    ? { ...botaoPrimarioStyle, color: undefined }
+                    : botaoPrimarioStyle
+                }
               >
                 {textoBotaoPrimario}
               </Link>
@@ -280,8 +304,16 @@ export default function CtaPublico({ bloco }: BlocoPublicoProps) {
               <Link
                 href={linkBotaoSecundario}
                 data-stella-inline-field="textoBotaoSecundario"
-                className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${displayColors.border} ${displayColors.title}`}
-                style={botaoSecundarioStyle}
+                className={`inline-flex min-h-11 items-center justify-center border px-6 text-sm font-semibold transition ${buttonRadiusClass} ${
+                  onBrandSurface
+                    ? "border-white text-white hover:bg-white hover:text-[var(--brand-blue)]"
+                    : `${displayColors.border} ${displayColors.title}`
+                }`}
+                style={
+                  onBrandSurface
+                    ? { ...botaoSecundarioStyle, color: undefined }
+                    : botaoSecundarioStyle
+                }
               >
                 {textoBotaoSecundario}
               </Link>

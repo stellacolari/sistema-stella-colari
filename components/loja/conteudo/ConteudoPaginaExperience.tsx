@@ -57,7 +57,7 @@ function EditorialButton({ label, href }: { label: string; href: string }) {
   return (
     <Link
       href={target}
-      className="mt-8 inline-flex min-h-11 items-center justify-center gap-2 border border-[#4772AA] px-6 text-xs font-semibold uppercase tracking-[0.18em] text-[#274b78] transition hover:bg-[#4772AA] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8] focus-visible:ring-offset-2"
+      className="mt-8 inline-flex min-h-11 items-center justify-center gap-2 border border-[var(--brand-blue)] px-6 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-blue-dark)] transition hover:bg-[var(--brand-blue)] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2"
     >
       {label}
       <ArrowRight className="h-3.5 w-3.5" />
@@ -104,7 +104,7 @@ function HeroSection({
       className={`relative isolate flex items-center overflow-hidden border-b border-[#171916]/10 px-5 sm:px-8 lg:px-12 ${
         compact ? "min-h-[32vh] py-16 lg:min-h-[38vh]" : "min-h-[58vh] py-24 lg:min-h-[72vh]"
       } ${
-        hasImage ? "text-white" : "bg-[#5D8CC8] text-[#0f172a]"
+        hasImage ? "text-white" : "bg-[var(--brand-blue)] text-white"
       }`}
     >
       {hasImage ? (
@@ -123,7 +123,7 @@ function HeroSection({
             <HeroTitle title={title} />
           </h1>
           {text ? (
-            <p className={`mt-7 max-w-2xl text-pretty text-base leading-7 md:text-lg ${hasImage ? "text-white/88" : "text-[#0f172a]/78"}`}>
+            <p className={`mt-7 max-w-2xl text-pretty text-base leading-7 md:text-lg ${hasImage ? "text-white/88" : "text-white"}`}>
               {text}
             </p>
           ) : null}
@@ -135,7 +135,7 @@ function HeroSection({
                   className={`inline-flex min-h-12 items-center justify-center px-6 text-xs font-semibold uppercase tracking-[0.18em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                     hasImage
                       ? "bg-white text-[#171916] hover:bg-white/90 focus-visible:ring-white"
-                      : "bg-white text-[#0f172a] hover:bg-white/85 focus-visible:ring-white"
+                      : "bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)] focus-visible:ring-white"
                   }`}
                 >
                   {primaryLabel}
@@ -147,7 +147,7 @@ function HeroSection({
                   className={`inline-flex min-h-12 items-center justify-center border px-6 text-xs font-semibold uppercase tracking-[0.18em] transition ${
                     hasImage
                       ? "border-white/70 text-white hover:bg-white hover:text-[#171916]"
-                      : "border-[#0f172a]/70 text-[#0f172a] hover:bg-white"
+                      : "border-white text-white hover:bg-white hover:text-[var(--brand-blue)]"
                   }`}
                 >
                   {secondaryLabel}
@@ -187,10 +187,10 @@ function EditorialSection({
             className={`aspect-[4/5] ${reverse ? "lg:order-2" : ""}`}
           />
         ) : (
-          <div className={`aspect-[4/5] bg-[#eef3f8] ${reverse ? "lg:order-2" : ""}`} />
+          <div className={`aspect-[4/5] bg-[var(--brand-blue-soft)] ${reverse ? "lg:order-2" : ""}`} />
         )}
         <div className={reverse ? "lg:order-1" : ""}>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#5D8CC8]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-blue)]">
             Stella Colari
           </p>
           {title ? (
@@ -328,7 +328,7 @@ function CategorySection({
               <Link
                 key={categoria.id}
                 href={`/loja/categoria/${categoria.slug}`}
-                className="group relative aspect-[4/5] overflow-hidden bg-[#5D8CC8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4772AA] focus-visible:ring-offset-2"
+                className="group relative aspect-[4/5] overflow-hidden bg-[var(--brand-blue)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] focus-visible:ring-offset-2"
               >
                 {categoria.imagemUrl ? (
                   <img
@@ -407,7 +407,7 @@ function LinkCardsSection({ values, prefix }: { values: Record<string, unknown>;
                 {card.title ? <h3 className="text-xl font-medium tracking-[-0.02em] text-[#171916]">{card.title}</h3> : null}
                 {card.text ? <p className="mt-4 flex-1 whitespace-pre-line text-sm leading-6 text-[#171916]/65">{card.text}</p> : <span className="flex-1" />}
                 {card.label && card.href ? (
-                  <Link href={card.href} className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#274b78] underline-offset-4 hover:underline">
+                  <Link href={card.href} className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-blue-dark)] underline-offset-4 hover:underline">
                     {card.label}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
@@ -549,20 +549,20 @@ function CtaSection({ values, prefix }: { values: Record<string, unknown>; prefi
   if (!title && !text && !(label && href) && !(secondaryLabel && secondaryHref)) return null;
 
   return (
-    <section className="border-y border-[#0f172a]/10 bg-[#5D8CC8] px-5 py-20 text-[#0f172a] sm:px-8 md:py-32 lg:px-12">
+    <section className="border-y border-white/30 bg-[var(--brand-blue)] px-5 py-20 text-white sm:px-8 md:py-32 lg:px-12">
       <div className="mx-auto max-w-5xl text-center">
         {title ? (
           <h2 className="text-balance text-[clamp(2.6rem,6vw,6.8rem)] font-light leading-[0.95] tracking-[-0.04em]">
             {title}
           </h2>
         ) : null}
-        {text ? <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#0f172a]/75">{text}</p> : null}
+        {text ? <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-white">{text}</p> : null}
         {(label && href) || (secondaryLabel && secondaryHref) ? (
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             {label && href ? (
               <Link
                 href={href}
-                className="inline-flex min-h-12 items-center justify-center bg-white px-7 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f172a] transition hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#5D8CC8]"
+                className="inline-flex min-h-12 items-center justify-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-blue)] transition hover:text-[var(--brand-blue-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand-blue)]"
               >
                 {label}
               </Link>
@@ -570,7 +570,7 @@ function CtaSection({ values, prefix }: { values: Record<string, unknown>; prefi
             {secondaryLabel && secondaryHref ? (
               <Link
                 href={secondaryHref}
-                className="inline-flex min-h-12 items-center justify-center border border-[#0f172a]/70 px-7 text-xs font-semibold uppercase tracking-[0.18em] text-[#0f172a] transition hover:bg-white"
+                className="inline-flex min-h-12 items-center justify-center border border-white px-7 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-[var(--brand-blue)]"
               >
                 {secondaryLabel}
               </Link>

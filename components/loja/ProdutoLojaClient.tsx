@@ -1358,11 +1358,11 @@ export default function ProdutoLojaClient({
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-3 py-2 text-sm">
-              <span className="font-medium text-[var(--brand-blue)]">
+              <span className="font-medium text-[var(--brand-blue-dark)]">
                 Cashback acumulativo
               </span>
 
-              <span className="shrink-0 font-semibold text-[var(--brand-blue)]">
+              <span className="shrink-0 font-semibold text-[var(--brand-blue-dark)]">
                 Ganhe {moeda(cashbackValor)}
               </span>
             </div>
@@ -1418,7 +1418,7 @@ export default function ProdutoLojaClient({
                                   }}
                                   className={`shrink-0 border px-5 py-2.5 text-sm font-medium transition ${
                                     selecionado
-                                      ? "brand-border brand-bg-soft brand-text"
+                                      ? "brand-border brand-bg-soft text-[var(--brand-blue-dark)]"
                                       : "border-slate-300 bg-white text-slate-700 hover:border-[var(--brand-blue)]"
                                   } ${
                                     semSaldo

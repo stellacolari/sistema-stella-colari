@@ -281,7 +281,8 @@ function getContentTextClass(corTexto: string) {
       title: "text-slate-950",
       body: "text-slate-700",
       eyebrow: "text-slate-600",
-      buttonPrimary: "bg-[#4772AA] text-white hover:bg-[#355f95]",
+      buttonPrimary:
+        "bg-[var(--brand-blue)] text-white hover:bg-[var(--brand-blue-dark)]",
       buttonSecondary:
         "border-slate-950/35 text-slate-950 hover:border-slate-950 hover:bg-white/50",
       buttonLink: "text-slate-950 underline-offset-4 hover:underline",
@@ -297,6 +298,25 @@ function getContentTextClass(corTexto: string) {
       "border-white/55 text-white hover:border-white hover:bg-white/10",
     buttonLink: "text-white underline-offset-4 hover:underline",
   };
+}
+
+function getBrandSurfaceTextClass() {
+  return {
+    title: "text-white",
+    body: "text-white",
+    eyebrow: "text-white",
+    buttonPrimary:
+      "border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]",
+    buttonSecondary:
+      "border-white text-white hover:bg-white hover:text-[var(--brand-blue)]",
+    buttonLink: "text-white underline-offset-4 hover:underline",
+  };
+}
+
+function withoutTextColor(style: CSSProperties) {
+  const nextStyle = { ...style };
+  delete nextStyle.color;
+  return nextStyle;
 }
 
 function getJustifyClass(alinhamento: string) {
@@ -920,6 +940,9 @@ function BannerTipograficoExpandido({
             className="block w-full font-black uppercase leading-[0.86]"
             style={{
               ...tituloStyle,
+              color: isBlueBackground
+                ? "var(--brand-blue-foreground)"
+                : tituloStyle.color,
               letterSpacing: tituloStyle.letterSpacing ?? 0,
               textWrap: "balance",
             }}
@@ -1138,7 +1161,7 @@ export default function BannerRenderer({
   const hasMedia = Boolean(imageDesktop || imageMobile || videoDesktop || videoMobile);
   const textClass = hasMedia
     ? configuredTextClass
-    : getContentTextClass("ESCURO");
+    : getBrandSurfaceTextClass();
 
   if (!hasMedia && !hasConteudo && !renderFrontImage) {
     return null;
@@ -1147,7 +1170,7 @@ export default function BannerRenderer({
   const isAutoHeight = altura === "AUTO_CONTEUDO";
   const wrapperClass =
     largura === "CONTIDA" ? "mx-auto max-w-7xl px-4 py-6 md:px-8" : "";
-  const innerClass = `relative overflow-hidden ${hasMedia ? "bg-slate-950" : "bg-[#5D8CC8]"} ${getHeightClass(
+  const innerClass = `relative overflow-hidden ${hasMedia ? "bg-slate-950" : "bg-[var(--brand-blue)]"} ${getHeightClass(
     altura,
     modelo,
     device
@@ -1159,12 +1182,24 @@ export default function BannerRenderer({
     lineHeight: lineHeightTitulo,
     letterSpacing: `${letterSpacingTitulo}px`,
   };
-  const titleStyle = getTextStyle(config, "tituloStyle", textStyleBase, {
+  const configuredTitleStyle = getTextStyle(config, "tituloStyle", textStyleBase, {
     ignoreFontSizePreset: true,
   });
-  const subtitleStyle = getTextStyle(config, "subtituloStyle", {});
-  const primaryCtaStyle = getTextStyle(config, "botaoPrimarioStyle", {});
-  const secondaryCtaStyle = getTextStyle(config, "botaoSecundarioStyle", {});
+  const configuredSubtitleStyle = getTextStyle(config, "subtituloStyle", {});
+  const configuredPrimaryCtaStyle = getTextStyle(config, "botaoPrimarioStyle", {});
+  const configuredSecondaryCtaStyle = getTextStyle(config, "botaoSecundarioStyle", {});
+  const titleStyle = hasMedia
+    ? configuredTitleStyle
+    : { ...configuredTitleStyle, color: "var(--brand-blue-foreground)" };
+  const subtitleStyle = hasMedia
+    ? configuredSubtitleStyle
+    : { ...configuredSubtitleStyle, color: "var(--brand-blue-foreground)" };
+  const primaryCtaStyle = hasMedia
+    ? configuredPrimaryCtaStyle
+    : withoutTextColor(configuredPrimaryCtaStyle);
+  const secondaryCtaStyle = hasMedia
+    ? configuredSecondaryCtaStyle
+    : withoutTextColor(configuredSecondaryCtaStyle);
   const ctaBaseClass = `inline-flex min-h-11 items-center justify-center px-6 text-sm font-semibold transition ${buttonRadiusClass}`;
   const primaryCtaClass =
     ctaStyle === "CONTORNO"
@@ -1190,6 +1225,7 @@ export default function BannerRenderer({
         fallback={titulo}
         data-stella-inline-field="titulo"
         className={`font-light tracking-normal ${textClass.title}`}
+        forceColor={hasMedia ? undefined : "var(--brand-blue-foreground)"}
         style={titleStyle}
         paragraphClassName="mb-0"
       />
@@ -1201,6 +1237,7 @@ export default function BannerRenderer({
         fallback={subtitulo}
         data-stella-inline-field="subtitulo"
         className={`text-base leading-7 md:text-lg ${textClass.body}`}
+        forceColor={hasMedia ? undefined : "var(--brand-blue-foreground)"}
         style={subtitleStyle}
         paragraphClassName="mb-0"
       />

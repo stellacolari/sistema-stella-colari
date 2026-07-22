@@ -79,7 +79,7 @@ export default async function ConteudoCampanhasPage() {
                       {document?.inicioPublicacao ? <p>Início: {document.inicioPublicacao.toLocaleString("pt-BR")}</p> : <p>Sem agendamento</p>}
                       {document?.fimPublicacao ? <p>Fim: {document.fimPublicacao.toLocaleString("pt-BR")}</p> : null}
                     </div>
-                    <Link href={`/configuracoes/loja/conteudo/paginas/${campaign.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-4 text-sm font-semibold text-white transition hover:bg-[#3f6699]">
+                    <Link href={`/configuracoes/loja/conteudo/paginas/${campaign.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)]">
                       {canEdit ? "Editar" : "Visualizar"} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </article>

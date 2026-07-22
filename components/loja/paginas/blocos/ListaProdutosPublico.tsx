@@ -117,6 +117,7 @@ export default function ListaProdutosPublico({
 }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
   const corFundo = getString(config, "corFundo", "BRANCO");
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo);
   const colors = getTextColorForBackground(corFundo);
   const produtosFiltrados = filtrarProdutos(produtos, config);
   const [mostrarTodos, setMostrarTodos] = useState(false);
@@ -183,6 +184,9 @@ export default function ListaProdutosPublico({
               value={tituloRichText}
               fallback={titulo}
               className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
           {hasSubtitulo ? (
@@ -190,6 +194,9 @@ export default function ListaProdutosPublico({
               value={subtituloRichText}
               fallback={subtitulo}
               className={`mt-4 text-base leading-7 ${colors.body}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
         </div>
@@ -256,7 +263,11 @@ export default function ListaProdutosPublico({
             <button
               type="button"
               onClick={() => setMostrarTodos(true)}
-              className="brand-button-outline px-6 py-3 text-sm font-semibold"
+              className={`px-6 py-3 text-sm font-semibold transition ${
+                isBrandSurface
+                  ? "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+                  : "brand-button-outline"
+              }`}
             >
               Ver mais
             </button>

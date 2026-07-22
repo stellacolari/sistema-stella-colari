@@ -550,7 +550,7 @@ export default function MinhaContaClient({
                 <Wallet className="h-4 w-4 shrink-0 text-[var(--brand-blue)]" />
 
                 <div className="leading-none">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--brand-blue)]">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--brand-blue-dark)]">
                     Cashback
                   </p>
 
@@ -866,7 +866,7 @@ export default function MinhaContaClient({
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-[var(--brand-blue)]" />
 
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-blue)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-blue-dark)]">
                       Saldo disponível
                     </p>
                   </div>

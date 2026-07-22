@@ -346,11 +346,11 @@ export default function PerfilClienteLink({
                 <p className="mt-1 text-xs text-slate-500">{cliente.email}</p>
 
                 <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-[var(--brand-blue)]">
+                  <span className="font-medium text-[var(--brand-blue-dark)]">
                     Cashback
                   </span>
 
-                  <strong className="text-[var(--brand-blue)]">
+                  <strong className="text-[var(--brand-blue-dark)]">
                     {moeda(cliente.cashbackSaldo)}
                   </strong>
                 </div>

@@ -161,10 +161,13 @@ function sanitizeFontWeight(value: unknown) {
   return "";
 }
 
-function getInlineStyle(attrs: unknown): CSSProperties {
+function getInlineStyle(
+  attrs: unknown,
+  forceColor?: CSSProperties["color"]
+): CSSProperties {
   const data = isRecord(attrs) ? attrs : {};
   const style: CSSProperties = {};
-  const color = sanitizeCssColor(data.color);
+  const color = forceColor || sanitizeCssColor(data.color);
   const fontFamily = sanitizeFontFamily(data.fontFamily);
   const fontSize = sanitizeCssSize(data.fontSize);
   const fontWeight = sanitizeFontWeight(data.fontWeight);
@@ -199,7 +202,8 @@ function getRichTextTextNodes(value: unknown): InlineRichTextNode[] {
 function renderTextNode(
   node: InlineRichTextNode,
   key: string,
-  allowLinks: boolean
+  allowLinks: boolean,
+  forceColor?: CSSProperties["color"]
 ) {
   const marks = Array.isArray(node.marks) ? node.marks : [];
   let content: ReactNode = node.text || "";
@@ -244,7 +248,7 @@ function renderTextNode(
     }
 
     if (mark.type === "textStyle") {
-      const style = getInlineStyle(mark.attrs);
+      const style = getInlineStyle(mark.attrs, forceColor);
 
       if (Object.keys(style).length > 0) {
         content = <span key={markKey} style={style}>{content}</span>;
@@ -258,14 +262,15 @@ function renderTextNode(
 function renderInlineRichText(
   richText: unknown,
   fallback: string,
-  allowLinks = true
+  allowLinks = true,
+  forceColor?: CSSProperties["color"]
 ) {
   const nodes = getRichTextTextNodes(richText);
 
   if (nodes.length === 0) return fallback;
 
   return nodes.map((node, index) =>
-    renderTextNode(node, `inline-${index}`, allowLinks)
+    renderTextNode(node, `inline-${index}`, allowLinks, forceColor)
   );
 }
 
@@ -330,6 +335,16 @@ function getButtonStyle(botao: BannerHeroV2Button): CSSProperties {
   return base;
 }
 
+function getButtonLayoutStyle(botao: BannerHeroV2Button): CSSProperties {
+  const style = getButtonStyle(botao);
+
+  return {
+    padding: style.padding,
+    fontSize: style.fontSize,
+    ["--banner-hero-v2-hover-opacity" as string]: 1,
+  };
+}
+
 function getTextStyle(slide: BannerHeroV2Slide, field: "eyebrow" | "titulo" | "texto") {
   const element = slide.conteudo[field];
   const estilo = element.estilo;
@@ -365,12 +380,12 @@ function SlideText({
   slide,
   field,
   className,
-  forceDark = false,
+  forceBrandForeground = false,
 }: {
   slide: BannerHeroV2Slide;
   field: "eyebrow" | "titulo" | "texto";
   className: string;
-  forceDark?: boolean;
+  forceBrandForeground?: boolean;
 }) {
   const element = slide.conteudo[field];
   const Tag = field === "titulo" ? "h1" : "div";
@@ -381,10 +396,17 @@ function SlideText({
       className={className}
       style={{
         ...getTextStyle(slide, field),
-        ...(forceDark ? { color: "#0f172a" } : {}),
+        ...(forceBrandForeground
+          ? { color: "var(--brand-blue-foreground)" }
+          : {}),
       }}
     >
-      {renderInlineRichText(element.richText, element.conteudo)}
+      {renderInlineRichText(
+        element.richText,
+        element.conteudo,
+        true,
+        forceBrandForeground ? "var(--brand-blue-foreground)" : undefined
+      )}
     </Tag>
   );
 }
@@ -481,7 +503,7 @@ function SlideMedia({
 
   return (
     <div
-      className="h-full w-full bg-[#5D8CC8]"
+      className="h-full w-full bg-[var(--brand-blue)]"
       aria-hidden="true"
     />
   );
@@ -569,7 +591,7 @@ export default function BannerHeroV2Publico({
   return (
     <section
       data-banner-hero-v2-id={bloco.id}
-      className={`relative isolate w-full overflow-hidden ${hasMedia ? "bg-slate-950 text-white" : "bg-[#5D8CC8] text-[#0f172a]"}`}
+      className={`relative isolate w-full overflow-hidden ${hasMedia ? "bg-slate-950 text-white" : "bg-[var(--brand-blue)] text-white"}`}
       style={getHeightStyle(config.altura)}
       onMouseEnter={() => {
         if (config.carrossel.pausarAoHover) setPaused(true);
@@ -626,8 +648,8 @@ export default function BannerHeroV2Publico({
               <SlideText
                 slide={activeSlide}
                 field="eyebrow"
-                className={`text-xs font-semibold uppercase tracking-[0.22em] ${hasMedia ? "text-white/80" : "text-[#0f172a]/75"}`}
-                forceDark={!hasMedia}
+                className={`text-xs font-semibold uppercase tracking-[0.22em] ${hasMedia ? "text-white/80" : "text-white"}`}
+                forceBrandForeground={!hasMedia}
               />
             ) : null}
 
@@ -636,7 +658,7 @@ export default function BannerHeroV2Publico({
                 slide={activeSlide}
                 field="titulo"
                 className="text-4xl font-light leading-none md:text-6xl lg:text-7xl"
-                forceDark={!hasMedia}
+                forceBrandForeground={!hasMedia}
               />
             ) : null}
 
@@ -644,8 +666,8 @@ export default function BannerHeroV2Publico({
               <SlideText
                 slide={activeSlide}
                 field="texto"
-                className={`max-w-2xl text-base leading-7 md:text-lg ${hasMedia ? "text-white/85" : "text-[#0f172a]/78"}`}
-                forceDark={!hasMedia}
+                className={`max-w-2xl text-base leading-7 md:text-lg ${hasMedia ? "text-white/85" : "text-white"}`}
+                forceBrandForeground={!hasMedia}
               />
             ) : null}
 
@@ -664,15 +686,17 @@ export default function BannerHeroV2Publico({
                       href={href}
                       target={botao.abrirNovaAba ? "_blank" : undefined}
                       rel={botao.abrirNovaAba ? "noreferrer" : undefined}
-                      className={getButtonClass(botao)}
+                      className={`${getButtonClass(botao)} ${
+                        hasMedia
+                          ? ""
+                          : index === 0
+                            ? "border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+                            : "border-white bg-transparent text-white hover:bg-white hover:text-[var(--brand-blue)]"
+                      }`}
                       style={
                         hasMedia
                           ? getButtonStyle(botao)
-                          : {
-                              color: "#0f172a",
-                              borderColor: "#0f172a",
-                              backgroundColor: index === 0 ? "#ffffff" : "transparent",
-                            }
+                          : getButtonLayoutStyle(botao)
                       }
                       data-stella-inline-field={`bannerHeroV2:${activeSlide.id}:botao:${botao.id}`}
                       data-stella-editorial-gallery-item-id={botao.id}
@@ -683,7 +707,8 @@ export default function BannerHeroV2Publico({
                       {renderInlineRichText(
                         botao.richText,
                         botao.texto || `Botao ${index + 1}`,
-                        false
+                        false,
+                        hasMedia ? undefined : "inherit"
                       )}
                     </Link>
                   );
@@ -711,7 +736,9 @@ export default function BannerHeroV2Publico({
                 type="button"
                 onClick={() => goTo(index)}
                 className={`h-2.5 rounded-full transition-all ${
-                  index === activeIndex ? "w-8 bg-white" : "w-2.5 bg-white/45"
+                  index === activeIndex
+                    ? "w-8 bg-white"
+                    : `w-2.5 ${hasMedia ? "bg-white/45" : "bg-white/75"}`
                 }`}
                 aria-label={`Ir para slide ${index + 1}`}
               />

@@ -2,7 +2,7 @@
   position: relative;
   height: 100%;
   overflow: visible;
-  border-bottom: 1px solid color-mix(in srgb, var(--brand-blue, #182b49) 16%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-blue, #2e7b99) 16%, transparent);
   background: #fff;
   padding: 0 0 1.1rem;
 }
@@ -83,7 +83,7 @@
 .discountBadge {
   top: 0.75rem;
   border-color: transparent;
-  background: var(--brand-blue, #182b49);
+  background: var(--brand-blue, #2e7b99);
   color: #fff;
 }
 
@@ -164,7 +164,7 @@
 }
 
 .salePrice {
-  color: var(--brand-blue, #182b49);
+  color: var(--brand-blue, #2e7b99);
 }
 
 .cta {
@@ -220,7 +220,7 @@
 }
 
 .favoriteActive {
-  color: var(--brand-blue, #182b49);
+  color: var(--brand-blue, #2e7b99);
   fill: currentColor;
 }
 

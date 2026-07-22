@@ -68,18 +68,18 @@ function getFundoClasses(fundo: string) {
   }
   if (fundo === "AZUL_ESCURO") {
     return {
-      section: "bg-[#2e7b99]",
-      card: "bg-white/10 border-white/15",
+      section: "bg-[var(--brand-blue)]",
+      card: "bg-black/10 border-white/15",
       title: "text-white",
-      text: "text-white/80",
+      text: "text-white",
     };
   }
   if (fundo === "ESCURO") {
     return {
-      section: "bg-[#5D8CC8]",
-      card: "bg-white/35 border-[#0f172a]/10",
-      title: "text-[#0f172a]",
-      text: "text-[#0f172a]/75",
+      section: "bg-[var(--brand-blue)]",
+      card: "bg-black/10 border-white/15",
+      title: "text-white",
+      text: "text-white",
     };
   }
 
@@ -172,7 +172,7 @@ export default function LojaFaqBlock({
         )}`}
       >
         <div className={getAlignClass(alinhamento)}>
-          <div className="inline-flex items-center justify-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] brand-text ring-1 ring-slate-200">
+          <div className="inline-flex items-center justify-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-blue-dark)] ring-1 ring-slate-200">
             <HelpCircle className="h-4 w-4" />
             FAQ
           </div>

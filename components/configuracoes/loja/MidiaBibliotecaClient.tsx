@@ -262,7 +262,7 @@ export default function MidiaBibliotecaClient({
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
             JPG, PNG ou WebP, até 4 MB por arquivo. Dimensões e miniatura são verificadas no servidor.
           </p>
-          <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 bg-[#4772AA] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#355f95] focus-within:outline-none focus-within:ring-2 focus-within:ring-[#5D8CC8] focus-within:ring-offset-2">
+          <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 bg-[var(--brand-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--brand-blue)] focus-within:ring-offset-2">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {uploading ? "Enviando..." : "Upload em lote"}
             <input
@@ -558,7 +558,7 @@ export default function MidiaBibliotecaClient({
                   }
                 }}
                 disabled={saving}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#4772AA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#355f95] disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--brand-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-blue-dark)] disabled:opacity-50"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {saving ? "Salvando…" : "Salvar"}

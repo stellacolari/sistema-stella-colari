@@ -1024,7 +1024,7 @@ function preencherDadosClienteLogado() {
           </p>
 
           {pedidoFinalizado.cashbackPrevistoValor > 0 && (
-            <div className="mt-6 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-5 py-4 text-sm leading-6 text-[var(--brand-blue)]">
+            <div className="mt-6 border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] px-5 py-4 text-sm leading-6 text-[var(--brand-blue-dark)]">
               Você gerou{" "}
               <strong>{moeda(pedidoFinalizado.cashbackPrevistoValor)}</strong>{" "}
               de cashback acumulativo para usar nas próximas compras após
@@ -1109,7 +1109,7 @@ function preencherDadosClienteLogado() {
                   </div>
 
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.24em] brand-text">
+                    <p className="text-xs font-medium uppercase tracking-[0.24em] text-[var(--brand-blue-dark)]">
                       Cashback acumulativo
                     </p>
 
@@ -1187,7 +1187,7 @@ function preencherDadosClienteLogado() {
                             type="button"
                             onClick={usarCashbackTotal}
                             disabled={cashbackMaximoUsavel <= 0}
-                            className="h-10 border border-[var(--brand-blue)] bg-white px-4 text-sm font-medium text-[var(--brand-blue)] transition hover:bg-[var(--brand-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-10 border border-[var(--brand-blue)] bg-white px-4 text-sm font-medium text-[var(--brand-blue-dark)] transition hover:bg-[var(--brand-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Usar máximo
                           </button>
@@ -1799,7 +1799,7 @@ function preencherDadosClienteLogado() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <p className="text-[10px] font-medium uppercase tracking-[0.14em] brand-text">
+                                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--brand-blue-dark)]">
                                   Embalagem presente
                                 </p>
 
@@ -1936,7 +1936,7 @@ function preencherDadosClienteLogado() {
                 className={`mt-5 border px-4 py-3 text-sm leading-6 ${
                   cashbackBloqueado
                     ? "border-slate-200 bg-slate-50 text-slate-500"
-                    : "border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] text-[var(--brand-blue)]"
+                    : "border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] text-[var(--brand-blue-dark)]"
                 }`}
               >
                 <div className="flex items-start gap-2">

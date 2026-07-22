@@ -82,7 +82,7 @@ export default async function ConteudoPaginasPage() {
                     <Link href={`/configuracoes/loja/conteudo/historico?pagina=${page.id}`} className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50" aria-label={`Ver histórico de ${page.titulo}`}>
                       <History className="h-4 w-4" />
                     </Link>
-                    <Link href={`/configuracoes/loja/conteudo/paginas/${page.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-4 text-sm font-semibold text-white transition hover:bg-[#3f6699]">
+                    <Link href={`/configuracoes/loja/conteudo/paginas/${page.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)]">
                       {canEdit ? "Editar" : "Visualizar"} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>

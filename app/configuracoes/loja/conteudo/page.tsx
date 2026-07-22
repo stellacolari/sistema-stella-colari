@@ -75,7 +75,7 @@ export default async function ConteudoLojaPage() {
               <div key={item.label} className={`p-5 sm:p-6 ${index > 0 ? "border-t border-slate-200 sm:border-l sm:border-t-0" : ""}`}>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">{item.label}</p>
-                  <Icon className="h-4 w-4 text-[#4772AA]" />
+                  <Icon className="h-4 w-4 text-[var(--brand-blue)]" />
                 </div>
                 <p className="mt-4 text-4xl font-light tracking-[-0.04em] text-slate-950">{item.value}</p>
                 <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
@@ -98,14 +98,14 @@ export default async function ConteudoLojaPage() {
                 const Icon = item.icon;
                 return (
                   <Link key={item.href} href={item.href} className="group flex items-center gap-4 px-5 py-5 transition hover:bg-slate-50 sm:px-6">
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eaf0f8] text-[#4772AA]">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-blue-soft)] text-[var(--brand-blue)]">
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-slate-950">{item.title}</span>
                       <span className="mt-1 block text-sm leading-6 text-slate-500">{item.text}</span>
                     </span>
-                    <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#4772AA]" />
+                    <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[var(--brand-blue)]" />
                   </Link>
                 );
               })}
@@ -114,7 +114,7 @@ export default async function ConteudoLojaPage() {
 
           <aside className="space-y-5">
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#4772AA]">Última publicação</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand-blue)]">Última publicação</p>
               {ultimaPublicacao ? (
                 <>
                   <p className="mt-3 text-sm font-semibold text-slate-900">{ultimaPublicacao.documento.chave}</p>
@@ -124,7 +124,7 @@ export default async function ConteudoLojaPage() {
                 <p className="mt-3 text-sm leading-6 text-slate-500">A primeira publicação pelo novo gerenciador ainda não foi feita.</p>
               )}
             </section>
-            <section className="rounded-2xl border border-[#5D8CC8]/35 bg-[#eaf0f8] p-5 text-[#274b78]">
+            <section className="rounded-2xl border border-[var(--brand-blue)] bg-[var(--brand-blue-soft)] p-5 text-[var(--brand-blue-dark)]">
               <div className="flex gap-3">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div>

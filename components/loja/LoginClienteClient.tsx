@@ -85,7 +85,7 @@ export default function LoginClienteClient({
       <main className="mx-auto grid max-w-6xl gap-8 px-5 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8">
         <section className="flex items-center bg-[var(--brand-blue-soft)] p-8 md:p-12 lg:min-h-[520px]">
           <div className="max-w-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] brand-text">
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-blue-dark)]">
               Stella
             </p>
 

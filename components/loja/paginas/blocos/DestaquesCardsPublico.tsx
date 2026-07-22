@@ -88,6 +88,7 @@ function cardHasPublicContent(card: Record<string, unknown>) {
 export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
   const config = asConfig(bloco.configJson);
   const corFundo = getString(config, "corFundo", "BRANCO");
+  const isBrandSurface = ["MARCA", "AZUL_ESCURO", "ESCURO"].includes(corFundo);
   const colors = getTextColorForBackground(corFundo);
   const alinhamento = getString(config, "alinhamento", "CENTRO");
   const sectionAlign = getResponsiveTextAlignClass({
@@ -136,6 +137,9 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
               value={tituloSecaoRichText}
               fallback={tituloSecao}
               className={`text-3xl font-light leading-tight md:text-5xl ${colors.title}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
           {hasSubtituloSecao ? (
@@ -143,6 +147,9 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
               value={subtituloSecaoRichText}
               fallback={subtituloSecao}
               className={`mt-4 text-base leading-7 ${colors.body}`}
+              forceColor={
+                isBrandSurface ? "var(--brand-blue-foreground)" : undefined
+              }
             />
           ) : null}
         </div>
@@ -190,6 +197,11 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
                       value={tituloRichText}
                       fallback={titulo}
                       className={`mt-5 text-xl font-semibold leading-snug ${colors.title}`}
+                      forceColor={
+                        isBrandSurface
+                          ? "var(--brand-blue-foreground)"
+                          : undefined
+                      }
                     />
                   ) : null}
                   {hasTexto ? (
@@ -197,13 +209,22 @@ export default function DestaquesCardsPublico({ bloco }: BlocoPublicoProps) {
                       value={textoRichText}
                       fallback={texto}
                       className={`mt-3 text-sm leading-6 ${colors.body}`}
+                      forceColor={
+                        isBrandSurface
+                          ? "var(--brand-blue-foreground)"
+                          : undefined
+                      }
                     />
                   ) : null}
 
                   {getBoolean(card, "exibirBotao", false) && textoBotao && linkBotao ? (
                     <Link
                       href={linkBotao}
-                      className={`mt-5 inline-flex min-h-10 items-center justify-center border border-slate-950/15 px-5 text-sm font-semibold text-slate-950 transition hover:border-slate-950 ${buttonRadiusClass}`}
+                      className={`mt-5 inline-flex min-h-10 items-center justify-center border px-5 text-sm font-semibold transition ${buttonRadiusClass} ${
+                        isBrandSurface
+                          ? "border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+                          : "border-slate-950/15 text-slate-950 hover:border-slate-950"
+                      }`}
                     >
                       {textoBotao}
                     </Link>

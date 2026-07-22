@@ -786,7 +786,7 @@ export default function MenuRodapeLojaClient({
               type="button"
               onClick={() => setAbaAtiva(aba.id)}
               aria-pressed={abaAtiva === aba.id}
-              className={`min-h-11 rounded-2xl px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8] ${
+              className={`min-h-11 rounded-2xl px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] ${
                 abaAtiva === aba.id
                   ? "bg-slate-950 text-white"
                   : "text-slate-600 hover:bg-slate-50"

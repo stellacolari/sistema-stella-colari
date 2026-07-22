@@ -39,7 +39,7 @@ export default function ConteudoLojaNav({
       <div className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#4772AA]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-blue)]">
               Conteúdo da Loja
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.025em] text-slate-950">{title}</h1>
@@ -60,9 +60,9 @@ export default function ConteudoLojaNav({
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8] ${
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)] ${
                   active
-                    ? "border-[#4772AA] text-[#274b78]"
+                    ? "border-[var(--brand-blue)] text-[var(--brand-blue-dark)]"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-900"
                 }`}
               >

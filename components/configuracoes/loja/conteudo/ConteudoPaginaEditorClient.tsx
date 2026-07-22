@@ -95,7 +95,7 @@ function SelectionField({
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
           disabled={disabled || value.length >= limit}
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20 disabled:bg-slate-100"
+          className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)] disabled:bg-slate-100"
         >
           <option value="">Selecione…</option>
           {available.map((option) => (
@@ -190,7 +190,7 @@ function Field({
           checked={Boolean(value)}
           onChange={(event) => onChange(event.target.checked)}
           disabled={disabled}
-          className="mt-0.5 h-5 w-5 rounded border-slate-300 accent-[#4772AA]"
+          className="mt-0.5 h-5 w-5 rounded border-slate-300 accent-[var(--brand-blue)]"
         />
       </label>
     );
@@ -221,7 +221,7 @@ function Field({
     <label htmlFor={id} className="block border-t border-slate-200 py-5 first:border-t-0 first:pt-0">
       <span className="mb-2 block text-sm font-semibold text-slate-900">
         {field.label}
-        {field.obrigatorioPublicar ? <span className="ml-1 text-[#4772AA]">*</span> : null}
+        {field.obrigatorioPublicar ? <span className="ml-1 text-[var(--brand-blue)]">*</span> : null}
       </span>
       {field.descricao ? <span className="mb-3 block text-sm leading-6 text-slate-500">{field.descricao}</span> : null}
       {field.tipo === "TEXTO_LONGO" ? (
@@ -233,7 +233,7 @@ function Field({
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
           placeholder={field.placeholder}
-          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20 disabled:bg-slate-100"
+          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)] disabled:bg-slate-100"
         />
       ) : (
         <input
@@ -249,7 +249,7 @@ function Field({
           }
           disabled={disabled}
           placeholder={field.placeholder}
-          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#5D8CC8] focus:ring-2 focus:ring-[#5D8CC8]/20 disabled:bg-slate-100"
+          className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[var(--brand-blue)] focus:ring-2 focus:ring-[var(--brand-blue)] disabled:bg-slate-100"
         />
       )}
       {field.limite && typeof value === "string" ? (
@@ -437,7 +437,7 @@ export default function ConteudoPaginaEditorClient({
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/configuracoes/loja/conteudo/paginas"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5D8CC8]"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue)]"
               aria-label="Voltar para páginas"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -493,7 +493,7 @@ export default function ConteudoPaginaEditorClient({
               type="button"
               onClick={() => void publish()}
               disabled={!canPublish || publishing || estado.blocosNaoMapeados.length > 0}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4772AA] px-5 text-sm font-semibold text-white transition hover:bg-[#3f6699] disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
               title={estado.blocosNaoMapeados.length > 0 ? "Revise as seções legadas antes de publicar" : undefined}
             >
               {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -564,7 +564,7 @@ export default function ConteudoPaginaEditorClient({
                 aria-pressed={activeSection === item.key}
                 className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                   activeSection === item.key
-                    ? "bg-[#eaf0f8] text-[#274b78]"
+                    ? "bg-[var(--brand-blue-soft)] text-[var(--brand-blue-dark)]"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
                 }`}
               >
@@ -576,7 +576,7 @@ export default function ConteudoPaginaEditorClient({
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <div className="mb-6 border-b border-slate-200 pb-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#4772AA]">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-blue)]">
                 {contract.label}
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{section?.label}</h2>
@@ -616,7 +616,7 @@ export default function ConteudoPaginaEditorClient({
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <div className="flex items-center gap-2">
-                <History className="h-4 w-4 text-[#4772AA]" />
+                <History className="h-4 w-4 text-[var(--brand-blue)]" />
                 <h2 className="text-sm font-semibold text-slate-950">Histórico</h2>
               </div>
               {history.length > 0 ? (
@@ -634,7 +634,7 @@ export default function ConteudoPaginaEditorClient({
                           <button
                             type="button"
                             onClick={() => void restore(item.id, item.numero)}
-                            className="text-xs font-semibold text-[#4772AA] hover:underline"
+                            className="text-xs font-semibold text-[var(--brand-blue)] hover:underline"
                           >
                             Restaurar
                           </button>
@@ -648,7 +648,7 @@ export default function ConteudoPaginaEditorClient({
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-[#eaf0f8] p-5 text-[#274b78]">
+            <section className="rounded-2xl border border-slate-200 bg-[var(--brand-blue-soft)] p-5 text-[var(--brand-blue-dark)]">
               <div className="flex gap-2">
                 <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
                 <p className="text-xs leading-5">

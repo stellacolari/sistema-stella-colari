@@ -137,6 +137,17 @@ function getStringArray(config: Record<string, unknown>, key: string) {
   return [];
 }
 
+function isBrandColor(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "");
+
+  return [
+    "#2e7b99",
+    "rgb(46,123,153)",
+    "rgba(46,123,153,1)",
+    "var(--brand-blue)",
+  ].includes(normalized);
+}
+
 function clampNumber(
   value: unknown,
   min: number,
@@ -349,9 +360,12 @@ function getAlignClass(alinhamento: string) {
 function getTextoFundoClasses(fundo: string) {
   if (fundo === "AZUL_ESCURO") {
     return {
-      section: "bg-[#2e7b99]",
+      section: "bg-[var(--brand-blue)]",
       titulo: "text-white",
-      texto: "text-white/85",
+      texto: "text-white",
+      icon: "text-white",
+      button:
+        "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]",
     };
   }
 
@@ -360,14 +374,19 @@ function getTextoFundoClasses(fundo: string) {
       section: "bg-[var(--brand-blue-soft)]",
       titulo: "text-slate-950",
       texto: "text-slate-600",
+      icon: "brand-text",
+      button: "brand-button",
     };
   }
 
   if (fundo === "ESCURO") {
     return {
-      section: "bg-[#5D8CC8]",
-      titulo: "text-[#0f172a]",
-      texto: "text-[#0f172a]/75",
+      section: "bg-[var(--brand-blue)]",
+      titulo: "text-white",
+      texto: "text-white",
+      icon: "text-white",
+      button:
+        "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]",
     };
   }
 
@@ -375,6 +394,8 @@ function getTextoFundoClasses(fundo: string) {
     section: "bg-white",
     titulo: "text-slate-950",
     texto: "text-slate-600",
+    icon: "brand-text",
+    button: "brand-button",
   };
 }
 
@@ -464,13 +485,17 @@ function BlocoFaixa({ config }: { config: Record<string, unknown> }) {
   const itens = getStringArray(config, "itens");
   const corFundo = getString(config, "corFundo", "#2e7b99");
   const corTexto = getString(config, "corTexto", "#ffffff");
+  const isBrandSurface = isBrandColor(corFundo);
 
   if (itens.length === 0) return null;
 
   return (
     <section
       className="mt-2"
-      style={{ backgroundColor: corFundo, color: corTexto }}
+      style={{
+        backgroundColor: corFundo,
+        color: isBrandSurface ? "var(--brand-blue-foreground)" : corTexto,
+      }}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-4 overflow-x-auto px-5 py-3 text-center sm:px-6 lg:px-8">
         {itens.map((item, index) => (
@@ -639,16 +664,16 @@ function BlocoCategoriaHero({
   const classes =
     fundo === "ESCURO"
       ? {
-          section: "bg-[#5D8CC8] text-[#0f172a]",
-          etiqueta: "text-[#0f172a]/65",
-          titulo: "text-[#0f172a]",
-          texto: "text-[#0f172a]/75",
-          card: "bg-white/35 ring-[#0f172a]/10",
+          section: "bg-[var(--brand-blue)] text-white",
+          etiqueta: "text-white",
+          titulo: "text-white",
+          texto: "text-white",
+          card: "bg-black/10 ring-white/20",
         }
       : fundo === "AZUL_CLARO"
         ? {
             section: "bg-[var(--brand-blue-soft)] text-slate-950",
-            etiqueta: "brand-text",
+            etiqueta: "text-[var(--brand-blue-dark)]",
             titulo: "text-slate-950",
             texto: "text-slate-600",
             card: "bg-white/70 ring-slate-200",
@@ -906,7 +931,7 @@ function BlocoCategoriaCTA({
   return (
     <section className={fundoClasses.section}>
       <div className="mx-auto max-w-5xl px-5 py-12 text-center sm:px-6 lg:px-8">
-        <Sparkles className="mx-auto h-6 w-6 brand-text" />
+        <Sparkles className={`mx-auto h-6 w-6 ${fundoClasses.icon}`} />
 
         <h2
           className={`mt-4 text-2xl font-semibold tracking-tight md:text-4xl ${fundoClasses.titulo}`}
@@ -925,7 +950,7 @@ function BlocoCategoriaCTA({
         {textoBotao && linkBotao && (
           <Link
             href={linkBotao}
-            className="mt-7 inline-flex brand-button px-6 py-3 text-sm font-semibold"
+            className={`mt-7 inline-flex px-6 py-3 text-sm font-semibold transition ${fundoClasses.button}`}
           >
             {textoBotao}
           </Link>
@@ -1612,7 +1637,7 @@ export default function LojaPaginaBuilderClient({
     <div className="stella-storefront-render min-h-screen bg-white text-[#171916]">
       <a
         href="#conteudo-principal"
-        className="fixed left-3 top-3 z-[100] -translate-y-24 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#245f76]"
+        className="fixed left-3 top-3 z-[100] -translate-y-24 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue-dark)]"
       >
         Pular para o conteúdo principal
       </a>

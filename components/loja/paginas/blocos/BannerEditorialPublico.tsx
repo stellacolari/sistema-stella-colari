@@ -17,15 +17,31 @@ function isExternalUrl(url: string) {
   return /^https?:\/\//i.test(url);
 }
 
+function isBrandColor(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, "");
+
+  return [
+    "#2e7b99",
+    "rgb(46,123,153)",
+    "rgba(46,123,153,1)",
+    "var(--brand-blue)",
+  ].includes(normalized);
+}
+
 function BannerEditorialButton({
   href,
   children,
+  onBrandSurface,
 }: {
   href: string;
   children: string;
+  onBrandSurface: boolean;
 }) {
-  const className =
-    "inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-[var(--banner-editorial-accent)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-95";
+  const className = `inline-flex min-h-11 w-fit items-center justify-center rounded-full px-6 py-3 text-sm font-semibold shadow-sm transition ${
+    onBrandSurface
+      ? "border border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)]"
+      : "bg-[var(--banner-editorial-accent)] text-white hover:brightness-95"
+  }`;
 
   if (isExternalUrl(href)) {
     return (
@@ -81,6 +97,7 @@ export default function BannerEditorialPublico({
     titulo.length,
     forceMobile
   );
+  const isBrandSurface = isBrandColor(config.corFundo);
   const alignClass =
     config.alinhamento === "CENTRO"
       ? "items-center text-center"
@@ -94,9 +111,15 @@ export default function BannerEditorialPublico({
       className="bg-slate-50 px-4 py-10 md:px-8 md:py-14"
       style={getInlineVars({
         "--banner-editorial-bg": config.corFundo,
-        "--banner-editorial-text": config.corTexto,
-        "--banner-editorial-accent": config.corDestaque,
-        "--banner-editorial-accent-soft": `${config.corDestaque}24`,
+        "--banner-editorial-text": isBrandSurface
+          ? "var(--brand-blue-foreground)"
+          : config.corTexto,
+        "--banner-editorial-accent": isBrandSurface
+          ? "var(--brand-blue-foreground)"
+          : config.corDestaque,
+        "--banner-editorial-accent-soft": isBrandSurface
+          ? "rgb(255 255 255 / 22%)"
+          : `${config.corDestaque}24`,
       })}
     >
       <div className="mx-auto max-w-7xl">
@@ -123,13 +146,20 @@ export default function BannerEditorialPublico({
 
             <div className={`flex max-w-xl flex-col gap-5 ${alignClass}`}>
               {config.subtitulo ? (
-                <p className="text-base leading-7 text-[var(--banner-editorial-text)] opacity-75 md:text-lg">
+                <p
+                  className={`text-base leading-7 text-[var(--banner-editorial-text)] md:text-lg ${
+                    isBrandSurface ? "" : "opacity-75"
+                  }`}
+                >
                   {config.subtitulo}
                 </p>
               ) : null}
 
               {config.botaoTexto && config.botaoUrl ? (
-                <BannerEditorialButton href={config.botaoUrl}>
+                <BannerEditorialButton
+                  href={config.botaoUrl}
+                  onBrandSurface={isBrandSurface}
+                >
                   {config.botaoTexto}
                 </BannerEditorialButton>
               ) : null}

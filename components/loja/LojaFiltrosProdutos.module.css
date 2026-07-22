@@ -121,8 +121,8 @@
 }
 
 .primaryButton:hover {
-  background: var(--brand-blue, #182b49);
-  border-color: var(--brand-blue, #182b49);
+  background: var(--brand-blue, #2e7b99);
+  border-color: var(--brand-blue, #2e7b99);
 }
 
 .secondaryButton,

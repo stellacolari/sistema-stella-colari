@@ -34,6 +34,7 @@ type PublicRichTextRendererProps = {
   fallback?: string | null;
   className?: string;
   style?: CSSProperties;
+  forceColor?: CSSProperties["color"];
   paragraphClassName?: string;
   inline?: boolean;
   "data-stella-inline-field"?: string;
@@ -186,11 +187,14 @@ function sanitizeHref(value: unknown) {
   return "";
 }
 
-function getTextStyleFromMark(mark: PublicRichTextMark): CSSProperties {
+function getTextStyleFromMark(
+  mark: PublicRichTextMark,
+  forceColor?: CSSProperties["color"]
+): CSSProperties {
   const attrs = isRecord(mark.attrs) ? mark.attrs : {};
   const style: CSSProperties = {};
 
-  const color = resolveColor(attrs.color);
+  const color = forceColor || resolveColor(attrs.color);
   const fontFamily = resolveFontFamily(attrs.fontFamily);
   const fontSize = resolveFontSize(attrs.fontSize);
   const fontWeight = resolveFontWeight(attrs.fontWeight);
@@ -210,7 +214,8 @@ function getTextStyleFromMark(mark: PublicRichTextMark): CSSProperties {
 function renderWithMarks(
   content: ReactNode,
   marks: PublicRichTextMark[] | undefined,
-  keyPrefix: string
+  keyPrefix: string,
+  forceColor?: CSSProperties["color"]
 ) {
   if (!Array.isArray(marks) || marks.length === 0) return content;
 
@@ -249,7 +254,7 @@ function renderWithMarks(
     }
 
     if (mark.type === "textStyle") {
-      const style = getTextStyleFromMark(mark);
+      const style = getTextStyleFromMark(mark, forceColor);
 
       if (Object.keys(style).length === 0) return children;
 
@@ -278,16 +283,17 @@ function renderWithMarks(
 function renderNode(
   node: PublicRichTextNode,
   key: string,
-  paragraphClassName?: string
+  paragraphClassName?: string,
+  forceColor?: CSSProperties["color"]
 ): ReactNode {
   const children = Array.isArray(node.content)
     ? node.content.map((child, index) =>
-        renderNode(child, `${key}-${index}`, paragraphClassName)
+        renderNode(child, `${key}-${index}`, paragraphClassName, forceColor)
       )
     : null;
 
   if (node.type === "text") {
-    return renderWithMarks(node.text || "", node.marks, key);
+    return renderWithMarks(node.text || "", node.marks, key, forceColor);
   }
 
   if (node.type === "paragraph") {
@@ -316,13 +322,19 @@ function renderNode(
   return <span key={key}>{children}</span>;
 }
 
-function renderInlineNode(node: PublicRichTextNode, key: string): ReactNode {
+function renderInlineNode(
+  node: PublicRichTextNode,
+  key: string,
+  forceColor?: CSSProperties["color"]
+): ReactNode {
   const children = Array.isArray(node.content)
-    ? node.content.map((child, index) => renderInlineNode(child, `${key}-${index}`))
+    ? node.content.map((child, index) =>
+        renderInlineNode(child, `${key}-${index}`, forceColor)
+      )
     : null;
 
   if (node.type === "text") {
-    return renderWithMarks(node.text || "", node.marks, key);
+    return renderWithMarks(node.text || "", node.marks, key, forceColor);
   }
 
   if (node.type === "hardBreak") {
@@ -341,6 +353,7 @@ export default function PublicRichTextRenderer({
   fallback,
   className,
   style,
+  forceColor,
   paragraphClassName,
   inline = false,
   "data-stella-inline-field": dataStellaInlineField,
@@ -349,15 +362,16 @@ export default function PublicRichTextRenderer({
   if (isRichTextValue(value) && !isRichTextEmpty(value)) {
     const rendered = value.content?.map((node, index) =>
       inline
-        ? renderInlineNode(node, `rt-${index}`)
-        : renderNode(node, `rt-${index}`, paragraphClassName)
+        ? renderInlineNode(node, `rt-${index}`, forceColor)
+        : renderNode(node, `rt-${index}`, paragraphClassName, forceColor)
     );
+    const resolvedStyle = forceColor ? { ...style, color: forceColor } : style;
 
     if (inline) {
       return (
         <span
           className={className}
-          style={style}
+          style={resolvedStyle}
           data-stella-inline-field={dataStellaInlineField || undefined}
           data-stella-editorial-gallery-item-id={
             dataStellaEditorialGalleryItemId || undefined
@@ -371,7 +385,7 @@ export default function PublicRichTextRenderer({
     return (
       <div
         className={className}
-        style={style}
+        style={resolvedStyle}
         data-stella-inline-field={dataStellaInlineField || undefined}
         data-stella-editorial-gallery-item-id={
           dataStellaEditorialGalleryItemId || undefined
@@ -388,7 +402,7 @@ export default function PublicRichTextRenderer({
     return (
       <span
         className={className}
-        style={style}
+        style={forceColor ? { ...style, color: forceColor } : style}
         data-stella-inline-field={dataStellaInlineField || undefined}
         data-stella-editorial-gallery-item-id={
           dataStellaEditorialGalleryItemId || undefined
@@ -402,7 +416,7 @@ export default function PublicRichTextRenderer({
   return (
     <div
       className={className}
-      style={style}
+      style={forceColor ? { ...style, color: forceColor } : style}
       data-stella-inline-field={dataStellaInlineField || undefined}
       data-stella-editorial-gallery-item-id={
         dataStellaEditorialGalleryItemId || undefined
