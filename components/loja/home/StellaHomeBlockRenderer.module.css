@@ -331,6 +331,12 @@
   transform-origin: var(--stella-hero-position-desktop);
 }
 
+.editorialMediaImage {
+  object-position: var(--stella-editorial-position-desktop);
+  transform: scale(var(--stella-editorial-zoom-desktop));
+  transform-origin: var(--stella-editorial-position-desktop);
+}
+
 .galleryMediaImage {
   object-position: var(--stella-gallery-position-desktop);
   transform: scale(var(--stella-gallery-zoom-desktop));
@@ -363,6 +369,10 @@
 
 .mediaGroup:hover .galleryMediaImage {
   transform: scale(calc(var(--stella-gallery-zoom-desktop) + 0.025));
+}
+
+.mediaGroup:hover .editorialMediaImage {
+  transform: scale(calc(var(--stella-editorial-zoom-desktop) + 0.025));
 }
 
 .productCardShell :global(.stella-product-card) {
@@ -444,6 +454,12 @@
     transform-origin: var(--stella-hero-position-mobile);
   }
 
+  .editorialMediaImage {
+    object-position: var(--stella-editorial-position-mobile);
+    transform: scale(var(--stella-editorial-zoom-mobile));
+    transform-origin: var(--stella-editorial-position-mobile);
+  }
+
   .galleryMediaImage {
     object-position: var(--stella-gallery-position-mobile);
     transform: scale(var(--stella-gallery-zoom-mobile));
@@ -456,6 +472,10 @@
 
   .mediaGroup:hover .galleryMediaImage {
     transform: scale(calc(var(--stella-gallery-zoom-mobile) + 0.025));
+  }
+
+  .mediaGroup:hover .editorialMediaImage {
+    transform: scale(calc(var(--stella-editorial-zoom-mobile) + 0.025));
   }
 }
 
@@ -472,10 +492,18 @@
   .mediaGroup:hover .galleryMediaImage {
     transform: scale(var(--stella-gallery-zoom-desktop));
   }
+
+  .mediaGroup:hover .editorialMediaImage {
+    transform: scale(var(--stella-editorial-zoom-desktop));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) and (max-width: 767px) {
   .mediaGroup:hover .galleryMediaImage {
     transform: scale(var(--stella-gallery-zoom-mobile));
+  }
+
+  .mediaGroup:hover .editorialMediaImage {
+    transform: scale(var(--stella-editorial-zoom-mobile));
   }
 }

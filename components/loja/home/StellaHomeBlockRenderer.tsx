@@ -25,7 +25,11 @@ import {
   getStringWithDefault,
   produtoTemDesconto,
 } from "@/components/loja/paginas/blocos/utils";
-import type { StellaHomeBlockKey } from "@/lib/loja/stella-home-contract";
+import {
+  isStellaHomeBlockConfigSupported,
+  STELLA_HOME_HERO_TITLE,
+  type StellaHomeBlockKey,
+} from "@/lib/loja/stella-home-contract";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
 import styles from "./StellaHomeBlockRenderer.module.css";
 
@@ -45,8 +49,6 @@ type StellaHomeBlockRendererProps = {
   produtos: StellaHomeProduct[];
   categorias: CategoriaMenuPublicoItem[];
 };
-
-const STELLA_HERO_TITLE = "Viva Stella Colari.";
 
 function normalizeHref(value: string) {
   const href = value.trim();
@@ -325,6 +327,7 @@ function getHeroButtonStyle(
 }
 
 function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
+  const rawConfig = asConfig(bloco.configJson);
   const config = normalizarBannerHeroV2Config(bloco.configJson);
   const slide = config.slides[0];
 
@@ -337,7 +340,9 @@ function StellaHero({ bloco }: { bloco: StellaHomeBlock }) {
       : slide.midia.mobile;
   const mobileUrl = mobileCrop.url || desktopUrl;
   const tituloConfigurado = slide.conteudo.titulo.conteudo;
-  const titulo = STELLA_HERO_TITLE;
+  const titulo = getBoolean(rawConfig, "stellaUseConfiguredHeroTitle", false)
+    ? tituloConfigurado || STELLA_HOME_HERO_TITLE
+    : STELLA_HOME_HERO_TITLE;
   const eyebrow = slide.conteudo.eyebrow.conteudo;
   const texto = slide.conteudo.texto.conteudo;
   const hasVideo = slide.tipoMidia === "VIDEO" && Boolean(slide.video.url);
@@ -819,6 +824,11 @@ function getTextoImagem(config: Record<string, unknown>) {
   ]);
   const mobile = getStringWithDefault(config, ["imagemMobileUrl", "imagemMobile"]);
   const titulo = getStringWithDefault(config, "titulo");
+  const useManagedMediaCrop = getBoolean(
+    config,
+    "stellaUseManagedMediaCrop",
+    false
+  );
 
   return {
     titulo,
@@ -845,6 +855,24 @@ function getTextoImagem(config: Record<string, unknown>) {
       getBoolean(config, "mostrarTitulo", true),
     exibirTexto: getBoolean(config, "exibirSubtitulo", true),
     exibirBotao: getBoolean(config, "exibirBotao", true),
+    mediaPositionDesktop: useManagedMediaCrop
+      ? `${Math.max(0, Math.min(100, getNumber(config, "mediaCropDesktopX", 50)))}% ${Math.max(0, Math.min(100, getNumber(config, "mediaCropDesktopY", 50)))}%`
+      : "center center",
+    mediaPositionMobile: useManagedMediaCrop
+      ? `${Math.max(0, Math.min(100, getNumber(config, "mediaCropMobileX", 50)))}% ${Math.max(0, Math.min(100, getNumber(config, "mediaCropMobileY", 50)))}%`
+      : "center center",
+    mediaZoomDesktop: useManagedMediaCrop
+      ? Math.max(
+          0.2,
+          Math.min(2.2, getNumber(config, "mediaZoomDesktop", 100) / 100)
+        )
+      : 1,
+    mediaZoomMobile: useManagedMediaCrop
+      ? Math.max(
+          0.2,
+          Math.min(2.2, getNumber(config, "mediaZoomMobile", 100) / 100)
+        )
+      : 1,
   };
 }
 
@@ -868,6 +896,12 @@ function StellaEditorialFeature({
 
   const gift = variant === "gift";
   const story = variant === "story";
+  const imageStyle = {
+    "--stella-editorial-position-desktop": content.mediaPositionDesktop,
+    "--stella-editorial-position-mobile": content.mediaPositionMobile,
+    "--stella-editorial-zoom-desktop": content.mediaZoomDesktop,
+    "--stella-editorial-zoom-mobile": content.mediaZoomMobile,
+  } as CSSProperties;
   const sectionClass = gift
     ? "bg-[var(--brand-blue)] text-white"
     : story
@@ -888,6 +922,8 @@ function StellaEditorialFeature({
               mobile={content.mobile}
               alt={content.alt}
               className="h-full w-full"
+              imageClassName={styles.editorialMediaImage}
+              imageStyle={imageStyle}
             />
           </div>
         ) : null}
@@ -1068,6 +1104,8 @@ function StellaFeaturedSelection({
 }) {
   const config = asConfig(bloco.configJson);
   const itens = filtrarProdutos(produtos, config).slice(0, 5);
+  const ctaLabel = getStringWithDefault(config, "textoLinkSecao");
+  const ctaHref = normalizeHref(getStringWithDefault(config, "linkSecao"));
 
   if (itens.length === 0) return null;
 
@@ -1089,6 +1127,17 @@ function StellaFeaturedSelection({
             ))}
           </div>
         </div>
+        {ctaLabel && ctaHref ? (
+          <div className="mt-10 text-center">
+            <SmartLink
+              href={ctaHref}
+              className="inline-flex min-h-11 items-center gap-4 border-b border-[#171916]/55 pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#171916] hover:border-[#171916]"
+            >
+              {ctaLabel}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </SmartLink>
+          </div>
+        ) : null}
       </div>
     </RevealSection>
   );
@@ -1382,106 +1431,11 @@ function StellaFinalCta({ bloco }: { bloco: StellaHomeBlock }) {
   );
 }
 
-const STELLA_PRODUCT_SOURCES = new Set([
-  "TODOS",
-  "NOVOS",
-  "DESCONTOS",
-  "MAIS_VENDIDOS",
-  "CATEGORIA",
-  "CATEGORIAS_SELECIONADAS",
-  "MANUAL",
-  "COLECAO_INTELIGENTE",
-]);
-
 export function canRenderStellaHomeBlock(
   bloco: StellaHomeBlock,
   blockKey: StellaHomeBlockKey
 ) {
-  const config = asConfig(bloco.configJson);
-
-  if (blockKey === "home.hero") {
-    const slides = getArray(config, "slides");
-    const carrossel = asConfig(config.carrossel);
-    const slide = asConfig(slides[0]);
-    const linkSlide = asConfig(slide.linkSlide);
-
-    return (
-      slides.length === 1 &&
-      !getBoolean(carrossel, "ativo", false) &&
-      getString(slide, "tipoMidia", "IMAGEM") === "IMAGEM" &&
-      getString(config, "navegacaoInferior", "NENHUMA") === "NENHUMA" &&
-      !getStringWithDefault(linkSlide, "valor")
-    );
-  }
-
-  if (blockKey === "home.novidades" || blockKey === "home.destaques") {
-    return STELLA_PRODUCT_SOURCES.has(getString(config, "fonte", "TODOS"));
-  }
-
-  if (
-    blockKey === "home.editorial" ||
-    blockKey === "home.presentes" ||
-    blockKey === "home.story"
-  ) {
-    return (
-      getString(config, "tipoMidia", "IMAGEM") === "IMAGEM" &&
-      !getString(config, "videoDesktopUrl") &&
-      !getString(config, "videoMobileUrl")
-    );
-  }
-
-  if (blockKey === "home.galeria") {
-    const fonte = asConfig(config.fonte);
-    const hover = asConfig(config.hover);
-    const quantidade = getNumber(fonte, "quantidade", 4);
-
-    return (
-      getString(fonte, "tipo", "MANUAL") === "MANUAL" &&
-      quantidade >= 1 &&
-      quantidade <= 4 &&
-      getString(hover, "tipo", "ZOOM_LEVE") === "ZOOM_LEVE"
-    );
-  }
-
-  if (blockKey === "home.valores") {
-    return getArray(config, "cards").every((card) => {
-      const cardConfig = asConfig(card);
-
-      if (!getBoolean(cardConfig, "exibirMidia", true)) return true;
-
-      return ["IMAGEM", "ICONE", "NENHUMA"].includes(
-        getString(cardConfig, "tipoMidia", "ICONE")
-      );
-    });
-  }
-
-  if (
-    blockKey === "home.categorias" ||
-    blockKey === "home.categorias-destaque"
-  ) {
-    return getArray(config, "itens").every((item) => {
-      const itemConfig = asConfig(item);
-
-      return (
-        getString(itemConfig, "tipoMidia", "IMAGEM") === "IMAGEM" &&
-        !getString(itemConfig, "videoDesktopUrl") &&
-        !getString(itemConfig, "videoMobileUrl")
-      );
-    });
-  }
-
-  if (blockKey === "home.novidades-cta" || blockKey === "home.cta-final") {
-    const hasMedia = Boolean(
-      getString(config, "imagemDesktopUrl") ||
-        getString(config, "imagemMobileUrl") ||
-        getString(config, "videoDesktopUrl") ||
-        getString(config, "videoMobileUrl")
-    );
-
-    return !(getBoolean(config, "exibirMidia", false) && hasMedia);
-  }
-
-  return true;
+  return isStellaHomeBlockConfigSupported(blockKey, bloco.configJson);
 }
 
 export default function StellaHomeBlockRenderer({

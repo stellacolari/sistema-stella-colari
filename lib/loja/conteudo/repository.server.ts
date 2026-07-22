@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  conteudosPaginaIguais,
   extrairReferenciasMidia,
   getConteudoContratoVersionado,
   normalizarConteudoPagina,
@@ -18,6 +19,11 @@ import {
   adaptarBuilderLegado,
   type PaginaLegadaConteudo,
 } from "@/lib/loja/conteudo/legacy-adapter";
+import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.server";
+import {
+  isStellaHomeBlockConfigSupported,
+  STELLA_HOME_NAMESPACE,
+} from "@/lib/loja/stella-home-contract";
 
 export type ConteudoUsuarioAuditoria = {
   id: string;
@@ -32,6 +38,15 @@ export type ConteudoPaginaBase = PaginaLegadaConteudo & {
   categoria?: { slug: string } | null;
 };
 
+export type ConteudoBaseVisualHomeBloco = {
+  id: string;
+  tipo: string;
+  titulo: string | null;
+  ordem: number;
+  ativo: true;
+  configJson: Record<string, unknown>;
+};
+
 export type ConteudoEstadoEditor = {
   documentoId: string | null;
   chave: string;
@@ -44,7 +59,14 @@ export type ConteudoEstadoEditor = {
   inicioPublicacao: string | null;
   fimPublicacao: string | null;
   prioridade: number;
+  conteudoPublicado: ConteudoPaginaPayload | null;
+  temAlteracoesNaoPublicadas: boolean;
+  origemPublicada: "NOVO" | "LEGADO" | null;
+  versaoPublicadaId: string | null;
   versaoPublicada: number | null;
+  atualizadoEm: string | null;
+  atualizadoPorNome: string | null;
+  publicadoPorNome: string | null;
   avisosLegado: string[];
   blocosNaoMapeados: Array<{ id: string; tipo: string; titulo: string | null }>;
   historico: Array<{
@@ -105,6 +127,112 @@ function rotaPublicaPagina(pagina: { tipo: string; slug: string }) {
   return `/loja/p/${pagina.slug}`;
 }
 
+const LIMITE_BLOCOS_BASE_VISUAL_HOME = 60;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function paginaEhHome(pagina: { tipo: string; slug: string }) {
+  return pagina.tipo === "HOME" || pagina.slug === "home";
+}
+
+function sanitizarBlocoBaseVisualHome(
+  value: unknown,
+): ConteudoBaseVisualHomeBloco | null {
+  if (!isRecord(value)) return null;
+
+  const id = typeof value.id === "string" ? value.id.trim() : "";
+  const tipo = typeof value.tipo === "string" ? value.tipo.trim() : "";
+  const titulo =
+    value.titulo === null
+      ? null
+      : typeof value.titulo === "string"
+        ? value.titulo
+        : null;
+  const ordem = value.ordem;
+
+  if (
+    !id ||
+    !tipo ||
+    (value.titulo !== null && typeof value.titulo !== "string") ||
+    typeof ordem !== "number" ||
+    !Number.isSafeInteger(ordem) ||
+    value.ativo !== true ||
+    !isRecord(value.configJson)
+  ) {
+    return null;
+  }
+
+  const [publico] = serializarBlocosBuilderPublicos([
+    {
+      id,
+      tipo,
+      titulo,
+      ordem,
+      ativo: true,
+      configJson: value.configJson,
+    },
+  ]);
+  if (!publico?.stellaHomeKey) return null;
+  if (
+    !isStellaHomeBlockConfigSupported(
+      publico.stellaHomeKey,
+      publico.configJson,
+    )
+  ) {
+    return null;
+  }
+
+  const configJson = {
+    ...publico.configJson,
+    _stellaSetup: {
+      namespace: STELLA_HOME_NAMESPACE,
+      key: publico.stellaHomeKey,
+      version: 2,
+    },
+  };
+
+  return {
+    id: publico.id,
+    tipo: publico.tipo,
+    titulo: publico.titulo,
+    ordem: publico.ordem,
+    ativo: true,
+    configJson,
+  };
+}
+
+function sanitizarBaseVisualHome(
+  blocos: readonly unknown[],
+): ConteudoBaseVisualHomeBloco[] | null {
+  if (
+    blocos.length === 0 ||
+    blocos.length > LIMITE_BLOCOS_BASE_VISUAL_HOME
+  ) {
+    return null;
+  }
+
+  const sanitizados = blocos.map(sanitizarBlocoBaseVisualHome);
+  if (sanitizados.some((bloco) => bloco === null)) return null;
+
+  const blocosValidos = sanitizados as ConteudoBaseVisualHomeBloco[];
+  const ids = new Set(blocosValidos.map((bloco) => bloco.id));
+  if (ids.size !== blocosValidos.length) return null;
+
+  return blocosValidos;
+}
+
+function criarBaseVisualHome(
+  pagina: ConteudoPaginaBase,
+): ConteudoBaseVisualHomeBloco[] | null {
+  if (!paginaEhHome(pagina)) return null;
+
+  return sanitizarBaseVisualHome(
+    pagina.blocos.filter((bloco) => bloco.ativo === true),
+  );
+}
+
 function parseOrigemJson(value: unknown) {
   const record =
     value && typeof value === "object" && !Array.isArray(value)
@@ -146,7 +274,16 @@ function parseOrigemJson(value: unknown) {
         }
       : null;
 
-  return { avisosLegado, blocosNaoMapeados, paginaEstadoLegado };
+  const baseVisualHome = sanitizarBaseVisualHome(
+    Array.isArray(record.baseVisualHome) ? record.baseVisualHome : [],
+  );
+
+  return {
+    avisosLegado,
+    blocosNaoMapeados,
+    paginaEstadoLegado,
+    baseVisualHome,
+  };
 }
 
 export async function buscarPaginaConteudoBase(paginaId: string) {
@@ -186,7 +323,17 @@ export async function montarEstadoEditorConteudo(
   const documento = await prisma.lojaConteudoDocumento.findUnique({
     where: { paginaId: pagina.id },
     include: {
-      versaoPublicada: { select: { id: true, numero: true } },
+      versaoPublicada: {
+        select: {
+          id: true,
+          numero: true,
+          contratoChave: true,
+          contratoVersao: true,
+          conteudoJson: true,
+          autorNome: true,
+          criadoEm: true,
+        },
+      },
       versoes: {
         orderBy: { numero: "desc" },
         take: 30,
@@ -204,6 +351,8 @@ export async function montarEstadoEditorConteudo(
 
   if (!documento) {
     const legado = adaptarBuilderLegado(pagina);
+    const temPublicacaoLegada =
+      pagina.ativo && pagina.statusPublicacao === "PUBLICADA";
 
     return {
       documentoId: null,
@@ -217,7 +366,14 @@ export async function montarEstadoEditorConteudo(
       inicioPublicacao: null,
       fimPublicacao: null,
       prioridade: 0,
+      conteudoPublicado: temPublicacaoLegada ? legado.conteudo : null,
+      temAlteracoesNaoPublicadas: !temPublicacaoLegada,
+      origemPublicada: temPublicacaoLegada ? "LEGADO" : null,
+      versaoPublicadaId: null,
       versaoPublicada: null,
+      atualizadoEm: pagina.atualizadoEm?.toISOString() ?? null,
+      atualizadoPorNome: null,
+      publicadoPorNome: null,
       avisosLegado: legado.avisos,
       blocosNaoMapeados: legado.blocosNaoMapeados,
       historico: [],
@@ -233,6 +389,49 @@ export async function montarEstadoEditorConteudo(
   );
   const conteudo = normalizarConteudoPagina(contentContract, documento.rascunhoJson);
   const planejamentoRascunho = planejamentoCampanha(contentContract.key, conteudo);
+  const ultimaEdicao = documento.versoes.find((versao) =>
+    [
+      "RASCUNHO",
+      "RESTAURACAO",
+      "RESTAURACAO_PUBLICADA",
+      "MIGRACAO",
+    ].includes(versao.operacao),
+  );
+  let conteudoPublicado: ConteudoPaginaPayload | null = null;
+  let origemPublicada: ConteudoEstadoEditor["origemPublicada"] = null;
+  let versaoPublicadaId: string | null = null;
+  let versaoPublicada: number | null = null;
+  let publicadoEm: string | null = null;
+  let publicadoPorNome: string | null = null;
+
+  if (documento.modoEntrega === "NOVO" && documento.versaoPublicada) {
+    const contratoPublicado = getConteudoContratoVersionado(
+      documento.versaoPublicada.contratoChave,
+      documento.versaoPublicada.contratoVersao,
+    );
+    conteudoPublicado = normalizarConteudoPagina(
+      contratoPublicado,
+      documento.versaoPublicada.conteudoJson,
+    );
+    origemPublicada = "NOVO";
+    versaoPublicadaId = documento.versaoPublicada.id;
+    versaoPublicada = documento.versaoPublicada.numero;
+    publicadoEm =
+      documento.publicadoEm?.toISOString() ??
+      documento.versaoPublicada.criadoEm.toISOString();
+    publicadoPorNome =
+      documento.publicadoPorNome ?? documento.versaoPublicada.autorNome;
+  } else if (
+    documento.modoEntrega === "LEGADO" &&
+    pagina.ativo &&
+    pagina.statusPublicacao === "PUBLICADA"
+  ) {
+    const legadoPublicado = adaptarBuilderLegado(pagina);
+    conteudoPublicado = legadoPublicado.conteudo;
+    origemPublicada = "LEGADO";
+    publicadoEm = pagina.publicadoEm?.toISOString() ?? null;
+    publicadoPorNome = null;
+  }
 
   return {
     documentoId: documento.id,
@@ -242,7 +441,7 @@ export async function montarEstadoEditorConteudo(
     revisao: documento.revisaoRascunho,
     status: documento.status,
     modoEntrega: documento.modoEntrega,
-    publicadoEm: documento.publicadoEm?.toISOString() ?? null,
+    publicadoEm,
     inicioPublicacao:
       planejamentoRascunho.inicioPublicacao?.toISOString() ??
       documento.inicioPublicacao?.toISOString() ??
@@ -252,7 +451,17 @@ export async function montarEstadoEditorConteudo(
       documento.fimPublicacao?.toISOString() ??
       null,
     prioridade: planejamentoRascunho.prioridade || documento.prioridade,
-    versaoPublicada: documento.versaoPublicada?.numero ?? null,
+    conteudoPublicado,
+    temAlteracoesNaoPublicadas:
+      !conteudoPublicado || !conteudosPaginaIguais(conteudo, conteudoPublicado),
+    origemPublicada,
+    versaoPublicadaId,
+    versaoPublicada,
+    atualizadoEm:
+      ultimaEdicao?.criadoEm.toISOString() ?? documento.atualizadoEm.toISOString(),
+    atualizadoPorNome:
+      ultimaEdicao?.autorNome ?? documento.atualizadoPorNome,
+    publicadoPorNome,
     avisosLegado: origin.avisosLegado,
     blocosNaoMapeados: origin.blocosNaoMapeados,
     historico: documento.versoes.map((versao) => ({
@@ -450,6 +659,7 @@ async function validarReferenciasPublicas(
 
 function sourceOrigin(pagina: ConteudoPaginaBase) {
   const legado = adaptarBuilderLegado(pagina);
+  const baseVisualHome = criarBaseVisualHome(pagina);
   return {
     fonte: "BUILDER_LEGADO",
     namespace: "conteudo-loja-v1",
@@ -463,6 +673,7 @@ function sourceOrigin(pagina: ConteudoPaginaBase) {
     blocosMapeadosIds: legado.blocosMapeadosIds,
     blocosNaoMapeados: legado.blocosNaoMapeados,
     avisos: legado.avisos,
+    ...(paginaEhHome(pagina) ? { baseVisualHome } : {}),
   };
 }
 
@@ -616,7 +827,7 @@ export async function salvarRascunhoConteudo({
     }
 
     const numero = await proximoNumeroVersao(tx, documento.id);
-    await tx.lojaConteudoVersao.create({
+    const versao = await tx.lojaConteudoVersao.create({
       data: {
         documentoId: documento.id,
         numero,
@@ -637,6 +848,7 @@ export async function salvarRascunhoConteudo({
         documentoId: documento.id,
         revisao: documento.revisaoRascunho,
         issues,
+        versaoId: versao.id,
         numeroVersao: numero,
       };
     });
@@ -689,6 +901,19 @@ export async function publicarConteudo({
       })),
     );
   }
+  if (paginaEhHome(pagina) && !origin.baseVisualHome) {
+    throw new ConteudoValidacaoError(
+      "A Home não pode ser publicada sem uma base visual válida e congelada.",
+      [
+        {
+          campo: "legacy",
+          mensagem:
+            "A base visual ativa da Home está ausente ou inválida. A entrega atual foi preservada.",
+          nivel: "ERRO" as const,
+        },
+      ],
+    );
+  }
 
   const contrato = getConteudoContratoVersionado(
     documento.contratoChave,
@@ -711,6 +936,7 @@ export async function publicarConteudo({
     const claim = await tx.lojaConteudoDocumento.updateMany({
       where: { id: documento.id, revisaoRascunho: expectedRevision },
       data: {
+        rascunhoJson: jsonInput(conteudo),
         revisaoRascunho: { increment: 1 },
         ...(documento.modoEntrega === "LEGADO"
           ? { origemJson: jsonInput(originAtual) }
@@ -764,6 +990,7 @@ export async function publicarConteudo({
 
     return {
       documentoId: documento.id,
+      versaoId: versao.id,
       versao: numero,
       revisao: expectedRevision + 1,
       status: statusPublicacao,
@@ -829,7 +1056,7 @@ export async function restaurarVersaoConteudo({
     }
 
     const numero = await proximoNumeroVersao(tx, documento.id);
-    await tx.lojaConteudoVersao.create({
+    const novaVersao = await tx.lojaConteudoVersao.create({
       data: {
         documentoId: documento.id,
         numero,
@@ -845,7 +1072,149 @@ export async function restaurarVersaoConteudo({
 
     await substituirUsosMidia(tx, documento.id, conteudo, "RASCUNHO");
     await registrarUsosHistoricosMidia(tx, documento.id, conteudo);
-    return { revisao: expectedRevision + 1, numeroVersao: numero, conteudo };
+    return {
+      revisao: expectedRevision + 1,
+      versaoId: novaVersao.id,
+      numeroVersao: numero,
+      conteudo,
+    };
+  });
+}
+
+export async function restaurarPublicadoComoRascunho({
+  pagina,
+  expectedRevision,
+  usuario,
+}: {
+  pagina: ConteudoPaginaBase;
+  expectedRevision: number;
+  usuario: ConteudoUsuarioAuditoria;
+}) {
+  const documento = await prisma.lojaConteudoDocumento.findUnique({
+    where: { paginaId: pagina.id },
+    include: {
+      versaoPublicada: {
+        select: {
+          numero: true,
+          contratoChave: true,
+          contratoVersao: true,
+          conteudoJson: true,
+        },
+      },
+    },
+  });
+  if (!documento || documento.revisaoRascunho !== expectedRevision) {
+    throw new ConteudoConflitoRevisaoError(
+      "O conteúdo foi alterado em outra sessão. Recarregue antes de restaurar.",
+    );
+  }
+
+  let origemPublicada: "NOVO" | "LEGADO";
+  let versaoPublicada: number | null = null;
+  let contrato: ConteudoContrato;
+  let normalizado: ConteudoPaginaPayload;
+
+  if (documento.modoEntrega === "NOVO") {
+    if (!documento.versaoPublicada) {
+      throw new ConteudoValidacaoError(
+        "Não há uma versão publicada disponível para restaurar.",
+        [],
+      );
+    }
+
+    origemPublicada = "NOVO";
+    versaoPublicada = documento.versaoPublicada.numero;
+    contrato = getConteudoContratoVersionado(
+      documento.versaoPublicada.contratoChave,
+      documento.versaoPublicada.contratoVersao,
+    );
+    normalizado = normalizarConteudoPagina(
+      contrato,
+      documento.versaoPublicada.conteudoJson,
+    );
+  } else if (documento.modoEntrega === "LEGADO") {
+    if (!pagina.ativo || pagina.statusPublicacao !== "PUBLICADA") {
+      throw new ConteudoValidacaoError(
+        "Não há conteúdo legado publicado disponível para restaurar.",
+        [],
+      );
+    }
+
+    origemPublicada = "LEGADO";
+    const legado = adaptarBuilderLegado(pagina);
+    contrato = legado.contrato;
+    normalizado = normalizarConteudoPagina(contrato, legado.conteudo);
+  } else {
+    throw new ConteudoValidacaoError(
+      "O modo de entrega atual é inválido; a restauração foi cancelada.",
+      [],
+    );
+  }
+
+  const midias = await hidratarMidiasConteudo(pagina, contrato, normalizado);
+  const conteudo = midias.conteudo;
+  const issues = [
+    ...validarConteudoPagina(contrato, conteudo, "RASCUNHO"),
+    ...midias.issues,
+  ];
+  if (issues.some((issue) => issue.nivel === "ERRO")) {
+    throw new ConteudoValidacaoError(
+      "O conteúdo publicado não pode ser restaurado como rascunho.",
+      issues,
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const update = await tx.lojaConteudoDocumento.updateMany({
+      where: { id: documento.id, revisaoRascunho: expectedRevision },
+      data: {
+        rascunhoJson: jsonInput(conteudo),
+        contratoChave: contrato.key,
+        contratoVersao: contrato.version,
+        revisaoRascunho: { increment: 1 },
+        atualizadoPorId: usuario.id,
+        atualizadoPorNome: usuario.nome,
+        ...(documento.modoEntrega === "LEGADO"
+          ? { origemJson: jsonInput(sourceOrigin(pagina)) }
+          : {}),
+      },
+    });
+    if (update.count !== 1) {
+      throw new ConteudoConflitoRevisaoError(
+        "O conteúdo mudou durante a restauração.",
+      );
+    }
+
+    const numero = await proximoNumeroVersao(tx, documento.id);
+    const novaVersao = await tx.lojaConteudoVersao.create({
+      data: {
+        documentoId: documento.id,
+        numero,
+        contratoChave: contrato.key,
+        contratoVersao: contrato.version,
+        conteudoJson: jsonInput(conteudo),
+        operacao: "RESTAURACAO_PUBLICADA",
+        resumo:
+          origemPublicada === "NOVO" && versaoPublicada !== null
+            ? `Versão publicada ${versaoPublicada} restaurada como rascunho`
+            : "Conteúdo legado publicado restaurado como rascunho",
+        autorId: usuario.id,
+        autorNome: usuario.nome,
+      },
+    });
+
+    await substituirUsosMidia(tx, documento.id, conteudo, "RASCUNHO");
+    await registrarUsosHistoricosMidia(tx, documento.id, conteudo);
+
+    return {
+      revisao: expectedRevision + 1,
+      versaoId: novaVersao.id,
+      numeroVersao: numero,
+      conteudo,
+      issues,
+      origemPublicada,
+      versaoPublicada,
+    };
   });
 }
 
@@ -957,16 +1326,57 @@ export async function rollbackConteudoParaLegado({
 export async function buscarConteudoPublicadoPagina(paginaId: string) {
   const documento = await prisma.lojaConteudoDocumento.findUnique({
     where: { paginaId },
-    include: { versaoPublicada: true },
+    include: {
+      versaoPublicada: true,
+      pagina: {
+        select: {
+          ativo: true,
+          statusPublicacao: true,
+          tipo: true,
+          slug: true,
+        },
+      },
+    },
   });
 
-  if (
-    !documento ||
-    documento.modoEntrega !== "NOVO" ||
-    !documento.versaoPublicada ||
-    !["PUBLICADA", "AGENDADA"].includes(documento.status)
-  ) {
+  if (!documento || documento.modoEntrega === "LEGADO") {
     return null;
+  }
+
+  if (documento.modoEntrega !== "NOVO") {
+    return {
+      indisponivel: true as const,
+      modoEntrega: documento.modoEntrega,
+      motivo: "MODO_ENTREGA_INVALIDO" as const,
+    };
+  }
+
+  if (!documento.versaoPublicada) {
+    return {
+      indisponivel: true as const,
+      modoEntrega: "NOVO" as const,
+      motivo: "VERSAO_PUBLICADA_AUSENTE" as const,
+    };
+  }
+
+  if (
+    !documento.pagina ||
+    !documento.pagina.ativo ||
+    documento.pagina.statusPublicacao !== "PUBLICADA"
+  ) {
+    return {
+      indisponivel: true as const,
+      modoEntrega: "NOVO" as const,
+      motivo: "PAGINA_PUBLICA_INDISPONIVEL" as const,
+    };
+  }
+
+  if (!["PUBLICADA", "AGENDADA"].includes(documento.status)) {
+    return {
+      indisponivel: true as const,
+      modoEntrega: "NOVO" as const,
+      motivo: "STATUS_PUBLICACAO_INVALIDO" as const,
+    };
   }
 
   const now = new Date();
@@ -976,6 +1386,18 @@ export async function buscarConteudoPublicadoPagina(paginaId: string) {
   ) {
     return {
       indisponivel: true as const,
+      modoEntrega: "NOVO" as const,
+      motivo: "FORA_DA_JANELA_PUBLICACAO" as const,
+    };
+  }
+
+  const origin = parseOrigemJson(documento.origemJson);
+  const home = paginaEhHome(documento.pagina);
+  if (home && !origin.baseVisualHome) {
+    return {
+      indisponivel: true as const,
+      modoEntrega: "NOVO" as const,
+      motivo: "BASE_VISUAL_HOME_AUSENTE" as const,
     };
   }
 
@@ -989,9 +1411,11 @@ export async function buscarConteudoPublicadoPagina(paginaId: string) {
   );
   return {
     indisponivel: false as const,
+    modoEntrega: "NOVO" as const,
     contrato,
     conteudo,
     publico: projetarConteudoPublico(contrato, conteudo),
+    baseVisualHome: home ? origin.baseVisualHome : null,
   };
 }
 
@@ -1022,14 +1446,68 @@ export async function buscarConteudoPublicadoSistema({
   return { pagina, ...publicado };
 }
 
-export async function buscarConteudoPreviewPagina(pagina: ConteudoPaginaBase) {
+export type ConteudoPreviewEscopo = "RASCUNHO" | "PUBLICADO";
+
+type ConteudoPreviewProjetado = ReturnType<typeof projetarConteudoPublico> & {
+  modoEntrega: "NOVO" | "LEGADO";
+  baseVisualHome: ConteudoBaseVisualHomeBloco[] | null;
+};
+
+function projetarPreviewLegado(pagina: ConteudoPaginaBase) {
+  const legado = adaptarBuilderLegado(pagina);
+  return {
+    ...projetarConteudoPublico(legado.contrato, legado.conteudo),
+    modoEntrega: "LEGADO" as const,
+    baseVisualHome: null,
+  };
+}
+
+export function buscarConteudoPreviewPagina(
+  pagina: ConteudoPaginaBase,
+): Promise<ConteudoPreviewProjetado | null>;
+export function buscarConteudoPreviewPagina(
+  pagina: ConteudoPaginaBase,
+  escopo: "RASCUNHO",
+): Promise<ConteudoPreviewProjetado | null>;
+export function buscarConteudoPreviewPagina(
+  pagina: ConteudoPaginaBase,
+  escopo: "PUBLICADO",
+): Promise<ConteudoPreviewProjetado | null>;
+export function buscarConteudoPreviewPagina(
+  pagina: ConteudoPaginaBase,
+  escopo: ConteudoPreviewEscopo,
+): Promise<ConteudoPreviewProjetado | null>;
+export async function buscarConteudoPreviewPagina(
+  pagina: ConteudoPaginaBase,
+  escopo: ConteudoPreviewEscopo = "RASCUNHO",
+): Promise<ConteudoPreviewProjetado | null> {
   const documento = await prisma.lojaConteudoDocumento.findUnique({
     where: { paginaId: pagina.id },
   });
 
+  if (escopo === "PUBLICADO") {
+    const publicado = await buscarConteudoPublicadoPagina(pagina.id);
+    if (publicado?.indisponivel) return null;
+    if (publicado) {
+      return {
+        ...publicado.publico,
+        modoEntrega: "NOVO" as const,
+        baseVisualHome: publicado.baseVisualHome,
+      };
+    }
+
+    if (documento && documento.modoEntrega !== "LEGADO") return null;
+    if (!pagina.ativo || pagina.statusPublicacao !== "PUBLICADA") return null;
+
+    return projetarPreviewLegado(pagina);
+  }
+
   if (!documento) {
-    const legado = adaptarBuilderLegado(pagina);
-    return projetarConteudoPublico(legado.contrato, legado.conteudo);
+    return projetarPreviewLegado(pagina);
+  }
+
+  if (documento.modoEntrega !== "NOVO" && documento.modoEntrega !== "LEGADO") {
+    return null;
   }
 
   const contrato = getConteudoContratoVersionado(
@@ -1037,5 +1515,18 @@ export async function buscarConteudoPreviewPagina(pagina: ConteudoPaginaBase) {
     documento.contratoVersao,
   );
   const conteudo = normalizarConteudoPagina(contrato, documento.rascunhoJson);
-  return projetarConteudoPublico(contrato, conteudo);
+  const origin = parseOrigemJson(documento.origemJson);
+  const home = paginaEhHome(pagina);
+  if (documento.modoEntrega === "NOVO" && home && !origin.baseVisualHome) {
+    return null;
+  }
+
+  return {
+    ...projetarConteudoPublico(contrato, conteudo),
+    modoEntrega: documento.modoEntrega,
+    baseVisualHome:
+      documento.modoEntrega === "NOVO" && home
+        ? origin.baseVisualHome
+        : null,
+  };
 }

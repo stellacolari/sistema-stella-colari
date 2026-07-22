@@ -41,8 +41,15 @@ export async function POST(request: Request, context: RouteContext) {
       expectedRevision,
       usuario: { id: usuario.id, nome: usuario.nome },
     });
-    revalidarConteudoLoja(pagina);
-    return NextResponse.json({ ok: true, ...result });
+    const cache = revalidarConteudoLoja(pagina);
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      cacheRevalidado: cache.ok,
+      avisoCache: cache.ok
+        ? null
+        : "O rollback foi concluído, mas a invalidação de cache ficou pendente.",
+    });
   } catch (error) {
     if (error instanceof ConteudoConflitoRevisaoError) {
       return erroConteudo(error.message, 409);

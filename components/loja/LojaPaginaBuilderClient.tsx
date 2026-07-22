@@ -24,6 +24,9 @@ import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import StellaHomeBlockRenderer, {
   canRenderStellaHomeBlock,
 } from "@/components/loja/home/StellaHomeBlockRenderer";
+import StellaHomeExperience, {
+  canRenderStellaHomeExperience,
+} from "@/components/loja/home/StellaHomeExperience";
 import ConteudoPaginaExperience from "@/components/loja/conteudo/ConteudoPaginaExperience";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
@@ -1628,13 +1631,31 @@ export default function LojaPaginaBuilderClient({
     corDestaque: menu.corDestaque,
   }));
   const primeiroBloco = blocosNormalizados[0] || null;
+  const homeGerenciada = Boolean(
+    pagina.tipo === "HOME" &&
+      pagina.slug === "home" &&
+      conteudoGerenciado,
+  );
+  const usarStellaHomeExperience = Boolean(
+    canRenderStellaHomeExperience(pagina, blocosNormalizados) &&
+      (!homeGerenciada || conteudoGerenciado?.contrato.key === "home"),
+  );
   const bannerHeroV2Topo =
     primeiroBloco?.tipo === "BANNER_HERO_V2"
       ? normalizarBannerHeroV2Config(primeiroBloco.configJson)
       : null;
 
   return (
-    <div className="stella-storefront-render min-h-screen bg-white text-[#171916]">
+    <div
+      className="stella-storefront-render min-h-screen bg-white text-[#171916]"
+      data-stella-home-experience={
+        usarStellaHomeExperience
+          ? "shared-v1"
+          : homeGerenciada
+            ? "indisponivel"
+            : undefined
+      }
+    >
       <a
         href="#conteudo-principal"
         className="fixed left-3 top-3 z-[100] -translate-y-24 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-blue-dark)]"
@@ -1658,7 +1679,28 @@ export default function LojaPaginaBuilderClient({
       />
 
       <main id="conteudo-principal" tabIndex={-1}>
-        {conteudoGerenciado ? (
+        {usarStellaHomeExperience ? (
+          <StellaHomeExperience
+            pagina={pagina}
+            blocos={blocosNormalizados}
+            produtos={produtos}
+            categorias={categoriasMenu}
+            conteudoGerenciado={conteudoGerenciado}
+          />
+        ) : homeGerenciada ? (
+          <section
+            role="status"
+            className="mx-auto max-w-2xl px-5 py-24 text-center sm:px-6 lg:px-8"
+          >
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-4xl">
+              Home temporariamente indisponível
+            </h1>
+            <p className="mt-4 text-sm font-medium leading-7 text-slate-600">
+              A versão gerenciada não possui uma base visual compatível. A
+              entrega legada não foi usada como substituta.
+            </p>
+          </section>
+        ) : conteudoGerenciado ? (
           <ConteudoPaginaExperience
             pagina={pagina}
             contrato={conteudoGerenciado.contrato}

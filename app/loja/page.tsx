@@ -32,11 +32,11 @@ export async function generateMetadata(): Promise<Metadata> {
     where: {
       slug: HOME_VISUAL_SLUG,
       tipo: "HOME",
-      ativo: true,
-      statusPublicacao: "PUBLICADA",
     },
     select: {
       id: true,
+      ativo: true,
+      statusPublicacao: true,
       seoTitle: true,
       seoDescription: true,
       blocos: {
@@ -50,9 +50,14 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
   });
-  const banner = homeVisual
-    ? null
-    : await prisma.bannerLoja.findFirst({
+  const conteudoGerenciado = homeVisual
+    ? await buscarConteudoPublicadoPagina(homeVisual.id)
+    : null;
+  const homeLegadaPublicavel = Boolean(
+    homeVisual?.ativo && homeVisual.statusPublicacao === "PUBLICADA",
+  );
+  const banner = !conteudoGerenciado && !homeLegadaPublicavel
+    ? await prisma.bannerLoja.findFirst({
         where: {
           ativo: true,
         },
@@ -60,24 +65,41 @@ export async function generateMetadata(): Promise<Metadata> {
         select: {
           imagemUrl: true,
         },
-      });
-  const conteudoGerenciado = homeVisual
-    ? await buscarConteudoPublicadoPagina(homeVisual.id)
+      })
     : null;
-  const seo =
+  const conteudoAtivo =
     conteudoGerenciado && !conteudoGerenciado.indisponivel
-      ? extrairSeoConteudo(conteudoGerenciado.conteudo)
+      ? conteudoGerenciado
+      : null;
+  const conteudoNovoIndisponivel = Boolean(conteudoGerenciado?.indisponivel);
+  const blocosSeo = conteudoAtivo
+    ? conteudoAtivo.baseVisualHome ?? []
+    : conteudoGerenciado?.indisponivel
+      ? []
+      : homeLegadaPublicavel
+        ? homeVisual?.blocos ?? []
+        : [];
+  const seo =
+    conteudoAtivo
+      ? extrairSeoConteudo(conteudoAtivo.conteudo)
       : null;
 
   return criarMetadataLoja({
-    title: seo?.title || homeVisual?.seoTitle || "Stella Colari | Loja Online",
+    title:
+      seo?.title ||
+      (homeLegadaPublicavel ? homeVisual?.seoTitle : null) ||
+      "Stella Colari | Loja Online",
     description:
-      seo?.description || homeVisual?.seoDescription ||
+      seo?.description ||
+      (homeLegadaPublicavel ? homeVisual?.seoDescription : null) ||
       "Joias e pecas selecionadas da Stella Colari para comprar online com praticidade.",
     path: "/loja",
     canonical: seo?.canonical,
-    image: seo?.image || getImagemSeoBlocos(homeVisual?.blocos ?? []) || banner?.imagemUrl,
-    robots: seo?.noindex ? { index: false, follow: false } : undefined,
+    image: seo?.image || getImagemSeoBlocos(blocosSeo) || banner?.imagemUrl,
+    robots:
+      conteudoNovoIndisponivel || seo?.noindex
+        ? { index: false, follow: false }
+        : undefined,
   });
 }
 
@@ -99,14 +121,14 @@ export default async function LojaPage() {
         where: {
           slug: HOME_VISUAL_SLUG,
           tipo: "HOME",
-          ativo: true,
-          statusPublicacao: "PUBLICADA",
         },
         select: {
           id: true,
           titulo: true,
           slug: true,
           tipo: true,
+          ativo: true,
+          statusPublicacao: true,
           blocos: {
             where: {
               ativo: true,
@@ -131,8 +153,16 @@ export default async function LojaPage() {
     conteudoGerenciado && !conteudoGerenciado.indisponivel
       ? conteudoGerenciado
       : null;
+  const conteudoNovoIndisponivel = Boolean(conteudoGerenciado?.indisponivel);
+  const homeLegadaPublicavel =
+    homeVisualRaw?.ativo && homeVisualRaw.statusPublicacao === "PUBLICADA";
 
-  if (homeVisualRaw && (conteudoAtivo || homeVisualRaw.blocos.length > 0)) {
+  if (
+    homeVisualRaw &&
+    (conteudoAtivo ||
+      conteudoNovoIndisponivel ||
+      (homeLegadaPublicavel && homeVisualRaw.blocos.length > 0))
+  ) {
     const pagina: LojaBuilderPagina = {
       id: homeVisualRaw.id,
       titulo: homeVisualRaw.titulo,
@@ -140,9 +170,11 @@ export default async function LojaPage() {
       tipo: homeVisualRaw.tipo,
     };
 
-    const blocosResolvidos = conteudoAtivo
+    const blocosResolvidos = conteudoNovoIndisponivel
       ? []
-      : await aplicarColecoesEmBlocosBuilder(homeVisualRaw.blocos);
+      : conteudoAtivo?.modoEntrega === "NOVO"
+        ? conteudoAtivo.baseVisualHome ?? []
+        : await aplicarColecoesEmBlocosBuilder(homeVisualRaw.blocos);
 
     const blocos: LojaBuilderBloco[] =
       serializarBlocosBuilderPublicos(blocosResolvidos);

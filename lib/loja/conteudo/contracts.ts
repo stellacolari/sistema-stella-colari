@@ -1210,6 +1210,34 @@ export function normalizarConteudoPagina(
   };
 }
 
+function canonicalizarConteudoParaComparacao(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizarConteudoParaComparacao);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, canonicalizarConteudoParaComparacao(item)]),
+    );
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.round(value * 1_000_000_000) / 1_000_000_000;
+  }
+
+  return value;
+}
+
+export function assinaturaConteudoPagina(value: unknown) {
+  return JSON.stringify(canonicalizarConteudoParaComparacao(value));
+}
+
+export function conteudosPaginaIguais(left: unknown, right: unknown) {
+  return assinaturaConteudoPagina(left) === assinaturaConteudoPagina(right);
+}
+
 export function urlConteudoPermitida(value: string) {
   const url = value.trim();
   if (!url) return true;

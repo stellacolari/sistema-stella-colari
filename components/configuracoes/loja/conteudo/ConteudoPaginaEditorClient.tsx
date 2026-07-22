@@ -8,10 +8,13 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  Eye,
   ExternalLink,
+  GitCompareArrows,
   History,
   Loader2,
   Plus,
+  RotateCcw,
   Save,
   Send,
   Undo2,
@@ -19,10 +22,12 @@ import {
 } from "lucide-react";
 import ConteudoImagemField from "@/components/configuracoes/loja/conteudo/ConteudoImagemField";
 import {
+  assinaturaConteudoPagina,
   criarImagemConteudoVazia,
   validarConteudoPagina,
   type ConteudoCampoDefinicao,
   type ConteudoImagem,
+  type ConteudoPaginaPayload,
   type ConteudoValor,
 } from "@/lib/loja/conteudo/contracts";
 import type { ConteudoEstadoEditor } from "@/lib/loja/conteudo/repository.server";
@@ -46,18 +51,71 @@ type Props = {
   canPublish: boolean;
 };
 
-function statusLabel(status: string, modoEntrega: string) {
-  if (modoEntrega === "LEGADO" && status === "LEGADO_PUBLICADO") return "Publicado · legado";
-  if (status === "PUBLICADA") return "Publicado";
-  if (status === "AGENDADA") return "Agendado";
-  return "Rascunho";
+function publicacaoLabel({
+  status,
+  origem,
+  versao,
+}: {
+  status: string;
+  origem: "NOVO" | "LEGADO" | null;
+  versao: number | null;
+}) {
+  if (!origem) return "Ainda não publicado";
+  if (status === "AGENDADA") return versao ? `Agendado · versão ${versao}` : "Agendado";
+  if (origem === "LEGADO") return "Publicado · legado";
+  return versao ? `Publicado · versão ${versao}` : "Publicado";
 }
 
-function statusClass(status: string, modoEntrega: string) {
-  if (modoEntrega === "LEGADO") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (status === "PUBLICADA") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "AGENDADA") return "border-blue-200 bg-blue-50 text-blue-700";
-  return "border-slate-200 bg-slate-50 text-slate-700";
+function formatarDataEditorial(value: string | null | undefined) {
+  if (!value) return "Não informado";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Não informado";
+  return date.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function operacaoLabel(value: string) {
+  const labels: Record<string, string> = {
+    MIGRACAO: "Migração segura",
+    RASCUNHO: "Rascunho salvo",
+    PUBLICACAO: "Publicação",
+    RESTAURACAO: "Versão restaurada",
+    RESTAURACAO_PUBLICADA: "Publicado restaurado",
+    ROLLBACK: "Retorno ao legado",
+  };
+  return labels[value] || value.toLocaleLowerCase("pt-BR").replaceAll("_", " ");
+}
+
+function resumirImagem(value: ConteudoImagem) {
+  const temDesktop = Boolean(value.desktopUrl || value.assetId);
+  const temMobile = Boolean(value.mobileUrl || value.mobileAssetId);
+  if (!temDesktop && !temMobile) return "Sem imagem definida";
+  if (temDesktop && temMobile) return value.alt ? `Desktop e mobile · “${value.alt}”` : "Desktop e mobile definidos";
+  if (temMobile) return value.alt ? `Somente mobile · “${value.alt}”` : "Somente mobile definida";
+  return value.alt ? `Imagem desktop · “${value.alt}”` : "Imagem desktop definida";
+}
+
+function resumirValorEditorial(
+  field: ConteudoCampoDefinicao,
+  value: ConteudoValor | undefined,
+  produtos: Option[],
+  categorias: Option[],
+) {
+  if (value === undefined || value === null || value === "") return "Não preenchido";
+  if (field.tipo === "IMAGEM") return resumirImagem(value as ConteudoImagem);
+  if (field.tipo === "BOOLEANO") return value ? "Ativo" : "Desativado";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "Seleção dinâmica (nenhum item manual)";
+    const options = field.tipo === "PRODUTOS" ? produtos : categorias;
+    const labels = value.map((id) => options.find((option) => option.id === id)?.label || "Item selecionado");
+    return labels.join(", ");
+  }
+  if (field.tipo === "DATA_HORA" && typeof value === "string") {
+    return formatarDataEditorial(value);
+  }
+  return String(value);
 }
 
 function SelectionField({
@@ -274,19 +332,63 @@ export default function ConteudoPaginaEditorClient({
   const [revision, setRevision] = useState(estado.revisao);
   const [status, setStatus] = useState(estado.status);
   const [modoEntrega, setModoEntrega] = useState(estado.modoEntrega);
+  const [publishedContent, setPublishedContent] = useState<ConteudoPaginaPayload | null>(
+    estado.conteudoPublicado,
+  );
+  const [publishedOrigin, setPublishedOrigin] = useState<"NOVO" | "LEGADO" | null>(
+    estado.origemPublicada,
+  );
+  const [publishedVersion, setPublishedVersion] = useState<number | null>(estado.versaoPublicada);
+  const [publishedAt, setPublishedAt] = useState<string | null>(estado.publicadoEm);
+  const [publishedBy, setPublishedBy] = useState<string | null>(estado.publicadoPorNome);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(estado.atualizadoEm);
+  const [lastUpdatedBy, setLastUpdatedBy] = useState<string | null>(estado.atualizadoPorNome);
   const [activeSection, setActiveSection] = useState(estado.contrato.sections[0]?.key || "");
-  const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(estado.conteudo));
+  const [savedSnapshot, setSavedSnapshot] = useState(assinaturaConteudoPagina(estado.conteudo));
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [restoringPublished, setRestoringPublished] = useState(false);
+  const [showEmbeddedPreview, setShowEmbeddedPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [history] = useState(estado.historico);
-  const dirty = JSON.stringify(content) !== savedSnapshot;
+  const [history, setHistory] = useState(estado.historico);
+  const dirty = assinaturaConteudoPagina(content) !== savedSnapshot;
   const contract = estado.contrato;
   const section = contract.sections.find((item) => item.key === activeSection) || contract.sections[0];
+  const hasUnpublishedChanges = publishedContent
+    ? assinaturaConteudoPagina(content) !== assinaturaConteudoPagina(publishedContent)
+    : estado.temAlteracoesNaoPublicadas;
   const draftIssues = useMemo(
     () => validarConteudoPagina(contract, content, "RASCUNHO"),
     [content, contract],
+  );
+  const comparison = useMemo(
+    () => {
+      if (!publishedContent) return [];
+      return contract.sections.flatMap((contractSection) =>
+        contractSection.campos.flatMap((field) => {
+          const draftValue = content.values[field.key] ?? field.valorPadrao;
+          const publishedValue = publishedContent?.values[field.key] ?? field.valorPadrao;
+          if (assinaturaConteudoPagina(draftValue) === assinaturaConteudoPagina(publishedValue)) return [];
+          let draftSummary = resumirValorEditorial(field, draftValue, produtos, categorias);
+          let publishedSummary = publishedContent
+            ? resumirValorEditorial(field, publishedValue, produtos, categorias)
+            : "Ainda não publicado";
+          if (field.tipo === "IMAGEM" && draftSummary === publishedSummary) {
+            draftSummary = `${draftSummary} · imagem ou enquadramento do rascunho`;
+            publishedSummary = `${publishedSummary} · imagem ou enquadramento publicado`;
+          }
+          return [{
+            key: field.key,
+            sectionLabel: contractSection.label,
+            fieldLabel: field.label,
+            draft: draftSummary,
+            published: publishedSummary,
+          }];
+        }),
+      );
+    },
+    [categorias, content, contract.sections, produtos, publishedContent],
   );
 
   useEffect(() => {
@@ -325,7 +427,21 @@ export default function ConteudoPaginaEditorClient({
         throw new Error(issueText || data.error || "Não foi possível salvar.");
       }
       setRevision(data.revisao);
-      setSavedSnapshot(JSON.stringify(content));
+      setSavedSnapshot(assinaturaConteudoPagina(content));
+      const updatedAt = new Date().toISOString();
+      setLastUpdatedAt(updatedAt);
+      setLastUpdatedBy("Você");
+      if (Number.isInteger(data.numeroVersao) && typeof data.versaoId === "string") {
+        setHistory((current) => [{
+          id: data.versaoId,
+          numero: data.numeroVersao,
+          operacao: "RASCUNHO",
+          resumo: null,
+          autorNome: "Você",
+          criadoEm: updatedAt,
+          publicada: false,
+        }, ...current]);
+      }
       if (!silent) setMessage("Rascunho salvo.");
       return data.revisao as number;
     } catch (saveError) {
@@ -338,6 +454,13 @@ export default function ConteudoPaginaEditorClient({
 
   async function publish() {
     if (!canPublish) return;
+    if (
+      modoEntrega === "LEGADO" &&
+      !window.confirm(
+        "Publicar este rascunho ativa a nova entrega pública desta página. A versão legada será preservada para rollback. Deseja continuar?",
+      )
+    ) return;
+
     setPublishing(true);
     setError("");
     setMessage("");
@@ -363,10 +486,31 @@ export default function ConteudoPaginaEditorClient({
       setRevision(data.revisao);
       setStatus(data.status === "AGENDADA" ? "AGENDADA" : "PUBLICADA");
       setModoEntrega("NOVO");
+      setPublishedOrigin("NOVO");
+      setPublishedContent(content);
+      setPublishedVersion(data.versao);
+      const publicationTime = data.publicadoEm || new Date().toISOString();
+      setPublishedAt(publicationTime);
+      setPublishedBy("Você");
+      setLastUpdatedAt(publicationTime);
+      setLastUpdatedBy("Você");
+      setSavedSnapshot(assinaturaConteudoPagina(content));
+      setHistory((current) => [{
+        id: data.versaoId,
+        numero: data.versao,
+        operacao: "PUBLICACAO",
+        resumo: null,
+        autorNome: "Você",
+        criadoEm: publicationTime,
+        publicada: true,
+      }, ...current.map((item) => ({ ...item, publicada: false }))]);
       setMessage(
-        data.status === "AGENDADA"
-          ? `Versão ${data.versao} agendada.`
-          : `Versão ${data.versao} publicada.`,
+        data.cacheRevalidado === false
+          ? data.avisoCache ||
+              `Versão ${data.versao} publicada; invalidação de cache pendente.`
+          : data.status === "AGENDADA"
+            ? `Versão ${data.versao} agendada.`
+            : `Versão ${data.versao} publicada.`,
       );
     } catch (publishError) {
       setError(publishError instanceof Error ? publishError.message : "Não foi possível publicar.");
@@ -389,12 +533,80 @@ export default function ConteudoPaginaEditorClient({
       if (!response.ok) throw new Error(data.error || "Não foi possível restaurar.");
       setContent(data.conteudo);
       setRevision(data.revisao);
-      setSavedSnapshot(JSON.stringify(data.conteudo));
+      setSavedSnapshot(assinaturaConteudoPagina(data.conteudo));
+      const updatedAt = new Date().toISOString();
+      setLastUpdatedAt(updatedAt);
+      setLastUpdatedBy("Você");
+      if (Number.isInteger(data.numeroVersao) && typeof data.versaoId === "string") {
+        setHistory((current) => [{
+          id: data.versaoId,
+          numero: data.numeroVersao,
+          operacao: "RESTAURACAO",
+          resumo: `Versão ${versionNumber} restaurada como rascunho`,
+          autorNome: "Você",
+          criadoEm: updatedAt,
+          publicada: false,
+        }, ...current]);
+      }
       setMessage(`Versão ${versionNumber} restaurada como rascunho.`);
     } catch (restoreError) {
       setError(restoreError instanceof Error ? restoreError.message : "Não foi possível restaurar.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function restorePublished() {
+    if (
+      !canPublish ||
+      !publishedContent ||
+      !window.confirm(
+        "Restaurar o conteúdo publicado como rascunho? Alterações atuais do rascunho, inclusive as ainda não salvas, serão substituídas. A página pública não será alterada.",
+      )
+    ) return;
+
+    setRestoringPublished(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/configuracoes/loja/conteudo/${pagina.id}/restaurar-publicado`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedRevision: revision }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível restaurar o conteúdo publicado.");
+
+      const restoredContent = data.conteudo as ConteudoPaginaPayload;
+      const updatedAt = new Date().toISOString();
+      setContent(restoredContent);
+      setRevision(data.revisao);
+      setSavedSnapshot(assinaturaConteudoPagina(restoredContent));
+      setLastUpdatedAt(updatedAt);
+      setLastUpdatedBy("Você");
+      if (Number.isInteger(data.numeroVersao) && typeof data.versaoId === "string") {
+        setHistory((current) => [{
+          id: data.versaoId,
+          numero: data.numeroVersao,
+          operacao: "RESTAURACAO_PUBLICADA",
+          resumo: "Conteúdo publicado restaurado como rascunho",
+          autorNome: "Você",
+          criadoEm: updatedAt,
+          publicada: false,
+        }, ...current]);
+      }
+      setMessage("Conteúdo publicado restaurado como rascunho. A página pública não foi alterada.");
+    } catch (restoreError) {
+      setError(
+        restoreError instanceof Error
+          ? restoreError.message
+          : "Não foi possível restaurar o conteúdo publicado.",
+      );
+    } finally {
+      setRestoringPublished(false);
     }
   }
 
@@ -419,10 +631,13 @@ export default function ConteudoPaginaEditorClient({
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível executar o rollback.");
-      setRevision(data.revisao);
-      setModoEntrega("LEGADO");
-      setStatus(data.status === "LEGADO_PUBLICADO" ? "LEGADO_PUBLICADO" : "RASCUNHO");
-      setMessage("Entrega revertida para o renderer legado; histórico novo preservado.");
+      if (data.cacheRevalidado === false) {
+        window.alert(
+          data.avisoCache ||
+            "O rollback foi concluído, mas a invalidação de cache ficou pendente.",
+        );
+      }
+      window.location.reload();
     } catch (rollbackError) {
       setError(rollbackError instanceof Error ? rollbackError.message : "Não foi possível executar o rollback.");
     } finally {
@@ -445,10 +660,26 @@ export default function ConteudoPaginaEditorClient({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-lg font-semibold text-slate-950">{pagina.titulo}</h1>
-                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass(status, modoEntrega)}`}>
-                  {statusLabel(status, modoEntrega)}
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  Rascunho
                 </span>
-                {dirty ? <span className="text-xs font-medium text-amber-700">Alterações não salvas</span> : null}
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                    publishedOrigin === "NOVO"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : publishedOrigin === "LEGADO"
+                        ? "border-amber-200 bg-amber-50 text-amber-800"
+                        : "border-slate-200 bg-white text-slate-500"
+                  }`}
+                >
+                  {publicacaoLabel({ status, origem: publishedOrigin, versao: publishedVersion })}
+                </span>
+                {hasUnpublishedChanges ? (
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                    Alterações não publicadas
+                  </span>
+                ) : null}
+                {dirty ? <span className="text-xs font-medium text-rose-700">Alterações não salvas</span> : null}
               </div>
               <p className="mt-0.5 truncate text-xs text-slate-500">
                 {pagina.publicPath ||
@@ -465,7 +696,7 @@ export default function ConteudoPaginaEditorClient({
               <button
                 type="button"
                 onClick={() => void rollbackToLegacy()}
-                disabled={!canPublish || saving || publishing}
+                disabled={!canPublish || saving || publishing || restoringPublished}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 disabled:opacity-45"
               >
                 <Undo2 className="h-4 w-4" />
@@ -475,26 +706,73 @@ export default function ConteudoPaginaEditorClient({
             <button
               type="button"
               onClick={() => void saveDraft()}
-              disabled={!canEdit || saving || !dirty}
+              disabled={!canEdit || saving || publishing || restoringPublished || !dirty}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-45"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar rascunho
             </button>
             <Link
-              href={`/loja/preview/pagina/${pagina.id}?conteudo=1`}
+              href={`/loja/preview/pagina/${pagina.id}?conteudo=rascunho`}
               target="_blank"
+              rel="noreferrer"
+              title={dirty ? "Salve o rascunho para visualizar as alterações atuais" : undefined}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              Prévia
+              Preview do rascunho
               <ExternalLink className="h-4 w-4" />
             </Link>
+            {publishedContent ? (
+              <Link
+                href={`/loja/preview/pagina/${pagina.id}?conteudo=publicado`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Preview publicado
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            ) : null}
+            {pagina.publicPath && publishedOrigin ? (
+              <Link
+                href={pagina.publicPath}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Ver publicado
+                <Eye className="h-4 w-4" />
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void restorePublished()}
+              disabled={!canPublish || !publishedContent || !hasUnpublishedChanges || saving || publishing || restoringPublished}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-45"
+              title={hasUnpublishedChanges ? "Substitui o rascunho pelo conteúdo publicado" : "O rascunho já coincide com o publicado"}
+            >
+              {restoringPublished ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Restaurar publicado
+            </button>
             <button
               type="button"
               onClick={() => void publish()}
-              disabled={!canPublish || publishing || estado.blocosNaoMapeados.length > 0}
+              disabled={
+                !canPublish ||
+                publishing ||
+                saving ||
+                restoringPublished ||
+                estado.blocosNaoMapeados.length > 0 ||
+                (modoEntrega === "NOVO" && !hasUnpublishedChanges)
+              }
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--brand-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
-              title={estado.blocosNaoMapeados.length > 0 ? "Revise as seções legadas antes de publicar" : undefined}
+              title={
+                estado.blocosNaoMapeados.length > 0
+                  ? "Revise as seções legadas antes de publicar"
+                  : modoEntrega === "NOVO" && !hasUnpublishedChanges
+                    ? "O rascunho já coincide com o publicado"
+                    : undefined
+              }
             >
               {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Publicar
@@ -540,6 +818,102 @@ export default function ConteudoPaginaEditorClient({
             </div>
           </section>
         ) : null}
+
+        <section className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-[var(--brand-blue)]" />
+                <h2 className="text-sm font-semibold text-slate-950">Preview visual do rascunho salvo</h2>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Usa o mesmo renderer-base da página pública. Salve o rascunho para atualizar esta visualização.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowEmbeddedPreview((current) => !current)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              aria-expanded={showEmbeddedPreview}
+              aria-controls="preview-rascunho-integrado"
+            >
+              {showEmbeddedPreview ? "Ocultar preview" : "Abrir preview integrado"}
+            </button>
+          </div>
+          {showEmbeddedPreview ? (
+            <div id="preview-rascunho-integrado" className="border-t border-slate-200 bg-slate-100 p-2 sm:p-4">
+              {dirty ? (
+                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Há alterações não salvas. O preview abaixo mostra o último rascunho salvo.
+                </p>
+              ) : null}
+              <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+                <iframe
+                  key={`preview-rascunho-${revision}`}
+                  src={`/loja/preview/pagina/${pagina.id}?conteudo=rascunho&embed=1`}
+                  title={`Preview do rascunho de ${pagina.titulo}`}
+                  className="h-[68vh] min-h-[520px] w-full bg-white"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <details className="group mb-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5">
+            <span className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+              <GitCompareArrows className="h-4 w-4 text-[var(--brand-blue)]" />
+              Comparar rascunho e publicado
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              !publishedContent
+                ? "bg-slate-100 text-slate-600"
+                : comparison.length > 0
+                ? "bg-amber-50 text-amber-800"
+                : "bg-emerald-50 text-emerald-700"
+            }`}>
+              {!publishedContent
+                ? "Ainda não publicado"
+                : comparison.length > 0
+                  ? `${comparison.length} alteração(ões)`
+                  : "Sem diferenças"}
+            </span>
+          </summary>
+          <div className="border-t border-slate-200 p-4 sm:p-5">
+            {!publishedContent ? (
+              <p className="text-sm leading-6 text-slate-600">
+                Ainda não existe uma versão publicada para comparar com este
+                rascunho.
+              </p>
+            ) : comparison.length > 0 ? (
+              <ol className="space-y-3">
+                {comparison.map((item) => (
+                  <li key={item.key} className="rounded-xl border border-slate-200 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      {item.sectionLabel}
+                    </p>
+                    <h3 className="mt-1 text-sm font-semibold text-slate-900">{item.fieldLabel}</h3>
+                    <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
+                      <div className="rounded-lg bg-slate-50 p-3">
+                        <dt className="font-semibold text-slate-500">Rascunho</dt>
+                        <dd className="mt-1 break-words leading-5 text-slate-800">{item.draft}</dd>
+                      </div>
+                      <div className="rounded-lg bg-emerald-50/70 p-3">
+                        <dt className="font-semibold text-emerald-700">Publicado</dt>
+                        <dd className="mt-1 break-words leading-5 text-slate-800">{item.published}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm leading-6 text-slate-600">
+                O rascunho coincide com o conteúdo publicado.
+              </p>
+            )}
+          </div>
+        </details>
 
         <div className="mb-5 lg:hidden">
           <label className="block text-sm font-semibold text-slate-800">
@@ -604,8 +978,26 @@ export default function ConteudoPaginaEditorClient({
               <dl className="mt-4 space-y-3 text-sm">
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Contrato</dt><dd className="font-medium text-slate-800">{contract.key} v{contract.version}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Revisão</dt><dd className="font-medium text-slate-800">{revision}</dd></div>
-                <div className="flex justify-between gap-3"><dt className="text-slate-500">Entrega</dt><dd className="font-medium text-slate-800">{modoEntrega === "NOVO" ? "Experiência nova" : "Legado seguro"}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Entrega</dt><dd className="text-right font-medium text-slate-800">{publishedOrigin === "NOVO" ? "Conteúdo versionado" : publishedOrigin === "LEGADO" ? "Legado preservado" : "Sem publicação"}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Versão pública</dt><dd className="text-right font-medium text-slate-800">{publishedOrigin === "LEGADO" ? "Original legada" : publishedVersion ? `Versão ${publishedVersion}` : "Nenhuma"}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Renderer</dt><dd className="text-right font-medium text-slate-800">Base visual compartilhada</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Validação</dt><dd className={draftIssues.some((issue) => issue.nivel === "ERRO") ? "font-medium text-rose-600" : "font-medium text-emerald-600"}>{draftIssues.length ? `${draftIssues.length} ponto(s)` : "Válido"}</dd></div>
+              </dl>
+              <dl className="mt-4 space-y-3 border-t border-slate-200 pt-4 text-xs">
+                <div>
+                  <dt className="font-semibold text-slate-500">Última edição</dt>
+                  <dd className="mt-1 leading-5 text-slate-700">
+                    {lastUpdatedBy || "Autor não informado"} · {formatarDataEditorial(lastUpdatedAt)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Última publicação</dt>
+                  <dd className="mt-1 leading-5 text-slate-700">
+                    {publishedOrigin
+                      ? `${publishedBy || "Autor não informado"} · ${formatarDataEditorial(publishedAt)}`
+                      : "Ainda não publicada"}
+                  </dd>
+                </div>
               </dl>
               {draftIssues.length > 0 ? (
                 <ul className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-600">
@@ -625,7 +1017,7 @@ export default function ConteudoPaginaEditorClient({
                     <li key={item.id} className="border-t border-slate-200 pt-3 first:border-t-0 first:pt-0">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold text-slate-800">Versão {item.numero} · {item.operacao.toLowerCase()}</p>
+                          <p className="text-xs font-semibold text-slate-800">Versão {item.numero} · {operacaoLabel(item.operacao)}</p>
                           <p className="mt-1 text-xs leading-5 text-slate-500">
                             {item.autorNome || "Sistema"} · {new Date(item.criadoEm).toLocaleString("pt-BR")}
                           </p>
@@ -652,7 +1044,7 @@ export default function ConteudoPaginaEditorClient({
               <div className="flex gap-2">
                 <Clock3 className="mt-0.5 h-4 w-4 shrink-0" />
                 <p className="text-xs leading-5">
-                  Salvar nunca altera a loja pública. Publicar cria uma versão imutável e mantém rollback.
+                  Salvar altera somente o rascunho. Preview publicado e “Ver publicado” nunca recebem alterações antes da publicação.
                 </p>
               </div>
             </section>

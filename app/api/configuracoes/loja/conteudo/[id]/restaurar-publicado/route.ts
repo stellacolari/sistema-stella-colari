@@ -10,17 +10,25 @@ import {
   buscarPaginaConteudoBase,
   ConteudoConflitoRevisaoError,
   ConteudoValidacaoError,
-  publicarConteudo,
+  restaurarPublicadoComoRascunho,
 } from "@/lib/loja/conteudo/repository.server";
-import { revalidarConteudoLoja } from "@/lib/loja/conteudo/revalidate.server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   const usuario = await exigirAcessoConteudo("executar");
-  if (!usuario) return erroConteudo("Você não possui permissão para publicar.", 403);
-  if (!validarOrigemMutacao(request)) return erroConteudo("Origem da requisição inválida.", 403);
-  if (!payloadDentroDoLimite(request)) return erroConteudo("Conteúdo excede o limite permitido.", 413);
+  if (!usuario) {
+    return erroConteudo(
+      "Você não possui permissão para restaurar o conteúdo publicado.",
+      403,
+    );
+  }
+  if (!validarOrigemMutacao(request)) {
+    return erroConteudo("Origem da requisição inválida.", 403);
+  }
+  if (!payloadDentroDoLimite(request)) {
+    return erroConteudo("Conteúdo excede o limite permitido.", 413);
+  }
 
   const { id } = await context.params;
   const pagina = await buscarPaginaConteudoBase(id);
@@ -28,30 +36,24 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const body = await request.json().catch(() => null);
-    if (!body || typeof body !== "object") return erroConteudo("JSON inválido.");
+    if (!body || typeof body !== "object") {
+      return erroConteudo("JSON inválido.");
+    }
     if (!payloadJsonDentroDoLimite(body)) {
       return erroConteudo("Conteúdo excede o limite permitido.", 413);
     }
+
     const expectedRevision = Number(body.expectedRevision);
     if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
-      return erroConteudo("Salve um rascunho antes de publicar.");
+      return erroConteudo("Revisão inválida.");
     }
 
-    const result = await publicarConteudo({
+    const result = await restaurarPublicadoComoRascunho({
       pagina,
       expectedRevision,
-      resumo: typeof body.summary === "string" ? body.summary : undefined,
       usuario: { id: usuario.id, nome: usuario.nome },
     });
-    const cache = revalidarConteudoLoja(pagina);
-    return NextResponse.json({
-      ok: true,
-      ...result,
-      cacheRevalidado: cache.ok,
-      avisoCache: cache.ok
-        ? null
-        : "A versão foi publicada, mas a invalidação de cache ficou pendente.",
-    });
+    return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     if (error instanceof ConteudoConflitoRevisaoError) {
       return erroConteudo(error.message, 409);
@@ -60,7 +62,10 @@ export async function POST(request: Request, context: RouteContext) {
       return erroConteudo(error.message, 422, { issues: error.issues });
     }
 
-    console.error("Erro ao publicar conteúdo da loja:", error);
-    return erroConteudo("Não foi possível publicar o conteúdo.", 500);
+    console.error("Erro ao restaurar conteúdo publicado da loja:", error);
+    return erroConteudo(
+      "Não foi possível restaurar o conteúdo publicado como rascunho.",
+      500,
+    );
   }
 }

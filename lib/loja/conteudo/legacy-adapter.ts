@@ -7,6 +7,10 @@ import {
   type ConteudoImagem,
   type ConteudoPaginaPayload,
 } from "./contracts.ts";
+import {
+  getStellaHomeBlockKey,
+  STELLA_HOME_HERO_TITLE,
+} from "../stella-home-contract.ts";
 
 export type BlocoLegadoConteudo = {
   id: string;
@@ -345,6 +349,12 @@ export function adaptarBuilderLegado(
 
   const hero = getBlock(ativos, [`${pagina.slug}.hero`, "home.hero"], ["BANNER_HERO_V2", "BANNER"]);
   applyHero(values, "hero", hero);
+  if (hero && getStellaHomeBlockKey(hero) === "home.hero") {
+    // O renderer aprovado da Home sempre exibiu este título. O contrato legado
+    // precisa refletir a saída visual real, não o texto obsoleto ainda guardado
+    // no bloco, para que restaurar/publicar não crie uma divergência invisível.
+    values["hero.title"] = STELLA_HOME_HERO_TITLE;
+  }
   usados.push(hero);
 
   if (contrato.key === "home") {

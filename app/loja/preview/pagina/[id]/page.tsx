@@ -29,6 +29,8 @@ import { buscarConteudoPreviewPagina } from "@/lib/loja/conteudo/repository.serv
 import { rotaPublicaConteudoPagina } from "@/lib/loja/conteudo/public-route";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export const metadata: Metadata = {
   title: "Prévia da página | Stella Colari",
@@ -47,6 +49,7 @@ type PageProps = {
     categoria?: string;
     studio?: string;
     conteudo?: string;
+    embed?: string;
   }>;
 };
 
@@ -253,7 +256,13 @@ export default async function LojaPreviewPaginaPage({
     typeof search?.categoria === "string" ? search.categoria : null;
   const studioMode = search?.studio === "1";
   const studioEmbed = studioMode || search?.studio === "visualizar";
-  const conteudoMode = search?.conteudo === "1";
+  const contentEmbed = search?.embed === "1";
+  const conteudoScope = search?.conteudo === "publicado"
+    ? "PUBLICADO" as const
+    : search?.conteudo === "rascunho" || search?.conteudo === "1"
+      ? "RASCUNHO" as const
+      : null;
+  const conteudoMode = conteudoScope !== null;
 
   const paginaRaw = await prisma.lojaPagina.findUnique({
     where: {
@@ -337,9 +346,6 @@ export default async function LojaPreviewPaginaPage({
     tipo: paginaRaw.tipo,
   });
 
-const blocosResolvidos = await aplicarColecoesEmBlocosBuilder(paginaRaw.blocos);
-const blocos = serializarBlocosBuilder(blocosResolvidos);
-
 const produtosPublicosSerializados = produtosPublicos.map((produto) => ({
   ...produto,
   imagemUrl: produto.imagemUrl ?? null,
@@ -354,8 +360,23 @@ const menusPublicosSerializados = menusPublicos.map((menu) => ({
 
 const produtos = serializarProdutosBuilder(produtosPublicosSerializados);
 const menus = serializarMenusBuilder(menusPublicosSerializados);
-const conteudoGerenciado = conteudoMode
-  ? await buscarConteudoPreviewPagina(paginaRaw)
+const conteudoGerenciado = conteudoScope === "PUBLICADO"
+  ? await buscarConteudoPreviewPagina(paginaRaw, "PUBLICADO")
+  : conteudoScope === "RASCUNHO"
+    ? await buscarConteudoPreviewPagina(paginaRaw, "RASCUNHO")
+    : null;
+const conteudoIndisponivel = conteudoMode && !conteudoGerenciado;
+const blocosResolvidos = conteudoIndisponivel
+  ? []
+  : conteudoGerenciado?.modoEntrega === "NOVO"
+    ? conteudoGerenciado.baseVisualHome ?? []
+    : await aplicarColecoesEmBlocosBuilder(paginaRaw.blocos);
+const blocos = serializarBlocosBuilder(blocosResolvidos);
+const conteudoProjetado = conteudoGerenciado
+  ? {
+      contrato: conteudoGerenciado.contrato,
+      conteudo: conteudoGerenciado.conteudo,
+    }
   : null;
 
   const urlPublica = rotaPublicaConteudoPagina(paginaRaw) || "";
@@ -364,24 +385,48 @@ const conteudoGerenciado = conteudoMode
 
   return (
     <>
-      {!studioEmbed && (
+      {!studioEmbed && !contentEmbed && (
         <div className="sticky top-0 z-[100] border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <strong>{conteudoMode ? "Prévia do conteúdo:" : "Prévia de rascunho:"}</strong>{" "}
+              <strong>
+                {conteudoScope === "PUBLICADO"
+                  ? "Preview publicado:"
+                  : conteudoScope === "RASCUNHO"
+                    ? "Preview do rascunho:"
+                    : "Prévia da página:"}
+              </strong>{" "}
               <span>{paginaRaw.titulo}</span>
               <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
-                {paginaRaw.statusPublicacao}
+                {conteudoScope === "PUBLICADO" ? "PUBLICADO" : conteudoScope === "RASCUNHO" ? "RASCUNHO" : paginaRaw.statusPublicacao}
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {conteudoMode && conteudoScope !== "RASCUNHO" ? (
+                <Link
+                  href={`/loja/preview/pagina/${pagina.id}?conteudo=rascunho`}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                >
+                  Preview do rascunho
+                </Link>
+              ) : null}
+
+              {conteudoMode && conteudoScope !== "PUBLICADO" ? (
+                <Link
+                  href={`/loja/preview/pagina/${pagina.id}?conteudo=publicado`}
+                  className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
+                >
+                  Preview publicado
+                </Link>
+              ) : null}
+
               {urlPublica && paginaPublica ? (
                 <Link
                   href={urlPublica}
                   className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100"
                 >
-                  Ver página publicada
+                  Ver publicado
                 </Link>
               ) : null}
 
@@ -396,7 +441,25 @@ const conteudoGerenciado = conteudoMode
         </div>
       )}
 
-      {studioEmbed ? (
+      {conteudoIndisponivel ? (
+        <main className="min-h-screen bg-slate-50 px-4 py-16">
+          <div
+            role="status"
+            className="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm"
+          >
+            <h1 className="text-lg font-semibold text-slate-950">
+              {conteudoScope === "PUBLICADO"
+                ? "Nenhuma versão publicada disponível"
+                : "O preview do rascunho está indisponível"}
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Este preview não usa o rascunho nem o renderer legado como
+              substitutos. Publique uma versão válida ou retorne a entrega ao
+              legado de forma explícita.
+            </p>
+          </div>
+        </main>
+      ) : studioEmbed && !conteudoMode ? (
         <LojaPreviewPaginaClient
           pagina={pagina}
           blocos={blocos}
@@ -416,7 +479,7 @@ const conteudoGerenciado = conteudoMode
           categoriasMenu={categoriasMenu}
           categoriaAtual={categoriaAtual}
           configuracaoMenuRodape={configuracaoMenuRodape}
-          conteudoGerenciado={conteudoGerenciado}
+          conteudoGerenciado={conteudoProjetado}
         />
       )}
     </>

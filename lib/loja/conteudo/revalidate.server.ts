@@ -7,20 +7,36 @@ export function revalidarConteudoLoja(pagina: {
   slug: string;
   categoria?: { slug: string } | null;
 }) {
-  revalidatePath("/loja");
+  const destinos: Array<{ path: string; type?: "page" }> = [{ path: "/loja" }];
   if (pagina.tipo === "CATEGORIA") {
     const categoriaSlug = pagina.categoria?.slug || pagina.slug;
-    revalidatePath(`/loja/categoria/${categoriaSlug}`);
+    destinos.push({ path: `/loja/categoria/${categoriaSlug}` });
   } else if (pagina.tipo === "TEMPLATE_CATEGORIA") {
-    revalidatePath("/loja/categoria/[slug]", "page");
+    destinos.push({ path: "/loja/categoria/[slug]", type: "page" });
   } else if (pagina.tipo === "PRODUTO_GLOBAL") {
-    revalidatePath("/loja/produto/[id]", "page");
+    destinos.push({ path: "/loja/produto/[id]", type: "page" });
   } else if (pagina.tipo === "BUSCA_GLOBAL") {
-    revalidatePath("/loja/busca");
+    destinos.push({ path: "/loja/busca" });
   } else if (pagina.tipo === "LEGAL") {
-    revalidatePath(`/loja/${pagina.slug}`);
+    destinos.push({ path: `/loja/${pagina.slug}` });
   } else if (pagina.tipo !== "HOME" && pagina.slug !== "home") {
-    revalidatePath(`/loja/p/${pagina.slug}`);
+    destinos.push({ path: `/loja/p/${pagina.slug}` });
   }
-  revalidatePath("/sitemap.xml");
+  destinos.push({ path: "/sitemap.xml" });
+
+  const falhas: string[] = [];
+  for (const destino of destinos) {
+    try {
+      if (destino.type) {
+        revalidatePath(destino.path, destino.type);
+      } else {
+        revalidatePath(destino.path);
+      }
+    } catch {
+      falhas.push(destino.path);
+      console.error(`Falha ao revalidar conteúdo público em ${destino.path}.`);
+    }
+  }
+
+  return { ok: falhas.length === 0, falhas };
 }

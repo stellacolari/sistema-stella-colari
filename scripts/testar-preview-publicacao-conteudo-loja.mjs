@@ -25,6 +25,32 @@ const files = {
     ),
     "utf8",
   ),
+  restorePublishedRoute: await readFile(
+    new URL(
+      "../app/api/configuracoes/loja/conteudo/[id]/restaurar-publicado/route.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+  editor: await readFile(
+    new URL(
+      "../components/configuracoes/loja/conteudo/ConteudoPaginaEditorClient.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+  builder: await readFile(
+    new URL("../components/loja/LojaPaginaBuilderClient.tsx", import.meta.url),
+    "utf8",
+  ),
+  homeExperience: await readFile(
+    new URL("../components/loja/home/StellaHomeExperience.tsx", import.meta.url),
+    "utf8",
+  ),
+  stellaContract: await readFile(
+    new URL("../lib/loja/stella-home-contract.ts", import.meta.url),
+    "utf8",
+  ),
   revalidate: await readFile(
     new URL("../lib/loja/conteudo/revalidate.server.ts", import.meta.url),
     "utf8",
@@ -46,6 +72,10 @@ const files = {
 assert.match(files.preview, /robots:[\s\S]*index:\s*false/);
 assert.match(files.middleware, /no-store/);
 assert.match(files.preview, /buscarConteudoPreviewPagina/);
+assert.match(files.preview, /conteudo=rascunho/);
+assert.match(files.preview, /conteudo=publicado/);
+assert.match(files.preview, /fetchCache\s*=\s*"force-no-store"/);
+assert.match(files.preview, /Nenhuma versão publicada disponível/);
 assert.match(files.publication, /versaoPublicadaId/);
 assert.match(files.publication, /modoEntrega:\s*"NOVO"/);
 assert.match(files.publication, /revisaoRascunho:\s*\{\s*increment:\s*1/);
@@ -53,6 +83,28 @@ assert.match(files.route, /exigirAcessoConteudo\("executar"\)/);
 assert.match(files.route, /validarOrigemMutacao/);
 assert.match(files.route, /revalidarConteudoLoja/);
 assert.match(files.rollbackRoute, /revalidarConteudoLoja/);
+assert.match(files.restorePublishedRoute, /exigirAcessoConteudo\("executar"\)/);
+assert.match(files.restorePublishedRoute, /validarOrigemMutacao/);
+assert.match(files.publication, /RESTAURACAO_PUBLICADA/);
+assert.match(files.publication, /MODO_ENTREGA_INVALIDO/);
+assert.match(files.publication, /baseVisualHome/);
+assert.match(files.publication, /BASE_VISUAL_HOME_AUSENTE/);
+assert.match(files.editor, /Alterações não publicadas/);
+assert.match(files.editor, /Preview do rascunho/);
+assert.match(files.editor, /Preview publicado/);
+assert.match(files.editor, /Restaurar publicado/);
+assert.match(files.editor, /embed=1/);
+assert.match(files.builder, /data-stella-home-experience/);
+assert.match(files.builder, /homeGerenciada/);
+assert.match(files.builder, /indisponivel/);
+assert.match(files.homeExperience, /StellaHomeBlockRenderer/);
+assert.doesNotMatch(files.homeExperience, /adaptarBuilderLegado/);
+assert.match(files.stellaContract, /isStellaHomeBlockConfigSupported/);
+assert.match(files.publication, /isStellaHomeBlockConfigSupported/);
+assert.match(
+  files.editor,
+  /data\.cacheRevalidado === false[\s\S]*window\.alert/,
+);
 assert.match(files.revalidate, /TEMPLATE_CATEGORIA/);
 assert.match(files.revalidate, /PRODUTO_GLOBAL/);
 assert.match(files.revalidate, /BUSCA_GLOBAL/);
