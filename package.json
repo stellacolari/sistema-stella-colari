@@ -40,12 +40,13 @@
     "@tiptap/starter-kit": "^3.24.0",
     "@vercel/blob": "^2.4.1",
     "lucide-react": "^1.12.0",
-    "next": "^15.5.19",
+    "next": "15.5.21",
     "prisma": "^6.19.3",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-easy-crop": "^5.5.7",
+    "sharp": "0.35.3",
     "stripe": "^22.1.1"
   },
   "devDependencies": {
@@ -60,6 +61,7 @@
   },
   "overrides": {
     "postcss": "8.5.13",
-    "undici": "6.27.0"
+    "undici": "6.27.0",
+    "sharp": "0.35.3"
   }
 }
