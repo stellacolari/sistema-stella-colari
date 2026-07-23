@@ -1481,7 +1481,7 @@ function BlocoProdutos({
   const titulo = getString(
     config,
     "titulo",
-    categoriaAtual ? `Produtos em ${categoriaAtual.nome}` : "Produtos",
+    "Produtos",
   );
   const descricao = getString(config, "descricao");
   const alinhamentoPrincipal = getString(
@@ -1553,10 +1553,10 @@ function GradeCategoriaGerenciada({
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-6 lg:px-8">
         <div className="border-y border-slate-200 bg-white px-6 py-14 text-center">
           <h2 className="text-2xl font-light tracking-[-0.025em] text-slate-950">
-            Produtos em {categoriaAtual.nome}
+            Produtos
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Esta categoria ainda não possui produtos públicos disponíveis.
+            A categoria {categoriaAtual.nome} ainda não possui produtos públicos disponíveis.
           </p>
         </div>
       </section>
@@ -1567,7 +1567,7 @@ function GradeCategoriaGerenciada({
     <ProdutosGrade
       tituloPrincipal=""
       descricaoPrincipal=""
-      titulo={`Produtos em ${categoriaAtual.nome}`}
+      titulo="Produtos"
       descricao=""
       alinhamentoPrincipal="ESQUERDA"
       alinhamentoSecao="ESQUERDA"
@@ -1854,7 +1854,7 @@ export default function LojaPaginaBuilderClient({
                     fonte: "CATEGORIA_ATUAL",
                     titulo:
                       getString(config, "titulo") ||
-                      `Produtos em ${categoriaAtual?.nome || pagina.titulo}`,
+                      "Produtos",
                   }}
                   produtos={produtos}
                   categoriaAtual={categoriaAtual}

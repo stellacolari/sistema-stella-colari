@@ -88,7 +88,7 @@ function resolveColor(value: unknown) {
 
   if (presetColor) return presetColor;
   if (color === "CLARO") return "#ffffff";
-  if (color === "ESCURO") return "#0f172a";
+  if (color === "ESCURO") return "#000000";
 
   return sanitizeCssValue(
     color,

@@ -1,0 +1,35 @@
+.frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.image {
+  position: var(--crop-mobile-position);
+  inset: var(--crop-mobile-inset);
+  top: var(--crop-mobile-top);
+  left: var(--crop-mobile-left);
+  width: var(--crop-mobile-width);
+  height: var(--crop-mobile-height);
+  max-width: none;
+  object-fit: var(--crop-mobile-object-fit);
+  object-position: var(--crop-mobile-object-position);
+  transform: var(--crop-mobile-transform);
+  transform-origin: var(--crop-mobile-transform-origin);
+}
+
+@media (min-width: 768px) {
+  .image {
+    position: var(--crop-desktop-position);
+    inset: var(--crop-desktop-inset);
+    top: var(--crop-desktop-top);
+    left: var(--crop-desktop-left);
+    width: var(--crop-desktop-width);
+    height: var(--crop-desktop-height);
+    object-fit: var(--crop-desktop-object-fit);
+    object-position: var(--crop-desktop-object-position);
+    transform: var(--crop-desktop-transform);
+    transform-origin: var(--crop-desktop-transform-origin);
+  }
+}

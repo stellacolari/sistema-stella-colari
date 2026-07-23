@@ -458,7 +458,7 @@ export default function CarrinhoClient({
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className="mb-10">
           <p className="text-xs font-medium uppercase tracking-[0.26em] brand-text">
-            Stella Colari
+            Resumo do pedido
           </p>
 
           <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">

@@ -86,7 +86,7 @@ export default function LoginClienteClient({
         <section className="flex items-center bg-[var(--brand-blue-soft)] p-8 md:p-12 lg:min-h-[520px]">
           <div className="max-w-xl">
             <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-blue-dark)]">
-              Stella
+              Área do cliente
             </p>
 
             <h1 className="store-editorial-title mt-4 text-4xl font-light tracking-tight text-slate-950 md:text-6xl">

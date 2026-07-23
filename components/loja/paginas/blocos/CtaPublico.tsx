@@ -82,8 +82,8 @@ function getTextStyle(config: Record<string, unknown>, key: string): CSSProperti
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
-    ESCURO: "#0f172a",
-    DOURADO: "#b8892e",
+    ESCURO: "#000000",
+    DOURADO: "#2e7b99",
   };
   const letterSpacingMap: Record<string, string> = {
     NORMAL: "0",

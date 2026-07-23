@@ -156,7 +156,7 @@ export default function ConsentimentoPrivacidadeBanner() {
                       key={categoria.id}
                       className={`border px-3 py-3 text-sm ${
                         ativo
-                          ? "border-[#27251f] bg-[#f3f3f1]"
+                          ? "border-black bg-[var(--brand-blue-soft)]"
                           : "border-[#27251f]/20 bg-transparent"
                       }`}
                     >
@@ -205,21 +205,21 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#27251f] transition hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-11 items-center justify-center border border-black bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-black transition hover:bg-[var(--brand-blue-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
                   >
                     Rejeitar não essenciais
                   </button>
                   <button
                     type="button"
                     onClick={() => setModo("preferencias")}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-11 items-center justify-center border border-black/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-black/80 transition hover:border-black hover:bg-[var(--brand-blue-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
                   >
                     Configurar
                   </button>
                   <button
                     type="button"
                     onClick={aceitarTodos}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#27251f] transition hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-11 items-center justify-center border border-black bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-black transition hover:bg-[var(--brand-blue-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
                   >
                     Aceitar todos
                   </button>
@@ -229,14 +229,14 @@ export default function ConsentimentoPrivacidadeBanner() {
                   <button
                     type="button"
                     onClick={redefinir}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#716a5e] transition hover:border-[#27251f] hover:bg-[#f3f3f1] hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-11 items-center justify-center border border-black/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-black/60 transition hover:border-black hover:bg-[var(--brand-blue-soft)] hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
                   >
                     Redefinir escolha
                   </button>
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-11 items-center justify-center border border-black/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-black/80 transition hover:border-black hover:bg-[var(--brand-blue-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
                   >
                     Rejeitar não essenciais
                   </button>

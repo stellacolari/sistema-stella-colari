@@ -178,8 +178,8 @@ function getTextStyle(
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
-    ESCURO: "#0f172a",
-    DOURADO: "#b8892e",
+    ESCURO: "#000000",
+    DOURADO: "#2e7b99",
   };
 
   return {
@@ -264,10 +264,10 @@ function getOverlayClass(overlay: string, modelo: BannerModeloFinal) {
   if (overlay === "MEDIO") return "bg-slate-950/50";
   if (overlay === "GRADIENTE") {
     if (modelo === "EDITORIAL_IMAGEM") {
-      return "bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/10";
+      return "bg-black/55";
     }
 
-    return "bg-gradient-to-r from-slate-950/72 via-slate-950/35 to-transparent";
+    return "bg-black/45";
   }
 
   if (modelo === "FAIXA_PROMOCIONAL") return "bg-slate-950/34";
@@ -729,7 +729,7 @@ function getTypographyFontSize(lines: string[], isMobile: boolean, safeX: number
     return getTypographyTextWeight(line) > getTypographyTextWeight(longest)
       ? line
       : longest;
-  }, lines[0] || "STELLA");
+  }, lines[0] || "STELLA COLARI");
   const textWeight = getTypographyTextWeight(longestLine);
   const usefulWidth = Math.max(100 - safeX * 2, 64);
   const fluidVw = clamp(

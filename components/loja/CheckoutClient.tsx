@@ -1084,7 +1084,7 @@ function preencherDadosClienteLogado() {
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className="mb-10">
           <p className="text-xs font-medium uppercase tracking-[0.26em] brand-text">
-            Loja Stella
+            Checkout seguro
           </p>
 
           <h1 className="store-editorial-title mt-3 text-3xl font-light tracking-tight text-slate-950 md:text-5xl">
@@ -1353,7 +1353,7 @@ function preencherDadosClienteLogado() {
 
                     {clienteLogado && (
                       <p className="mt-1 text-sm text-slate-500">
-                        Dados preenchidos com sua conta Stella.
+                        Dados preenchidos com sua conta.
                       </p>
                     )}
                   </div>

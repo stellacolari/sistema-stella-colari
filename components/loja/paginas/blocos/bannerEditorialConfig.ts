@@ -35,8 +35,8 @@ const DEFAULT_BANNER_EDITORIAL_CONFIG: BannerEditorialConfig = {
   imagemMobileUrl: "",
   imagemAlt: "Banner editorial Stella Colari",
   alinhamento: "ESQUERDA",
-  corFundo: "#f7f2ea",
-  corTexto: "#111827",
+  corFundo: "#ffffff",
+  corTexto: "#000000",
   corDestaque: "#2e7b99",
 };
 

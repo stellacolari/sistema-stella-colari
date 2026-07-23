@@ -476,6 +476,17 @@ const ctaFields = (
     valorPadrao: defaults.text ?? "",
     limite: 320,
   }),
+  imagem(`${prefix}.backgroundImage`, "Imagem de fundo", 21 / 9, 4 / 5, {
+    tamanhoRecomendadoDesktop: "2400 x 1029 px",
+    tamanhoRecomendadoMobile: "1080 x 1350 px",
+  }),
+  numero(`${prefix}.overlayOpacity`, "Opacidade do overlay", 48, 0, 85, {
+    controle: "SLIDER",
+    descricao: "Aplica uma camada de contraste controlada para preservar a leitura sobre a imagem.",
+    sufixo: "%",
+  }),
+  booleano(`${prefix}.alignLeft`, "Alinhar conteúdo à esquerda", false),
+  booleano(`${prefix}.darkText`, "Usar texto preto sobre a imagem", false),
   texto(`${prefix}.label`, "Texto do botão", { limite: 42 }),
   link(`${prefix}.href`, "Destino do botão"),
   texto(`${prefix}.secondaryLabel`, "Texto do botão secundário", { limite: 42 }),
@@ -624,7 +635,7 @@ const homeContract: ConteudoContrato = {
       descricao: "Encerramento da página.",
       tipoVisual: "CTA",
       campos: ctaFields("finalCta", {
-        title: "Stella Colari, para o seu dia a dia.",
+        title: "Joias para o seu dia a dia.",
       }),
     },
     seoSection(),
@@ -707,7 +718,7 @@ const giftsContract: ConteudoContrato = {
 const aboutContract: ConteudoContrato = {
   key: "sobre",
   version: 1,
-  label: "Sobre a Stella",
+  label: "Sobre",
   descricao: "História e valores da marca, sem texto inventado pelo sistema.",
   sections: [
     {
@@ -715,7 +726,7 @@ const aboutContract: ConteudoContrato = {
       label: "Hero",
       descricao: "Abertura institucional.",
       tipoVisual: "HERO",
-      campos: heroFields("hero", { title: "Sobre a Stella" }),
+      campos: heroFields("hero", { title: "Sobre Stella Colari" }),
     },
     {
       key: "story",

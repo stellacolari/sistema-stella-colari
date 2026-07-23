@@ -98,8 +98,8 @@ export default function HeroEditorialPngPublico({ bloco }: BlocoPublicoProps) {
     getString(texto, "conteudo") || getString(config, "titulo") || "STELLA COLARI";
   const linhas = getString(texto, "linhas", "AUTO");
   const alinhamento = getString(texto, "alinhamento", "CENTRO");
-  const textoCor = getString(texto, "cor", "#f8fafc");
-  const fundoCor = getString(fundo, "cor", "#223846");
+  const textoCor = getString(texto, "cor", "#ffffff");
+  const fundoCor = getString(fundo, "cor", "#2e7b99");
   const margemSegura = clamp(getNumber(texto, "margemSeguraPercentual", 8), 4, 18);
   const tracking = clamp(getNumber(texto, "tracking", -0.04), -0.12, 0.08);
   const lineHeight = clamp(getNumber(texto, "lineHeight", 0.86), 0.72, 1.25);

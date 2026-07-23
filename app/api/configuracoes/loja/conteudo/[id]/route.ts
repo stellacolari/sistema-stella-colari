@@ -13,6 +13,7 @@ import {
   montarEstadoEditorConteudo,
   salvarRascunhoConteudo,
 } from "@/lib/loja/conteudo/repository.server";
+import { revalidarPreviewConteudoLoja } from "@/lib/loja/conteudo/revalidate.server";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -69,8 +70,13 @@ export async function PATCH(request: Request, context: RouteContext) {
       resumo: typeof body.summary === "string" ? body.summary : undefined,
       usuario: { id: usuario.id, nome: usuario.nome },
     });
+    const preview = revalidarPreviewConteudoLoja(pagina.id);
 
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      previewRevalidado: preview.ok,
+    });
   } catch (error) {
     if (error instanceof ConteudoConflitoRevisaoError) {
       return erroConteudo(error.message, 409);

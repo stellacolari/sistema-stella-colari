@@ -61,10 +61,10 @@ export const RICH_TEXT_WEIGHT_PRESETS: RichTextCssPreset[] = [
 
 export const RICH_TEXT_COLOR_PRESETS: RichTextCssPreset[] = [
   { value: "PADRAO", label: "Cor herdada", css: "inherit" },
-  { value: "PRETO", label: "Preto", css: "#0f172a" },
+  { value: "PRETO", label: "Preto", css: "#000000" },
   { value: "BRANCO", label: "Branco", css: "#ffffff" },
-  { value: "CINZA", label: "Cinza", css: "#64748b" },
-  { value: "DOURADO", label: "Dourado", css: "#b8892e" },
+  { value: "CINZA", label: "Cinza", css: "rgba(0, 0, 0, 0.65)" },
+  { value: "DOURADO", label: "Azul Stella", css: "#2e7b99" },
   { value: "PERSONALIZADO", label: "Personalizado", css: "" },
 ];
 

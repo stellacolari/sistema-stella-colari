@@ -342,7 +342,7 @@ export default function LojaPreviewPaginaClient({
     toolbar.style.boxShadow = "0 18px 45px rgba(15,23,42,0.18)";
     toolbar.style.fontFamily = "var(--font-primary, system-ui, sans-serif)";
     toolbar.style.fontSize = "12px";
-    toolbar.style.color = "#0f172a";
+    toolbar.style.color = "#000000";
 
     function beginToolbarInteraction() {
       toolbarInteracting = true;
@@ -390,7 +390,7 @@ export default function LojaPreviewPaginaClient({
       button.style.minWidth = "28px";
       button.style.border = "1px solid rgba(203,213,225,0.85)";
       button.style.borderRadius = "8px";
-      button.style.background = "#f8fafc";
+      button.style.background = "#ffffff";
       button.style.padding = "0 8px";
       button.style.fontWeight = "700";
       button.addEventListener("mousedown", (event) => {
@@ -973,7 +973,7 @@ export default function LojaPreviewPaginaClient({
       button.style.height = "30px";
       button.style.border = "1px solid rgba(203,213,225,0.85)";
       button.style.borderRadius = "8px";
-      button.style.background = "#f8fafc";
+      button.style.background = "#ffffff";
       button.style.padding = "0 8px";
       button.style.fontWeight = "700";
       button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -1063,7 +1063,7 @@ export default function LojaPreviewPaginaClient({
       label.style.background = "rgba(255,255,255,0.94)";
       label.style.border = "1px solid rgba(148,163,184,0.35)";
       label.style.boxShadow = "0 8px 20px rgba(15,23,42,0.08)";
-      label.style.color = "#334155";
+      label.style.color = "#000000";
       label.style.fontSize = "11px";
       label.style.fontWeight = "700";
       label.style.letterSpacing = "0.02em";

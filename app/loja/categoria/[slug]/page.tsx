@@ -469,7 +469,7 @@ const banners: LojaBannerItem[] = categoria.imagemUrl
   const blocoHome: LojaBlocoHomeItem | null = categoria.descricao
     ? {
         id: `texto-${categoria.id}`,
-        titulo: categoria.nome,
+        titulo: "Sobre esta categoria",
         texto: categoria.descricao,
         imagemUrl: null,
         textoBotao: null,
@@ -486,7 +486,7 @@ const banners: LojaBannerItem[] = categoria.imagemUrl
       secoesHome={[
         {
           id: `categoria-${categoria.id}`,
-          titulo: categoria.nome,
+          titulo: "Produtos",
           categorias: categoriasDaSecao,
         },
       ]}

@@ -1,35 +1,29 @@
+import type { CSSProperties } from "react";
 import type {
   ConteudoCrop,
   ConteudoImagemPublica,
 } from "@/lib/loja/conteudo/contracts";
 import { calcularEstiloCropPercentual } from "@/lib/loja/conteudo/crop";
+import styles from "./ConteudoImagemResponsiva.module.css";
 
-function MediaFrame({
-  url,
-  alt,
-  crop,
-  className,
-  eager,
-}: {
-  url: string;
-  alt: string;
-  crop: ConteudoCrop;
-  className: string;
-  eager: boolean;
-}) {
-  return (
-    <span className={`absolute inset-0 overflow-hidden ${className}`}>
-      <img
-        src={url}
-        alt={alt}
-        loading={eager ? "eager" : "lazy"}
-        fetchPriority={eager ? "high" : "auto"}
-        decoding="async"
-        draggable={false}
-        style={calcularEstiloCropPercentual(crop)}
-      />
-    </span>
-  );
+type CropVariables = CSSProperties & Record<`--crop-${string}`, string>;
+
+function cropVariables(crop: ConteudoCrop, viewport: "desktop" | "mobile") {
+  const style = calcularEstiloCropPercentual(crop);
+  const prefix = `--crop-${viewport}`;
+
+  return {
+    [`${prefix}-position`]: String(style.position ?? "absolute"),
+    [`${prefix}-inset`]: style.inset === undefined ? "auto" : String(style.inset),
+    [`${prefix}-top`]: style.top === undefined ? "auto" : String(style.top),
+    [`${prefix}-left`]: style.left === undefined ? "auto" : String(style.left),
+    [`${prefix}-width`]: String(style.width ?? "100%"),
+    [`${prefix}-height`]: String(style.height ?? "100%"),
+    [`${prefix}-object-fit`]: String(style.objectFit ?? "cover"),
+    [`${prefix}-object-position`]: String(style.objectPosition ?? "50% 50%"),
+    [`${prefix}-transform`]: String(style.transform ?? "none"),
+    [`${prefix}-transform-origin`]: String(style.transformOrigin ?? "center"),
+  } as CropVariables;
 }
 
 export default function ConteudoImagemResponsiva({
@@ -44,27 +38,29 @@ export default function ConteudoImagemResponsiva({
   const desktopUrl = media.desktopUrl;
   const mobileUrl = media.mobileUrl || desktopUrl;
   if (!desktopUrl && !mobileUrl) return null;
+  const fallbackUrl = desktopUrl || mobileUrl;
+  const cropStyle = {
+    ...cropVariables(media.mobile, "mobile"),
+    ...cropVariables(media.desktop, "desktop"),
+  } as CropVariables;
 
   return (
-    <span className={`relative block overflow-hidden bg-[#eef3f8] ${className}`}>
-      {desktopUrl ? (
-        <MediaFrame
-          url={desktopUrl}
+    <span className={`relative block overflow-hidden bg-[var(--brand-blue-soft)] ${className}`}>
+      <picture className={styles.frame}>
+        {mobileUrl && mobileUrl !== fallbackUrl ? (
+          <source media="(max-width: 767px)" srcSet={mobileUrl} />
+        ) : null}
+        <img
+          src={fallbackUrl}
           alt={media.alt}
-          crop={media.desktop}
-          className="hidden md:block"
-          eager={eager}
+          loading={eager ? "eager" : "lazy"}
+          fetchPriority={eager ? "high" : "auto"}
+          decoding="async"
+          draggable={false}
+          className={styles.image}
+          style={cropStyle}
         />
-      ) : null}
-      {mobileUrl ? (
-        <MediaFrame
-          url={mobileUrl}
-          alt={media.alt}
-          crop={media.mobile}
-          className="block md:hidden"
-          eager={eager}
-        />
-      ) : null}
+      </picture>
     </span>
   );
 }

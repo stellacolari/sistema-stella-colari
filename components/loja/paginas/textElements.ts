@@ -304,7 +304,7 @@ export function criarSecaoColunasPadrao(): SectionColumnsConfig {
     ],
     design: {
       fundoSecao: "#ffffff",
-      corTextoPadrao: "#0f172a",
+      corTextoPadrao: "#000000",
       raio: 0,
     },
     responsivo: {

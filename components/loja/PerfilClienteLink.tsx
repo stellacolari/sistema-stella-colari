@@ -325,7 +325,7 @@ export default function PerfilClienteLink({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] brand-text">
-                Conta Stella
+                Sua conta
               </p>
 
               <h3 className="mt-1 text-lg font-light tracking-tight text-slate-950">

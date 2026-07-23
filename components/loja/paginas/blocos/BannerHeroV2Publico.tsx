@@ -359,7 +359,9 @@ function getTextStyle(slide: BannerHeroV2Slide, field: "eyebrow" | "titulo" | "t
 
   return {
     fontFamily:
-      estilo.fonte === "EDITORIAL"
+      field === "titulo"
+        ? "var(--font-storefront-display)"
+        : estilo.fonte === "EDITORIAL"
         ? "Georgia, 'Times New Roman', serif"
         : "var(--font-primary)",
     fontWeight: fontWeightMap[estilo.peso] || 400,
@@ -409,6 +411,17 @@ function SlideText({
       )}
     </Tag>
   );
+}
+
+function isRedundantBrandEyebrow(value: string) {
+  const normalized = value.trim().toLocaleLowerCase("pt-BR");
+  return [
+    "stella",
+    "stella colari",
+    "coleção stella",
+    "editorial stella",
+    "atmosfera stella",
+  ].includes(normalized);
 }
 
 function SlideMedia({
@@ -644,7 +657,10 @@ export default function BannerHeroV2Publico({
             )}`}
             style={getContentAlignStyle(activeSlide.conteudo.alinhamento)}
           >
-            {activeSlide.conteudo.mostrarEyebrow ? (
+            {activeSlide.conteudo.mostrarEyebrow &&
+            !isRedundantBrandEyebrow(
+              activeSlide.conteudo.eyebrow.conteudo,
+            ) ? (
               <SlideText
                 slide={activeSlide}
                 field="eyebrow"

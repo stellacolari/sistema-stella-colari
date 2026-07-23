@@ -49,9 +49,7 @@
 }
 
 .placeholder {
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 86%), transparent 52%),
-    #f3f3f1;
+  background: var(--brand-blue-soft);
 }
 
 .hoverMedia {

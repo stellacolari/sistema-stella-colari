@@ -33,6 +33,15 @@ function boolValue(values: Record<string, unknown>, key: string, fallback = true
   return typeof values[key] === "boolean" ? Boolean(values[key]) : fallback;
 }
 
+function numberValue(
+  values: Record<string, unknown>,
+  key: string,
+  fallback: number,
+) {
+  const value = values[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 function arrayValue(values: Record<string, unknown>, key: string) {
   return Array.isArray(values[key])
     ? (values[key] as unknown[]).map(String).filter(Boolean)
@@ -66,7 +75,8 @@ function EditorialButton({ label, href }: { label: string; href: string }) {
 }
 
 function HeroTitle({ title }: { title: string }) {
-  if (title.trim().toLowerCase() === "viva stella colari.") {
+  const normalized = title.trim().toLocaleLowerCase("pt-BR");
+  if (normalized === "viva stella colari.") {
     return (
       <>
         <span className="font-light">Viva </span>
@@ -74,7 +84,23 @@ function HeroTitle({ title }: { title: string }) {
       </>
     );
   }
+  if (normalized === "sobre a stella") {
+    return <>Sobre Stella Colari</>;
+  }
   return <>{title}</>;
+}
+
+function editorialEyebrow(value: string) {
+  const normalized = value.trim().toLocaleLowerCase("pt-BR");
+  return [
+    "stella",
+    "stella colari",
+    "coleção stella",
+    "editorial stella",
+    "atmosfera stella",
+  ].includes(normalized)
+    ? ""
+    : value;
 }
 
 function HeroSection({
@@ -89,7 +115,7 @@ function HeroSection({
   fallbackTitle?: string;
 }) {
   if (!boolValue(values, `${prefix}.enabled`)) return null;
-  const eyebrow = stringValue(values, `${prefix}.eyebrow`);
+  const eyebrow = editorialEyebrow(stringValue(values, `${prefix}.eyebrow`));
   const title = stringValue(values, `${prefix}.title`) || fallbackTitle;
   const text = stringValue(values, `${prefix}.text`);
   const media = imageValue(values, `${prefix}.image`);
@@ -98,6 +124,7 @@ function HeroSection({
   const primaryHref = safeHref(stringValue(values, `${prefix}.primaryHref`));
   const secondaryLabel = stringValue(values, `${prefix}.secondaryLabel`);
   const secondaryHref = safeHref(stringValue(values, `${prefix}.secondaryHref`));
+  if (!title) return null;
 
   return (
     <section
@@ -110,7 +137,7 @@ function HeroSection({
       {hasImage ? (
         <>
           <ConteudoImagemResponsiva media={media} className="absolute inset-0" eager />
-          <div className="absolute inset-0 bg-[#0f172a]/45" />
+          <div className="absolute inset-0 bg-black/45" />
         </>
       ) : null}
 
@@ -190,11 +217,8 @@ function EditorialSection({
           <div className={`aspect-[4/5] bg-[var(--brand-blue-soft)] ${reverse ? "lg:order-2" : ""}`} />
         )}
         <div className={reverse ? "lg:order-1" : ""}>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-blue)]">
-            Stella Colari
-          </p>
           {title ? (
-            <h2 className="mt-5 max-w-xl text-balance text-[clamp(2.4rem,5vw,5.4rem)] font-light leading-[0.98] tracking-[-0.035em] text-[#171916]">
+            <h2 className="max-w-xl text-balance text-[clamp(2.4rem,5vw,5.4rem)] font-light leading-[0.98] tracking-[-0.035em] text-[#171916]">
               {title}
             </h2>
           ) : null}
@@ -311,18 +335,25 @@ function CategorySection({
   const selected = ids.length > 0
     ? ids.map((id) => categorias.find((categoria) => categoria.id === id)).filter(Boolean)
     : categorias.filter((categoria) => !categoria.categoriaMaeId).slice(0, 6);
+  const title = stringValue(values, `${prefix}.title`);
+  const text = stringValue(values, `${prefix}.text`);
+  if (!title && !text && selected.length === 0) return null;
 
   return (
-    <section className="border-b border-[#171916]/10 bg-[#f7f9fb] px-5 py-16 sm:px-8 md:py-24 lg:px-12">
+    <section className="border-b border-[#171916]/10 bg-[var(--brand-blue-soft)] px-5 py-16 sm:px-8 md:py-24 lg:px-12">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-10 max-w-3xl">
-          <h2 className="text-balance text-[clamp(2.2rem,4.5vw,4.8rem)] font-light leading-none tracking-[-0.035em] text-[#171916]">
-            {stringValue(values, `${prefix}.title`)}
-          </h2>
-          {stringValue(values, `${prefix}.text`) ? (
-            <p className="mt-5 text-base leading-7 text-[#171916]/65">{stringValue(values, `${prefix}.text`)}</p>
-          ) : null}
-        </div>
+        {title || text ? (
+          <div className="mb-10 max-w-3xl">
+            {title ? (
+              <h2 className="text-balance text-[clamp(2.2rem,4.5vw,4.8rem)] font-light leading-none tracking-[-0.035em] text-[#171916]">
+                {title}
+              </h2>
+            ) : null}
+            {text ? (
+              <p className="mt-5 text-base leading-7 text-[#171916]/65">{text}</p>
+            ) : null}
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {selected.map((categoria) =>
             categoria ? (
@@ -339,7 +370,7 @@ function CategorySection({
                     className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
                   />
                 ) : null}
-                <span className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/70 via-transparent to-transparent" />
+                <span className="absolute inset-0 bg-black/45" />
                 <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 text-white sm:p-6">
                   <span className="text-2xl font-light tracking-[-0.02em]">{categoria.nome}</span>
                   <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
@@ -403,18 +434,35 @@ function LinkCardsSection({ values, prefix }: { values: Record<string, unknown>;
         {text ? <p className="mt-5 max-w-3xl text-pretty text-base leading-7 text-[#171916]/65">{text}</p> : null}
         {cards.length > 0 ? (
           <div className="mt-10 grid border-l border-t border-[#171916]/12 sm:grid-cols-2 lg:grid-cols-4">
-            {cards.map((card, index) => (
-              <article key={`${prefix}-${index}`} className="flex min-h-56 flex-col border-b border-r border-[#171916]/12 p-6 sm:p-7">
-                {card.title ? <h3 className="text-xl font-medium tracking-[-0.02em] text-[#171916]">{card.title}</h3> : null}
-                {card.text ? <p className="mt-4 flex-1 whitespace-pre-line text-sm leading-6 text-[#171916]/65">{card.text}</p> : <span className="flex-1" />}
-                {card.label && card.href ? (
-                  <Link href={card.href} className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-blue-dark)] underline-offset-4 hover:underline">
-                    {card.label}
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                ) : null}
-              </article>
-            ))}
+            {cards.map((card, index) => {
+              const content = (
+                <>
+                  {card.title ? <h3 className="text-xl font-medium tracking-[-0.02em] text-[#171916]">{card.title}</h3> : null}
+                  {card.text ? <p className="mt-4 flex-1 whitespace-pre-line text-sm leading-6 text-[#171916]/65">{card.text}</p> : <span className="flex-1" />}
+                  {card.label && card.href ? (
+                    <span className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-blue-dark)] underline-offset-4 group-hover:underline">
+                      {card.label}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  ) : null}
+                </>
+              );
+
+              return card.href ? (
+                <Link
+                  key={`${prefix}-${index}`}
+                  href={card.href}
+                  aria-label={card.title || card.label}
+                  className="group flex min-h-56 flex-col border-b border-r border-[#171916]/12 p-6 transition hover:bg-[var(--brand-blue-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand-blue)] sm:p-7"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <article key={`${prefix}-${index}`} className="flex min-h-56 flex-col border-b border-r border-[#171916]/12 p-6 sm:p-7">
+                  {content}
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </div>
@@ -431,7 +479,7 @@ function ContactSection({ values }: { values: Record<string, unknown> }) {
   if (!title && !text && !(label && href)) return null;
 
   return (
-    <section className="border-b border-[#171916]/10 bg-[#f7f9fb] px-5 py-16 sm:px-8 md:py-24 lg:px-12">
+    <section className="border-b border-[#171916]/10 bg-[var(--brand-blue-soft)] px-5 py-16 sm:px-8 md:py-24 lg:px-12">
       <div className="mx-auto max-w-4xl">
         {title ? <h2 className="text-balance text-4xl font-light tracking-[-0.035em] text-[#171916] md:text-6xl">{title}</h2> : null}
         {text ? <p className="mt-6 whitespace-pre-line text-base leading-8 text-[#171916]/70">{text}</p> : null}
@@ -504,9 +552,11 @@ function GallerySection({ values, prefix }: { values: Record<string, unknown>; p
   return (
     <section className="bg-white py-16 md:py-24">
       <div className="px-5 sm:px-8 lg:px-12">
-        <h2 className="mx-auto max-w-7xl text-balance text-[clamp(2.2rem,4.5vw,4.8rem)] font-light leading-none tracking-[-0.035em] text-[#171916]">
-          {stringValue(values, `${prefix}.title`)}
-        </h2>
+        {stringValue(values, `${prefix}.title`) ? (
+          <h2 className="mx-auto max-w-7xl text-balance text-[clamp(2.2rem,4.5vw,4.8rem)] font-light leading-none tracking-[-0.035em] text-[#171916]">
+            {stringValue(values, `${prefix}.title`)}
+          </h2>
+        ) : null}
         {stringValue(values, `${prefix}.text`) ? (
           <p className="mx-auto mt-5 max-w-7xl text-base leading-7 text-[#171916]/65">
             {stringValue(values, `${prefix}.text`)}
@@ -519,7 +569,7 @@ function GallerySection({ values, prefix }: { values: Record<string, unknown>; p
             <ConteudoImagemResponsiva media={item.media} className="absolute inset-0 transition duration-700 group-hover:scale-[1.02]" />
             {item.title || item.text || (item.label && item.href) ? (
               <>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/75 via-[#0f172a]/10 to-transparent" />
+                <div className="absolute inset-0 bg-black/55" />
                 <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
                   {item.title ? <h3 className="text-2xl font-light tracking-[-0.02em]">{item.title}</h3> : null}
                   {item.text ? <p className="mt-2 text-sm leading-6 text-white/78">{item.text}</p> : null}
@@ -547,23 +597,50 @@ function CtaSection({ values, prefix }: { values: Record<string, unknown>; prefi
   const href = safeHref(stringValue(values, `${prefix}.href`));
   const secondaryLabel = stringValue(values, `${prefix}.secondaryLabel`);
   const secondaryHref = safeHref(stringValue(values, `${prefix}.secondaryHref`));
+  const media = imageValue(values, `${prefix}.backgroundImage`);
+  const hasImage = Boolean(media.desktopUrl || media.mobileUrl);
+  const alignLeft = boolValue(values, `${prefix}.alignLeft`, false);
+  const darkText = hasImage && boolValue(values, `${prefix}.darkText`, false);
+  const overlayOpacity = Math.max(
+    0,
+    Math.min(85, numberValue(values, `${prefix}.overlayOpacity`, 48)),
+  );
   if (!title && !text && !(label && href) && !(secondaryLabel && secondaryHref)) return null;
 
   return (
-    <section className="border-y border-white/30 bg-[var(--brand-blue)] px-5 py-20 text-white sm:px-8 md:py-32 lg:px-12">
-      <div className="mx-auto max-w-5xl text-center">
+    <section
+      className={`relative isolate overflow-hidden border-y px-5 py-20 sm:px-8 md:py-32 lg:px-12 ${
+        darkText
+          ? "border-black/15 text-black"
+          : "border-white/30 text-white"
+      } ${hasImage ? "" : "bg-[var(--brand-blue)]"}`}
+    >
+      {hasImage ? (
+        <>
+          <ConteudoImagemResponsiva media={media} className="absolute inset-0" />
+          <div
+            className={`absolute inset-0 ${darkText ? "bg-white" : "bg-black"}`}
+            style={{ opacity: overlayOpacity / 100 }}
+          />
+        </>
+      ) : null}
+      <div className={`relative z-10 mx-auto max-w-5xl ${alignLeft ? "text-left" : "text-center"}`}>
         {title ? (
           <h2 className="text-balance text-[clamp(2.6rem,6vw,6.8rem)] font-light leading-[0.95] tracking-[-0.04em]">
             {title}
           </h2>
         ) : null}
-        {text ? <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-white">{text}</p> : null}
+        {text ? <p className={`${alignLeft ? "" : "mx-auto"} mt-6 max-w-2xl text-base leading-7`}>{text}</p> : null}
         {(label && href) || (secondaryLabel && secondaryHref) ? (
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <div className={`mt-9 flex flex-wrap gap-3 ${alignLeft ? "justify-start" : "justify-center"}`}>
             {label && href ? (
               <Link
                 href={href}
-                className="inline-flex min-h-12 items-center justify-center border border-white bg-white px-7 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-blue)] transition hover:text-[var(--brand-blue-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand-blue)]"
+                className={`inline-flex min-h-12 items-center justify-center border px-7 text-xs font-semibold uppercase tracking-[0.18em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  darkText
+                    ? "border-black bg-black text-white hover:bg-[var(--brand-blue)] focus-visible:ring-black"
+                    : "border-white bg-white text-[var(--brand-blue)] hover:text-[var(--brand-blue-dark)] focus-visible:ring-white"
+                }`}
               >
                 {label}
               </Link>
@@ -571,7 +648,11 @@ function CtaSection({ values, prefix }: { values: Record<string, unknown>; prefi
             {secondaryLabel && secondaryHref ? (
               <Link
                 href={secondaryHref}
-                className="inline-flex min-h-12 items-center justify-center border border-white px-7 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white hover:text-[var(--brand-blue)]"
+                className={`inline-flex min-h-12 items-center justify-center border px-7 text-xs font-semibold uppercase tracking-[0.18em] transition ${
+                  darkText
+                    ? "border-black text-black hover:bg-black hover:text-white"
+                    : "border-white text-white hover:bg-white hover:text-[var(--brand-blue)]"
+                }`}
               >
                 {secondaryLabel}
               </Link>

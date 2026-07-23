@@ -1,7 +1,7 @@
 .storefront {
   min-height: 100vh;
   background: #fff;
-  color: #1b2021;
+  color: #000;
 }
 
 .main {
@@ -19,7 +19,7 @@
   position: relative;
   min-height: clamp(34rem, 74vh, 56rem);
   overflow: hidden;
-  background: #d8d4ca;
+  background: var(--brand-blue-soft);
 }
 
 .heroPicture,
@@ -45,7 +45,7 @@
   inset: 0;
   display: flex;
   align-items: flex-end;
-  background: linear-gradient(180deg, rgb(12 16 17 / 3%) 38%, rgb(12 16 17 / 64%) 100%);
+  background: rgb(0 0 0 / 48%);
   padding: clamp(1.5rem, 4vw, 4.5rem);
 }
 
@@ -116,12 +116,25 @@
   gap: 0.85rem;
   border-right: 1px solid rgb(24 32 34 / 15%);
   padding: 1rem clamp(1rem, 2.25vw, 2.5rem);
-  color: #1b2021;
+  color: #000;
   font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.13em;
   line-height: 1.45;
+  text-decoration: none;
   text-transform: uppercase;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.valueItem:hover {
+  background: var(--brand-blue-soft);
+  color: var(--brand-blue-dark);
+}
+
+.valueItem:focus-visible {
+  z-index: 1;
+  outline: 2px solid var(--brand-blue);
+  outline-offset: -2px;
 }
 
 .valueItem:last-child {
@@ -129,7 +142,7 @@
 }
 
 .valueIndex {
-  color: #888c87;
+  color: rgb(0 0 0 / 52%);
   font-variant-numeric: tabular-nums;
 }
 
@@ -165,7 +178,7 @@
 
 .sectionEyebrow,
 .storyEyebrow {
-  color: #717671;
+  color: rgb(0 0 0 / 58%);
 }
 
 .sectionTitle,
@@ -200,10 +213,10 @@
   transform: translate(50%, -50%);
   align-items: center;
   justify-content: center;
-  border: 1px solid #1b2021;
+  border: 1px solid #000;
   border-radius: 0;
   background: rgb(255 255 255 / 94%);
-  color: #1b2021;
+  color: #000;
 }
 
 .carouselNext:disabled {
@@ -226,13 +239,13 @@
 .paginationDot {
   height: 1px;
   width: 1.5rem;
-  background: #bbbdb8;
+  background: rgb(0 0 0 / 28%);
   transition: width 180ms ease, background-color 180ms ease;
 }
 
 .paginationDotActive {
   width: 3rem;
-  background: #1b2021;
+  background: #000;
 }
 
 .moreRow {
@@ -245,11 +258,11 @@
   min-height: 3rem;
   align-items: center;
   justify-content: center;
-  border: 1px solid #1b2021;
+  border: 1px solid #000;
   border-radius: 0;
   background: transparent;
   padding: 0.8rem 1.5rem;
-  color: #1b2021;
+  color: #000;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -260,7 +273,7 @@
 
 .moreButton:hover,
 .storyButton:hover {
-  background: #1b2021;
+  background: #000;
   color: #fff;
 }
 
@@ -293,7 +306,7 @@
   position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  background: #e5e1d8;
+  background: var(--brand-blue-soft);
 }
 
 .categoryImage {
@@ -311,7 +324,7 @@
   align-items: baseline;
   border-bottom: 1px solid rgb(24 32 34 / 18%);
   padding-block: 0.85rem 1rem;
-  color: #1b2021;
+  color: #000;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -320,7 +333,7 @@
 }
 
 .categoryMeta span {
-  color: #858985;
+  color: rgb(0 0 0 / 50%);
   font-variant-numeric: tabular-nums;
 }
 
@@ -334,7 +347,7 @@
 
 .storySection {
   border-block: 1px solid rgb(24 32 34 / 17%);
-  background: #e8e4db;
+  background: #fff;
 }
 
 .storyGrid {
@@ -346,7 +359,7 @@
 .storyMedia {
   min-height: 28rem;
   overflow: hidden;
-  background: #d8d4ca;
+  background: var(--brand-blue-soft);
 }
 
 .storyMediaInner,
@@ -362,9 +375,7 @@
 }
 
 .storyPlaceholder {
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 65%), transparent 52%),
-    #ded9cf;
+  background: var(--brand-blue-soft);
 }
 
 .storyCopyColumn {
@@ -385,7 +396,7 @@
 .storyText {
   max-width: 38rem;
   margin: 1.75rem 0 0;
-  color: #555b58;
+  color: rgb(0 0 0 / 70%);
   font-size: clamp(0.9rem, 1.2vw, 1.05rem);
   line-height: 1.85;
 }
@@ -417,7 +428,7 @@
 .storeEmptyText {
   max-width: 32rem;
   margin: 1rem auto 0;
-  color: #696e6b;
+  color: rgb(0 0 0 / 62%);
   font-size: 0.85rem;
   line-height: 1.7;
 }

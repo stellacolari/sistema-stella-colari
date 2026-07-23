@@ -142,8 +142,8 @@ function getTextStyle(value: unknown): CSSProperties {
   };
   const colorMap: Record<string, string> = {
     CLARO: "#ffffff",
-    ESCURO: "#0f172a",
-    DOURADO: "#b8892e",
+    ESCURO: "#000000",
+    DOURADO: "#2e7b99",
   };
   const letterSpacingMap: Record<string, string> = {
     NORMAL: "0",
@@ -548,7 +548,7 @@ export default function VitrineEditorialPublico({
                     )
                   ) : (
                     <div
-                      className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f8fafc_34%,var(--brand-blue-soft)_100%)]"
+                      className="h-full w-full bg-[var(--brand-blue-soft)]"
                       aria-hidden="true"
                     />
                   )}

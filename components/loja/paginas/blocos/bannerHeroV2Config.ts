@@ -179,7 +179,7 @@ export function criarBannerHeroV2Botao(index = 1): BannerHeroV2Button {
     estilo: {
       variante: index === 1 ? "PREENCHIDO" : "CONTORNADO",
       corFundo: "#ffffff",
-      corTexto: "#0f172a",
+      corTexto: "#000000",
       corBorda: "#ffffff",
       tamanho: "MEDIO",
       paddingX: 20,

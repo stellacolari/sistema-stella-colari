@@ -209,7 +209,7 @@ function LogoLoja({ claro = false }: { claro?: boolean }) {
       {!logoErro && (
         <Image
           src={LOGO_URL}
-          alt="Stella"
+          alt="Stella Colari"
           width={170}
           height={36}
           onError={() => setLogoErro(true)}
@@ -227,7 +227,7 @@ function LogoLoja({ claro = false }: { claro?: boolean }) {
               : "border-[#1b1b18]/70 bg-transparent text-[#1b1b18]"
           }`}
         >
-          STELLA
+          STELLA COLARI
         </div>
       )}
     </Link>
@@ -245,9 +245,9 @@ function ProdutoSugestaoBusca({
     <Link
       href={produto.href}
       onClick={onNavigate}
-      className="group grid grid-cols-[56px_minmax(0,1fr)] gap-4 border-b border-[#1b1b18]/10 py-4 transition last:border-b-0 hover:bg-[#eeeae1] sm:grid-cols-[64px_minmax(0,1fr)] sm:px-2"
+      className="group grid grid-cols-[56px_minmax(0,1fr)] gap-4 border-b border-[#1b1b18]/10 py-4 transition last:border-b-0 hover:bg-[var(--brand-blue-soft)] sm:grid-cols-[64px_minmax(0,1fr)] sm:px-2"
     >
-      <div className="aspect-[4/5] overflow-hidden bg-[#ebe7de]">
+      <div className="aspect-[4/5] overflow-hidden bg-[var(--brand-blue-soft)]">
         {produto.imagemUrl ? (
           imagemPublicaPodeSerOtimizada(produto.imagemUrl) ? (
             <Image
@@ -1479,7 +1479,7 @@ export default function MenuPublicoLoja({
 
           {configMenu.exibicaoCategorias === "DROPDOWN" && (
             <section
-              className={`absolute top-0 hidden h-full border-r border-[#1b1b18]/20 bg-[#ebe7de] text-[#1b1b18] transition-all duration-300 ease-out lg:block ${
+              className={`absolute top-0 hidden h-full border-r border-[#1b1b18]/20 bg-[var(--brand-blue-soft)] text-[#1b1b18] transition-all duration-300 ease-out lg:block ${
                 categoriaSelecionada && menuVisivel
                   ? "left-[min(46vw,520px)] w-[420px] translate-x-0 opacity-100 xl:left-[560px] xl:w-[440px]"
                   : "left-[min(46vw,520px)] w-0 -translate-x-4 overflow-hidden opacity-0 xl:left-[560px]"
@@ -1488,7 +1488,7 @@ export default function MenuPublicoLoja({
               {categoriaSelecionada && (
                 <div className="h-full overflow-y-auto">
                   {categoriaSelecionada.imagemUrl ? (
-                    <div className="relative h-[42vh] min-h-64 w-full overflow-hidden bg-[#ded8cc]">
+                    <div className="relative h-[42vh] min-h-64 w-full overflow-hidden bg-[var(--brand-blue-soft)]">
                       <img
                         src={categoriaSelecionada.imagemUrl}
                         alt={categoriaSelecionada.nome}
@@ -1499,7 +1499,7 @@ export default function MenuPublicoLoja({
                     </div>
                   ) : (
                     <div
-                      className="h-[42vh] min-h-64 w-full bg-[radial-gradient(circle_at_30%_20%,#ffffff_0%,#f3f3f1_48%,#e4edef_100%)]"
+                      className="h-[42vh] min-h-64 w-full bg-[var(--brand-blue-soft)]"
                       aria-hidden="true"
                     />
                   )}

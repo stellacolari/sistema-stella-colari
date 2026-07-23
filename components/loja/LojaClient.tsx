@@ -143,25 +143,26 @@ function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
 
 function MicroFaixaDiferenciais() {
   const diferenciais = [
-    "Explore o catálogo",
-    "Acompanhe seus pedidos",
-    "Consulte frete e prazos",
-    "Veja trocas e devoluções",
+    { label: "Explore o catálogo", href: "/loja" },
+    { label: "Acompanhe seus pedidos", href: "/loja/minha-conta" },
+    { label: "Consulte frete e prazos", href: "/loja/frete-e-prazos" },
+    { label: "Veja trocas e devoluções", href: "/loja/trocas-e-devolucoes" },
   ];
 
   return (
     <section className={styles.valueStrip} aria-label="Atalhos da loja">
       <div className={styles.valueStripInner}>
         {diferenciais.map((item, index) => (
-          <div
-            key={`${item}-${index}`}
+          <Link
+            key={item.href}
+            href={item.href}
             className={styles.valueItem}
           >
             <span className={styles.valueIndex}>
               {String(index + 1).padStart(2, "0")}
             </span>
-            <span>{item}</span>
-          </div>
+            <span>{item.label}</span>
+          </Link>
         ))}
       </div>
     </section>
@@ -300,7 +301,7 @@ function ComprePorCategorias({
   return (
     <section className={styles.categoriesSection}>
       <div className={styles.categoriesHeader}>
-        <p className={styles.sectionEyebrow}>Universos Stella</p>
+        <p className={styles.sectionEyebrow}>Categorias</p>
         <h2 className={styles.sectionTitle}>
           Compre por categorias
         </h2>
@@ -361,7 +362,7 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
 
         <div className={styles.storyCopyColumn}>
           <div className={styles.storyCopy}>
-            <p className={styles.storyEyebrow}>Stella Colari</p>
+            <p className={styles.storyEyebrow}>Em detalhe</p>
             <h2 className={styles.storyTitle}>
               {bloco.titulo}
             </h2>
@@ -470,13 +471,11 @@ export default function LojaClient({
 
       {!bannerPrincipal && tituloEditorial ? (
         <StorePageHeader
-          eyebrow="Coleção Stella"
+          eyebrow="Catálogo"
           title={tituloEditorial}
           description={descricaoPagina || "Explore as peças disponíveis nesta seleção."}
         />
       ) : null}
-
-      <MicroFaixaDiferenciais />
 
       <main className={styles.main}>
         <ComprePorCategorias categorias={categoriasHome} />
@@ -523,6 +522,8 @@ export default function LojaClient({
           </section>
         )}
       </main>
+
+      <MicroFaixaDiferenciais />
 
       <RodapeLoja
         menus={menus}

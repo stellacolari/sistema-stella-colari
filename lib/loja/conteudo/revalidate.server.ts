@@ -3,11 +3,15 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 
 export function revalidarConteudoLoja(pagina: {
+  id?: string;
   tipo: string;
   slug: string;
   categoria?: { slug: string } | null;
 }) {
   const destinos: Array<{ path: string; type?: "page" }> = [{ path: "/loja" }];
+  if (pagina.id) {
+    destinos.push({ path: `/loja/preview/pagina/${pagina.id}` });
+  }
   if (pagina.tipo === "CATEGORIA") {
     const categoriaSlug = pagina.categoria?.slug || pagina.slug;
     destinos.push({ path: `/loja/categoria/${categoriaSlug}` });
@@ -39,4 +43,15 @@ export function revalidarConteudoLoja(pagina: {
   }
 
   return { ok: falhas.length === 0, falhas };
+}
+
+export function revalidarPreviewConteudoLoja(paginaId: string) {
+  const path = `/loja/preview/pagina/${paginaId}`;
+  try {
+    revalidatePath(path);
+    return { ok: true, falhas: [] as string[] };
+  } catch {
+    console.error(`Falha ao revalidar preview de conteúdo em ${path}.`);
+    return { ok: false, falhas: [path] };
+  }
 }

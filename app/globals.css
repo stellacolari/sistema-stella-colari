@@ -27,17 +27,17 @@ body {
 
 .stella-storefront-render {
   --store-paper: #ffffff;
-  --store-paper-deep: #f3f3f1;
-  --store-ink: #171916;
-  --store-muted: #62645e;
-  --store-hairline: #c9c7bf;
+  --store-paper-deep: var(--brand-blue-soft);
+  --store-ink: #000000;
+  --store-muted: rgb(0 0 0 / 62%);
+  --store-hairline: rgb(0 0 0 / 20%);
   --store-bg: var(--store-paper);
   --store-surface: #ffffff;
-  --store-surface-muted: #f5f6f4;
+  --store-surface-muted: var(--brand-blue-soft);
   --store-text: var(--store-ink);
   --store-text-muted: var(--store-muted);
   --store-accent: var(--brand-blue);
-  --store-border: rgb(23 25 22 / 18%);
+  --store-border: rgb(0 0 0 / 18%);
   --store-danger: #a43f3f;
   --store-success: #276148;
   --store-radius-sm: 0;

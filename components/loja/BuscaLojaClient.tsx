@@ -137,18 +137,18 @@ export default function BuscaLojaClient({
   }
 
   return (
-    <main className="store-flow min-h-screen bg-white text-[#27251f]">
+    <main className="store-flow min-h-screen bg-white text-black">
       <section className="store-page-header px-5 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-[var(--store-page-max)]">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#70695e]">
-                Loja Stella Colari
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-black/60">
+                Busca de produtos
               </p>
-              <h1 className="store-editorial-title mt-4 text-4xl font-normal leading-none tracking-[-0.04em] text-[#27251f] sm:text-6xl">
+              <h1 className="store-editorial-title mt-4 text-4xl font-normal leading-none tracking-[-0.04em] text-black sm:text-6xl">
                 {conteudo?.title || "Busca"}
               </h1>
-              <p className="mt-5 max-w-2xl text-sm leading-6 text-[#645e54] sm:text-base">
+              <p className="mt-5 max-w-2xl text-sm leading-6 text-black/65 sm:text-base">
                 {termoInicial
                   ? `Resultados para "${termoInicial}"`
                   : conteudo?.text || "Encontre joias, acessorios e presentes."}
@@ -156,8 +156,8 @@ export default function BuscaLojaClient({
             </div>
 
             <form onSubmit={handleSubmit} className="relative">
-              <label className="flex h-14 items-center gap-3 border-b border-[#27251f] bg-transparent px-0 transition focus-within:border-[#7b7161]">
-                <Search className="h-5 w-5 text-[#70695e]" />
+              <label className="flex h-14 items-center gap-3 border-b border-black bg-transparent px-0 transition focus-within:border-[var(--brand-blue)]">
+                <Search className="h-5 w-5 text-black/55" />
                 <input
                   type="search"
                   name="q"
@@ -165,14 +165,14 @@ export default function BuscaLojaClient({
                   value={termo}
                   onChange={(event) => setTermo(event.target.value)}
                   placeholder="Buscar por anel dourado, presente ate 100..."
-                  className="h-full min-w-0 flex-1 bg-transparent text-base text-[#27251f] outline-none placeholder:text-[#8d8578]"
+                  className="h-full min-w-0 flex-1 bg-transparent text-base text-black outline-none placeholder:text-black/40"
                 />
                 {termo ? (
                   <button
                     type="button"
                     onClick={() => setTermo("")}
                     aria-label="Limpar busca"
-                    className="text-[#81796c] transition hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#27251f]"
+                    className="text-black/50 transition hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand-blue)]"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -183,14 +183,14 @@ export default function BuscaLojaClient({
 
           {buscasRecentes.length > 0 ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#777064]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-black/55">
                 Recentes
               </span>
               {buscasRecentes.map((busca) => (
                 <Link
                   key={busca}
                   href={`/loja/busca?q=${encodeURIComponent(busca)}`}
-                  className="border border-[#27251f]/20 px-3 py-1.5 text-xs font-medium text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#f3f3f1]"
+                  className="border border-black/20 px-3 py-1.5 text-xs font-medium text-black/75 transition hover:border-black hover:bg-[var(--brand-blue-soft)]"
                 >
                   {busca}
                 </Link>
@@ -198,7 +198,7 @@ export default function BuscaLojaClient({
               <button
                 type="button"
                 onClick={limparHistorico}
-                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#81796c] transition hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-black/50 transition hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-blue)]"
               >
                 Limpar
               </button>
@@ -209,7 +209,7 @@ export default function BuscaLojaClient({
 
       <section className="store-page-content py-12 sm:py-16">
         {termoInicial && filtrosDetectados.precoMaximo ? (
-          <div className="mb-4 border-y border-[#27251f]/20 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#5f594f]">
+          <div className="mb-4 border-y border-black/20 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-black/65">
             Preco maximo detectado: {moeda(filtrosDetectados.precoMaximo)}
           </div>
         ) : null}
@@ -275,7 +275,7 @@ export default function BuscaLojaClient({
                     <Link
                       key={sugestao}
                       href={`/loja/busca?q=${encodeURIComponent(sugestao)}`}
-                      className="border border-[#27251f]/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#4f4a42] transition hover:border-[#27251f] hover:bg-[#f3f3f1]"
+                      className="border border-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black/75 transition hover:border-black hover:bg-[var(--brand-blue-soft)]"
                     >
                       {sugestao}
                     </Link>

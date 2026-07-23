@@ -98,7 +98,7 @@
 
 .heroSecondaryButton:hover {
   background: #ffffff;
-  color: #171916;
+  color: #000000;
 }
 
 .heroFooter {
@@ -124,7 +124,7 @@
 }
 
 .brandValues {
-  color: #171916;
+  color: #000000;
 }
 
 .brandValueCard {
@@ -264,7 +264,7 @@
 }
 
 .categoryCard:hover {
-  background: #e3e0d7;
+  background: var(--brand-blue-soft);
 }
 
 .categoryTitle {
@@ -296,10 +296,7 @@
 .mediaFallback {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 25%, rgba(255, 255, 255, 0.58), transparent 25%),
-    radial-gradient(circle at 76% 18%, rgba(46, 123, 153, 0.26), transparent 30%),
-    linear-gradient(135deg, #dce8eb 0%, #b8cbd1 48%, #809ba5 100%);
+  background: var(--brand-blue-soft);
 }
 
 .heroFallback::before,
@@ -380,7 +377,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #171916;
+  color: #000000;
   font-size: 1.1rem;
   line-height: 1;
 }

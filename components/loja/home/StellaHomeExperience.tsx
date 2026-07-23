@@ -424,6 +424,7 @@ function applyCta(
     result.linkBotaoPrimario = stringValue(values[hrefKey]);
   }
   if (prefix === "finalCta") {
+    result.stellaManagedContent = true;
     if (changed("finalCta.title")) {
       result.titulo = stringValue(values["finalCta.title"]);
     }
@@ -438,6 +439,22 @@ function applyCta(
     }
     if (changed("finalCta.secondaryHref")) {
       result.linkBotaoSecundario = stringValue(values["finalCta.secondaryHref"]);
+    }
+    if (changed("finalCta.backgroundImage")) {
+      const image = imageValue(values["finalCta.backgroundImage"]);
+      result.stellaManagedBackground = image;
+    }
+    if (changed("finalCta.overlayOpacity")) {
+      result.stellaManagedOverlayOpacity =
+        typeof values["finalCta.overlayOpacity"] === "number"
+          ? values["finalCta.overlayOpacity"]
+          : 48;
+    }
+    if (changed("finalCta.alignLeft")) {
+      result.stellaManagedAlignLeft = values["finalCta.alignLeft"] === true;
+    }
+    if (changed("finalCta.darkText")) {
+      result.stellaManagedDarkText = values["finalCta.darkText"] === true;
     }
   }
 

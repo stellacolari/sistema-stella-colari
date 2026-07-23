@@ -162,7 +162,7 @@ function normalizeConfig(config: unknown): SectionColumnsConfig {
         largura: clamp(getNumber(columnData, "largura", 50), 10, 90),
         fundo: {
           tipo: getString(fundo, "tipo", "NENHUM") as "COR" | "IMAGEM" | "NENHUM",
-          cor: getString(fundo, "cor", "#f8fafc"),
+          cor: getString(fundo, "cor", "#ffffff"),
           media: fundo.media,
           crop: fundo.crop,
           overlay: clamp(getNumber(fundo, "overlay", 0), 0, 85),

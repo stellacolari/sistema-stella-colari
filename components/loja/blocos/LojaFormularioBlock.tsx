@@ -103,7 +103,7 @@ export default function LojaFormularioBlock({
   pagina,
   bloco,
 }: LojaFormularioBlockProps) {
-  const titulo = getString(config, "titulo", "Fale com a Stella");
+  const titulo = getString(config, "titulo", "Fale conosco");
   const descricao = getString(
     config,
     "descricao",
@@ -387,7 +387,7 @@ export default function LojaFormularioBlock({
                   />
 
                   <span>
-                    Aceito receber comunicações, novidades e ofertas da Stella.
+                    Aceito receber comunicações, novidades e ofertas da Stella Colari.
                   </span>
                 </label>
               )}
