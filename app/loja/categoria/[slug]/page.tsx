@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import LojaClient, {
   type LojaBannerItem,
@@ -35,7 +36,10 @@ type LojaCategoriaPageProps = {
   }>;
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
+export const dynamic = "force-static";
+
+const buscarCategoriaPublicaMemo = cache(buscarCategoriaPublicaPorSlug);
 
 function montarTituloSlug(slug: string) {
   return decodeURIComponent(slug)
@@ -174,7 +178,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const slugNormalizado = slugifyCategoria(decodeURIComponent(slug));
 
-  const resultado = await buscarCategoriaPublicaPorSlug(slugNormalizado);
+  const resultado = await buscarCategoriaPublicaMemo(slugNormalizado);
 
   if (!resultado) {
     return criarMetadataLoja({
@@ -278,7 +282,7 @@ export default async function LojaCategoriaPage({
   const { slug } = await params;
   const slugNormalizado = slugifyCategoria(decodeURIComponent(slug));
 
-  const resultadoCategoria = await buscarCategoriaPublicaPorSlug(slugNormalizado);
+  const resultadoCategoria = await buscarCategoriaPublicaMemo(slugNormalizado);
 
   if (!resultadoCategoria) {
     notFound();

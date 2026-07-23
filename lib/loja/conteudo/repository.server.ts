@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@prisma/client";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   conteudosPaginaIguais,
@@ -1323,11 +1324,22 @@ export async function rollbackConteudoParaLegado({
   });
 }
 
-export async function buscarConteudoPublicadoPagina(paginaId: string) {
+const buscarConteudoPublicadoPaginaMemo = cache(async (paginaId: string) => {
   const documento = await prisma.lojaConteudoDocumento.findUnique({
     where: { paginaId },
-    include: {
-      versaoPublicada: true,
+    select: {
+      modoEntrega: true,
+      status: true,
+      inicioPublicacao: true,
+      fimPublicacao: true,
+      origemJson: true,
+      versaoPublicada: {
+        select: {
+          contratoChave: true,
+          contratoVersao: true,
+          conteudoJson: true,
+        },
+      },
       pagina: {
         select: {
           ativo: true,
@@ -1417,6 +1429,10 @@ export async function buscarConteudoPublicadoPagina(paginaId: string) {
     publico: projetarConteudoPublico(contrato, conteudo),
     baseVisualHome: home ? origin.baseVisualHome : null,
   };
+});
+
+export function buscarConteudoPublicadoPagina(paginaId: string) {
+  return buscarConteudoPublicadoPaginaMemo(paginaId);
 }
 
 export async function buscarConteudoPublicadoSistema({

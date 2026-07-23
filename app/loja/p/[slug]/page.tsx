@@ -17,7 +17,8 @@ import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.serv
 import { buscarConteudoPublicadoPagina } from "@/lib/loja/conteudo/repository.server";
 import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
+export const dynamic = "force-static";
 
 const TIPOS_PERMITIDOS_EM_PAGINA_PUBLICA = ["GERAL", "LANDING", "CAMPANHA"];
 

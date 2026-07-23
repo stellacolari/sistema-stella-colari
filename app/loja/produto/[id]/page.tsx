@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import ProdutoLojaClient, {
   type ProdutoLojaMenuItem,
@@ -25,7 +26,13 @@ import {
 } from "@/lib/loja/conteudo/repository.server";
 import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
+export const dynamic = "force-static";
+
+const buscarProdutoDetalheMemo = cache(buscarProdutoDetalhePublico);
+const buscarConteudoProdutoMemo = cache(() =>
+  buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
+);
 
 function aplicarModeloSeoProduto(
   value: string,
@@ -46,8 +53,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const [produtoDetalhe, conteudoGlobal] = await Promise.all([
-    buscarProdutoDetalhePublico(id),
-    buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
+    buscarProdutoDetalheMemo(id),
+    buscarConteudoProdutoMemo(),
   ]);
 
   if (!produtoDetalhe) {
@@ -88,7 +95,7 @@ export default async function ProdutoLojaPage({
 }) {
   const { id } = await params;
 
-  const produtoDetalhe = await buscarProdutoDetalhePublico(id);
+  const produtoDetalhe = await buscarProdutoDetalheMemo(id);
 
   if (!produtoDetalhe) {
     notFound();
@@ -172,7 +179,7 @@ export default async function ProdutoLojaPage({
       categoriaId: categoriaProduto?.id || null,
     }),
 
-    buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
+    buscarConteudoProdutoMemo(),
   ]);
 
   const menus: ProdutoLojaMenuItem[] = menusPublicos.map((menu) => ({

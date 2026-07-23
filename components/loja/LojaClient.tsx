@@ -209,6 +209,7 @@ function SecaoProdutos({
             renderProduto={(produto, index) => (
               <ProdutoCardLoja
                 produto={produto}
+                imageSizes="(max-width: 1023px) 50vw, 25vw"
                 revealDelayMs={index * 50}
               />
             )}
@@ -234,6 +235,7 @@ function SecaoProdutos({
               <ProdutoCardLoja
                 key={produto.id}
                 produto={produto}
+                imageSizes="(max-width: 1023px) 50vw, 25vw"
                 revealDelayMs={index * 70}
               />
             ))}

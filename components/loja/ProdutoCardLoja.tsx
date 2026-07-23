@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import {
@@ -19,6 +20,7 @@ import {
   registrarCliqueResultadoBusca,
   registrarFavoritoProduto,
 } from "@/lib/loja/eventos-client";
+import { imagemPublicaPodeSerOtimizada } from "@/lib/loja/imagem-publica";
 import styles from "./ProdutoCardLoja.module.css";
 
 export type ProdutoCardLojaItem = {
@@ -44,6 +46,7 @@ type ProdutoCardLojaProps = {
   modoPreview?: boolean;
   revealDelayMs?: number;
   imageLoading?: "eager" | "lazy";
+  imageSizes?: string;
   exibirImagemHover?: boolean;
   trackingOrigem?: string;
   trackingMetadata?: Record<string, unknown>;
@@ -241,6 +244,54 @@ function ProdutoPreco({ produto }: { produto: ProdutoCardLojaItem }) {
   );
 }
 
+function ProdutoCardImagem({
+  src,
+  alt,
+  loading,
+  sizes,
+  className,
+  onLoad,
+  onDragStart,
+}: {
+  src: string;
+  alt: string;
+  loading: "eager" | "lazy";
+  sizes: string;
+  className: string;
+  onLoad?: () => void;
+  onDragStart: (event: DragEvent<HTMLImageElement>) => void;
+}) {
+  if (imagemPublicaPodeSerOtimizada(src)) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        loading={loading}
+        decoding="async"
+        draggable={false}
+        onLoad={onLoad}
+        onDragStart={onDragStart}
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading={loading}
+      decoding="async"
+      draggable={false}
+      onLoad={onLoad}
+      onDragStart={onDragStart}
+      className={className}
+    />
+  );
+}
+
 export default function ProdutoCardLoja({
   produto,
   exibirPreco = true,
@@ -250,7 +301,8 @@ export default function ProdutoCardLoja({
   href,
   modoPreview = false,
   revealDelayMs = 0,
-  imageLoading,
+  imageLoading = "lazy",
+  imageSizes = "(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw",
   exibirImagemHover = true,
   trackingOrigem,
   trackingMetadata,
@@ -260,6 +312,8 @@ export default function ProdutoCardLoja({
   const [touchPreview, setTouchPreview] = useState(false);
   const [globalTouchPreview, setGlobalTouchPreview] = useState(false);
   const [revelado, setRevelado] = useState(modoPreview);
+  const [imagemHoverSolicitada, setImagemHoverSolicitada] = useState(false);
+  const [imagemHoverCarregada, setImagemHoverCarregada] = useState(false);
   const articleRef = useRef<HTMLElement | null>(null);
   const startPointRef = useRef<{ x: number; y: number } | null>(null);
   const movedRef = useRef(false);
@@ -275,6 +329,12 @@ export default function ProdutoCardLoja({
       setGlobalTouchPreview(activeCardId === produto.id);
     });
   }, [produto.id]);
+
+  useEffect(() => {
+    if (touchPreview || globalTouchPreview) {
+      setImagemHoverSolicitada(true);
+    }
+  }, [globalTouchPreview, touchPreview]);
 
   useEffect(() => {
     if (modoPreview) {
@@ -412,6 +472,7 @@ export default function ProdutoCardLoja({
 
     movedRef.current = true;
     suppressClickRef.current = true;
+    setImagemHoverSolicitada(true);
     setTouchPreview(true);
   }
 
@@ -476,7 +537,11 @@ export default function ProdutoCardLoja({
   const semEstoque = !produto.disponivel;
   const desconto = percentualDesconto(produto);
   const produtoHref = href || `/loja/produto/${produto.id}`;
-  const imagemOverlayUrl = produto.imagemHoverUrl || produto.imagemUrl;
+  const imagemOverlayUrl =
+    produto.imagemHoverUrl && produto.imagemHoverUrl !== produto.imagemUrl
+      ? produto.imagemHoverUrl
+      : null;
+  const hoverDisponivel = exibirImagemHover && Boolean(imagemOverlayUrl);
   const previewTouchAtivo = touchPreview || globalTouchPreview;
   const cardClass = [
     `group stella-product-card ${styles.card}`,
@@ -486,18 +551,18 @@ export default function ProdutoCardLoja({
     .filter(Boolean)
     .join(" ");
 
-  const overlayHover = exibirImagemHover ? (
+  const overlayHover = hoverDisponivel && imagemHoverSolicitada ? (
     <div
       className={`stella-product-hover-overlay ${styles.hoverMedia}`}
       aria-hidden="true"
     >
       {imagemOverlayUrl ? (
-        <img
+        <ProdutoCardImagem
           src={imagemOverlayUrl}
           alt=""
-          loading={imageLoading}
-          decoding={imageLoading ? "async" : undefined}
-          draggable={false}
+          loading="eager"
+          sizes={imageSizes}
+          onLoad={() => setImagemHoverCarregada(true)}
           onDragStart={bloquearDragImagem}
           className={`stella-product-hover-image ${styles.hoverImage}`}
         />
@@ -511,12 +576,11 @@ export default function ProdutoCardLoja({
     <div className={styles.content}>
       <div className={styles.media}>
         {produto.imagemUrl ? (
-          <img
+          <ProdutoCardImagem
             src={produto.imagemUrl}
             alt={produto.nome}
             loading={imageLoading}
-            decoding={imageLoading ? "async" : undefined}
-            draggable={false}
+            sizes={imageSizes}
             onDragStart={bloquearDragImagem}
             className={styles.primaryImage}
           />
@@ -589,7 +653,10 @@ export default function ProdutoCardLoja({
         className={cardClass}
         data-stella-product-card-id={produto.id}
         data-touch-preview={previewTouchAtivo ? "true" : "false"}
-        data-image-hover={exibirImagemHover ? "true" : "false"}
+        data-image-hover={
+          hoverDisponivel && imagemHoverCarregada ? "true" : "false"
+        }
+        onMouseEnter={() => setImagemHoverSolicitada(true)}
         style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
       >
         <div className={styles.previewWrapper}>
@@ -606,7 +673,10 @@ export default function ProdutoCardLoja({
       className={cardClass}
       data-stella-product-card-id={produto.id}
       data-touch-preview={previewTouchAtivo ? "true" : "false"}
-      data-image-hover={exibirImagemHover ? "true" : "false"}
+      data-image-hover={
+        hoverDisponivel && imagemHoverCarregada ? "true" : "false"
+      }
+      onMouseEnter={() => setImagemHoverSolicitada(true)}
       style={{ transitionDelay: revelado ? `${revealDelayMs}ms` : "0ms" }}
     >
       <Link

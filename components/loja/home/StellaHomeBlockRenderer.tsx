@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import type {
   ComponentPropsWithoutRef,
   CSSProperties,
@@ -32,6 +32,7 @@ import {
   type StellaHomeBlockKey,
 } from "@/lib/loja/stella-home-contract";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import { imagemPublicaPodeSerOtimizada } from "@/lib/loja/imagem-publica";
 import styles from "./StellaHomeBlockRenderer.module.css";
 
 type StellaHomeBlock = {
@@ -212,6 +213,46 @@ function Media({
     );
   }
 
+  const podeOtimizar =
+    imagemPublicaPodeSerOtimizada(desktopUrl || mobileUrl) &&
+    imagemPublicaPodeSerOtimizada(mobileUrl || desktopUrl);
+
+  if (podeOtimizar) {
+    const sizes = eager
+      ? "100vw"
+      : "(max-width: 767px) 100vw, (max-width: 1279px) 66vw, 50vw";
+    const { props: desktopProps } = getImageProps({
+      src: desktopUrl || mobileUrl,
+      alt,
+      width: 1600,
+      height: 1600,
+      sizes,
+      loading: eager ? "eager" : "lazy",
+      fetchPriority: eager ? "high" : "auto",
+    });
+    const { props: mobileProps } = getImageProps({
+      src: mobileUrl || desktopUrl,
+      alt,
+      width: 900,
+      height: 1200,
+      sizes,
+      loading: eager ? "eager" : "lazy",
+      fetchPriority: eager ? "high" : "auto",
+    });
+
+    return (
+      <picture className={`block overflow-hidden ${className}`}>
+        <source media="(max-width: 767px)" srcSet={mobileProps.srcSet} />
+        <img
+          {...desktopProps}
+          alt={alt}
+          className={`${styles.mediaImage} ${imageClassName}`}
+          style={{ ...desktopProps.style, ...imageStyle }}
+        />
+      </picture>
+    );
+  }
+
   return (
     <picture className={`block overflow-hidden ${className}`}>
       {mobileUrl ? <source media="(max-width: 767px)" srcSet={mobileUrl} /> : null}
@@ -220,6 +261,7 @@ function Media({
         alt={alt}
         loading={eager ? "eager" : "lazy"}
         fetchPriority={eager ? "high" : "auto"}
+        decoding="async"
         className={`${styles.mediaImage} ${imageClassName}`}
         style={imageStyle}
       />
@@ -723,14 +765,17 @@ function filtrarProdutos(
 function StellaProductCard({
   produto,
   config,
+  imageSizes,
 }: {
   produto: StellaHomeProduct;
   config: Record<string, unknown>;
+  imageSizes: string;
 }) {
   return (
     <div className={styles.productCardShell}>
       <ProdutoCardLoja
         produto={produto}
+        imageSizes={imageSizes}
         exibirPreco={getBoolean(config, "exibirPreco", true)}
         exibirBotao={getBoolean(config, "exibirBotao", true)}
         exibirSeloDesconto={getBoolean(config, "exibirSeloDesconto", true)}
@@ -837,7 +882,11 @@ function StellaNewArrivals({
               key={produto.id}
               className="w-[78vw] max-w-[360px] shrink-0 snap-start bg-white sm:w-[43vw] lg:w-[24vw]"
             >
-              <StellaProductCard produto={produto} config={config} />
+              <StellaProductCard
+                produto={produto}
+                config={config}
+                imageSizes="(max-width: 639px) 78vw, (max-width: 1023px) 43vw, 24vw"
+              />
             </div>
           ))}
         </CarouselScrollArea>
@@ -1163,13 +1212,21 @@ function StellaFeaturedSelection({
         />
         <div className={`mt-12 grid gap-px bg-black/20 ${itens.length > 1 ? "xl:grid-cols-[1.08fr_.92fr]" : ""}`}>
           <div className="bg-[#f2f2f0]">
-            <StellaProductCard produto={itens[0]} config={config} />
+            <StellaProductCard
+              produto={itens[0]}
+              config={config}
+              imageSizes="(max-width: 1279px) 100vw, 54vw"
+            />
           </div>
           {itens.length > 1 ? (
             <div className={`grid gap-px bg-black/20 ${itens.length > 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
               {itens.slice(1).map((produto) => (
                 <div key={produto.id} className="bg-[#f2f2f0]">
-                  <StellaProductCard produto={produto} config={config} />
+                  <StellaProductCard
+                    produto={produto}
+                    config={config}
+                    imageSizes="(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 23vw"
+                  />
                 </div>
               ))}
             </div>

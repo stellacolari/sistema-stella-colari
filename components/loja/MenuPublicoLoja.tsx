@@ -26,6 +26,7 @@ import {
   registrarCategoriaClicada,
   registrarCliqueResultadoBusca,
 } from "@/lib/loja/eventos-client";
+import { imagemPublicaPodeSerOtimizada } from "@/lib/loja/imagem-publica";
 
 const LOGO_URL = "/logo-stella.png";
 const CONTATO_URL = "/loja/contato";
@@ -247,11 +248,28 @@ function ProdutoSugestaoBusca({
     >
       <div className="aspect-[4/5] overflow-hidden bg-[#ebe7de]">
         {produto.imagemUrl ? (
-          <img
-            src={produto.imagemUrl}
-            alt={produto.nome}
-            className="h-full w-full object-cover object-center"
-          />
+          imagemPublicaPodeSerOtimizada(produto.imagemUrl) ? (
+            <Image
+              src={produto.imagemUrl}
+              alt={produto.nome}
+              width={128}
+              height={160}
+              sizes="64px"
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover object-center"
+            />
+          ) : (
+            <img
+              src={produto.imagemUrl}
+              alt={produto.nome}
+              width={64}
+              height={80}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover object-center"
+            />
+          )
         ) : (
           <div className="flex h-full w-full items-center justify-center text-[#1b1b18]/35">
             <Package className="h-5 w-5" />

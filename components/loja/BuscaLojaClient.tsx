@@ -245,6 +245,7 @@ export default function BuscaLojaClient({
               renderProduto={(produto, index) => (
                 <ProdutoCardLoja
                   produto={produto}
+                  imageSizes="(max-width: 1023px) 50vw, 25vw"
                   revealDelayMs={index * 50}
                   trackingOrigem="pagina_busca"
                   trackingResultadoBusca={{

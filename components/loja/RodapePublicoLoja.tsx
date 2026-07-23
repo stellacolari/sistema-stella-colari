@@ -46,6 +46,7 @@ function LinkRodape({
   return (
     <Link
       href={href}
+      prefetch={false}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
       className="group w-fit text-[12px] font-normal leading-6 text-[#f4f0e8]/65 transition hover:text-[#f4f0e8]"

@@ -15,7 +15,8 @@ import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja } from "@/lib/loja/seo";
 import { serializarBlocoBuilderPublico } from "@/lib/loja/blocos-publicos.server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
+export const dynamic = "force-static";
 
 type PageProps = {
   params: Promise<{

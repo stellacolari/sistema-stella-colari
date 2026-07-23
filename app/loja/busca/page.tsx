@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import BuscaLojaClient from "@/components/loja/BuscaLojaClient";
 import MenuPublicoLoja from "@/components/loja/MenuPublicoLoja";
 import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
@@ -10,8 +11,12 @@ import { criarMetadataLoja } from "@/lib/loja/seo";
 import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 import { buscarConteudoPublicadoSistema } from "@/lib/loja/conteudo/repository.server";
 
+const buscarConteudoBuscaMemo = cache(() =>
+  buscarConteudoPublicadoSistema({ tipo: "BUSCA_GLOBAL" }),
+);
+
 export async function generateMetadata(): Promise<Metadata> {
-  const gerenciado = await buscarConteudoPublicadoSistema({ tipo: "BUSCA_GLOBAL" });
+  const gerenciado = await buscarConteudoBuscaMemo();
   const seo = gerenciado ? extrairSeoConteudo(gerenciado.conteudo) : null;
 
   return criarMetadataLoja({
@@ -36,7 +41,7 @@ export default async function BuscaLojaPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const termo = String(q || "").trim();
+  const termo = String(q || "").trim().slice(0, 160);
 
   const [resultado, menus, categoriasMenu, configuracaoMenuRodape, gerenciado] =
     await Promise.all([
@@ -48,7 +53,7 @@ export default async function BuscaLojaPage({
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
       buscarConfiguracaoMenuRodape(),
-      buscarConteudoPublicadoSistema({ tipo: "BUSCA_GLOBAL" }),
+      buscarConteudoBuscaMemo(),
     ]);
 
   const values = gerenciado?.conteudo.values;

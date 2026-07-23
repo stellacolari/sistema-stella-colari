@@ -275,6 +275,7 @@ function ProductSection({
                 <ProdutoCardLoja
                   key={produto.id}
                   produto={produto}
+                  imageSizes="(max-width: 1023px) 50vw, 25vw"
                   exibirImagemHover
                   trackingOrigem={`conteudo-${prefix}`}
                 />

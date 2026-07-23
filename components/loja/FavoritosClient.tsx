@@ -101,7 +101,11 @@ export default function FavoritosClient({
           ) : (
             <div className="grid grid-cols-2 gap-x-3 gap-y-12 sm:gap-x-5 lg:grid-cols-3 xl:grid-cols-4">
               {produtosFavoritos.map((produto) => (
-                <ProdutoCardLoja key={produto.id} produto={produto} />
+                <ProdutoCardLoja
+                  key={produto.id}
+                  produto={produto}
+                  imageSizes="(max-width: 1023px) 50vw, 25vw"
+                />
               ))}
             </div>
           )}

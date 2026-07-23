@@ -9,7 +9,7 @@ import {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const q = searchParams.get("q") || "";
+    const q = (searchParams.get("q") || "").slice(0, 160);
     const limite = Number(searchParams.get("limite") || 12);
     const modo: BuscaLojaModo =
       searchParams.get("modo") === "autocomplete" ? "autocomplete" : "pagina";

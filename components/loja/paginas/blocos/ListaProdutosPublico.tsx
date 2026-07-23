@@ -214,6 +214,7 @@ export default function ListaProdutosPublico({
             renderProduto={(produto) => (
               <ProdutoCardLoja
                 produto={produto}
+                imageSizes="(max-width: 639px) 100vw, (max-width: 1023px) 33vw, 25vw"
                 exibirPreco={getBoolean(config, "exibirPreco", true)}
                 exibirBotao={getBoolean(config, "exibirBotao", true)}
                 exibirSeloDesconto={getBoolean(config, "exibirSeloDesconto", true)}
@@ -248,6 +249,11 @@ export default function ListaProdutosPublico({
               >
                 <ProdutoCardLoja
                   produto={produto}
+                  imageSizes={
+                    isCarousel
+                      ? "(max-width: 639px) 82vw, 256px"
+                      : "(max-width: 639px) 100vw, (max-width: 1023px) 33vw, 25vw"
+                  }
                   exibirPreco={getBoolean(config, "exibirPreco", true)}
                   exibirBotao={getBoolean(config, "exibirBotao", true)}
                   exibirSeloDesconto={getBoolean(config, "exibirSeloDesconto", true)}

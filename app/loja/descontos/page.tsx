@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import LojaClient, {
   type LojaBannerItem,
@@ -11,7 +12,9 @@ import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarProdutosPublicos } from "@/lib/loja/produtos";
 import { criarMetadataLoja } from "@/lib/loja/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
+
+const buscarProdutosDescontoMemo = cache(buscarProdutosPublicos);
 
 function produtoTemDesconto(produto: {
   descontoAtivo: boolean;
@@ -27,7 +30,7 @@ function produtoTemDesconto(produto: {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const produtos = await buscarProdutosPublicos();
+  const produtos = await buscarProdutosDescontoMemo();
   const temDescontoReal = produtos.some(produtoTemDesconto);
 
   return criarMetadataLoja({
@@ -51,7 +54,7 @@ export default async function LojaDescontosPage() {
     configuracaoMenuRodape,
     bannersRaw,
   ] = await Promise.all([
-      buscarProdutosPublicos(),
+      buscarProdutosDescontoMemo(),
       buscarMenusPublicos(),
       buscarCategoriasMenuPublico(),
       buscarConfiguracaoMenuRodape(),

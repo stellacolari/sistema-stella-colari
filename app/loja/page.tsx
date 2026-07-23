@@ -23,7 +23,7 @@ import { serializarBlocosBuilderPublicos } from "@/lib/loja/blocos-publicos.serv
 import { buscarConteudoPublicadoPagina } from "@/lib/loja/conteudo/repository.server";
 import { extrairSeoConteudo } from "@/lib/loja/conteudo/contracts";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
 
 const HOME_VISUAL_SLUG = "home";
 

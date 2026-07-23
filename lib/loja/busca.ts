@@ -925,6 +925,17 @@ export async function buscarLojaInteligente({
     tipoNormalizado === "todos" || tipoNormalizado === "categorias";
   const incluirPaginas = tipoNormalizado === "todos" || tipoNormalizado === "paginas";
 
+  if (!termoNormalizado && filtrosDetectados.precoMaximo === null) {
+    return {
+      produtos: [],
+      categorias: [],
+      paginas: [],
+      sugestoes: SUGESTOES_FIXAS.slice(0, 8),
+      filtrosDetectados,
+      termoNormalizado: "",
+    };
+  }
+
   const produtosPromise: Promise<BuscaLojaProduto[]> = incluirProdutos
     ? buscarProdutosBuscaRaw().then((produtosRaw) =>
         produtosRaw

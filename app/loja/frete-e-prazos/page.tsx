@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import LegalPageShell, { gerarMetadataLegalGerenciada } from "@/app/loja/legal-page-shell";
 
+export const revalidate = 60;
+
 export async function generateMetadata(): Promise<Metadata> {
   return gerarMetadataLegalGerenciada({
     slug: "frete-e-prazos",

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,9 +36,56 @@ import {
   registrarEventoCarrinho,
   registrarProdutoVisualizado,
 } from "@/lib/loja/eventos-client";
+import { imagemPublicaPodeSerOtimizada } from "@/lib/loja/imagem-publica";
 
 const CARRINHO_STORAGE_KEY = "sistema-stella-carrinho";
 const CASHBACK_PERCENTUAL = 0.05;
+
+function ImagemProdutoPublica({
+  src,
+  alt,
+  className,
+  sizes,
+  width = 168,
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  sizes: string;
+  width?: number;
+  priority?: boolean;
+}) {
+  if (imagemPublicaPodeSerOtimizada(src)) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        width={width}
+        height={width}
+        sizes={sizes}
+        priority={priority}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
+        decoding="async"
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={width}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
+      decoding="async"
+      className={className}
+    />
+  );
+}
 
 export type ProdutoLojaMenuItem = {
   id: string;
@@ -373,7 +421,12 @@ function ProdutoRelacionadoCard({
 }: {
   produto: LojaProdutoRelacionado;
 }) {
-  return <ProdutoCardLoja produto={produto} />;
+  return (
+    <ProdutoCardLoja
+      produto={produto}
+      imageSizes="(max-width: 639px) 220px, (max-width: 1023px) 250px, 270px"
+    />
+  );
 }
 
 function ProdutosRelacionadosSection({
@@ -545,9 +598,10 @@ function ProdutoFamiliaSection({
                 } ${semEstoque ? "opacity-50" : ""}`}
               >
                 {item.imagemUrl ? (
-                  <img
+                  <ImagemProdutoPublica
                     src={item.imagemUrl}
                     alt={item.nomeOpcao}
+                    sizes="80px"
                     className="h-full w-full object-cover object-center"
                   />
                 ) : (
@@ -1212,9 +1266,10 @@ export default function ProdutoLojaClient({
                         }`}
                       >
                         <div className="relative h-full w-full">
-                          <img
+                          <ImagemProdutoPublica
                             src={imagem}
                             alt={`${produto.nome} ${index + 1}`}
+                            sizes="84px"
                             className="h-full w-full object-cover object-center"
                           />
 
@@ -1243,10 +1298,12 @@ export default function ProdutoLojaClient({
                 <>
                   <div className="relative aspect-square overflow-hidden">
                     {/* A galeria aceita URLs de mídia cadastradas sem domínio fixo. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <ImagemProdutoPublica
                       src={imagemSelecionada}
                       alt={produto.nome}
+                      sizes="(max-width: 1023px) 100vw, 900px"
+                      width={1200}
+                      priority
                       className="absolute inset-0 h-full w-full object-cover object-center"
                     />
 
@@ -1273,10 +1330,10 @@ export default function ProdutoLojaClient({
                           }`}
                         >
                           <div className="relative h-full w-full">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <ImagemProdutoPublica
                               src={imagem}
                               alt=""
+                              sizes="80px"
                               className="h-full w-full object-cover object-center"
                             />
 
@@ -1467,9 +1524,10 @@ export default function ProdutoLojaClient({
                                       : "border-slate-200 group-hover:border-[var(--brand-blue)]"
                                   }`}
                                 >
-                                  <img
+                                  <ImagemProdutoPublica
                                     src={opcao.imagemUrl || ""}
                                     alt={opcao.nome}
+                                    sizes="96px"
                                     className="h-full w-full object-cover"
                                   />
 
@@ -1725,9 +1783,10 @@ export default function ProdutoLojaClient({
                             aria-label={`Ver embalagem ${embalagem.nome}`}
                           >
                             {embalagem.imagemUrl ? (
-                              <img
+                              <ImagemProdutoPublica
                                 src={embalagem.imagemUrl}
                                 alt={embalagem.nome}
+                                sizes="160px"
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -2109,9 +2168,11 @@ export default function ProdutoLojaClient({
 
             {embalagemPresenteModal.imagemUrl ? (
               <div className="aspect-square overflow-hidden bg-slate-50">
-                <img
+                <ImagemProdutoPublica
                   src={embalagemPresenteModal.imagemUrl}
                   alt={embalagemPresenteModal.nome}
+                  sizes="(max-width: 640px) 100vw, 560px"
+                  width={800}
                   className="h-full w-full object-cover"
                 />
               </div>
