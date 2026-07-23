@@ -213,7 +213,7 @@ function LogoLoja({ claro = false }: { claro?: boolean }) {
           width={170}
           height={36}
           onError={() => setLogoErro(true)}
-          className={`block h-7 max-h-7 w-auto max-w-[116px] object-contain transition duration-300 sm:h-8 sm:max-h-8 sm:max-w-[160px] lg:h-10 lg:max-h-10 lg:max-w-[190px] ${
+          className={`block h-7 max-h-7 w-auto max-w-[108px] object-contain transition duration-300 sm:h-8 sm:max-h-8 sm:max-w-[160px] lg:h-10 lg:max-h-10 lg:max-w-[190px] ${
             claro ? "brightness-0 invert" : ""
           }`}
         />
@@ -927,8 +927,8 @@ export default function MenuPublicoLoja({
             : "border-b border-[#1b1b18]/15 bg-white/95 text-[#1b1b18] backdrop-blur-md"
         }`}
       >
-        <div className="mx-auto grid h-16 max-w-[1600px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:h-[72px] sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:px-6 lg:h-20 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:px-10">
-          <div className="flex min-w-0 items-center justify-start">
+        <div className="relative mx-auto flex h-16 max-w-[1600px] items-center justify-between px-3 sm:h-[72px] sm:px-6 lg:grid lg:h-20 lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:gap-2 lg:px-10">
+          <div className="relative z-20 flex min-w-0 items-center justify-start">
             <button
               ref={abrirMenuButtonRef}
               type="button"
@@ -936,7 +936,7 @@ export default function MenuPublicoLoja({
               aria-label="Abrir menu"
               aria-controls="menu-publico-dialog"
               aria-expanded={menuAberto}
-              className={`group inline-flex h-11 w-10 shrink-0 items-center justify-center gap-3 transition sm:w-auto sm:justify-start ${headerTextClass}`}
+              className={`group inline-flex h-11 w-11 shrink-0 items-center justify-center gap-3 transition sm:w-auto sm:justify-start ${headerTextClass}`}
             >
               <Menu className="h-[18px] w-[18px] stroke-[1.5]" />
               <span className="hidden text-[10px] font-medium uppercase tracking-[0.24em] sm:inline">
@@ -945,11 +945,11 @@ export default function MenuPublicoLoja({
             </button>
           </div>
 
-          <div className="flex min-w-0 items-center justify-center overflow-hidden px-1">
+          <div className="absolute left-[50vw] top-1/2 z-10 flex min-w-0 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden px-1 lg:static lg:translate-x-0 lg:translate-y-0">
             <LogoLoja claro={headerTransparenteAtivo && textoClaroNoTopo} />
           </div>
 
-          <div className="flex min-w-0 shrink-0 items-center justify-end gap-0 sm:gap-1">
+          <div className="relative z-20 flex min-w-0 shrink-0 items-center justify-end gap-0 sm:gap-1">
             <Link
               href={CONTATO_URL}
               className={`hidden h-11 shrink-0 items-center justify-center border-r pr-5 text-[10px] font-medium uppercase tracking-[0.18em] transition lg:inline-flex ${headerRuleClass} ${headerTextClass}`}
@@ -965,7 +965,7 @@ export default function MenuPublicoLoja({
                 aria-label={buscaAberta ? "Fechar busca" : "Buscar produtos"}
                 aria-controls="busca-publica"
                 aria-expanded={buscaAberta}
-                className={`inline-flex h-11 w-9 shrink-0 items-center justify-center transition sm:w-11 ${headerTextClass}`}
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center transition ${headerTextClass}`}
               >
                 {buscaAberta ? (
                   <X className="h-[18px] w-[18px] stroke-[1.5]" />
@@ -979,7 +979,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/favoritos"
                 aria-label="Favoritos"
-                className={`inline-flex h-11 w-9 shrink-0 items-center justify-center transition sm:w-11 ${headerTextClass}`}
+                className={`hidden h-11 w-11 shrink-0 items-center justify-center transition min-[430px]:inline-flex ${headerTextClass}`}
               >
                 <div className="relative">
                   <Heart
@@ -1011,7 +1011,7 @@ export default function MenuPublicoLoja({
               <Link
                 href="/loja/carrinho"
                 aria-label="Carrinho"
-                className={`inline-flex h-11 w-9 shrink-0 items-center justify-center transition sm:w-11 ${headerTextClass}`}
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center transition ${headerTextClass}`}
               >
                 <ShoppingBag className="h-[18px] w-[18px] stroke-[1.5]" />
               </Link>
