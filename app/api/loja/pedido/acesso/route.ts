@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { buscarPedidoPublicoAutorizado } from "@/lib/loja/pedido-acesso.server";
 import { resolverSessaoClienteToken } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 function respostaGate(status: 204 | 404) {
   return new NextResponse(null, {
@@ -23,6 +27,16 @@ export async function POST(request: Request) {
     if (!codigo) {
       return respostaGate(404);
     }
+
+    const limite = verificarRateLimit({
+      request,
+      scope: "loja-pedido-acesso",
+      identifier: codigo,
+      limit: 20,
+      windowMs: 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
 
     const sessao = await resolverSessaoClienteToken(clienteSessaoToken);
     const pedido = await buscarPedidoPublicoAutorizado({

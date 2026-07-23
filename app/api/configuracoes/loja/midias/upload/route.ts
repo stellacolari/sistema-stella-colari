@@ -7,6 +7,10 @@ import {
   normalizarTextoMidia,
 } from "@/lib/loja/midia-assets";
 import { validarOrigemMutacao } from "@/lib/loja/conteudo/api-auth.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 function getArquivos(formData: FormData) {
   return [
@@ -26,6 +30,15 @@ export async function POST(request: NextRequest) {
   if (!validarOrigemMutacao(request)) {
     return erroMidia("Origem da requisição inválida.", 403);
   }
+
+  const limite = verificarRateLimit({
+    request,
+    scope: "admin-upload-midias",
+    identifier: usuario.id,
+    limit: 40,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!limite.allowed) return respostaRateLimit(limite);
 
   try {
     const formData = await request.formData();

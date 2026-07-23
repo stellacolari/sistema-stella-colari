@@ -49,6 +49,8 @@ const VENDEDOR_API_PREFIXES = [
 const LOJA_PREVIEW_PREFIX = "/loja/preview/pagina";
 const LOJA_PEDIDO_PREFIX = "/loja/pedido";
 const LOJA_STRIPE_CHECKOUT_PATH = "/api/loja/stripe/criar-checkout";
+const LOJA_STRIPE_WEBHOOK_PATH = "/api/loja/stripe/webhook";
+const METODOS_MUTACAO = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const COOKIE_CLIENTE_SESSAO = "stella_cliente_session";
 const COOKIE_CLIENTE_LEGADO = "stella_cliente_id";
 const COOKIE_PEDIDO_ACESSO = "stella_pedido_access";
@@ -61,6 +63,16 @@ function aplicarHeadersPedidoPrivado(response: NextResponse) {
   );
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   response.headers.set("Referrer-Policy", "no-referrer");
+
+  return response;
+}
+
+function aplicarHeadersPrivados(response: NextResponse) {
+  response.headers.set(
+    "Cache-Control",
+    "private, no-store, max-age=0, must-revalidate",
+  );
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
 
   return response;
 }
@@ -189,6 +201,40 @@ function isApi(pathname: string) {
   return pathname === "/api" || pathname.startsWith("/api/");
 }
 
+function isOrigemMutacaoInvalida(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (
+    !isApi(pathname) ||
+    !METODOS_MUTACAO.has(request.method.toUpperCase()) ||
+    pathname === LOJA_STRIPE_WEBHOOK_PATH
+  ) {
+    return false;
+  }
+
+  const origem = request.headers.get("origin");
+  if (!origem) return false;
+
+  try {
+    const origemUrl = new URL(origem);
+    const forwardedHost =
+      request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || "";
+    const forwardedProtocol =
+      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "";
+    const hostEsperado = forwardedHost || request.nextUrl.host;
+    const protocoloEsperado = forwardedProtocol
+      ? `${forwardedProtocol}:`
+      : request.nextUrl.protocol;
+
+    return (
+      origemUrl.host.toLowerCase() !== hostEsperado.toLowerCase() ||
+      origemUrl.protocol.toLowerCase() !== protocoloEsperado.toLowerCase()
+    );
+  } catch {
+    return true;
+  }
+}
+
 function matchesPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
@@ -237,17 +283,29 @@ function redirectLogin(request: NextRequest) {
     loginUrl.searchParams.set("next", next);
   }
 
-  return NextResponse.redirect(loginUrl);
+  return aplicarHeadersPrivados(NextResponse.redirect(loginUrl));
 }
 
 function redirectVendedor(request: NextRequest) {
   const vendasUrl = new URL("/vendas/nova-v2", request.url);
 
-  return NextResponse.redirect(vendasUrl);
+  return aplicarHeadersPrivados(NextResponse.redirect(vendasUrl));
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isOrigemMutacaoInvalida(request)) {
+    return NextResponse.json(
+      { error: "Origem da requisicao nao permitida." },
+      {
+        status: 403,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
 
   if (matchesPrefix(pathname, LOJA_PEDIDO_PREFIX)) {
     if (!(await pedidoPublicoAutorizado(request))) {
@@ -324,7 +382,7 @@ export async function middleware(request: NextRequest) {
     const sessao = await verificarSessaoAdminToken(token);
 
     if (sessao && isAuthorizedForPath(sessao, pathname)) {
-      return NextResponse.next();
+      return aplicarHeadersPrivados(NextResponse.next());
     }
 
     if (sessao) {
@@ -337,17 +395,17 @@ export async function middleware(request: NextRequest) {
 
       return redirectVendedor(request);
     }
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao validar sessão administrativa.";
-
+  } catch {
     if (isApi(pathname)) {
-      return NextResponse.json({ error: message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Erro ao validar a sessão administrativa." },
+        { status: 500 },
+      );
     }
 
-    return new NextResponse(message, { status: 500 });
+    return new NextResponse("Erro ao validar a sessão administrativa.", {
+      status: 500,
+    });
   }
 
   if (isApi(pathname)) {

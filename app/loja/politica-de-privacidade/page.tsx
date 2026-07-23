@@ -15,40 +15,48 @@ export default function PoliticaDePrivacidadePage() {
   return (
     <LegalPageShell
       slug="politica-de-privacidade"
-      title="Politica de Privacidade"
-      description="Esta pagina resume como os dados informados na loja online podem ser utilizados para atendimento, compra e relacionamento."
+      title="Política de Privacidade"
+      description="Esta página resume como os dados informados na loja online podem ser utilizados para atendimento, compra e relacionamento."
       sections={[
         {
           title: "Dados coletados",
           paragraphs: [
-            "A loja pode solicitar dados como nome, telefone, e-mail, documento e endereco para cadastro, atendimento, entrega e acompanhamento de pedidos.",
-            "Tambem podem ser registrados dados de navegacao e interacao para melhorar a experiencia da loja e a seguranca da operacao.",
+            "A loja pode solicitar dados como nome, telefone, e-mail, documento e endereço para cadastro, atendimento, entrega e acompanhamento de pedidos.",
+            "Também podem ser registrados dados de navegação e interação para melhorar a experiência da loja e a segurança da operação.",
           ],
         },
         {
-          title: "Uso das informacoes",
+          title: "Uso das informações",
           paragraphs: [
-            "Os dados podem ser usados para processar pedidos, confirmar pagamentos, organizar entregas, prestar suporte e cumprir obrigacoes legais aplicaveis.",
-            "Quando voce autoriza expressamente, a loja pode usar o WhatsApp informado para relacionamento, novidades, ofertas e recomendacoes. A autorizacao e opcional e pode ser revogada na area Minha conta.",
-            "A Stella Colari deve revisar os canais oficiais de contato e os provedores usados antes da publicacao final desta politica.",
+            "Os dados podem ser usados para processar pedidos, confirmar pagamentos, organizar entregas, prestar suporte e cumprir obrigações legais aplicáveis.",
+            "Quando você autoriza expressamente, a loja pode usar o WhatsApp informado para relacionamento, novidades, ofertas e recomendações. A autorização é opcional e pode ser revogada na área Minha Conta.",
+            "A Stella Colari deve revisar os canais oficiais de contato e os provedores usados antes da publicação final desta política.",
           ],
         },
         {
-          title: "Cookies, armazenamento local e preferencias",
+          title: "Cookies, armazenamento local e preferências",
           paragraphs: [
-            "A loja usa recursos essenciais para manter carrinho, login, seguranca e funcionamento do checkout. Esses recursos sao necessarios para a experiencia de compra.",
-            "Com a sua escolha, a loja tambem pode registrar sinais de analytics, como busca, produto visualizado, favoritos, carrinho e inicio de checkout, sempre com metadata limitada e sem incluir dados sensiveis como telefone, e-mail, documento ou endereco.",
-            "Favoritos, buscas recentes e preferencias de privacidade podem ser salvos no navegador do visitante. Voce pode revisar as preferencias pelo link no rodape da loja.",
-            "Preferencias de relacionamento informadas em cadastro, checkout, Minha conta ou atendimento podem ser registradas por canal e finalidade, com possibilidade de revogacao.",
-            "A falta de consentimento registrado nao autoriza campanhas de WhatsApp. Desmarcar a opcao no cadastro ou no checkout nao revoga uma autorizacao anterior; a revogacao deve ser feita de forma explicita.",
-            "Recursos de marketing e CRM podem ser evoluidos futuramente, mas nao disparam automacoes nesta versao de preparacao.",
+            "A loja usa recursos essenciais para manter carrinho, login, segurança e funcionamento do checkout. Esses recursos são necessários para a experiência de compra.",
+            "Com a sua escolha, a loja também pode registrar sinais de analytics, como busca, produto visualizado, favoritos, carrinho e início de checkout, sempre com metadados limitados e sem incluir dados sensíveis como telefone, e-mail, documento ou endereço.",
+            "Favoritos e buscas recentes somente são mantidos no navegador quando Personalização está autorizada. Você pode revisar ou revogar as preferências pelo link no rodapé da loja; a aplicação remove os dados opcionais locais das categorias rejeitadas.",
+            "Preferências de relacionamento informadas em cadastro, checkout, Minha Conta ou atendimento podem ser registradas por canal e finalidade, com possibilidade de revogação.",
+            "A falta de consentimento registrado não autoriza campanhas de WhatsApp. Desmarcar a opção no cadastro ou no checkout não revoga uma autorização anterior; a revogação deve ser feita de forma explícita.",
+            "Nenhuma tecnologia de publicidade ou marketing comportamental está ativa nesta versão. Consulte também a Política de Cookies para o inventário técnico atual.",
           ],
         },
         {
-          title: "Seguranca e revisao",
+          title: "Direitos, retenção e operadores",
           paragraphs: [
-            "As informacoes devem ser tratadas com cuidado e acesso restrito aos processos necessarios para operacao da loja.",
-            "Solicitacoes sobre dados pessoais devem ser direcionadas aos canais oficiais publicados pela marca.",
+            "Solicitações de confirmação, acesso, correção, oposição, revogação ou eliminação devem passar por verificação de identidade e análise da finalidade aplicável. Alguns registros de pedido, pagamento, fraude, atendimento ou obrigação legal podem precisar ser preservados mesmo após uma solicitação.",
+            "Stripe, Melhor Envio, ViaCEP, Vercel, Vercel Blob e o provedor de banco podem atuar nos fluxos técnicos necessários. Contratos, prazos de retenção e transferências internacionais desses operadores exigem revisão jurídica e operacional contínua.",
+            "O canal oficial para exercício de direitos ainda precisa ser confirmado e publicado pela marca. Até essa confirmação, o processo não deve ser considerado juridicamente concluído.",
+          ],
+        },
+        {
+          title: "Segurança e revisão",
+          paragraphs: [
+            "As informações devem ser tratadas com cuidado e acesso restrito aos processos necessários para operação da loja.",
+            "Esta página descreve controles técnicos e operacionais atuais, mas não representa declaração de conformidade jurídica integral. Bases legais, prazos, contratos e textos finais devem ser validados por assessoria jurídica.",
           ],
         },
       ]}

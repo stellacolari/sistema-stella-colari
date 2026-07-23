@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 type KitComponenteComProduto = {
@@ -279,6 +280,8 @@ async function registrarSaidaEstoqueAdicional({
 }
 
 export async function criarCompra(formData: FormData) {
+  await exigirAdminComPermissao("compras", "criar");
+
   const fornecedor = String(formData.get("fornecedor") || "").trim();
   const descontoPercentual = normalizarNumero(formData.get("descontoPercentual"));
   const frete = normalizarNumero(formData.get("frete"));
@@ -321,6 +324,8 @@ export async function criarCompra(formData: FormData) {
 }
 
 export async function adicionarItemCompra(compraId: string, formData: FormData) {
+  await exigirAdminComPermissao("compras", "criar");
+
   const tipoItem = String(formData.get("tipoItem") || "").trim();
   const codigoDigitado = String(formData.get("codigoDigitado") || "").trim();
   const quantidade = Number(formData.get("quantidade") || 0);
@@ -631,6 +636,8 @@ export async function alterarQuantidadeItemCompra(
   novaQuantidade: number,
   motivo = "Alteração de quantidade de item da compra."
 ) {
+  await exigirAdminComPermissao("compras", "editar");
+
   if (!compraId) {
     throw new Error("Compra não informada.");
   }
@@ -872,6 +879,8 @@ export async function alterarQuantidadeItemCompra(
 }
 
 export async function cancelarItensCompra(compraId: string, itemIds: string[]) {
+  await exigirAdminComPermissao("compras", "editar");
+
   if (!itemIds.length) {
     throw new Error("Nenhum item selecionado.");
   }

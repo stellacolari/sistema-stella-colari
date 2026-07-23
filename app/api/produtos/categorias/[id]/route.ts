@@ -1,9 +1,7 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AdminPermissaoError, exigirAdminComPermissao } from "@/lib/auth/admin";
+import { salvarImagemLocalSegura } from "@/lib/security/upload-imagem-local";
 
 export const runtime = "nodejs";
 
@@ -39,31 +37,7 @@ function parseNumber(value: FormDataEntryValue | null, fallback = 0) {
 }
 
 async function salvarImagemCategoria(file: File) {
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const extensaoOriginal = path.extname(file.name || "").toLowerCase();
-
-  const extensao =
-    extensaoOriginal && extensaoOriginal.length <= 8
-      ? extensaoOriginal
-      : ".jpg";
-
-  const nomeArquivo = `${randomUUID()}${extensao}`;
-  const pastaDestino = path.join(
-    process.cwd(),
-    "public",
-    "uploads",
-    "categorias"
-  );
-
-  await mkdir(pastaDestino, { recursive: true });
-
-  const caminhoDestino = path.join(pastaDestino, nomeArquivo);
-
-  await writeFile(caminhoDestino, buffer);
-
-  return `/uploads/categorias/${nomeArquivo}`;
+  return salvarImagemLocalSegura(file, "categorias");
 }
 
 async function categoriaMaeEhDescendente(

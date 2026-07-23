@@ -5,11 +5,32 @@ import {
   type BuscaLojaTipo,
   type BuscaLojaModo,
 } from "@/lib/loja/busca";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").slice(0, 160);
+    const limiteIp = verificarRateLimit({
+      request: req,
+      scope: "loja-busca-ip",
+      limit: 240,
+      windowMs: 60 * 1000,
+    });
+    const limiteTermo = verificarRateLimit({
+      request: req,
+      scope: "loja-busca-termo",
+      identifier: q,
+      limit: 30,
+      windowMs: 60 * 1000,
+    });
+
+    if (!limiteIp.allowed) return respostaRateLimit(limiteIp);
+    if (!limiteTermo.allowed) return respostaRateLimit(limiteTermo);
+
     const limite = Number(searchParams.get("limite") || 12);
     const modo: BuscaLojaModo =
       searchParams.get("modo") === "autocomplete" ? "autocomplete" : "pagina";
@@ -30,8 +51,8 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(resultado);
-  } catch (error) {
-    console.error("Erro ao buscar na loja:", error);
+  } catch {
+    console.error("Erro interno ao buscar na loja.");
 
     return NextResponse.json(
       { error: "Nao foi possivel realizar a busca." },

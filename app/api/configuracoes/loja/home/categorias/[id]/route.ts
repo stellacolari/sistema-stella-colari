@@ -1,9 +1,7 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { protegerMutacaoConteudoLegado } from "@/lib/loja/conteudo/api-auth.server";
+import { salvarImagemLocalSegura } from "@/lib/security/upload-imagem-local";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,21 +25,8 @@ function booleano(value: FormDataEntryValue | null) {
   return String(value ?? "true") === "true";
 }
 
-function extensaoArquivo(nome: string) {
-  const ext = path.extname(nome).toLowerCase();
-  return [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext) ? ext : ".jpg";
-}
-
 async function salvarImagem(file: File) {
-  const nomeArquivo = `${randomUUID()}${extensaoArquivo(file.name)}`;
-  const pasta = path.join(process.cwd(), "public", "uploads", "loja-home");
-
-  await mkdir(pasta, { recursive: true });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(pasta, nomeArquivo), buffer);
-
-  return `/uploads/loja-home/${nomeArquivo}`;
+  return salvarImagemLocalSegura(file, "loja-home");
 }
 
 export async function PATCH(request: Request, context: RouteContext) {

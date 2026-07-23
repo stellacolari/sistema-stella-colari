@@ -176,7 +176,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 202 });
     }
 
-    console.error("Erro ao registrar evento comercial:", error);
+    console.error("Erro interno ao registrar evento comercial.");
 
     return NextResponse.json(
       { error: "Erro ao registrar evento comercial." },

@@ -1,8 +1,7 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import { salvarImagemLocalSegura } from "@/lib/security/upload-imagem-local";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,18 +24,10 @@ function limparNumero(value: FormDataEntryValue | null) {
   return numero;
 }
 
-function getExtensaoArquivo(nome: string) {
-  const extensao = path.extname(nome).toLowerCase();
-
-  if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(extensao)) {
-    return extensao;
-  }
-
-  return ".jpg";
-}
-
 export async function GET() {
   try {
+    await exigirAdminComPermissao("lojaOnline", "ver");
+
     const banners = await prisma.bannerLoja.findMany({
       orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }],
     });
@@ -54,6 +45,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await exigirAdminComPermissao("lojaOnline", "editar");
+
     const formData = await request.formData();
 
     const titulo = limparTexto(formData.get("titulo"));
@@ -77,28 +70,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const extensao = getExtensaoArquivo(imagem.name);
-    const nomeArquivo = `${randomUUID()}${extensao}`;
-
-    const pastaUploads = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "banners"
-    );
-
-    await mkdir(pastaUploads, { recursive: true });
-
-    const bytes = await imagem.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    await writeFile(path.join(pastaUploads, nomeArquivo), buffer);
+    const imagemUrl = await salvarImagemLocalSegura(imagem, "banners");
 
     const banner = await prisma.bannerLoja.create({
       data: {
         titulo: titulo || null,
         subtitulo: subtitulo || null,
-        imagemUrl: `/uploads/banners/${nomeArquivo}`,
+        imagemUrl,
         linkUrl: linkUrl || null,
         ordem,
         ativo,

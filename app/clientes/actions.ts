@@ -1,5 +1,6 @@
 "use server";
 
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 
 function gerarCodigoCliente(numero: number) {
@@ -15,6 +16,8 @@ function limparTelefone(valor: string) {
 }
 
 export async function criarCliente(formData: FormData) {
+  await exigirAdminComPermissao("clientes", "criar");
+
   const nome = String(formData.get("nome") || "").trim();
   const telefone = String(formData.get("telefone") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -80,6 +83,8 @@ export async function criarCliente(formData: FormData) {
 }
 
 export async function atualizarCliente(id: string, formData: FormData) {
+  await exigirAdminComPermissao("clientes", "editar");
+
   const nome = String(formData.get("nome") || "").trim();
   const telefone = String(formData.get("telefone") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -130,6 +135,8 @@ export async function atualizarCliente(id: string, formData: FormData) {
 }
 
 export async function alternarStatusCliente(id: string, statusAtual: string) {
+  await exigirAdminComPermissao("clientes", "editar");
+
   await prisma.cliente.update({
     where: { id },
     data: {

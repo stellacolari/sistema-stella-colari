@@ -157,14 +157,12 @@ export async function PATCH(req: Request) {
     });
 
     return NextResponse.json({ ok: true, cliente });
-  } catch (error) {
-    console.error("Erro ao atualizar dados da conta:", error);
+  } catch {
+    console.error("Erro interno ao atualizar dados da conta.");
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao atualizar dados da conta.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel atualizar os dados da conta." },
+      { status: 500 },
+    );
   }
 }

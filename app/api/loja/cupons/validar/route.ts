@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 function normalizarCodigoCupom(value: unknown) {
   return String(value ?? "")
@@ -48,6 +52,15 @@ function calcularDescontoCupom({
 
 export async function POST(req: Request) {
   try {
+    const limite = verificarRateLimit({
+      request: req,
+      scope: "loja-cupom",
+      limit: 30,
+      windowMs: 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
+
     const body = await req.json().catch(() => ({}));
 
     const clienteId = await obterClienteAutenticadoId();
@@ -168,12 +181,12 @@ export async function POST(req: Request) {
         descontoValor,
       },
     });
-  } catch (error) {
-    console.error("Erro ao validar cupom:", error);
+  } catch {
+    console.error("Erro interno ao validar cupom.");
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao validar cupom.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel validar o cupom." },
+      { status: 500 },
+    );
   }
 }

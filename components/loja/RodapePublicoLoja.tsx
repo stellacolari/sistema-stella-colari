@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import { normalizarLojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import { abrirPreferenciasPrivacidade } from "@/lib/loja/consentimento-privacidade";
+import { normalizarHrefPublico } from "@/lib/loja/url-publica";
 
 type RodapeMenuItem = {
   id: string;
@@ -23,6 +24,7 @@ const LOGO_URL = "/logo-stella.png";
 const LEGAL_LINKS = [
   { href: "/loja/termos-de-uso", label: "Termos de Uso" },
   { href: "/loja/politica-de-privacidade", label: "Política de Privacidade" },
+  { href: "/loja/politica-de-cookies", label: "Política de Cookies" },
   { href: "/loja/trocas-e-devolucoes", label: "Trocas e Devoluções" },
   { href: "/loja/frete-e-prazos", label: "Frete e Prazos" },
   { href: "/loja/contato", label: "Contato" },
@@ -41,11 +43,12 @@ function LinkRodape({
   children: ReactNode;
   novaAba?: boolean;
 }) {
-  const external = novaAba || isExternalUrl(href);
+  const hrefSeguro = normalizarHrefPublico(href, "/loja");
+  const external = novaAba || isExternalUrl(hrefSeguro);
 
   return (
     <Link
-      href={href}
+      href={hrefSeguro}
       prefetch={false}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
@@ -89,9 +92,12 @@ export default function RodapePublicoLoja({
     return null;
   }
 
-  const redesAtivas = config.redesSociais.filter(
-    (rede) => rede.ativo && rede.url
-  );
+  const redesAtivas = config.redesSociais
+    .map((rede) => ({
+      ...rede,
+      url: normalizarHrefPublico(rede.url),
+    }))
+    .filter((rede) => rede.ativo && rede.url);
   const selosAtivos = config.selos.filter((selo) => selo.ativo && selo.imagemUrl);
   const linksPersonalizadosAtivos = config.rodape.colunas.flatMap((coluna) =>
     coluna.links.filter((link) => link.ativo)
@@ -150,12 +156,25 @@ export default function RodapePublicoLoja({
                   );
 
                   if (selo.linkUrl) {
+                    const linkSeguro = normalizarHrefPublico(selo.linkUrl);
+
+                    if (!linkSeguro) {
+                      return (
+                        <span
+                          key={selo.id}
+                          className="inline-flex border border-[#f4f0e8]/20 bg-white px-3 py-2"
+                        >
+                          {imagem}
+                        </span>
+                      );
+                    }
+
                     return (
                       <Link
                         key={selo.id}
-                        href={selo.linkUrl}
-                        target={isExternalUrl(selo.linkUrl) ? "_blank" : undefined}
-                        rel={isExternalUrl(selo.linkUrl) ? "noreferrer" : undefined}
+                        href={linkSeguro}
+                        target={isExternalUrl(linkSeguro) ? "_blank" : undefined}
+                        rel={isExternalUrl(linkSeguro) ? "noreferrer" : undefined}
                         className="inline-flex border border-[#f4f0e8]/20 bg-white px-3 py-2 transition hover:border-[#f4f0e8]/60"
                       >
                         {imagem}

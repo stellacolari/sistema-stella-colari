@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { regraAplicaACategoria } from "@/lib/regras-categoria";
 import { unlink } from "fs/promises";
+import path from "path";
 import { put, del } from "@vercel/blob";
+import sharp from "sharp";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 const LIMITE_IMAGEM_BASE64_MB = 6;
@@ -463,7 +465,10 @@ async function salvarImagemBase64(
     "image/webp": "webp",
   };
 
-  const extensao = extensaoPorMime[mimeType] || "jpg";
+  const extensao = extensaoPorMime[mimeType];
+  if (!extensao) {
+    throw new Error("Formato de imagem não permitido.");
+  }
 
   const codigoSeguro = codigoInterno
     .toLowerCase()
@@ -487,6 +492,20 @@ if (buffer.length > LIMITE_IMAGEM_BASE64_BYTES) {
   );
 }
 
+const metadata = await sharp(buffer, {
+  limitInputPixels: 40_000_000,
+}).metadata();
+const formatoEsperado = extensao === "jpg" ? "jpeg" : extensao;
+
+if (
+  metadata.format !== formatoEsperado ||
+  !metadata.width ||
+  !metadata.height ||
+  metadata.width * metadata.height > 40_000_000
+) {
+  throw new Error("O conteúdo da imagem enviada é inválido.");
+}
+
 const blob = await put(nomeArquivo, buffer, {
   access: "public",
   contentType: mimeType,
@@ -508,8 +527,16 @@ async function removerImagemAntiga(imagemUrl?: string | null) {
     }
 
     if (imagemUrl.startsWith("/uploads/")) {
-      const caminhoLocal = `${process.cwd()}/public${imagemUrl}`;
-      await unlink(caminhoLocal).catch(() => {});
+      const raizPublica = path.resolve(process.cwd(), "public", "uploads");
+      const caminhoLocal = path.resolve(
+        process.cwd(),
+        "public",
+        imagemUrl.replace(/^\/+/, ""),
+      );
+
+      if (caminhoLocal.startsWith(`${raizPublica}${path.sep}`)) {
+        await unlink(caminhoLocal).catch(() => {});
+      }
     }
   } catch (error) {
     console.warn("Não foi possível remover a imagem do produto:", error);

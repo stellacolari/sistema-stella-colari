@@ -1,8 +1,10 @@
 "use server";
 
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
+import sharp from "sharp";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -28,18 +30,43 @@ async function salvarImagemBase64(
   const pastaUploads = path.join(process.cwd(), "public", "uploads", "adicionais");
   await mkdir(pastaUploads, { recursive: true });
 
-  const matches = imagemBase64.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+  const matches = imagemBase64.match(
+    /^data:image\/(jpeg|jpg|png|webp);base64,([a-zA-Z0-9+/=]+)$/,
+  );
 
   if (!matches) {
     throw new Error("Formato da imagem inválido.");
   }
 
-  const extensao = matches[1] === "png" ? "png" : matches[1] === "webp" ? "webp" : "jpg";
+  const tipoInformado = matches[1] === "jpg" ? "jpeg" : matches[1];
+  const extensao =
+    tipoInformado === "png"
+      ? "png"
+      : tipoInformado === "webp"
+        ? "webp"
+        : "jpg";
   const base64Data = matches[2];
   const nomeArquivo = nomeSeguroArquivo(`${codigoInterno}-${Date.now()}.${extensao}`);
   const caminhoCompleto = path.join(pastaUploads, nomeArquivo);
 
   const buffer = Buffer.from(base64Data, "base64");
+  if (buffer.byteLength > 4 * 1024 * 1024) {
+    throw new Error("A imagem deve ter no maximo 4 MB.");
+  }
+
+  const metadata = await sharp(buffer, {
+    limitInputPixels: 40_000_000,
+  }).metadata();
+
+  if (
+    metadata.format !== tipoInformado ||
+    !metadata.width ||
+    !metadata.height ||
+    metadata.width * metadata.height > 40_000_000
+  ) {
+    throw new Error("O conteudo da imagem enviada e invalido.");
+  }
+
   await writeFile(caminhoCompleto, buffer);
 
   return `/uploads/adicionais/${nomeArquivo}`;
@@ -47,18 +74,30 @@ async function salvarImagemBase64(
 
 async function removerImagemAntiga(imagemUrl: string | null) {
   if (!imagemUrl) return;
+  if (!imagemUrl.startsWith("/uploads/adicionais/")) return;
 
   const caminhoRelativo = imagemUrl.replace(/^\/+/, "");
   const caminhoCompleto = path.join(process.cwd(), "public", caminhoRelativo);
+  const pastaPermitida = path.resolve(
+    process.cwd(),
+    "public",
+    "uploads",
+    "adicionais",
+  );
+  const caminhoResolvido = path.resolve(caminhoCompleto);
+
+  if (!caminhoResolvido.startsWith(`${pastaPermitida}${path.sep}`)) return;
 
   try {
-    await unlink(caminhoCompleto);
+    await unlink(caminhoResolvido);
   } catch {
     // ignora se não encontrar
   }
 }
 
 export async function criarItemAdicional(formData: FormData) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -114,6 +153,8 @@ export async function criarItemAdicional(formData: FormData) {
 }
 
 export async function atualizarItemAdicional(id: string, formData: FormData) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   const nome = String(formData.get("nome") || "").trim();
   const codigoFornecedor = String(formData.get("codigoFornecedor") || "").trim();
   const linkCompra = String(formData.get("linkCompra") || "").trim();
@@ -172,6 +213,8 @@ export async function atualizarItemAdicional(id: string, formData: FormData) {
 }
 
 export async function alternarStatusItemAdicional(id: string, ativoAtual: boolean) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   await prisma.itemAdicional.update({
     where: { id },
     data: {

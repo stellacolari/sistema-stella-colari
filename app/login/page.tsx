@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { lerSessaoAdmin } from "@/lib/auth/admin";
+import { normalizarDestinoInterno } from "@/lib/security/redirect-interno";
 import LoginClient from "./LoginClient";
 
 export const metadata: Metadata = {
@@ -9,17 +10,8 @@ export const metadata: Metadata = {
 
 function normalizarNext(value: string | string[] | undefined) {
   const next = Array.isArray(value) ? value[0] : value;
-  const parsed = String(next || "/pedidos").trim();
 
-  if (!parsed.startsWith("/") || parsed.startsWith("//") || parsed.startsWith("/api")) {
-    return "/pedidos";
-  }
-
-  if (parsed === "/login") {
-    return "/pedidos";
-  }
-
-  return parsed;
+  return normalizarDestinoInterno(next);
 }
 
 export default async function LoginPage({

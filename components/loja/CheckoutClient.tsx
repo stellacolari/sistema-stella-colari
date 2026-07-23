@@ -919,8 +919,14 @@ function preencherDadosClienteLogado() {
         return;
       }
 
-      if (form.senha.length < 6) {
-        setErro("A senha deve ter pelo menos 6 caracteres.");
+      if (
+        form.senha.length < 10 ||
+        !/[A-Za-z]/.test(form.senha) ||
+        !/\d/.test(form.senha)
+      ) {
+        setErro(
+          "A senha deve ter pelo menos 10 caracteres, com letras e números.",
+        );
         return;
       }
 
@@ -1436,6 +1442,8 @@ function preencherDadosClienteLogado() {
 
                       <input
                         type="password"
+                        minLength={10}
+                        autoComplete="new-password"
                         value={form.senha}
                         onChange={(event) =>
                           atualizarCampo("senha", event.target.value)
@@ -1451,6 +1459,8 @@ function preencherDadosClienteLogado() {
 
                       <input
                         type="password"
+                        minLength={10}
+                        autoComplete="new-password"
                         value={form.confirmarSenha}
                         onChange={(event) =>
                           atualizarCampo("confirmarSenha", event.target.value)

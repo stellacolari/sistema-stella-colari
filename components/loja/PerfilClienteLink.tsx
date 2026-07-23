@@ -223,8 +223,14 @@ export default function PerfilClienteLink({
       return;
     }
 
-    if (cadastroForm.senha.length < 6) {
-      setErro("A senha deve ter pelo menos 6 caracteres.");
+    if (
+      cadastroForm.senha.length < 10 ||
+      !/[A-Za-z]/.test(cadastroForm.senha) ||
+      !/\d/.test(cadastroForm.senha)
+    ) {
+      setErro(
+        "A senha deve ter pelo menos 10 caracteres, com letras e números.",
+      );
       return;
     }
 
@@ -556,6 +562,8 @@ export default function PerfilClienteLink({
 
                       <input
                         type="password"
+                        minLength={10}
+                        autoComplete="new-password"
                         value={cadastroForm.senha}
                         onChange={(event) =>
                           atualizarCadastro("senha", event.target.value)
@@ -571,6 +579,8 @@ export default function PerfilClienteLink({
 
                       <input
                         type="password"
+                        minLength={10}
+                        autoComplete="new-password"
                         value={cadastroForm.confirmarSenha}
                         onChange={(event) =>
                           atualizarCadastro(

@@ -28,8 +28,8 @@ export async function GET() {
     const resumo = await obterResumoWhatsappPublicoCliente(clienteId);
 
     return NextResponse.json({ resumo });
-  } catch (error) {
-    console.error("Erro ao listar consentimentos publicos:", error);
+  } catch {
+    console.error("Erro interno ao listar consentimentos publicos.");
 
     return NextResponse.json(
       { error: "Erro ao listar consentimentos." },
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
     const resumo = await obterResumoWhatsappPublicoCliente(clienteId);
 
     return NextResponse.json({ resumo });
-  } catch (error) {
-    console.error("Erro ao autorizar consentimento publico:", error);
+  } catch {
+    console.error("Erro interno ao autorizar consentimento publico.");
 
     return NextResponse.json(
       { error: "Erro ao atualizar consentimento." },
@@ -82,8 +82,8 @@ export async function PATCH(request: Request) {
     const resumo = await obterResumoWhatsappPublicoCliente(clienteId);
 
     return NextResponse.json({ resumo });
-  } catch (error) {
-    console.error("Erro ao revogar consentimento publico:", error);
+  } catch {
+    console.error("Erro interno ao revogar consentimento publico.");
 
     return NextResponse.json(
       { error: "Erro ao revogar consentimento." },

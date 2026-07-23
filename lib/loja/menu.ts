@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { MenuPublicoItem } from "@/components/loja/MenuPublicoLoja";
+import { normalizarHrefPublico } from "@/lib/loja/url-publica";
 
 export function menuEstaAtivo(menu: {
   ativo: boolean;
@@ -29,7 +30,10 @@ export function getMenuHref(menu: {
   categoria: string | null;
   paginaEspecial?: string | null;
 }) {
-  if (menu.linkUrl) return menu.linkUrl;
+  if (menu.linkUrl) {
+    const linkSeguro = normalizarHrefPublico(menu.linkUrl);
+    if (linkSeguro) return linkSeguro;
+  }
 
   if (menu.paginaEspecial === "DESCONTOS") {
     return "/loja/descontos";

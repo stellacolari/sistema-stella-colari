@@ -10,6 +10,10 @@ import {
 } from "@/lib/loja/pedido-acesso";
 import { stripe } from "@/lib/stripe";
 import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 const STATUS_PAGAMENTO_FINALIZADOS = new Set([
   "PAGO",
@@ -51,14 +55,23 @@ function getBaseUrl(req: Request) {
 async function buscarSessaoStripeExistente(sessionId: string) {
   try {
     return await stripe.checkout.sessions.retrieve(sessionId);
-  } catch (error) {
-    console.error("Erro ao buscar sessao Stripe existente:", error);
+  } catch {
+    console.error("Erro interno ao buscar sessao Stripe existente.");
     return null;
   }
 }
 
 export async function POST(req: Request) {
   try {
+    const limite = verificarRateLimit({
+      request: req,
+      scope: "loja-stripe-checkout",
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
+
     const body = await req.json().catch(() => ({}));
     const codigo = String(body.codigo || "").trim();
     const accessToken = String(body.access || "").trim();
@@ -219,6 +232,7 @@ export async function POST(req: Request) {
       metadata: {
         pedidoId: pedido.id,
         pedidoCodigo: pedido.codigo,
+        origem: "LOJA_STELLA",
       },
       line_items: [
         {
@@ -235,6 +249,8 @@ export async function POST(req: Request) {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
+    }, {
+      idempotencyKey: `loja-pedido-${pedido.id}`,
     });
 
     await prisma.pedidoOnline.update({
@@ -257,14 +273,12 @@ export async function POST(req: Request) {
       },
       accessTokenAutorizado,
     );
-  } catch (error) {
-    console.error("Erro ao criar checkout Stripe:", error);
+  } catch {
+    console.error("Erro interno ao criar checkout Stripe.");
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao criar checkout de pagamento.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel criar o checkout de pagamento." },
+      { status: 500 },
+    );
   }
 }

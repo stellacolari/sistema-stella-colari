@@ -32,6 +32,10 @@ import {
   criarSessaoCliente,
   obterClienteAutenticadoId,
 } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
 const CHECKOUT_DISPONIBILIDADE_MESSAGE =
@@ -639,6 +643,15 @@ async function buscarCupomValido({
 
 export async function POST(request: Request) {
   try {
+    const limite = verificarRateLimit({
+      request,
+      scope: "loja-checkout",
+      limit: 8,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
+
     const body = await request.json();
 
     const clienteSessaoId = await obterClienteAutenticadoId();
@@ -720,9 +733,12 @@ export async function POST(request: Request) {
         );
       }
 
-      if (senha.length < 6) {
+      if (senha.length < 10 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
         return NextResponse.json(
-          { error: "A senha deve ter pelo menos 6 caracteres." },
+          {
+            error:
+              "A senha deve ter pelo menos 10 caracteres, com letras e números.",
+          },
           { status: 400 }
         );
       }
@@ -1581,11 +1597,11 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error("Erro ao finalizar pedido online:", error);
+    console.error("Erro interno ao finalizar pedido online.");
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao finalizar pedido online.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel finalizar o pedido online." },
+      { status: 500 },
+    );
   }
 }

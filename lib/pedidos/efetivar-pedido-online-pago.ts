@@ -89,19 +89,51 @@ async function baixarEstoqueProduto({
 
   const custoMedioProduto = Number(estoqueProduto.custoMedio || 0);
   const gastoProduto = custoMedioProduto * quantidade;
-  const novaQuantidadeProduto = estoqueProduto.quantidadeAtual - quantidade;
-  const novoValorProduto =
-    Number(estoqueProduto.valorAcumulado || 0) - gastoProduto;
-  const valorProdutoSeguro = novoValorProduto > 0 ? novoValorProduto : 0;
+  const baixa = await tx.estoqueProduto.updateMany({
+    where: {
+      id: estoqueProduto.id,
+      quantidadeAtual: {
+        gte: quantidade,
+      },
+    },
+    data: {
+      quantidadeAtual: {
+        decrement: quantidade,
+      },
+      valorAcumulado: {
+        decrement: gastoProduto,
+      },
+    },
+  });
+
+  if (baixa.count !== 1) {
+    throw new Error(`Saldo alterado durante o pagamento: ${descricao}.`);
+  }
+
+  const estoqueAtualizado = await tx.estoqueProduto.findUniqueOrThrow({
+    where: {
+      id: estoqueProduto.id,
+    },
+    select: {
+      quantidadeAtual: true,
+      valorAcumulado: true,
+    },
+  });
+  const valorProdutoSeguro = Math.max(
+    Number(estoqueAtualizado.valorAcumulado || 0),
+    0,
+  );
 
   await tx.estoqueProduto.update({
     where: {
       id: estoqueProduto.id,
     },
     data: {
-      quantidadeAtual: novaQuantidadeProduto,
       valorAcumulado: valorProdutoSeguro,
-      custoMedio: calcularCustoMedio(valorProdutoSeguro, novaQuantidadeProduto),
+      custoMedio: calcularCustoMedio(
+        valorProdutoSeguro,
+        estoqueAtualizado.quantidadeAtual,
+      ),
     },
   });
 
@@ -159,18 +191,53 @@ async function baixarEstoqueAdicional({
 
   const custoUnitario = Number(estoque.custoMedio || 0);
   const custoTotal = custoUnitario * quantidade;
-  const novaQuantidade = estoque.quantidadeAtual - quantidade;
-  const novoValorAcumulado = Number(estoque.valorAcumulado || 0) - custoTotal;
-  const valorSeguro = novoValorAcumulado > 0 ? novoValorAcumulado : 0;
+  const baixa = await tx.estoqueAdicional.updateMany({
+    where: {
+      id: estoque.id,
+      quantidadeAtual: {
+        gte: quantidade,
+      },
+    },
+    data: {
+      quantidadeAtual: {
+        decrement: quantidade,
+      },
+      valorAcumulado: {
+        decrement: custoTotal,
+      },
+    },
+  });
+
+  if (baixa.count !== 1) {
+    throw new Error(
+      `Saldo alterado durante o pagamento: ${estoque.itemAdicional.nome}.`,
+    );
+  }
+
+  const estoqueAtualizado = await tx.estoqueAdicional.findUniqueOrThrow({
+    where: {
+      id: estoque.id,
+    },
+    select: {
+      quantidadeAtual: true,
+      valorAcumulado: true,
+    },
+  });
+  const valorSeguro = Math.max(
+    Number(estoqueAtualizado.valorAcumulado || 0),
+    0,
+  );
 
   await tx.estoqueAdicional.update({
     where: {
       id: estoque.id,
     },
     data: {
-      quantidadeAtual: novaQuantidade,
       valorAcumulado: valorSeguro,
-      custoMedio: calcularCustoMedio(valorSeguro, novaQuantidade),
+      custoMedio: calcularCustoMedio(
+        valorSeguro,
+        estoqueAtualizado.quantidadeAtual,
+      ),
     },
   });
 

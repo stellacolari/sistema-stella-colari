@@ -13,6 +13,7 @@ import {
   registrarBuscaRealizada,
   registrarBuscaSemResultado,
 } from "@/lib/loja/eventos-client";
+import { categoriaConsentimentoPermitida } from "@/lib/loja/consentimento-privacidade";
 
 const BUSCAS_RECENTES_KEY = "stella-buscas-recentes";
 
@@ -38,6 +39,7 @@ function moeda(valor: number) {
 
 function lerBuscasRecentes() {
   if (typeof window === "undefined") return [];
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) return [];
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(BUSCAS_RECENTES_KEY) || "[]");
@@ -52,6 +54,7 @@ function lerBuscasRecentes() {
 
 function salvarBuscaRecente(termo: string) {
   if (typeof window === "undefined") return;
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) return;
 
   const termoLimpo = termo.trim();
   if (!termoLimpo) return;

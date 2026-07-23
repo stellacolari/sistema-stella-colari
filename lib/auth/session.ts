@@ -5,6 +5,7 @@ export type SessaoAdminPayload = {
   email: string;
   nome: string;
   perfil: string;
+  jti: string;
   exp: number;
 };
 
@@ -140,12 +141,13 @@ export function getOpcoesCookieSessaoAdmin(opcoes: OpcoesSessaoAdmin = {}) {
 }
 
 export async function assinarSessaoAdmin(
-  payload: Omit<SessaoAdminPayload, "exp">,
+  payload: Omit<SessaoAdminPayload, "exp" | "jti">,
   opcoes: OpcoesSessaoAdmin = {},
 ) {
   const maxAge = resolverSessaoAdminMaxAge(opcoes.maxAgeSeconds);
   const sessao: SessaoAdminPayload = {
     ...payload,
+    jti: crypto.randomUUID(),
     exp: Math.floor(Date.now() / 1000) + maxAge,
   };
   const body = base64UrlEncode(JSON.stringify(sessao));

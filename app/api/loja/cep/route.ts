@@ -50,8 +50,8 @@ export async function GET(req: Request) {
     };
 
     return NextResponse.json({ endereco });
-  } catch (error) {
-    console.error("Erro ao buscar CEP:", error);
+  } catch {
+    console.error("Erro interno ao buscar CEP.");
 
     return NextResponse.json(
       { error: "Erro ao buscar CEP." },

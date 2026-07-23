@@ -1,8 +1,7 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
+import { salvarImagemLocalSegura } from "@/lib/security/upload-imagem-local";
 
 export const runtime = "nodejs";
 
@@ -26,6 +25,8 @@ function getNumberValue(value: FormDataEntryValue | null) {
 
 export async function POST(req: Request) {
   try {
+    await exigirAdminComPermissao("lojaOnline", "editar");
+
     const formData = await req.formData();
 
     const titulo = getStringValue(formData.get("titulo"));
@@ -42,33 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!arquivo.type.startsWith("image/")) {
-      return NextResponse.json(
-        { error: "O arquivo enviado precisa ser uma imagem." },
-        { status: 400 }
-      );
-    }
-
-    const extensao =
-      arquivo.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
-      "png";
-
-    const nomeArquivo = `${randomUUID()}.${extensao}`;
-    const pastaUploads = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "banners"
-    );
-
-    await mkdir(pastaUploads, { recursive: true });
-
-    const bytes = await arquivo.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    await writeFile(path.join(pastaUploads, nomeArquivo), buffer);
-
-    const imagemUrl = `/uploads/banners/${nomeArquivo}`;
+    const imagemUrl = await salvarImagemLocalSegura(arquivo, "banners");
 
     const banner = await prisma.bannerLoja.create({
       data: {

@@ -8,24 +8,11 @@ import {
   getOpcoesCookieSessaoAdmin,
   isAdminSessionSecretError,
 } from "@/lib/auth/session";
-
-function normalizarNext(value: unknown) {
-  const next = String(value || "/pedidos").trim();
-
-  if (
-    !next.startsWith("/") ||
-    next.startsWith("//") ||
-    next.startsWith("/api")
-  ) {
-    return "/pedidos";
-  }
-
-  if (next === "/login") {
-    return "/pedidos";
-  }
-
-  return next;
-}
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
+import { normalizarDestinoInterno } from "@/lib/security/redirect-interno";
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +21,7 @@ export async function POST(request: Request) {
       .trim()
       .toLowerCase();
     const senha = String(body.senha || "");
-    const redirectTo = normalizarNext(body.next);
+    const redirectTo = normalizarDestinoInterno(body.next);
     const manterConectado = body.manterConectado === true;
     const opcoesSessao = manterConectado
       ? { maxAgeSeconds: SESSAO_ADMIN_PERSISTENTE_DURACAO_SEGUNDOS }
@@ -46,6 +33,23 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    const limiteIp = verificarRateLimit({
+      request,
+      scope: "admin-login-ip",
+      limit: 30,
+      windowMs: 15 * 60 * 1000,
+    });
+    const limiteCredencial = verificarRateLimit({
+      request,
+      scope: "admin-login-credencial",
+      identifier: email,
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+
+    if (!limiteIp.allowed) return respostaRateLimit(limiteIp);
+    if (!limiteCredencial.allowed) return respostaRateLimit(limiteCredencial);
 
     const usuario = await prisma.usuarioAdmin.findUnique({
       where: {
@@ -107,13 +111,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.error("Erro ao fazer login administrativo:", error);
+    console.error("Erro interno ao fazer login administrativo.");
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro ao fazer login administrativo.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Não foi possível concluir o login." },
+      { status: 500 },
+    );
   }
 }

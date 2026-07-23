@@ -7,6 +7,10 @@ import {
   FRETE_RETIRADA_LOCAL_ID,
 } from "@/lib/frete/configuracao";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 type ItemCotacaoPayload = {
   produtoId?: unknown;
@@ -65,6 +69,15 @@ function montarOpcaoManual(valor: number, prazoDias: number): FreteOpcao {
 
 export async function POST(request: Request) {
   try {
+    const limite = verificarRateLimit({
+      request,
+      scope: "loja-frete",
+      limit: 30,
+      windowMs: 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
+
     const body = await request.json().catch(() => ({}));
     const cepDestino = normalizarCep(body.cepDestino);
     const itens = normalizarItens(body.itens);
@@ -154,8 +167,7 @@ export async function POST(request: Request) {
       if (!freteConfig.melhorEnvioTokenConfigurado) {
         return NextResponse.json(
           {
-            error:
-              "Token do Melhor Envio não configurado. Configure MELHOR_ENVIO_TOKEN no ambiente.",
+            error: "Frete por entrega indisponível no momento.",
             opcoes: opcoesBase,
           },
           { status: 400 }
@@ -165,8 +177,7 @@ export async function POST(request: Request) {
       if (freteConfig.cepOrigem.length !== 8) {
         return NextResponse.json(
           {
-            error:
-              "CEP de origem do frete não configurado. Ajuste em Configurações > Frete e entrega.",
+            error: "Frete por entrega indisponível no momento.",
             opcoes: opcoesBase,
           },
           { status: 400 }
@@ -185,12 +196,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       opcoes: [...opcoesBase, ...opcoesEntrega],
     });
-  } catch (error) {
-    console.error("Erro ao cotar frete:", error);
+  } catch {
+    console.error("Erro interno ao cotar frete.");
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao cotar frete.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nao foi possivel cotar o frete." },
+      { status: 500 },
+    );
   }
 }

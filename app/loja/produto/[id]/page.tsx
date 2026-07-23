@@ -34,6 +34,15 @@ const buscarConteudoProdutoMemo = cache(() =>
   buscarConteudoPublicadoSistema({ tipo: "PRODUTO_GLOBAL" }),
 );
 
+function serializarJsonLdSeguro(value: unknown) {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 function aplicarModeloSeoProduto(
   value: string,
   produto: { id: string; nome: string; categoria: string },
@@ -213,7 +222,7 @@ export default async function ProdutoLojaPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(produtoJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializarJsonLdSeguro(produtoJsonLd) }}
       />
       <ProdutoLojaClient
         produto={produto}

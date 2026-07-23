@@ -81,7 +81,11 @@ export default function ConsentimentoPrivacidadeBanner() {
   }
 
   function alternarCategoria(categoria: CategoriaConsentimento) {
-    if (categoria === "ESSENCIAL") return;
+    const configuracao = CATEGORIAS_CONSENTIMENTO.find(
+      (item) => item.id === categoria,
+    );
+
+    if (categoria === "ESSENCIAL" || configuracao?.disponivel === false) return;
 
     setPreferencias((current) => ({
       ...current,
@@ -128,7 +132,7 @@ export default function ConsentimentoPrivacidadeBanner() {
                 </p>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-[#5f5a50]">
                   Usamos recursos essenciais para a compra e, com sua escolha,
-                  sinais de experiencia para melhorar busca, favoritos e funil.
+                  sinais de experiência para melhorar busca, favoritos e funil.
                 </p>
               </div>
 
@@ -136,7 +140,7 @@ export default function ConsentimentoPrivacidadeBanner() {
                 type="button"
                 onClick={fecharSeJaEscolheu}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-transparent text-[#777064] transition hover:border-[#27251f]/25 hover:text-[#27251f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
-                aria-label="Fechar preferencias de privacidade"
+                aria-label="Fechar preferências de privacidade"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -163,7 +167,10 @@ export default function ConsentimentoPrivacidadeBanner() {
                         <input
                           type="checkbox"
                           checked={ativo}
-                          disabled={categoria.obrigatoria}
+                          disabled={
+                            categoria.obrigatoria ||
+                            categoria.disponivel === false
+                          }
                           onChange={() => alternarCategoria(categoria.id)}
                           className="h-4 w-4 accent-[#27251f]"
                         />
@@ -178,33 +185,41 @@ export default function ConsentimentoPrivacidadeBanner() {
             )}
 
             <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <Link
-                href="/loja/politica-de-privacidade"
-                className="text-xs font-semibold uppercase tracking-[0.12em] text-[#665f54] underline-offset-4 transition hover:text-[#27251f] hover:underline"
-              >
-                Ver Politica de Privacidade
-              </Link>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <Link
+                  href="/loja/politica-de-privacidade"
+                  className="text-xs font-semibold uppercase tracking-[0.12em] text-[#665f54] underline-offset-4 transition hover:text-[#27251f] hover:underline"
+                >
+                  Ver Política de Privacidade
+                </Link>
+                <Link
+                  href="/loja/politica-de-cookies"
+                  className="text-xs font-semibold uppercase tracking-[0.12em] text-[#665f54] underline-offset-4 transition hover:text-[#27251f] hover:underline"
+                >
+                  Ver Política de Cookies
+                </Link>
+              </div>
 
               {modo === "resumo" ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     onClick={somenteEssenciais}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#27251f] transition hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
-                    Somente essenciais
+                    Rejeitar não essenciais
                   </button>
                   <button
                     type="button"
                     onClick={() => setModo("preferencias")}
                     className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
-                    Personalizar
+                    Configurar
                   </button>
                   <button
                     type="button"
                     onClick={aceitarTodos}
-                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
+                    className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#27251f] transition hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
                     Aceitar todos
                   </button>
@@ -223,14 +238,14 @@ export default function ConsentimentoPrivacidadeBanner() {
                     onClick={somenteEssenciais}
                     className="inline-flex min-h-10 items-center justify-center border border-[#27251f]/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#3d3931] transition hover:border-[#27251f] hover:bg-[#f3f3f1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
-                    Somente essenciais
+                    Rejeitar não essenciais
                   </button>
                   <button
                     type="button"
                     onClick={salvarPreferencias}
                     className="inline-flex min-h-10 items-center justify-center border border-[#27251f] bg-[#27251f] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:bg-[#3b3831] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#27251f]"
                   >
-                    Salvar preferencias
+                    Salvar preferências
                   </button>
                 </div>
               )}

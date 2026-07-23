@@ -7,6 +7,10 @@ import {
   criarSessaoCliente,
   revogarSessaoClienteAtual,
 } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 function criarSenhaHash(senha: string) {
   const salt = randomBytes(16).toString("hex");
@@ -62,6 +66,15 @@ async function gerarProximoCodigoCliente() {
 
 export async function POST(req: Request) {
   try {
+    const limite = verificarRateLimit({
+      request: req,
+      scope: "cliente-cadastro",
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+
+    if (!limite.allowed) return respostaRateLimit(limite);
+
     const body = await req.json().catch(() => ({}));
 
     const nome = normalizarTexto(body.nome);
@@ -108,9 +121,12 @@ export async function POST(req: Request) {
       );
     }
 
-    if (senha.length < 6) {
+    if (senha.length < 10 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
       return NextResponse.json(
-        { error: "A senha deve ter pelo menos 6 caracteres." },
+        {
+          error:
+            "A senha deve ter pelo menos 10 caracteres, com letras e números.",
+        },
         { status: 400 }
       );
     }
@@ -138,7 +154,7 @@ export async function POST(req: Request) {
     if (clienteExistente) {
       return NextResponse.json(
         {
-          error: "Já existe uma conta com este telefone, e-mail ou CPF.",
+          error: "Não foi possível concluir o cadastro com os dados informados.",
         },
         { status: 400 }
       );
@@ -178,10 +194,9 @@ export async function POST(req: Request) {
           clienteId: cliente.id,
           origem: "CADASTRO",
         });
-      } catch (error) {
+      } catch {
         console.error(
-          "Erro ao registrar consentimento publico no cadastro:",
-          error
+          "Erro interno ao registrar consentimento publico no cadastro.",
         );
       }
     }
@@ -208,12 +223,12 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Erro ao criar conta na loja:", error);
+  } catch {
+    console.error("Erro interno ao criar conta na loja.");
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao criar conta.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Não foi possível criar a conta." },
+      { status: 500 },
+    );
   }
 }

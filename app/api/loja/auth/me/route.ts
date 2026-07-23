@@ -43,8 +43,8 @@ export async function GET() {
         tipoCliente: cliente.tipoCliente,
       },
     });
-  } catch (error) {
-    console.error("Erro ao buscar cliente logado:", error);
+  } catch {
+    console.error("Erro interno ao buscar cliente logado.");
 
     return NextResponse.json(
       { error: "Erro ao buscar cliente logado." },

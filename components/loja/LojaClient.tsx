@@ -13,6 +13,7 @@ import RodapePublicoLoja from "@/components/loja/RodapePublicoLoja";
 import { StorePageHeader } from "@/components/loja/StorefrontPrimitives";
 import type { LojaMenuRodapeConfig } from "@/lib/loja/menu-rodape-config-types";
 import type { ProdutoPublico } from "@/lib/loja/produto-publico";
+import { normalizarHrefPublico } from "@/lib/loja/url-publica";
 import styles from "./LojaClient.module.css";
 
 export type LojaProdutoItem = ProdutoPublico;
@@ -92,6 +93,7 @@ function slugify(value: string) {
 }
 
 function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
+  const bannerHref = normalizarHrefPublico(banner.linkUrl);
   const conteudo = (
     <div className={styles.hero}>
       <picture className={styles.heroPicture}>
@@ -117,7 +119,7 @@ function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
                 {banner.titulo}
               </h1>
             ) : null}
-            {banner.linkUrl ? (
+            {bannerHref ? (
               <span className={styles.heroAction}>Descobrir coleção</span>
             ) : null}
           </div>
@@ -128,9 +130,9 @@ function BannerPrincipal({ banner }: { banner: LojaBannerItem }) {
 
   const wrapperClass = styles.heroWrapper;
 
-  if (banner.linkUrl) {
+  if (bannerHref) {
     return (
-      <Link href={banner.linkUrl} className={wrapperClass}>
+      <Link href={bannerHref} className={wrapperClass}>
         {conteudo}
       </Link>
     );
@@ -334,6 +336,7 @@ function ComprePorCategorias({
 
 function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
   if (!bloco) return null;
+  const linkBotaoSeguro = normalizarHrefPublico(bloco.linkBotao);
 
   return (
     <section className={styles.storySection}>
@@ -367,9 +370,9 @@ function BlocoImagemTexto({ bloco }: { bloco: LojaBlocoHomeItem | null }) {
               {bloco.texto}
             </p>
 
-            {bloco.textoBotao && bloco.linkBotao && (
+            {bloco.textoBotao && linkBotaoSeguro && (
               <Link
-                href={bloco.linkBotao}
+                href={linkBotaoSeguro}
                 className={styles.storyButton}
               >
                 {bloco.textoBotao}

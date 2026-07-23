@@ -27,6 +27,7 @@ import {
   registrarCliqueResultadoBusca,
 } from "@/lib/loja/eventos-client";
 import { imagemPublicaPodeSerOtimizada } from "@/lib/loja/imagem-publica";
+import { categoriaConsentimentoPermitida } from "@/lib/loja/consentimento-privacidade";
 
 const LOGO_URL = "/logo-stella.png";
 const CONTATO_URL = "/loja/contato";
@@ -310,6 +311,7 @@ function SecaoAutocomplete({
 
 function lerBuscasRecentes() {
   if (typeof window === "undefined") return [];
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) return [];
 
   try {
     const parsed = JSON.parse(window.localStorage.getItem(BUSCAS_RECENTES_KEY) || "[]");
@@ -324,6 +326,7 @@ function lerBuscasRecentes() {
 
 function salvarBuscaRecente(termo: string) {
   if (typeof window === "undefined") return;
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) return;
 
   const termoLimpo = termo.trim();
   if (!termoLimpo) return;

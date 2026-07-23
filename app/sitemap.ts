@@ -158,6 +158,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "daily",
     priority: 1,
   });
+  adicionarUrl(urls, {
+    url: getLojaUrl("/loja/politica-de-privacidade"),
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.35,
+  });
+  adicionarUrl(urls, {
+    url: getLojaUrl("/loja/politica-de-cookies"),
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.35,
+  });
   const temDescontoReal = produtos.some(
     (produto) =>
       produto.descontoAtivo &&

@@ -1,8 +1,14 @@
+import { categoriaConsentimentoPermitida } from "@/lib/loja/consentimento-privacidade";
+
 export const FAVORITOS_STORAGE_KEY = "stella-favoritos-produtos";
 export const FAVORITOS_UPDATED_EVENT = "stella-favoritos-updated";
 
 export function lerFavoritosIds(): string[] {
   if (typeof window === "undefined") {
+    return [];
+  }
+
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) {
     return [];
   }
 
@@ -26,6 +32,12 @@ export function lerFavoritosIds(): string[] {
 
 export function salvarFavoritosIds(ids: string[]) {
   if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!categoriaConsentimentoPermitida("PERSONALIZACAO")) {
+    window.localStorage.removeItem(FAVORITOS_STORAGE_KEY);
+    window.dispatchEvent(new Event(FAVORITOS_UPDATED_EVENT));
     return;
   }
 

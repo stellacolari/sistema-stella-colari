@@ -8,6 +8,10 @@ import {
   criarSessaoCliente,
   revogarSessaoClienteAtual,
 } from "@/lib/loja/cliente-sessao.server";
+import {
+  respostaRateLimit,
+  verificarRateLimit,
+} from "@/lib/security/rate-limit";
 
 function verificarSenha(senha: string, senhaHash: string | null | undefined) {
   if (!senhaHash) {
@@ -62,6 +66,23 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const limiteIp = verificarRateLimit({
+      request: req,
+      scope: "cliente-login-ip",
+      limit: 40,
+      windowMs: 15 * 60 * 1000,
+    });
+    const limiteCredencial = verificarRateLimit({
+      request: req,
+      scope: "cliente-login-credencial",
+      identifier: identificador,
+      limit: 8,
+      windowMs: 15 * 60 * 1000,
+    });
+
+    if (!limiteIp.allowed) return respostaRateLimit(limiteIp);
+    if (!limiteCredencial.allowed) return respostaRateLimit(limiteCredencial);
 
     const cliente = await prisma.cliente.findFirst({
       where: {
@@ -122,12 +143,12 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Erro ao entrar na loja:", error);
+  } catch {
+    console.error("Erro interno ao entrar na loja.");
 
-    const message =
-      error instanceof Error ? error.message : "Erro ao entrar na loja.";
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Não foi possível concluir o login." },
+      { status: 500 },
+    );
   }
 }

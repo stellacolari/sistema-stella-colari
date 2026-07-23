@@ -73,7 +73,7 @@ const MIME_POR_FORMATO: Record<string, string> = {
   webp: "image/webp",
 };
 
-async function inspecionarImagem(file: File) {
+export async function inspecionarArquivoImagemMidia(file: File) {
   const buffer = Buffer.from(await file.arrayBuffer());
   let metadata: Metadata;
 
@@ -120,7 +120,8 @@ export async function criarMidiaAssetDeArquivo({
     throw new Error(erro);
   }
 
-  const { buffer, metadata, mimeReal } = await inspecionarImagem(file);
+  const { buffer, metadata, mimeReal } =
+    await inspecionarArquivoImagemMidia(file);
   const providerKey = gerarNomeSeguroMidia(file.name);
   const blob = await put(providerKey, buffer, {
     access: "public",

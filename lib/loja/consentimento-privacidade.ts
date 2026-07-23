@@ -15,7 +15,7 @@ export type ConsentimentoPrivacidade = {
   preferencias: PreferenciasConsentimento;
 };
 
-export const CONSENTIMENTO_VERSAO = "2026-06-privacidade-v1";
+export const CONSENTIMENTO_VERSAO = "2026-07-privacidade-v2";
 export const CONSENTIMENTO_STORAGE_KEY = "stella_privacidade_consentimento";
 export const CONSENTIMENTO_ABRIR_EVENTO = "stella_privacidade_abrir";
 export const CONSENTIMENTO_ATUALIZADO_EVENTO = "stella_privacidade_atualizado";
@@ -25,11 +25,12 @@ export const CATEGORIAS_CONSENTIMENTO: {
   titulo: string;
   descricao: string;
   obrigatoria?: boolean;
+  disponivel?: boolean;
 }[] = [
   {
     id: "ESSENCIAL",
     titulo: "Essenciais",
-    descricao: "Mantem carrinho, login, seguranca e funcionamento do checkout.",
+    descricao: "Mantém carrinho, login, segurança e funcionamento do checkout.",
     obrigatoria: true,
   },
   {
@@ -39,13 +40,15 @@ export const CATEGORIAS_CONSENTIMENTO: {
   },
   {
     id: "PERSONALIZACAO",
-    titulo: "Personalizacao",
-    descricao: "Permite usar sinais como favoritos para melhorar a experiencia.",
+    titulo: "Personalização",
+    descricao: "Permite usar sinais como favoritos para melhorar a experiência.",
   },
   {
     id: "MARKETING",
     titulo: "Marketing",
-    descricao: "Reserva preferencias para relacionamento e campanhas futuras.",
+    descricao:
+      "Nenhuma tecnologia de marketing está ativa nesta versão da loja.",
+    disponivel: false,
   },
 ];
 
@@ -76,9 +79,25 @@ function normalizarPreferencias(value: unknown): PreferenciasConsentimento {
 
   preferencias.ANALYTICS = raw.ANALYTICS === true;
   preferencias.PERSONALIZACAO = raw.PERSONALIZACAO === true;
-  preferencias.MARKETING = raw.MARKETING === true;
+  preferencias.MARKETING = false;
 
   return preferencias;
+}
+
+function limparArmazenamentosNaoEssenciais(
+  preferencias: PreferenciasConsentimento,
+) {
+  if (typeof window === "undefined") return;
+
+  if (!preferencias.ANALYTICS) {
+    window.localStorage.removeItem("stella_loja_session_id");
+    window.sessionStorage.removeItem("stella_loja_eventos_recentes");
+  }
+
+  if (!preferencias.PERSONALIZACAO) {
+    window.localStorage.removeItem("stella-favoritos-produtos");
+    window.localStorage.removeItem("stella-buscas-recentes");
+  }
 }
 
 function emitirAtualizacao() {
@@ -95,11 +114,15 @@ export function lerConsentimentoPrivacidade(): ConsentimentoPrivacidade {
   try {
     const raw = window.localStorage.getItem(CONSENTIMENTO_STORAGE_KEY);
 
-    if (!raw) return consentimentoPadrao();
+    if (!raw) {
+      limparArmazenamentosNaoEssenciais(PREFERENCIAS_PADRAO);
+      return consentimentoPadrao();
+    }
 
     const parsed = JSON.parse(raw) as Partial<ConsentimentoPrivacidade>;
 
     if (parsed.versao !== CONSENTIMENTO_VERSAO) {
+      limparArmazenamentosNaoEssenciais(PREFERENCIAS_PADRAO);
       return consentimentoPadrao();
     }
 
@@ -111,6 +134,7 @@ export function lerConsentimentoPrivacidade(): ConsentimentoPrivacidade {
       preferencias: normalizarPreferencias(parsed.preferencias),
     };
   } catch {
+    limparArmazenamentosNaoEssenciais(PREFERENCIAS_PADRAO);
     return consentimentoPadrao();
   }
 }
@@ -128,6 +152,7 @@ export function salvarConsentimentoPrivacidade(
       ...PREFERENCIAS_PADRAO,
       ...preferencias,
       ESSENCIAL: true,
+      MARKETING: false,
     },
   };
 
@@ -135,6 +160,10 @@ export function salvarConsentimentoPrivacidade(
     CONSENTIMENTO_STORAGE_KEY,
     JSON.stringify(consentimento)
   );
+  limparArmazenamentosNaoEssenciais(consentimento.preferencias);
+  if (!consentimento.preferencias.PERSONALIZACAO) {
+    window.dispatchEvent(new Event("stella-favoritos-updated"));
+  }
   emitirAtualizacao();
 
   return consentimento;
@@ -145,7 +174,7 @@ export function aceitarTodosConsentimentos() {
     ESSENCIAL: true,
     ANALYTICS: true,
     PERSONALIZACAO: true,
-    MARKETING: true,
+    MARKETING: false,
   });
 }
 
@@ -156,6 +185,7 @@ export function aceitarSomenteEssenciais() {
 export function resetarConsentimentoPrivacidade() {
   if (typeof window === "undefined") return;
 
+  limparArmazenamentosNaoEssenciais(PREFERENCIAS_PADRAO);
   window.localStorage.removeItem(CONSENTIMENTO_STORAGE_KEY);
   emitirAtualizacao();
   abrirPreferenciasPrivacidade();

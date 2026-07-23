@@ -1,83 +1,49 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { cancelarPedidoOnlineNaoPago } from "@/lib/pedidos/cancelar-pedido-online";
 import { efetivarPedidoOnlinePago } from "@/lib/pedidos/efetivar-pedido-online-pago";
 import { efetivarPedidoManualPagoComoVenda } from "@/lib/vendas/efetivar-pedido-manual";
+import { creditarCashbackPedidoIdempotente } from "@/lib/clientes/creditar-cashback-pedido";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function creditarCashbackDoPedido(pedidoId: string) {
-  const pedidoAtual = await prisma.pedidoOnline.findUnique({
+async function validarCorrelacaoSessao(
+  session: Stripe.Checkout.Session,
+  pedidoId: string,
+) {
+  const pedido = await prisma.pedidoOnline.findUnique({
     where: {
       id: pedidoId,
     },
     select: {
       id: true,
       codigo: true,
-      clienteId: true,
-      cashbackStatus: true,
-      cashbackPrevistoValor: true,
+      origemCanal: true,
+      total: true,
+      gatewayPedidoId: true,
     },
   });
 
-  if (!pedidoAtual) {
+  if (!pedido) return null;
+
+  const totalEsperado = Math.round(Number(pedido.total || 0) * 100);
+  const referenciaValida =
+    !session.client_reference_id ||
+    session.client_reference_id === pedido.id;
+  const moedaValida = String(session.currency || "").toLowerCase() === "brl";
+  const valorValido =
+    typeof session.amount_total === "number" &&
+    session.amount_total === totalEsperado;
+  const sessaoValida = pedido.gatewayPedidoId === session.id;
+
+  if (!referenciaValida || !moedaValida || !valorValido || !sessaoValida) {
     return null;
   }
 
-  const deveCreditarCashback =
-    pedidoAtual.cashbackStatus === "PENDENTE" &&
-    pedidoAtual.clienteId &&
-    Number(pedidoAtual.cashbackPrevistoValor || 0) > 0;
-
-  if (!deveCreditarCashback || !pedidoAtual.clienteId) {
-    return null;
-  }
-
-  const valorCashback = Number(pedidoAtual.cashbackPrevistoValor || 0);
-  const agora = new Date();
-
-  await prisma.$transaction(async (tx) => {
-    await tx.cliente.update({
-      where: {
-        id: pedidoAtual.clienteId as string,
-      },
-      data: {
-        cashbackSaldo: {
-          increment: valorCashback,
-        },
-      },
-    });
-
-    await tx.clienteCashbackMovimentacao.create({
-      data: {
-        clienteId: pedidoAtual.clienteId as string,
-        tipo: "CREDITO",
-        status: "EFETIVADO",
-        origemTipo: "PEDIDO_ONLINE",
-        origemId: pedidoAtual.id,
-        valor: valorCashback,
-        observacao: `Cashback creditado pelo pedido ${pedidoAtual.codigo}.`,
-      },
-    });
-
-    await tx.pedidoOnline.update({
-      where: {
-        id: pedidoAtual.id,
-      },
-      data: {
-        cashbackStatus: "CREDITADO",
-        cashbackCreditadoValor: valorCashback,
-        cashbackCreditadoEm: agora,
-      },
-    });
-  });
-
-  return {
-    creditado: true,
-    valor: valorCashback,
-  };
+  return pedido;
 }
 
 export async function GET() {
@@ -91,85 +57,89 @@ export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET não configurado.");
-
+    console.error("Webhook Stripe indisponivel: secret ausente.");
     return NextResponse.json(
-      { error: "STRIPE_WEBHOOK_SECRET não configurado." },
-      { status: 500 }
+      { error: "Webhook indisponivel." },
+      { status: 500 },
     );
   }
 
   const signature = req.headers.get("stripe-signature");
 
   if (!signature) {
-    console.error("Assinatura Stripe ausente.");
-
     return NextResponse.json(
-      { error: "Assinatura Stripe ausente." },
-      { status: 400 }
+      { error: "Assinatura ausente." },
+      { status: 400 },
     );
   }
 
   const body = await req.text();
-
-  let event;
+  let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (error) {
-    console.error("Erro ao validar webhook Stripe:", error);
-
+  } catch {
+    console.warn("Webhook Stripe rejeitado por assinatura invalida.");
     return NextResponse.json(
-      { error: "Webhook Stripe inválido." },
-      { status: 400 }
+      { error: "Webhook invalido." },
+      { status: 400 },
     );
   }
 
   try {
-    console.log("Webhook Stripe recebido:", event.type);
-
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-
       const pedidoId = session.metadata?.pedidoId || "";
-      const pedidoCodigo = session.metadata?.pedidoCodigo || "";
 
-      console.log("Checkout concluído:", {
-        pedidoId,
-        pedidoCodigo,
-        sessionId: session.id,
-        paymentStatus: session.payment_status,
-      });
-
-      if (!pedidoId) {
-        console.warn("Webhook sem pedidoId no metadata.");
+      if (!pedidoId || session.payment_status !== "paid") {
         return NextResponse.json({ received: true });
       }
 
-      if (session.payment_status !== "paid") {
-        console.warn("Sessão concluída, mas pagamento ainda não está paid.");
-        return NextResponse.json({ received: true });
+      const pedido = await validarCorrelacaoSessao(session, pedidoId);
+
+      if (!pedido) {
+        console.error("Webhook Stripe rejeitado por divergencia de correlacao.");
+        return NextResponse.json(
+          { error: "Evento nao correlacionado." },
+          { status: 409 },
+        );
       }
 
       const valorPago = Number(session.amount_total || 0) / 100;
-
       const paymentIntentId =
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : session.payment_intent?.id || null;
 
       if (session.metadata?.origem === "ADMIN_MANUAL") {
-        const vendaGerada = await efetivarPedidoManualPagoComoVenda({
+        if (pedido.origemCanal !== "ADMIN_MANUAL") {
+          console.error(
+            "Webhook Stripe manual rejeitado por origem de pedido invalida.",
+          );
+          return NextResponse.json(
+            { error: "Origem de pedido invalida." },
+            { status: 409 },
+          );
+        }
+
+        await efetivarPedidoManualPagoComoVenda({
           pedidoId,
           gatewayPagamentoId: paymentIntentId,
           valorPago,
         });
 
-        console.log("Venda manual efetivada pelo Stripe:", vendaGerada);
         return NextResponse.json({ received: true });
       }
 
-      const efetivacao = await efetivarPedidoOnlinePago({
+      if (pedido.origemCanal !== "LOJA_STELLA") {
+        console.error("Webhook Stripe rejeitado por origem de pedido invalida.");
+        return NextResponse.json(
+          { error: "Origem de pedido invalida." },
+          { status: 409 },
+        );
+      }
+
+      await efetivarPedidoOnlinePago({
         pedidoId,
         gatewayPedidoId: session.id,
         gatewayPagamentoId: paymentIntentId,
@@ -178,52 +148,48 @@ export async function POST(req: Request) {
         valorPago,
         origemHistorico: "STRIPE",
         usuarioNomeHistorico: "Stripe",
-        pagamentoObservacao: `Pagamento confirmado via Stripe para o pedido ${pedidoCodigo}.`,
+        pagamentoObservacao: `Pagamento confirmado via Stripe para o pedido ${pedido.codigo}.`,
         historicoObservacao:
           "Pagamento confirmado via Stripe. Estoque de produtos e adicionais processado.",
       });
 
-      console.log("Pedido efetivado pelo Stripe:", efetivacao);
-
-      const cashback = await creditarCashbackDoPedido(pedidoId);
-
-      if (cashback) {
-        console.log("Cashback creditado pelo Stripe:", cashback);
-      }
+      await creditarCashbackPedidoIdempotente(pedidoId);
     }
-if (event.type === "checkout.session.expired") {
-  const session = event.data.object;
 
-  const pedidoId = session.metadata?.pedidoId || "";
-  const pedidoCodigo = session.metadata?.pedidoCodigo || "";
+    if (event.type === "checkout.session.expired") {
+      const session = event.data.object;
+      const pedidoId = session.metadata?.pedidoId || "";
 
-  console.log("Checkout expirado:", {
-    pedidoId,
-    pedidoCodigo,
-    sessionId: session.id,
-  });
+      if (!pedidoId) {
+        return NextResponse.json({ received: true });
+      }
 
-  if (!pedidoId) {
-    console.warn("Webhook expired sem pedidoId no metadata.");
+      const pedido = await validarCorrelacaoSessao(session, pedidoId);
+
+      if (!pedido) {
+        console.error(
+          "Webhook Stripe expirado rejeitado por divergencia de correlacao.",
+        );
+        return NextResponse.json(
+          { error: "Evento nao correlacionado." },
+          { status: 409 },
+        );
+      }
+
+      await cancelarPedidoOnlineNaoPago({
+        pedidoId,
+        origem: "STRIPE",
+        usuarioNome: "Stripe",
+        observacao: `Sessao Stripe expirada para o pedido ${pedido.codigo}. Pedido cancelado automaticamente.`,
+      });
+    }
+
     return NextResponse.json({ received: true });
-  }
-
-  const cancelamento = await cancelarPedidoOnlineNaoPago({
-    pedidoId,
-    origem: "STRIPE",
-    usuarioNome: "Stripe",
-    observacao: `Sessão Stripe expirada para o pedido ${pedidoCodigo}. Pedido cancelado automaticamente.`,
-  });
-
-  console.log("Pedido cancelado por expiração Stripe:", cancelamento);
-}
-    return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error("Erro ao processar webhook Stripe:", error);
-
+  } catch {
+    console.error("Erro interno ao processar webhook Stripe.");
     return NextResponse.json(
       { error: "Erro ao processar webhook Stripe." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

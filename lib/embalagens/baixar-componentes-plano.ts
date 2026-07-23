@@ -82,18 +82,53 @@ async function baixarComponente({
 
   const custoUnitario = Number(estoque.custoMedio || 0);
   const custoTotal = custoUnitario * quantidade;
-  const novaQuantidade = estoque.quantidadeAtual - quantidade;
-  const novoValorAcumulado = Number(estoque.valorAcumulado || 0) - custoTotal;
-  const valorSeguro = novoValorAcumulado > 0 ? novoValorAcumulado : 0;
+  const baixa = await tx.estoqueAdicional.updateMany({
+    where: {
+      id: estoque.id,
+      quantidadeAtual: {
+        gte: quantidade,
+      },
+    },
+    data: {
+      quantidadeAtual: {
+        decrement: quantidade,
+      },
+      valorAcumulado: {
+        decrement: custoTotal,
+      },
+    },
+  });
+
+  if (baixa.count !== 1) {
+    throw new Error(
+      `Saldo alterado durante o pagamento: ${estoque.itemAdicional.nome}.`,
+    );
+  }
+
+  const estoqueAtualizado = await tx.estoqueAdicional.findUniqueOrThrow({
+    where: {
+      id: estoque.id,
+    },
+    select: {
+      quantidadeAtual: true,
+      valorAcumulado: true,
+    },
+  });
+  const valorSeguro = Math.max(
+    Number(estoqueAtualizado.valorAcumulado || 0),
+    0,
+  );
 
   await tx.estoqueAdicional.update({
     where: {
       id: estoque.id,
     },
     data: {
-      quantidadeAtual: novaQuantidade,
       valorAcumulado: valorSeguro,
-      custoMedio: calcularCustoMedio(valorSeguro, novaQuantidade),
+      custoMedio: calcularCustoMedio(
+        valorSeguro,
+        estoqueAtualizado.quantidadeAtual,
+      ),
     },
   });
 

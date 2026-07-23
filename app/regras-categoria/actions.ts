@@ -1,5 +1,6 @@
 "use server";
 
+import { exigirAdminComPermissao } from "@/lib/auth/admin";
 import { prisma } from "@/lib/prisma";
 import {
   chaveEscopoRegra,
@@ -244,6 +245,8 @@ function regraTemMesmoEscopo(
 }
 
 export async function criarRegraCategoria(formData: FormData) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   const aplicarTodasCategorias =
     String(formData.get("aplicarTodasCategorias") || "") === "on";
   const categoriaIds = getCategoriaIdsFormData(formData);
@@ -398,6 +401,8 @@ export async function criarRegraCategoria(formData: FormData) {
 }
 
 export async function excluirRegraCategoria(id: string) {
+  await exigirAdminComPermissao("produtos", "editar");
+
   const regra = await prisma.regraCategoria.findUnique({
     where: { id },
     select: {
@@ -438,6 +443,8 @@ export async function excluirRegraCategoria(id: string) {
 }
 
 export async function recalcularTodosProdutosPelasRegras() {
+  await exigirAdminComPermissao("produtos", "editar");
+
   await recalcularProdutosPorCategorias([], true);
 
   revalidatePath("/regras-categoria");
