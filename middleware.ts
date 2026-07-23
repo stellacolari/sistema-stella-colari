@@ -82,9 +82,10 @@ async function pedidoPublicoAutorizado(request: NextRequest) {
 
     if (!codigo) return false;
 
-    const vercelHost = String(process.env.VERCEL_URL || "").trim();
-    const gateOrigin = vercelHost
-      ? `https://${vercelHost.replace(/^https?:\/\//, "")}`
+    const siteUrl = String(process.env.NEXT_PUBLIC_SITE_URL || "").trim();
+    const emVercel = Boolean(process.env.VERCEL || process.env.VERCEL_URL);
+    const gateOrigin = emVercel && siteUrl
+      ? new URL(siteUrl).origin
       : request.nextUrl.origin;
     const gateUrl = new URL("/api/loja/pedido/acesso", gateOrigin);
     const response = await fetch(gateUrl, {
