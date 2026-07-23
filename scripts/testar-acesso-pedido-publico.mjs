@@ -105,5 +105,7 @@ assert.doesNotMatch(files.cliente, /cashback/);
 assert.match(files.middleware, /private, no-store, max-age=0, must-revalidate/);
 assert.match(files.middleware, /noindex, nofollow, noarchive/);
 assert.match(files.middleware, /Referrer-Policy/);
+assert.match(files.middleware, /destino\.searchParams\.delete\("access"\)/);
+assert.match(files.middleware, /response\.cookies\.set\(COOKIE_PEDIDO_ACESSO/);
 
 console.log("Acesso publico de pedidos validado sem expor tokens.");

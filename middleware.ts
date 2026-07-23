@@ -51,6 +51,7 @@ const LOJA_PEDIDO_PREFIX = "/loja/pedido";
 const LOJA_STRIPE_CHECKOUT_PATH = "/api/loja/stripe/criar-checkout";
 const COOKIE_CLIENTE_ID = "stella_cliente_id";
 const COOKIE_PEDIDO_ACESSO = "stella_pedido_access";
+const COOKIE_PEDIDO_ACESSO_MAX_AGE = 60 * 60 * 24 * 30;
 
 function aplicarHeadersPedidoPrivado(response: NextResponse) {
   response.headers.set(
@@ -72,6 +73,24 @@ function respostaPedidoNaoEncontrado() {
       },
     }),
   );
+}
+
+function redirecionarPedidoSemToken(request: NextRequest, access: string) {
+  const destino = request.nextUrl.clone();
+  destino.searchParams.delete("access");
+
+  const response = aplicarHeadersPedidoPrivado(
+    NextResponse.redirect(destino, 307),
+  );
+  response.cookies.set(COOKIE_PEDIDO_ACESSO, access, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: COOKIE_PEDIDO_ACESSO_MAX_AGE,
+  });
+
+  return response;
 }
 
 async function pedidoPublicoAutorizado(request: NextRequest) {
@@ -209,6 +228,12 @@ export async function middleware(request: NextRequest) {
   if (matchesPrefix(pathname, LOJA_PEDIDO_PREFIX)) {
     if (!(await pedidoPublicoAutorizado(request))) {
       return respostaPedidoNaoEncontrado();
+    }
+
+    const access = request.nextUrl.searchParams.get("access")?.trim() || "";
+
+    if (access) {
+      return redirecionarPedidoSemToken(request, access);
     }
 
     return aplicarHeadersPedidoPrivado(NextResponse.next());
