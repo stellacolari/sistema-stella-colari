@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { pbkdf2Sync, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+import {
+  definirCookieSessaoCliente,
+} from "@/lib/loja/cliente-sessao";
+import {
+  criarSessaoCliente,
+  revogarSessaoClienteAtual,
+} from "@/lib/loja/cliente-sessao.server";
 
 function verificarSenha(senha: string, senhaHash: string | null | undefined) {
   if (!senhaHash) {
@@ -42,6 +47,7 @@ export async function POST(req: Request) {
     const identificador = String(body.identificador || "").trim();
     const identificadorNumerico = identificador.replace(/\D/g, "");
     const senha = String(body.senha || "");
+    const manterConectado = body.manterConectado !== false;
 
     if (!identificador) {
       return NextResponse.json(
@@ -89,6 +95,13 @@ export async function POST(req: Request) {
       );
     }
 
+    await revogarSessaoClienteAtual();
+    const sessao = await criarSessaoCliente({
+      clienteId: cliente.id,
+      manterConectado,
+      userAgent: req.headers.get("user-agent"),
+    });
+
     const response = NextResponse.json({
       ok: true,
       cliente: {
@@ -102,12 +115,10 @@ export async function POST(req: Request) {
       },
     });
 
-    response.cookies.set(COOKIE_CLIENTE_ID, cliente.id, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+    definirCookieSessaoCliente({
+      response,
+      token: sessao.token,
+      manterConectado,
     });
 
     return response;

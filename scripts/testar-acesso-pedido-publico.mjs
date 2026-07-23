@@ -33,7 +33,7 @@ assert.equal(validarPedidoAcessoToken(emitidos[0].token, "hash-invalido"), false
 
 assert.equal(
   clientePodeAcessarPedido({
-    clienteCookieId: "cliente-a",
+    clienteAutenticadoId: "cliente-a",
     pedidoClienteId: "cliente-a",
     clienteAtivo: true,
   }),
@@ -41,7 +41,7 @@ assert.equal(
 );
 assert.equal(
   clientePodeAcessarPedido({
-    clienteCookieId: "cliente-a",
+    clienteAutenticadoId: "cliente-a",
     pedidoClienteId: "cliente-b",
     clienteAtivo: true,
   }),
@@ -49,7 +49,7 @@ assert.equal(
 );
 assert.equal(
   clientePodeAcessarPedido({
-    clienteCookieId: "cliente-a",
+    clienteAutenticadoId: "cliente-a",
     pedidoClienteId: "cliente-a",
     clienteAtivo: false,
   }),

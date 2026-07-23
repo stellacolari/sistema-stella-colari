@@ -425,8 +425,25 @@ model Cliente {
   cashbackMovimentacoes ClienteCashbackMovimentacao[]
   consentimentos        ClienteConsentimento[]
   pedidosOnline         PedidoOnline[]
+  sessoes               ClienteSessao[]
   vendas                Venda[]
   eventosComerciais     EventoComercial[]
+}
+
+model ClienteSessao {
+  id            String    @id @default(cuid())
+  clienteId     String
+  tokenHash     String    @unique
+  criadoEm      DateTime  @default(now())
+  expiraEm      DateTime
+  revogadoEm    DateTime?
+  ultimoUsoEm   DateTime?
+  userAgentHash String?
+  cliente       Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@index([expiraEm])
+  @@index([clienteId, revogadoEm, expiraEm])
 }
 
 model Compra {

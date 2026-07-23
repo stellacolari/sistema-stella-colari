@@ -9,6 +9,7 @@ import {
   validarPedidoAcessoToken,
 } from "@/lib/loja/pedido-acesso";
 import { stripe } from "@/lib/stripe";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 const STATUS_PAGAMENTO_FINALIZADOS = new Set([
   "PAGO",
@@ -16,8 +17,6 @@ const STATUS_PAGAMENTO_FINALIZADOS = new Set([
   "EXPIRADO",
   "RECUSADO",
 ]);
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
-
 function respostaCheckoutAutorizado(
   body: Record<string, unknown>,
   accessToken: string | null,
@@ -72,7 +71,7 @@ export async function POST(req: Request) {
     }
 
     const cookieStore = await cookies();
-    const clienteCookieId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+    const clienteAutenticadoId = await obterClienteAutenticadoId();
     const accessTokenCookie =
       cookieStore.get(PEDIDO_ACESSO_COOKIE)?.value || "";
     const provaToken = accessToken || accessTokenCookie;
@@ -102,7 +101,7 @@ export async function POST(req: Request) {
     });
 
     const clienteProprietario = clientePodeAcessarPedido({
-      clienteCookieId,
+      clienteAutenticadoId,
       pedidoClienteId: pedido?.clienteId,
       clienteAtivo: Boolean(
         pedido?.cliente && pedido.cliente.status !== "NA_LIXEIRA",

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
@@ -10,6 +9,7 @@ import MinhaContaClient, {
   type MinhaContaClienteData,
 } from "@/components/loja/MinhaContaClient";
 import { criarMetadataLoja } from "@/lib/loja/seo";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 export const metadata: Metadata = criarMetadataLoja({
   title: "Minha conta | Stella Colari",
@@ -22,11 +22,8 @@ export const metadata: Metadata = criarMetadataLoja({
 
 export const dynamic = "force-dynamic";
 
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
-
 export default async function MinhaContaPage() {
-  const cookieStore = await cookies();
-  const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+  const clienteId = await obterClienteAutenticadoId();
 
   if (!clienteId) {
     redirect("/loja/entrar");

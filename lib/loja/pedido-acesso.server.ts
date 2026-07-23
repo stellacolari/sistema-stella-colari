@@ -6,12 +6,12 @@ import {
 
 export async function buscarPedidoPublicoAutorizado({
   codigo,
-  clienteCookieId,
+  clienteAutenticadoId,
   access,
   tokenCookie,
 }: {
   codigo: string;
-  clienteCookieId: string;
+  clienteAutenticadoId: string | null;
   access: string;
   tokenCookie: string;
 }) {
@@ -31,7 +31,7 @@ export async function buscarPedidoPublicoAutorizado({
   });
 
   const clienteProprietario = clientePodeAcessarPedido({
-    clienteCookieId,
+    clienteAutenticadoId,
     pedidoClienteId: pedido?.clienteId,
     clienteAtivo: Boolean(
       pedido?.cliente && pedido.cliente.status !== "NA_LIXEIRA",

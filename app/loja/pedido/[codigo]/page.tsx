@@ -13,10 +13,9 @@ import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { PEDIDO_ACESSO_COOKIE } from "@/lib/loja/pedido-acesso";
 import { buscarPedidoPublicoAutorizado } from "@/lib/loja/pedido-acesso.server";
 import { criarMetadataLoja } from "@/lib/loja/seo";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 export const dynamic = "force-dynamic";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
 
 type PedidoSearchParams = {
   access?: string | string[];
@@ -26,13 +25,13 @@ type PedidoSearchParams = {
 const buscarAcessoPedidoAutorizado = cache(
   async (
     codigo: string,
-    clienteCookieId: string,
+    clienteAutenticadoId: string | null,
     access: string,
     tokenCookie: string,
   ) => {
     return buscarPedidoPublicoAutorizado({
       codigo,
-      clienteCookieId,
+      clienteAutenticadoId,
       access,
       tokenCookie,
     });
@@ -48,7 +47,7 @@ async function obterProvasAcesso(searchParams: PedidoSearchParams) {
 
   return {
     access: primeiroValorQuery(searchParams.access),
-    clienteCookieId: cookieStore.get(COOKIE_CLIENTE_ID)?.value || "",
+    clienteAutenticadoId: await obterClienteAutenticadoId(),
     tokenCookie: cookieStore.get(PEDIDO_ACESSO_COOKIE)?.value || "",
   };
 }
@@ -65,7 +64,7 @@ export async function generateMetadata({
   const provas = await obterProvasAcesso(query);
   const acesso = await buscarAcessoPedidoAutorizado(
     codigo,
-    provas.clienteCookieId,
+    provas.clienteAutenticadoId,
     provas.access,
     provas.tokenCookie,
   );
@@ -102,7 +101,7 @@ export default async function PedidoPublicoPage({
   const provas = await obterProvasAcesso(query);
   const acessoPedido = await buscarAcessoPedidoAutorizado(
     codigo,
-    provas.clienteCookieId,
+    provas.clienteAutenticadoId,
     provas.access,
     provas.tokenCookie,
   );

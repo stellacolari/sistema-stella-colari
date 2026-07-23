@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 function normalizarTexto(value: unknown) {
   return String(value ?? "").trim();
@@ -22,8 +20,7 @@ function normalizarCep(value: unknown) {
 
 export async function PATCH(req: Request) {
   try {
-    const cookieStore = await cookies();
-    const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+    const clienteId = await obterClienteAutenticadoId();
 
     if (!clienteId) {
       return NextResponse.json(

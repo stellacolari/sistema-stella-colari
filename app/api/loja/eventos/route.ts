@@ -1,15 +1,14 @@
 import type { Prisma } from "@prisma/client";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   METADATA_KEYS_SENSIVEIS_EVENTO,
   TIPOS_EVENTO_COMERCIAL_PUBLICOS,
 } from "@/lib/loja/eventos-taxonomia";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 export const dynamic = "force-dynamic";
 
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
 const MAX_EVENTOS_POR_MINUTO = 80;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -122,27 +121,6 @@ function sanitizarMetadata(value: unknown, depth = 0): JsonSeguro | undefined {
   return undefined;
 }
 
-async function buscarClienteLogadoId() {
-  const cookieStore = await cookies();
-  const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
-
-  if (!clienteId) return undefined;
-
-  const cliente = await prisma.cliente.findFirst({
-    where: {
-      id: clienteId,
-      status: {
-        not: "NA_LIXEIRA",
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  return cliente?.id;
-}
-
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -166,7 +144,7 @@ export async function POST(req: Request) {
     }
 
     const metadataJson = sanitizarMetadata(body.metadata);
-    const clienteId = await buscarClienteLogadoId();
+    const clienteId = (await obterClienteAutenticadoId()) ?? undefined;
     const data: Prisma.EventoComercialUncheckedCreateInput = {
       tipo,
       produtoId: limitarId(body.produtoId),

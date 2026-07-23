@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+import { limparCookiesSessaoCliente } from "@/lib/loja/cliente-sessao";
+import { revogarSessaoClienteAtual } from "@/lib/loja/cliente-sessao.server";
 
 export async function POST() {
+  await revogarSessaoClienteAtual();
   const response = NextResponse.json({ ok: true });
 
-  response.cookies.set(COOKIE_CLIENTE_ID, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 0,
-  });
+  limparCookiesSessaoCliente(response);
 
   return response;
 }

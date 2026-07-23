@@ -49,7 +49,8 @@ const VENDEDOR_API_PREFIXES = [
 const LOJA_PREVIEW_PREFIX = "/loja/preview/pagina";
 const LOJA_PEDIDO_PREFIX = "/loja/pedido";
 const LOJA_STRIPE_CHECKOUT_PATH = "/api/loja/stripe/criar-checkout";
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+const COOKIE_CLIENTE_SESSAO = "stella_cliente_session";
+const COOKIE_CLIENTE_LEGADO = "stella_cliente_id";
 const COOKIE_PEDIDO_ACESSO = "stella_pedido_access";
 const COOKIE_PEDIDO_ACESSO_MAX_AGE = 60 * 60 * 24 * 30;
 
@@ -60,6 +61,23 @@ function aplicarHeadersPedidoPrivado(response: NextResponse) {
   );
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   response.headers.set("Referrer-Policy", "no-referrer");
+
+  return response;
+}
+
+function removerCookieClienteLegado(
+  request: NextRequest,
+  response: NextResponse,
+) {
+  if (request.cookies.has(COOKIE_CLIENTE_LEGADO)) {
+    response.cookies.set(COOKIE_CLIENTE_LEGADO, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+  }
 
   return response;
 }
@@ -102,7 +120,13 @@ async function pedidoPublicoAutorizado(request: NextRequest) {
     if (!codigo) return false;
 
     const siteUrl = String(process.env.NEXT_PUBLIC_SITE_URL || "").trim();
-    const emVercel = Boolean(process.env.VERCEL || process.env.VERCEL_URL);
+    const hostname = request.nextUrl.hostname.toLowerCase();
+    const origemLocal =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1";
+    const emVercel =
+      !origemLocal && Boolean(process.env.VERCEL || process.env.VERCEL_URL);
     const gateOrigin = emVercel && siteUrl
       ? new URL(siteUrl).origin
       : request.nextUrl.origin;
@@ -115,8 +139,8 @@ async function pedidoPublicoAutorizado(request: NextRequest) {
       },
       body: JSON.stringify({
         codigo,
-        clienteCookieId:
-          request.cookies.get(COOKIE_CLIENTE_ID)?.value || "",
+        clienteSessaoToken:
+          request.cookies.get(COOKIE_CLIENTE_SESSAO)?.value || "",
         access: request.nextUrl.searchParams.get("access") || "",
         tokenCookie:
           request.cookies.get(COOKIE_PEDIDO_ACESSO)?.value || "",
@@ -227,20 +251,32 @@ export async function middleware(request: NextRequest) {
 
   if (matchesPrefix(pathname, LOJA_PEDIDO_PREFIX)) {
     if (!(await pedidoPublicoAutorizado(request))) {
-      return respostaPedidoNaoEncontrado();
+      return removerCookieClienteLegado(
+        request,
+        respostaPedidoNaoEncontrado(),
+      );
     }
 
     const access = request.nextUrl.searchParams.get("access")?.trim() || "";
 
     if (access) {
-      return redirecionarPedidoSemToken(request, access);
+      return removerCookieClienteLegado(
+        request,
+        redirecionarPedidoSemToken(request, access),
+      );
     }
 
-    return aplicarHeadersPedidoPrivado(NextResponse.next());
+    return removerCookieClienteLegado(
+      request,
+      aplicarHeadersPedidoPrivado(NextResponse.next()),
+    );
   }
 
   if (pathname === LOJA_STRIPE_CHECKOUT_PATH) {
-    return aplicarHeadersPedidoPrivado(NextResponse.next());
+    return removerCookieClienteLegado(
+      request,
+      aplicarHeadersPedidoPrivado(NextResponse.next()),
+    );
   }
 
   if (isLojaPreviewPath(pathname)) {
@@ -264,11 +300,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return removerCookieClienteLegado(request, NextResponse.next());
   }
 
   if (isApi(pathname) && !isAdminApi(pathname)) {
-    return NextResponse.next();
+    return removerCookieClienteLegado(request, NextResponse.next());
   }
 
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;

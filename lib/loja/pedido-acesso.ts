@@ -56,19 +56,19 @@ export function validarPedidoAcessoToken(
 }
 
 export function clientePodeAcessarPedido({
-  clienteCookieId,
+  clienteAutenticadoId,
   pedidoClienteId,
   clienteAtivo,
 }: {
-  clienteCookieId: string | null | undefined;
+  clienteAutenticadoId: string | null | undefined;
   pedidoClienteId: string | null | undefined;
   clienteAtivo: boolean;
 }) {
   return Boolean(
     clienteAtivo &&
-      clienteCookieId &&
+      clienteAutenticadoId &&
       pedidoClienteId &&
-      clienteCookieId === pedidoClienteId,
+      clienteAutenticadoId === pedidoClienteId,
   );
 }
 

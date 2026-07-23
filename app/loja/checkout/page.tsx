@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import CheckoutClient, {
   type CheckoutCashbackConfig,
   type CheckoutClienteLogado,
@@ -9,6 +8,7 @@ import { buscarCategoriasMenuPublico } from "@/lib/loja/categorias";
 import { buscarConfiguracaoMenuRodape } from "@/lib/loja/menu-rodape-config";
 import { buscarMenusPublicos } from "@/lib/loja/menu";
 import { criarMetadataLoja } from "@/lib/loja/seo";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 export const metadata: Metadata = criarMetadataLoja({
   title: "Checkout | Stella Colari",
@@ -21,7 +21,6 @@ export const metadata: Metadata = criarMetadataLoja({
 
 export const dynamic = "force-dynamic";
 
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
 
 const CASHBACK_CONFIG_PADRAO: CheckoutCashbackConfig = {
@@ -35,8 +34,7 @@ const CASHBACK_CONFIG_PADRAO: CheckoutCashbackConfig = {
 };
 
 export default async function CheckoutPage() {
-  const cookieStore = await cookies();
-  const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+  const clienteId = await obterClienteAutenticadoId();
 
   const [
     menus,

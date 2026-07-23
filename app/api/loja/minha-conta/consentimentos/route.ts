@@ -1,34 +1,10 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import {
   obterResumoWhatsappPublicoCliente,
   registrarConsentimentoWhatsappPublico,
   revogarConsentimentoWhatsappPublico,
 } from "@/lib/clientes/consentimentos-cliente";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
-
-async function obterClienteAutenticadoId() {
-  const cookieStore = await cookies();
-  const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
-
-  if (!clienteId) return null;
-
-  const cliente = await prisma.cliente.findFirst({
-    where: {
-      id: clienteId,
-      status: {
-        not: "NA_LIXEIRA",
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  return cliente?.id ?? null;
-}
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 function respostaNaoAutenticado() {
   return NextResponse.json(

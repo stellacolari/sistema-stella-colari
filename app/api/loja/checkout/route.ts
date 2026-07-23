@@ -1,5 +1,4 @@
 import type { Prisma } from "@prisma/client";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { pbkdf2Sync, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -28,9 +27,13 @@ import {
   calcularEstoqueProdutoVenda,
 } from "@/lib/loja/estoque";
 import type { FreteOpcao, FreteProdutoPayload } from "@/lib/frete/types";
+import { definirCookieSessaoCliente } from "@/lib/loja/cliente-sessao";
+import {
+  criarSessaoCliente,
+  obterClienteAutenticadoId,
+} from "@/lib/loja/cliente-sessao.server";
 
 const CHAVE_CASHBACK_CONFIG = "PADRAO";
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
 const CHECKOUT_DISPONIBILIDADE_MESSAGE =
   "Um ou mais produtos nao estao disponiveis no momento. Revise o carrinho.";
 
@@ -637,11 +640,11 @@ async function buscarCupomValido({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const cookieStore = await cookies();
 
-    const clienteCookieId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+    const clienteSessaoId = await obterClienteAutenticadoId();
     const criarCadastro = Boolean(body.criarCadastro);
     const consentimentoWhatsapp = body.consentimentoWhatsapp === true;
+    const manterConectado = body.manterConectado !== false;
 
     const nomeCliente = String(body.nomeCliente || "").trim();
     const telefoneCliente = String(body.telefoneCliente || "").trim();
@@ -780,10 +783,10 @@ export async function POST(request: Request) {
           update: {},
         });
 
-        if (clienteCookieId) {
+        if (clienteSessaoId) {
           const clienteLogado = await tx.cliente.findUnique({
             where: {
-              id: clienteCookieId,
+              id: clienteSessaoId,
             },
             select: {
               id: true,
@@ -1503,6 +1506,7 @@ export async function POST(request: Request) {
           codigo: pedido.codigo,
           cashbackPrevistoValor,
           clienteId,
+          clienteCriadoCheckout,
         };
       },
       {
@@ -1525,6 +1529,23 @@ export async function POST(request: Request) {
       }
     }
 
+    let sessaoCriada: Awaited<ReturnType<typeof criarSessaoCliente>> | null =
+      null;
+
+    if (pedidoCriado.clienteCriadoCheckout && pedidoCriado.clienteId) {
+      try {
+        sessaoCriada = await criarSessaoCliente({
+          clienteId: pedidoCriado.clienteId,
+          manterConectado,
+          userAgent: request.headers.get("user-agent"),
+        });
+      } catch {
+        console.error(
+          "Pedido criado, mas nao foi possivel iniciar a sessao do cliente.",
+        );
+      }
+    }
+
     const response = NextResponse.json({
       ok: true,
       codigo: pedidoCriado.codigo,
@@ -1539,6 +1560,14 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: PEDIDO_ACESSO_COOKIE_MAX_AGE,
     });
+
+    if (sessaoCriada) {
+      definirCookieSessaoCliente({
+        response,
+        token: sessaoCriada.token,
+        manterConectado,
+      });
+    }
 
     return response;
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buscarPedidoPublicoAutorizado } from "@/lib/loja/pedido-acesso.server";
+import { resolverSessaoClienteToken } from "@/lib/loja/cliente-sessao.server";
 
 function respostaGate(status: 204 | 404) {
   return new NextResponse(null, {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
     const codigo = String(body.codigo || "").trim();
-    const clienteCookieId = String(body.clienteCookieId || "").trim();
+    const clienteSessaoToken = String(body.clienteSessaoToken || "").trim();
     const access = String(body.access || "").trim();
     const tokenCookie = String(body.tokenCookie || "").trim();
 
@@ -23,9 +24,10 @@ export async function POST(request: Request) {
       return respostaGate(404);
     }
 
+    const sessao = await resolverSessaoClienteToken(clienteSessaoToken);
     const pedido = await buscarPedidoPublicoAutorizado({
       codigo,
-      clienteCookieId,
+      clienteAutenticadoId: sessao?.clienteId ?? null,
       access,
       tokenCookie,
     });

@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { pbkdf2Sync, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { registrarConsentimentoWhatsappPublico } from "@/lib/clientes/consentimentos-cliente";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+import { definirCookieSessaoCliente } from "@/lib/loja/cliente-sessao";
+import {
+  criarSessaoCliente,
+  revogarSessaoClienteAtual,
+} from "@/lib/loja/cliente-sessao.server";
 
 function criarSenhaHash(senha: string) {
   const salt = randomBytes(16).toString("hex");
@@ -68,6 +71,7 @@ export async function POST(req: Request) {
     const senha = String(body.senha || "");
     const confirmarSenha = String(body.confirmarSenha || "");
     const consentimentoWhatsapp = body.consentimentoWhatsapp === true;
+    const manterConectado = body.manterConectado !== false;
 
     if (!nome) {
       return NextResponse.json(
@@ -182,6 +186,13 @@ export async function POST(req: Request) {
       }
     }
 
+    await revogarSessaoClienteAtual();
+    const sessao = await criarSessaoCliente({
+      clienteId: cliente.id,
+      manterConectado,
+      userAgent: req.headers.get("user-agent"),
+    });
+
     const response = NextResponse.json({
       ok: true,
       cliente: {
@@ -190,12 +201,10 @@ export async function POST(req: Request) {
       },
     });
 
-    response.cookies.set(COOKIE_CLIENTE_ID, cliente.id, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+    definirCookieSessaoCliente({
+      response,
+      token: sessao.token,
+      manterConectado,
     });
 
     return response;

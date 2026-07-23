@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const COOKIE_CLIENTE_ID = "stella_cliente_id";
+import { obterClienteAutenticadoId } from "@/lib/loja/cliente-sessao.server";
 
 function normalizarCodigoCupom(value: unknown) {
   return String(value ?? "")
@@ -51,9 +49,8 @@ function calcularDescontoCupom({
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const cookieStore = await cookies();
 
-    const clienteId = cookieStore.get(COOKIE_CLIENTE_ID)?.value || "";
+    const clienteId = await obterClienteAutenticadoId();
     const codigo = normalizarCodigoCupom(body.codigo);
     const subtotal = parseNumero(body.subtotal, 0);
 
