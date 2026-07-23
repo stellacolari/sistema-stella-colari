@@ -4,7 +4,7 @@ export const LOJA_NOME = "Stella Colari";
 export const LOJA_DESCRICAO_PADRAO =
   "Joias e acessorios selecionados da Stella Colari para comprar online com praticidade.";
 
-const SITE_URL_FALLBACK = "https://sistema-stella-colari.vercel.app";
+const SITE_URL_FALLBACK = "https://www.stellacolari.com.br";
 const MOEDA_PADRAO = "BRL";
 
 type MetadataOptions = {
@@ -35,9 +35,7 @@ type ProductJsonLdProduto = {
 };
 
 export function getLojaBaseUrl() {
-  const configuredUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
   return normalizarBaseUrl(configuredUrl || SITE_URL_FALLBACK);
 }
